@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="DDjourneys.Core/DDjourneys.Core.csproj" />
+  <Project Path="DDjourneys/DDjourneys.csproj" />
+</Solution>
