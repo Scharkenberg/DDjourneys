@@ -1,28 +1,37 @@
-﻿using DDjourneys.Core.Api;
-using DDjourneys.Core.Models;
-using DDjourneys.Core.Parsing;
+﻿using DDjourneys.Core.Models;
+using DDjourneys.Core.Providers.Abstractions;
 
 namespace DDjourneys.Core.Services;
 
 /// <summary>
 /// Provides journey search functionality.
 /// </summary>
+/// <remarks>
+/// This service acts as the application-facing entry point for journey
+/// planning. It delegates the actual search to registered journey providers.
+///
+/// Providers are responsible for:
+/// - creating provider-specific requests,
+/// - communicating with external APIs,
+/// - parsing provider responses,
+/// - mapping results into DDjourneys domain models.
+///
+/// This keeps the application independent from individual transport APIs.
+/// </remarks>
 public sealed class JourneyService
 {
-	private readonly ApiClient _apiClient;
-
-	private readonly JourneyParser _parser;
+	private readonly IEnumerable<IJourneyProvider> _providers;
 
 
+	/// <summary>
+	/// Creates a new journey service.
+	/// </summary>
 	public JourneyService(
-		ApiClient apiClient,
-		JourneyParser parser)
+		IEnumerable<IJourneyProvider> providers)
 	{
-		ArgumentNullException.ThrowIfNull(apiClient);
-		ArgumentNullException.ThrowIfNull(parser);
+		ArgumentNullException.ThrowIfNull(providers);
 
-		_apiClient = apiClient;
-		_parser = parser;
+		_providers = providers;
 	}
 
 
@@ -30,37 +39,35 @@ public sealed class JourneyService
 	/// Searches for journeys matching the supplied query.
 	/// </summary>
 	public async Task<JourneyResult> SearchAsync(
-		JourneyQuery query,
-		CancellationToken cancellationToken = default)
+	JourneyQuery query,
+	CancellationToken cancellationToken = default)
 	{
 		ArgumentNullException.ThrowIfNull(query);
 
-
-		/*
-         * The provider-specific request creation will happen here later.
-         *
-         * Current flow:
-         *
-         * JourneyQuery
-         *      |
-         *      v
-         * Provider request
-         *      |
-         *      v
-         * ApiClient
-         *      |
-         *      v
-         * JSON
-         *      |
-         *      v
-         * JourneyParser
-         *      |
-         *      v
-         * JourneyResult
-         */
+		JourneyResult? lastFailure = null;
 
 
-		throw new NotImplementedException(
-			"Journey provider integration has not been implemented yet.");
+		foreach (IJourneyProvider provider in _providers)
+		{
+			JourneyResult result =
+				await provider.SearchAsync(
+					query,
+					cancellationToken)
+				.ConfigureAwait(false);
+
+
+			if (result.IsSuccessful)
+			{
+				return result;
+			}
+
+
+			lastFailure = result;
+		}
+
+
+		return lastFailure
+			?? JourneyResult.Failure(
+				"No journey providers are registered.");
 	}
 }

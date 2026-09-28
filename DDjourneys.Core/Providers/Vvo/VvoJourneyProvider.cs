@@ -1,5 +1,6 @@
 ﻿using DDjourneys.Core.Models;
 using DDjourneys.Core.Providers.Abstractions;
+using DDjourneys.Core.Providers.Vvo.Mapping;
 using DDjourneys.Core.Providers.Vvo.Requests;
 
 namespace DDjourneys.Core.Providers.Vvo;
@@ -46,49 +47,69 @@ public sealed class VvoJourneyProvider : IJourneyProvider
 		var request = new VvoTripRequest
 		{
 			Origin = query.From.Id,
+
 			Destination = query.To.Id,
+
 			Time = query.DateTime,
-			IsArrivalTime = query.SearchMode == JourneySearchMode.Arrival
+
+			IsArrivalTime =
+				query.SearchMode == JourneySearchMode.Arrival
 		};
 
 
-		var response =
-			await _apiClient.GetTripsAsync(
-				request,
-				cancellationToken)
-			.ConfigureAwait(false);
+		try
+		{
+			var response =
+				await _apiClient.GetTripsAsync(
+					request,
+					cancellationToken)
+				.ConfigureAwait(false);
 
 
-		if (response is null)
+			if (response is null)
+			{
+				return JourneyResult.Failure(
+					"The VVO provider returned no response.");
+			}
+
+			System.Diagnostics.Debug.WriteLine(
+				$"VVO routes: {response.Routes.Count}");
+
+			foreach (var route in response.Routes)
+			{
+				System.Diagnostics.Debug.WriteLine(
+					$"Partial routes: {route.PartialRoutes.Count}");
+
+				foreach (var partial in route.PartialRoutes)
+				{
+					System.Diagnostics.Debug.WriteLine(
+						$"Stops: {partial.RegularStops.Count}");
+				}
+			}
+
+
+			if (response.Routes.Count == 0)
+			{
+				return JourneyResult.Success(
+					Array.Empty<Journey>());
+			}
+
+
+			var journeys =
+				VvoJourneyMapper.Map(response);
+
+
+			return JourneyResult.Success(
+				journeys);
+		}
+		catch (OperationCanceledException)
+		{
+			throw;
+		}
+		catch (Exception ex)
 		{
 			return JourneyResult.Failure(
-				"The VVO provider returned no response.");
+				$"VVO journey search failed: {ex.Message}");
 		}
-
-
-		/*
-         * Mapping is intentionally not done here.
-         *
-         * Next step:
-         *
-         * VvoTripResponse
-         *        |
-         *        v
-         * VvoJourneyMapper
-         *        |
-         *        v
-         * JourneyResult
-         */
-
-
-		if (response.Trips.Count == 0)
-		{
-			return JourneyResult.Success(
-				Array.Empty<Journey>());
-		}
-
-
-		return JourneyResult.Failure(
-			"VVO trip mapping is not implemented yet.");
 	}
 }

@@ -27,7 +27,7 @@ public sealed class VvoStatus
 	/// <summary>
 	/// Numeric provider status code.
 	/// </summary>
-	public int Code { get; init; }
+	public string? Code { get; init; }
 
 
 	/// <summary>

@@ -11,60 +11,86 @@ public sealed class VvoTripResponse
 	public VvoStatus? Status { get; init; }
 
 
-	[JsonPropertyName("Trips")]
-	public IReadOnlyList<VvoTrip> Trips { get; init; }
-		= Array.Empty<VvoTrip>();
+	[JsonPropertyName("SessionId")]
+	public string? SessionId { get; init; }
+
+
+	[JsonPropertyName("Routes")]
+	public IReadOnlyList<VvoRoute> Routes { get; init; }
+		= Array.Empty<VvoRoute>();
 }
 
 
 /// <summary>
-/// Represents one VVO journey.
+/// Represents one complete journey option returned by VVO.
 /// </summary>
-public sealed class VvoTrip
+public sealed class VvoRoute
 {
-	[JsonPropertyName("PartialRoutes")]
-	public IReadOnlyList<VvoPartialRoute> PartialRoutes { get; init; }
-		= Array.Empty<VvoPartialRoute>();
+	[JsonPropertyName("RouteId")]
+	public int RouteId { get; init; }
 
 
 	[JsonPropertyName("Duration")]
-	public int? Duration { get; init; }
+	public int Duration { get; init; }
 
 
-	[JsonPropertyName("Changes")]
-	public int? Changes { get; init; }
+	[JsonPropertyName("Interchanges")]
+	public int Interchanges { get; init; }
+
+
+	[JsonPropertyName("RouteCancelled")]
+	public bool RouteCancelled { get; init; }
+
+
+	[JsonPropertyName("MotChain")]
+	public IReadOnlyList<VvoMot> MotChain { get; init; }
+		= Array.Empty<VvoMot>();
+
+
+	[JsonPropertyName("PartialRoutes")]
+	public IReadOnlyList<VvoPartialRoute> PartialRoutes { get; init; }
+		= Array.Empty<VvoPartialRoute>();
 }
 
 
 /// <summary>
-/// Represents one section of a VVO journey.
+/// Represents one leg of a journey.
 /// </summary>
 public sealed class VvoPartialRoute
 {
+	[JsonPropertyName("PartialRouteId")]
+	public int PartialRouteId { get; init; }
+
+
+	[JsonPropertyName("Duration")]
+	public int Duration { get; init; }
+
+
+	[JsonPropertyName("TripCancelled")]
+	public bool TripCancelled { get; init; }
+
+
+	[JsonPropertyName("ChangeoverEndangered")]
+	public bool ChangeoverEndangered { get; init; }
+
+
+	[JsonPropertyName("Infos")]
+	public IReadOnlyList<string> Infos { get; init; }
+		= Array.Empty<string>();
+
+
 	[JsonPropertyName("Mot")]
 	public VvoMot? Mot { get; init; }
 
 
-	[JsonPropertyName("Line")]
-	public string? Line { get; init; }
-
-
-	[JsonPropertyName("Direction")]
-	public string? Direction { get; init; }
-
-
-	[JsonPropertyName("Platform")]
-	public string? Platform { get; init; }
-
-
-	[JsonPropertyName("Stops")]
-	public IReadOnlyList<VvoStop> Stops { get; init; }
+	[JsonPropertyName("RegularStops")]
+	public IReadOnlyList<VvoStop> RegularStops { get; init; }
 		= Array.Empty<VvoStop>();
 }
 
 
 /// <summary>
-/// Represents a vehicle mode returned by VVO.
+/// Represents transport information for a VVO leg.
 /// </summary>
 public sealed class VvoMot
 {
@@ -74,14 +100,40 @@ public sealed class VvoMot
 
 	[JsonPropertyName("Type")]
 	public string? Type { get; init; }
+
+
+	[JsonPropertyName("Direction")]
+	public string? Direction { get; init; }
+
+
+	[JsonPropertyName("Diva")]
+	public VvoDiva? Diva { get; init; }
 }
 
 
 /// <summary>
-/// Represents a stop within a VVO route.
+/// Represents VVO line identity information.
+/// </summary>
+public sealed class VvoDiva
+{
+	[JsonPropertyName("Network")]
+	public string? Network { get; init; }
+
+
+	[JsonPropertyName("Number")]
+	public string? Number { get; init; }
+}
+
+
+/// <summary>
+/// Represents one stop in a VVO journey leg.
 /// </summary>
 public sealed class VvoStop
 {
+	[JsonPropertyName("DataId")]
+	public string? DataId { get; init; }
+
+
 	[JsonPropertyName("Name")]
 	public string? Name { get; init; }
 
@@ -90,26 +142,52 @@ public sealed class VvoStop
 	public string? Place { get; init; }
 
 
-	[JsonPropertyName("Id")]
-	public string? Id { get; init; }
+	[JsonPropertyName("Type")]
+	public string? Type { get; init; }
 
 
-	[JsonPropertyName("DepartureTime")]
-	public DateTimeOffset? DepartureTime { get; init; }
+	[JsonPropertyName("Platform")]
+	public VvoPlatform? Platform { get; init; }
 
 
 	[JsonPropertyName("ArrivalTime")]
 	public DateTimeOffset? ArrivalTime { get; init; }
 
 
-	[JsonPropertyName("RealTimeDeparture")]
-	public DateTimeOffset? RealTimeDeparture { get; init; }
+	[JsonPropertyName("DepartureTime")]
+	public DateTimeOffset? DepartureTime { get; init; }
 
 
-	[JsonPropertyName("RealTimeArrival")]
-	public DateTimeOffset? RealTimeArrival { get; init; }
+	[JsonPropertyName("ArrivalRealTime")]
+	public DateTimeOffset? ArrivalRealTime { get; init; }
 
 
-	[JsonPropertyName("Platform")]
-	public string? Platform { get; init; }
+	[JsonPropertyName("DepartureRealTime")]
+	public DateTimeOffset? DepartureRealTime { get; init; }
+
+
+	[JsonPropertyName("ArrivalState")]
+	public string? ArrivalState { get; init; }
+
+
+	[JsonPropertyName("DepartureState")]
+	public string? DepartureState { get; init; }
+
+
+	[JsonPropertyName("Occupancy")]
+	public string? Occupancy { get; init; }
+}
+
+
+/// <summary>
+/// Represents a VVO platform/track object.
+/// </summary>
+public sealed class VvoPlatform
+{
+	[JsonPropertyName("Name")]
+	public string? Name { get; init; }
+
+
+	[JsonPropertyName("Type")]
+	public string? Type { get; init; }
 }

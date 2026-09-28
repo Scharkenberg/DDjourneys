@@ -2,6 +2,7 @@
 using DDjourneys.Core.Providers.Vvo.Models;
 using DDjourneys.Core.Providers.Vvo.Requests;
 using DDjourneys.Core.Api;
+using DDjourneys.Core.Providers.Vvo.Serialization;
 
 namespace DDjourneys.Core.Providers.Vvo;
 
@@ -33,6 +34,10 @@ public sealed class VvoApiClient
 			DefaultIgnoreCondition =
 		System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
 		};
+
+
+		_jsonOptions.Converters.Add(
+			new VvoDateTimeOffsetConverter());
 	}
 
 
@@ -89,7 +94,7 @@ public sealed class VvoApiClient
 				cancellationToken)
 			.ConfigureAwait(false);
 
-
+		System.Diagnostics.Debug.WriteLine(jsonResponse);
 		return JsonSerializer.Deserialize<VvoTripResponse>(
 			jsonResponse,
 			_jsonOptions);

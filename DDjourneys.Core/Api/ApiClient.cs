@@ -94,7 +94,7 @@ public sealed class ApiClient : IDisposable
 			"application/json");
 
 		client.DefaultRequestHeaders.UserAgent.ParseAdd(
-			"DDjourneys");
+			"curl/8.22.0");
 
 		return client;
 	}

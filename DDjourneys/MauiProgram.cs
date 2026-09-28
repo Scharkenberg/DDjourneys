@@ -1,4 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
+using DDjourneys.Core.Providers;
+using DDjourneys.Core.Services;
 
 namespace DDjourneys
 {
@@ -19,6 +21,7 @@ namespace DDjourneys
 			builder.Logging.AddDebug();
 #endif
 
+			builder.Services.AddDDjourneysProviders();
 			return builder.Build();
 		}
 	}
