@@ -10,11 +10,7 @@
 	x:DataType="local:PlaceSearchViewModel">
 
 	<ContentPage.Resources>
-		<ResourceDictionary>
-			<Style TargetType="Label">
-				<Setter Property="VerticalTextAlignment" Value="Center" />
-			</Style>
-		</ResourceDictionary>
+		<ResourceDictionary />
 	</ContentPage.Resources>
 
 	<Grid
@@ -45,7 +41,7 @@
 			<CollectionView.EmptyView>
 				<VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center">
 
-					<Label FontSize="16" Text="No places found" />
+					<Label FontSize="16" Text="No places found" VerticalTextAlignment="Start" />
 				</VerticalStackLayout>
 			</CollectionView.EmptyView>
 

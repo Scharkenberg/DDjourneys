@@ -5,6 +5,5 @@
 	Title="DDjourneys">
 
 	<ShellContent Route="plan" ContentTemplate="{DataTemplate pages:PlanPage}" />
-	<ShellContent Route="placesearch" ContentTemplate="{DataTemplate pages:PlaceSearchPage}" />
 
 </Shell>

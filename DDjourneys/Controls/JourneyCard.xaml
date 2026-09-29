@@ -1,0 +1,51 @@
+<ContentView
+	x:Class="DDjourneys.Controls.JourneyCard"
+	xmlns:support="clr-namespace:DDjourneys.Support"
+	x:DataType="support:JourneyCardModel">
+
+	<Border StyleClass="Card" SemanticProperties.Description="{Binding AccessibilityText}">
+		<VerticalStackLayout Spacing="{StaticResource SpaceM}">
+
+			<!-- Times -->
+			<Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{StaticResource SpaceM}">
+
+				<VerticalStackLayout Grid.Column="0" Spacing="2">
+					<Label StyleClass="Time" Text="{Binding DepartureTime}" />
+					<Label StyleClass="Delay" Text="{Binding DepartureDelay}" IsVisible="{Binding HasDepartureDelay}" />
+				</VerticalStackLayout>
+
+				<VerticalStackLayout Grid.Column="1" Spacing="4" VerticalOptions="Start" Margin="0,4,0,0">
+					<Label StyleClass="Caption" HorizontalTextAlignment="Center" Text="{Binding DurationText}" />
+					<BoxView HeightRequest="2" CornerRadius="1" Color="{DynamicResource Outline}" />
+					<Label StyleClass="Caption" HorizontalTextAlignment="Center" Text="{Binding TransfersText}" />
+				</VerticalStackLayout>
+
+				<VerticalStackLayout Grid.Column="2" Spacing="2" HorizontalOptions="End">
+					<Label StyleClass="Time" HorizontalTextAlignment="End" Text="{Binding ArrivalTime}" />
+					<Label StyleClass="Delay" HorizontalTextAlignment="End" Text="{Binding ArrivalDelay}" IsVisible="{Binding HasArrivalDelay}" />
+				</VerticalStackLayout>
+
+			</Grid>
+
+			<!-- Legs. Pills are fine here: they are not interactive. -->
+			<FlexLayout Wrap="Wrap" BindableLayout.ItemsSource="{Binding Chips}">
+				<BindableLayout.ItemTemplate>
+					<DataTemplate x:DataType="support:LegChip">
+						<Border StyleClass="Chip" BackgroundColor="{Binding Color}" Margin="0,0,6,6">
+							<Label Text="{Binding Text}" TextColor="White" FontSize="13" FontFamily="OpenSansSemibold" />
+						</Border>
+					</DataTemplate>
+				</BindableLayout.ItemTemplate>
+			</FlexLayout>
+
+			<!-- State -->
+			<HorizontalStackLayout Spacing="{StaticResource SpaceM}" IsVisible="{Binding HasStatusRow}">
+				<Label StyleClass="Cancelled" Text="Cancelled" IsVisible="{Binding IsCancelled}" />
+				<Label StyleClass="OnTime" Text="On time" IsVisible="{Binding IsOnTime}" />
+				<Label StyleClass="Caption" Text="{Binding NoticesText}" IsVisible="{Binding HasNotices}" />
+			</HorizontalStackLayout>
+
+		</VerticalStackLayout>
+	</Border>
+
+</ContentView>

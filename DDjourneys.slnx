@@ -1,4 +1,6 @@
 <Solution>
   <Project Path="DDjourneys.Core/DDjourneys.Core.csproj" />
-  <Project Path="DDjourneys/DDjourneys.csproj" />
+  <Project Path="DDjourneys/DDjourneys.csproj">
+    <Deploy Solution="Release|*" />
+  </Project>
 </Solution>

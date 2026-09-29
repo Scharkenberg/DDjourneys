@@ -1,0 +1,46 @@
+<ContentPage
+	x:Class="DDjourneys.Pages.ResultsPage"
+	xmlns:controls="clr-namespace:DDjourneys.Controls"
+	xmlns:local="clr-namespace:DDjourneys.Pages"
+	xmlns:support="clr-namespace:DDjourneys.Support"
+	x:DataType="local:ResultsViewModel"
+	Title="Journeys">
+
+	<Grid RowDefinitions="Auto,*" Padding="{StaticResource PadPage}" RowSpacing="{StaticResource SpaceM}">
+
+		<VerticalStackLayout Grid.Row="0" Spacing="2">
+			<Label StyleClass="Title" Text="{Binding RouteText}" LineBreakMode="TailTruncation" />
+			<Label StyleClass="Caption" Text="{Binding WhenText}" />
+		</VerticalStackLayout>
+
+		<RefreshView Grid.Row="1" IsRefreshing="{Binding IsRefreshing}" Command="{Binding RefreshCommand}">
+			<CollectionView ItemsSource="{Binding Items}" SelectionMode="None">
+
+				<CollectionView.ItemsLayout>
+					<LinearItemsLayout Orientation="Vertical" ItemSpacing="12" />
+				</CollectionView.ItemsLayout>
+
+				<CollectionView.EmptyView>
+					<Label
+						StyleClass="Caption"
+						HorizontalTextAlignment="Center"
+						Margin="0,48,0,0"
+						Text="{Binding StatusText}" />
+				</CollectionView.EmptyView>
+
+				<CollectionView.ItemTemplate>
+					<DataTemplate x:DataType="support:JourneyCardModel">
+						<controls:JourneyCard>
+							<controls:JourneyCard.GestureRecognizers>
+								<TapGestureRecognizer Tapped="JourneyTapped" />
+							</controls:JourneyCard.GestureRecognizers>
+						</controls:JourneyCard>
+					</DataTemplate>
+				</CollectionView.ItemTemplate>
+
+			</CollectionView>
+		</RefreshView>
+
+	</Grid>
+
+</ContentPage>
