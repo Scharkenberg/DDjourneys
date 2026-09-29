@@ -1,0 +1,198 @@
+<ContentPage
+	x:Class="DDjourneys.Pages.JourneyPage"
+	xmlns:controls="clr-namespace:DDjourneys.Controls"
+	xmlns:local="clr-namespace:DDjourneys.Pages"
+	xmlns:support="clr-namespace:DDjourneys.Support"
+	x:DataType="local:JourneyViewModel"
+	Title="Journey">
+
+	<ContentPage.ToolbarItems>
+		<ToolbarItem Text="Share" Command="{Binding ShareCommand}" />
+	</ContentPage.ToolbarItems>
+
+	<ContentPage.Resources>
+
+		<!-- Stop where a leg starts or ends -->
+		<DataTemplate x:Key="StopTemplate" x:DataType="support:StopRow">
+			<Grid ColumnDefinitions="56,18,*" ColumnSpacing="12" Loaded="RowLoaded"
+				SemanticProperties.Description="{Binding Description}">
+				<VerticalStackLayout Grid.Column="0" Padding="0,4,0,0" Spacing="1">
+					<Label Text="{Binding Time}" FontFamily="OpenSansSemibold" />
+					<Label StyleClass="Caption" TextDecorations="Strikethrough" Text="{Binding ScheduledTime}" IsVisible="{Binding HasDelay}" />
+					<Label StyleClass="Delay" Text="{Binding DelayText}" IsVisible="{Binding HasDelay}" />
+				</VerticalStackLayout>
+				<Grid Grid.Column="1" RowDefinitions="16,*">
+					<BoxView Grid.Row="0" WidthRequest="4" HorizontalOptions="Center" Color="{Binding RailTop}" />
+					<BoxView Grid.Row="1" WidthRequest="4" HorizontalOptions="Center" Color="{Binding RailBottom}" />
+					<Grid Grid.RowSpan="2" WidthRequest="18" HeightRequest="18" VerticalOptions="Start" Margin="0,7,0,0">
+						<BoxView CornerRadius="9" Color="{Binding NodeColor}" />
+						<BoxView WidthRequest="10" HeightRequest="10" CornerRadius="5" HorizontalOptions="Center" VerticalOptions="Center" Color="{DynamicResource Surface}" />
+					</Grid>
+				</Grid>
+				<VerticalStackLayout Grid.Column="2" Padding="0,4,0,12" Spacing="2">
+					<Label Text="{Binding Name}" FontFamily="OpenSansSemibold" />
+					<Label StyleClass="Caption" Text="{Binding PlatformText}" IsVisible="{Binding HasPlatform}" />
+				</VerticalStackLayout>
+			</Grid>
+		</DataTemplate>
+
+		<!-- Stop between departure and arrival -->
+		<DataTemplate x:Key="IntermediateTemplate" x:DataType="support:IntermediateRow">
+			<Grid ColumnDefinitions="56,18,*" ColumnSpacing="12" Loaded="RowLoaded"
+				SemanticProperties.Description="{Binding Description}">
+				<HorizontalStackLayout Grid.Column="0" Padding="0,4,0,0" Spacing="4">
+					<Label StyleClass="Caption" Text="{Binding Time}" />
+				</HorizontalStackLayout>
+				<Grid Grid.Column="1">
+					<BoxView WidthRequest="4" HorizontalOptions="Center" Color="{Binding RailBottom}" />
+					<BoxView WidthRequest="10" HeightRequest="10" CornerRadius="5" HorizontalOptions="Center" VerticalOptions="Start" Margin="0,8,0,0" Color="{Binding RailBottom}" />
+				</Grid>
+				<HorizontalStackLayout Grid.Column="2" Padding="0,4,0,10" Spacing="8">
+					<Label StyleClass="Caption" Text="{Binding Name}" />
+					<Label StyleClass="Delay" Text="{Binding DelayText}" IsVisible="{Binding HasDelay}" />
+					<Label StyleClass="Cancelled" Text="Not served" IsVisible="{Binding IsNotServed}" />
+				</HorizontalStackLayout>
+			</Grid>
+		</DataTemplate>
+
+		<!-- Ride: line, direction, duration, expand toggle -->
+		<DataTemplate x:Key="LegTemplate" x:DataType="support:LegRow">
+			<Grid ColumnDefinitions="56,18,*" ColumnSpacing="12" Loaded="RowLoaded"
+				SemanticProperties.Description="{Binding Description}">
+				<Grid Grid.Column="1">
+					<BoxView WidthRequest="4" HorizontalOptions="Center" Color="{Binding RailBottom}" />
+				</Grid>
+				<VerticalStackLayout Grid.Column="2" Padding="0,0,0,12" Spacing="4">
+					<FlexLayout Wrap="Wrap" AlignItems="Center">
+						<Border StyleClass="Chip" BackgroundColor="{Binding ModeColor}" Margin="0,0,8,4">
+							<Label Text="{Binding LineText}" TextColor="White" FontSize="13" FontFamily="OpenSansSemibold" />
+						</Border>
+						<Label StyleClass="Caption" Text="{Binding Direction}" IsVisible="{Binding HasDirection}" Margin="0,0,8,4" />
+						<Label StyleClass="Caption" Text="{Binding DurationText}" Margin="0,0,0,4" />
+					</FlexLayout>
+					<Label StyleClass="Caption" Text="{Binding FeaturesText}" IsVisible="{Binding HasFeatures}" />
+					<Label StyleClass="Cancelled" Text="Cancelled" IsVisible="{Binding IsCancelled}" />
+					<Label FontSize="13" FontFamily="OpenSansSemibold" TextColor="{DynamicResource Accent}" Text="In progress" IsVisible="{Binding IsActive}" />
+					<HorizontalStackLayout Spacing="6" Padding="0,8" IsVisible="{Binding HasIntermediates}">
+						<Label FontSize="14" FontFamily="OpenSansSemibold" TextColor="{DynamicResource Accent}" Text="{Binding StopsText}" />
+						<Label FontSize="14" TextColor="{DynamicResource Accent}" Text="{Binding Chevron}" />
+						<HorizontalStackLayout.GestureRecognizers>
+							<TapGestureRecognizer Tapped="StopsToggled" />
+						</HorizontalStackLayout.GestureRecognizers>
+					</HorizontalStackLayout>
+				</VerticalStackLayout>
+			</Grid>
+		</DataTemplate>
+
+		<!-- Walking -->
+		<DataTemplate x:Key="WalkTemplate" x:DataType="support:WalkRow">
+			<Grid ColumnDefinitions="56,18,*" ColumnSpacing="12" Loaded="RowLoaded"
+				SemanticProperties.Description="{Binding Description}">
+				<Grid Grid.Column="1">
+					<BoxView WidthRequest="4" HorizontalOptions="Center" Color="{Binding RailBottom}" />
+				</Grid>
+				<VerticalStackLayout Grid.Column="2" Padding="0,4,0,16" Spacing="2">
+					<Label FontFamily="OpenSansSemibold" Text="{Binding Text}" />
+					<Label StyleClass="Caption" Text="{Binding Caption}" IsVisible="{Binding HasCaption}" />
+				</VerticalStackLayout>
+			</Grid>
+		</DataTemplate>
+
+		<!-- Change from one ride to the next -->
+		<DataTemplate x:Key="InterchangeTemplate" x:DataType="support:InterchangeRow">
+			<Grid ColumnDefinitions="56,18,*" ColumnSpacing="12" Loaded="RowLoaded"
+				SemanticProperties.Description="{Binding Description}">
+				<VerticalStackLayout Grid.Column="0" Padding="0,4,0,0" Spacing="10">
+					<VerticalStackLayout Spacing="1">
+						<Label Text="{Binding ArrivalTime}" FontFamily="OpenSansSemibold" />
+						<Label StyleClass="Delay" Text="{Binding ArrivalDelay}" IsVisible="{Binding HasArrivalDelay}" />
+					</VerticalStackLayout>
+					<VerticalStackLayout Spacing="1">
+						<Label Text="{Binding DepartureTime}" FontFamily="OpenSansSemibold" />
+						<Label StyleClass="Delay" Text="{Binding DepartureDelay}" IsVisible="{Binding HasDepartureDelay}" />
+					</VerticalStackLayout>
+				</VerticalStackLayout>
+				<Grid Grid.Column="1" RowDefinitions="16,*">
+					<BoxView Grid.Row="0" WidthRequest="4" HorizontalOptions="Center" Color="{Binding RailTop}" />
+					<BoxView Grid.Row="1" WidthRequest="4" HorizontalOptions="Center" Color="{Binding RailBottom}" />
+					<Grid Grid.RowSpan="2" WidthRequest="18" HeightRequest="18" VerticalOptions="Start" Margin="0,7,0,0">
+						<BoxView CornerRadius="9" Color="{Binding NodeColor}" />
+						<BoxView WidthRequest="10" HeightRequest="10" CornerRadius="5" HorizontalOptions="Center" VerticalOptions="Center" Color="{DynamicResource Surface}" />
+					</Grid>
+				</Grid>
+				<VerticalStackLayout Grid.Column="2" Padding="0,4,0,12" Spacing="4">
+					<Label Text="{Binding Name}" FontFamily="OpenSansSemibold" />
+					<Label StyleClass="Caption" Text="{Binding ContinuesFrom}" IsVisible="{Binding HasContinuesFrom}" />
+					<Label StyleClass="Caption" Text="{Binding PlatformText}" IsVisible="{Binding HasPlatform}" />
+					<Border StyleClass="Chip" HorizontalOptions="Start" Margin="0,2,0,0">
+						<Label StyleClass="Caption" Text="{Binding WaitText}" />
+					</Border>
+				</VerticalStackLayout>
+			</Grid>
+		</DataTemplate>
+
+		<!-- Provider message -->
+		<DataTemplate x:Key="NoticeTemplate" x:DataType="support:NoticeRow">
+			<Grid ColumnDefinitions="56,18,*" ColumnSpacing="12" Loaded="RowLoaded"
+				SemanticProperties.Description="{Binding Description}">
+				<Grid Grid.Column="1">
+					<BoxView WidthRequest="4" HorizontalOptions="Center" Color="{Binding RailBottom}" />
+				</Grid>
+				<Border Grid.Column="2" StrokeThickness="0" StrokeShape="RoundRectangle 12" Padding="12,10"
+					Margin="0,4,0,12" BackgroundColor="{DynamicResource Raised}">
+					<HorizontalStackLayout Spacing="8">
+						<Label FontFamily="OpenSansSemibold" TextColor="{DynamicResource Accent}" Text="&#x24D8;" />
+						<Label StyleClass="Caption" TextColor="{DynamicResource Ink}" Text="{Binding Text}" />
+					</HorizontalStackLayout>
+				</Border>
+			</Grid>
+		</DataTemplate>
+
+		<support:TimelineTemplateSelector
+			x:Key="RowSelector"
+			Stop="{StaticResource StopTemplate}"
+			Intermediate="{StaticResource IntermediateTemplate}"
+			Leg="{StaticResource LegTemplate}"
+			Walk="{StaticResource WalkTemplate}"
+			Interchange="{StaticResource InterchangeTemplate}"
+			Notice="{StaticResource NoticeTemplate}" />
+
+	</ContentPage.Resources>
+
+	<ScrollView>
+		<VerticalStackLayout Padding="{StaticResource PadPage}" Spacing="{StaticResource SpaceM}">
+
+			<VerticalStackLayout x:Name="HeaderBlock" Spacing="{StaticResource SpaceM}">
+				<VerticalStackLayout Spacing="2">
+					<Label StyleClass="Title" Text="{Binding RouteText}" />
+					<Label StyleClass="Caption" Text="{Binding DayText}" />
+				</VerticalStackLayout>
+
+				<controls:JourneyCard BindingContext="{Binding Summary}" />
+
+				<VerticalStackLayout Spacing="{StaticResource SpaceS}" IsVisible="{Binding HasNotices}"
+					BindableLayout.ItemsSource="{Binding Notices}">
+					<BindableLayout.ItemTemplate>
+						<DataTemplate x:DataType="x:String">
+							<Border StrokeThickness="0" StrokeShape="RoundRectangle 12" Padding="12,10"
+								BackgroundColor="{DynamicResource Raised}">
+								<HorizontalStackLayout Spacing="8">
+									<Label FontFamily="OpenSansSemibold" TextColor="{DynamicResource Accent}" Text="&#x24D8;" />
+									<Label StyleClass="Caption" TextColor="{DynamicResource Ink}" Text="{Binding .}" />
+								</HorizontalStackLayout>
+							</Border>
+						</DataTemplate>
+					</BindableLayout.ItemTemplate>
+				</VerticalStackLayout>
+			</VerticalStackLayout>
+
+			<Border StyleClass="Card" Padding="16,16,16,4">
+				<VerticalStackLayout
+					BindableLayout.ItemsSource="{Binding Rows}"
+					BindableLayout.ItemTemplateSelector="{StaticResource RowSelector}" />
+			</Border>
+
+		</VerticalStackLayout>
+	</ScrollView>
+
+</ContentPage>
