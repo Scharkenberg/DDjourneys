@@ -20,14 +20,30 @@ public static class VvoJourneyMapper
 
 
 	private static Journey MapJourney(
-		VvoRoute route)
+	VvoRoute route)
 	{
-		var legs = route.PartialRoutes
-	.Select(MapLeg)
-	.ToArray();
+		var legs = new List<JourneyLeg>();
+		var transfers = new List<JourneyTransfer>();
+
+		foreach (var partialRoute in route.PartialRoutes)
+		{
+			if (IsTransfer(partialRoute))
+			{
+				transfers.Add(
+					MapTransfer(partialRoute));
+			}
+			else
+			{
+				legs.Add(
+					MapLeg(
+						partialRoute,
+						legs.LastOrDefault()?.To,
+						GetFirstStation(partialRoute)));
+			}
+		}
 
 
-		if (legs.Length == 0)
+		if (legs.Count == 0)
 		{
 			throw new InvalidOperationException(
 				"VVO route contains no partial routes.");
@@ -37,43 +53,88 @@ public static class VvoJourneyMapper
 		return new Journey
 		{
 			From = legs[0].From,
-
 			To = legs[^1].To,
-
-			Legs = legs
+			Legs = legs,
+			Transfers = transfers
 		};
 	}
 
+	private static Station? GetFirstStation(
+	VvoPartialRoute route)
+	{
+		return route.RegularStops
+			.Select(MapStop)
+			.FirstOrDefault()
+			?.Station;
+	}
+
+	private static bool IsTransfer(
+	VvoPartialRoute route)
+	{
+		return string.Equals(
+			route.Mot?.Type,
+			"StayForConnection",
+			StringComparison.OrdinalIgnoreCase);
+	}
+
+	private static JourneyTransfer MapTransfer(
+	VvoPartialRoute route)
+	{
+		var stop =
+			route.RegularStops
+				.Select(MapStop)
+				.FirstOrDefault();
+
+
+		return new JourneyTransfer
+		{
+			Location =
+				stop?.Station
+				?? throw new InvalidOperationException(
+					"VVO transfer has no location."),
+
+			Duration =
+				TimeSpan.FromMinutes(route.Duration),
+
+			IsGuaranteed = true,
+
+			Notices =
+				route.Infos
+		};
+	}
 
 	private static JourneyLeg MapLeg(
-		VvoPartialRoute route)
+	VvoPartialRoute route,
+	Station? previousDestination,
+	Station? nextOrigin)
 	{
 		var stops = route.RegularStops
-	.Select(MapStop)
-	.ToArray();
+			.Select(MapStop)
+			.ToArray();
 
 
-		if (stops.Length == 0)
+		Station from;
+		Station to;
+
+
+		if (stops.Length > 0)
 		{
-			throw new InvalidOperationException(
-				"VVO route contains no regular stops.");
+			from = stops[0].Station;
+			to = stops[^1].Station;
+		}
+		else
+		{
+			from = previousDestination ?? nextOrigin ?? throw new InvalidOperationException("Cannot determine location of VVO non-stop leg.");
+
+			to = nextOrigin ?? previousDestination;
 		}
 
 
-		Station from =
-			stops[0].Station;
+		StopTime? firstStop =
+			stops.FirstOrDefault();
 
-
-		Station to =
-			stops[^1].Station;
-
-
-		StopTime firstStop =
-			stops.First();
-
-
-		StopTime lastStop =
-			stops.Last();
+		StopTime? lastStop =
+			stops.LastOrDefault();
 
 
 		return new JourneyLeg
@@ -91,24 +152,24 @@ public static class VvoJourneyMapper
 			Vehicle = MapVehicle(route),
 
 			ScheduledDeparture =
-				firstStop.ScheduledDeparture
+				firstStop?.ScheduledDeparture
 				?? default,
 
 			RealtimeDeparture =
-				firstStop.RealtimeDeparture,
+				firstStop?.RealtimeDeparture,
 
 			ScheduledArrival =
-				lastStop.ScheduledArrival
+				lastStop?.ScheduledArrival
 				?? default,
 
 			RealtimeArrival =
-				lastStop.RealtimeArrival,
+				lastStop?.RealtimeArrival,
 
 			DeparturePlatform =
-				firstStop.Platform,
+				firstStop?.Platform,
 
 			ArrivalPlatform =
-				lastStop.Platform,
+				lastStop?.Platform,
 
 			IsCancelled =
 				route.TripCancelled,

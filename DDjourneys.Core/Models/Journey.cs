@@ -99,6 +99,12 @@ public sealed class Journey
 	public bool IsCancelled =>
 		Legs.Any(leg => leg.IsCancelled);
 
+	/// <summary>
+	/// List of transfers for the journey.
+	/// </summary>
+	public IReadOnlyList<JourneyTransfer> Transfers { get; init; }
+	= Array.Empty<JourneyTransfer>();
+
 
 	private static bool IsPublicTransport(JourneyLeg leg)
 	{
