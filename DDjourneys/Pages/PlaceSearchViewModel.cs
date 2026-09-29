@@ -17,6 +17,8 @@ public sealed partial class PlaceSearchViewModel : ObservableObject, IQueryAttri
 	private bool _targetIsFrom;
 	private bool _isSearching;
 
+	public bool HasResults => Results.Count > 0;
+
 	public PlaceSearchViewModel(
 		LocationService locationService,
 		PlaceStore placeStore)
@@ -28,6 +30,13 @@ public sealed partial class PlaceSearchViewModel : ObservableObject, IQueryAttri
 		SelectPlaceCommand = new Command<Location>(async place => await SelectPlaceAsync(place));
 
 		LoadRecents();
+	}
+
+	public void Initialize()
+	{
+		// Force initial empty state - Results is already empty
+		// This just ensures the CollectionView renders after page load
+		OnPropertyChanged(nameof(Results));
 	}
 
 	public ObservableCollection<Location> Results { get; } = [];

@@ -1,14 +1,33 @@
-﻿using DDjourneys.Core.Models;
+﻿using System.Globalization;
+using DDjourneys.Core.Models;
 using Location = DDjourneys.Core.Models.Location;
 
 namespace DDjourneys.Pages;
 
-public partial class PlaceSearchPage : ContentPage
+public partial class PlaceSearchPage : ContentPage, IQueryAttributable
 {
 	public PlaceSearchPage(PlaceSearchViewModel viewModel)
 	{
 		InitializeComponent();
 		BindingContext = viewModel;
+
+		// Delay loading until page is ready
+		Loaded += (s, e) => {
+			if (BindingContext is PlaceSearchViewModel vm)
+			{
+				// Trigger initial load - this will populate Results
+				// and the CollectionView will render AFTER the visual tree is ready
+				vm.Initialize();
+			}
+		};
+	}
+
+	public void ApplyQueryAttributes(IDictionary<string, object> query)
+	{
+		if (BindingContext is IQueryAttributable viewModel)
+		{
+			viewModel.ApplyQueryAttributes(query);
+		}
 	}
 
 	private void PlaceSelectionChanged(object? sender, SelectionChangedEventArgs e)
@@ -19,4 +38,14 @@ public partial class PlaceSearchPage : ContentPage
 			viewModel.SelectPlaceCommand.Execute(place);
 		}
 	}
+
+}
+
+public class InverseBoolConverter : IValueConverter
+{
+	public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+		=> !(value as bool? ?? false);
+
+	public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+		=> throw new NotImplementedException();
 }

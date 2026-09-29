@@ -10,7 +10,9 @@
 	x:DataType="local:PlaceSearchViewModel">
 
 	<ContentPage.Resources>
-		<ResourceDictionary />
+		<ResourceDictionary>
+			<local:InverseBoolConverter x:Key="InverseBoolConverter" />
+		</ResourceDictionary>
 	</ContentPage.Resources>
 
 	<Grid
@@ -31,12 +33,19 @@
 			IsRunning="{Binding IsSearching}"
 			IsVisible="{Binding IsSearching}" />
 
+
 		<CollectionView
 			Grid.Row="2"
 			ItemsSource="{Binding Results}"
 			SelectedItem="{Binding SelectedPlace}"
 			SelectionChanged="PlaceSelectionChanged"
 			SelectionMode="Single">
+
+			<CollectionView.EmptyView>
+				<Label Text="" />
+				<!--  Empty label prevents MAUI's default "No places found"  -->
+			</CollectionView.EmptyView>
+
 
 			<CollectionView.ItemTemplate>
 				<DataTemplate x:DataType="models:Location">
