@@ -1,51 +1,28 @@
-﻿using System.Globalization;
-using DDjourneys.Core.Models;
-using Location = DDjourneys.Core.Models.Location;
+﻿namespace DDjourneys.Pages;
 
-namespace DDjourneys.Pages;
-
-public partial class PlaceSearchPage : ContentPage, IQueryAttributable
+public partial class PlaceSearchPage : ContentPage
 {
-	public PlaceSearchPage(PlaceSearchViewModel viewModel)
+	private readonly PlaceSearchViewModel _vm;
+
+	// Shell hands the navigation query to the BindingContext when it is an
+	// IQueryAttributable, so the page itself does not need to forward it.
+	public PlaceSearchPage(PlaceSearchViewModel vm)
 	{
 		InitializeComponent();
-		BindingContext = null; // viewModel;
-
-		// Delay loading until page is ready
-/*		Loaded += (s, e) => {
-			if (BindingContext is PlaceSearchViewModel vm)
-			{
-				// Trigger initial load - this will populate Results
-				// and the CollectionView will render AFTER the visual tree is ready
-				vm.Initialize();
-			}
-		}; */
+		BindingContext = _vm = vm;
 	}
 
-	public void ApplyQueryAttributes(IDictionary<string, object> query)
+	protected override void OnAppearing()
 	{
-		if (BindingContext is IQueryAttributable viewModel)
+		base.OnAppearing();
+		QueryEntry.Focus();
+	}
+
+	private void PlaceTapped(object? sender, TappedEventArgs e)
+	{
+		if ((sender as BindableObject)?.BindingContext is PlaceRow row)
 		{
-			viewModel.ApplyQueryAttributes(query);
+			_vm.SelectPlaceCommand.Execute(row.Place);
 		}
 	}
-
-	private void PlaceSelectionChanged(object? sender, SelectionChangedEventArgs e)
-	{
-		if (e.CurrentSelection.FirstOrDefault() is Location place
-			&& BindingContext is PlaceSearchViewModel viewModel)
-		{
-			viewModel.SelectPlaceCommand.Execute(place);
-		}
-	}
-
-}
-
-public class InverseBoolConverter : IValueConverter
-{
-	public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
-		=> !(value as bool? ?? false);
-
-	public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-		=> throw new NotImplementedException();
 }

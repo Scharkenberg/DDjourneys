@@ -3,69 +3,98 @@
 	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
 	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
 	xmlns:local="clr-namespace:DDjourneys.Pages"
-	xmlns:models="clr-namespace:DDjourneys.Core.Models;assembly=DDjourneys.Core"
 	Title="Choose place"
 	x:DataType="local:PlaceSearchViewModel">
 
 	<ContentPage.Resources>
-		<ResourceDictionary>
-			<local:InverseBoolConverter x:Key="InverseBoolConverter" />
-		</ResourceDictionary>
+
+		<!--
+			One row, used for results and recents.
+			Rule for this page: no CollectionView and no EmptyView. Every Label lives inside a
+			Grid or StackLayout (a WinUI Panel), never as the direct child of a templated host.
+		-->
+		<DataTemplate x:Key="PlaceRow" x:DataType="local:PlaceRow">
+			<Grid
+				Padding="12,10"
+				RowDefinitions="Auto,Auto"
+				RowSpacing="2">
+				<Label
+					Grid.Row="0"
+					FontFamily="OpenSansSemibold"
+					LineBreakMode="TailTruncation"
+					Text="{Binding Name}" />
+				<Label
+					Grid.Row="1"
+					IsVisible="{Binding HasDetail}"
+					LineBreakMode="TailTruncation"
+					StyleClass="Caption"
+					Text="{Binding Detail}" />
+				<Grid.GestureRecognizers>
+					<TapGestureRecognizer Tapped="PlaceTapped" />
+				</Grid.GestureRecognizers>
+			</Grid>
+		</DataTemplate>
+
 	</ContentPage.Resources>
 
 	<Grid
-		Padding="16"
-		RowDefinitions="Auto,Auto,*"
-		RowSpacing="16">
+		Padding="{StaticResource PadPage}"
+		RowDefinitions="Auto,*"
+		RowSpacing="{StaticResource SpaceM}">
 
-		<SearchBar
+		<!--  Query  -->
+		<Border
 			Grid.Row="0"
-			Placeholder="Search station or place"
-			SearchCommand="{Binding SearchCommand}"
-			SemanticProperties.Description="Search for a departure or arrival place"
-			Text="{Binding Query}" />
+			Padding="12,4"
+			StyleClass="Card">
+			<Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource SpaceS}">
+				<Entry
+					x:Name="QueryEntry"
+					Grid.Column="0"
+					ClearButtonVisibility="WhileEditing"
+					Placeholder="Station, stop or address"
+					ReturnType="Search"
+					SemanticProperties.Description="Search for a place"
+					Text="{Binding Query}" />
+				<ActivityIndicator
+					Grid.Column="1"
+					HeightRequest="20"
+					IsRunning="{Binding IsSearching}"
+					IsVisible="{Binding IsSearching}"
+					VerticalOptions="Center"
+					WidthRequest="20" />
+			</Grid>
+		</Border>
 
-		<ActivityIndicator
-			Grid.Row="1"
-			HorizontalOptions="Center"
-			IsRunning="{Binding IsSearching}"
-			IsVisible="{Binding IsSearching}" />
+		<ScrollView Grid.Row="1">
+			<VerticalStackLayout Spacing="{StaticResource SpaceM}">
 
+				<!--  Message: hint, nothing found, or error  -->
+				<Label
+					Margin="0,24,0,0"
+					HorizontalTextAlignment="Center"
+					IsVisible="{Binding HasMessage}"
+					StyleClass="Caption"
+					Text="{Binding Message}" />
 
-		<CollectionView
-			Grid.Row="2"
-			ItemsSource="{Binding Results}"
-			SelectedItem="{Binding SelectedPlace}"
-			SelectionChanged="PlaceSelectionChanged"
-			SelectionMode="Single">
+				<!--  Results  -->
+				<Border
+					Padding="4"
+					IsVisible="{Binding HasResults}"
+					StyleClass="Card">
+					<VerticalStackLayout BindableLayout.ItemTemplate="{StaticResource PlaceRow}" BindableLayout.ItemsSource="{Binding Results}" />
+				</Border>
 
-			<CollectionView.EmptyView>
-				<Label Text="" />
-			</CollectionView.EmptyView>
-
-
-			<CollectionView.ItemTemplate>
-				<DataTemplate x:DataType="models:Location">
-
-					<Border Padding="12" StrokeThickness="0">
-
-						<VerticalStackLayout>
-
-							<Label FontSize="16" Text="{Binding Name}" />
-
-							<Label
-								FontSize="13"
-								Opacity="0.7"
-								Text="{Binding Place}" />
-
-						</VerticalStackLayout>
-
+				<!--  Recents, shown while the query is empty  -->
+				<VerticalStackLayout IsVisible="{Binding ShowRecents}" Spacing="{StaticResource SpaceS}">
+					<Label StyleClass="Title" Text="Recent" />
+					<Border Padding="4" StyleClass="Card">
+						<VerticalStackLayout BindableLayout.ItemTemplate="{StaticResource PlaceRow}" BindableLayout.ItemsSource="{Binding Recents}" />
 					</Border>
+				</VerticalStackLayout>
 
-				</DataTemplate>
-			</CollectionView.ItemTemplate>
-
-		</CollectionView>
+			</VerticalStackLayout>
+		</ScrollView>
 
 	</Grid>
 
