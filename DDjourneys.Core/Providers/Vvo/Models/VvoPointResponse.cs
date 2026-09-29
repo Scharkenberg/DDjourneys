@@ -1,4 +1,6 @@
-﻿namespace DDjourneys.Core.Providers.Vvo.Models;
+﻿using System.Text.Json.Serialization;
+
+namespace DDjourneys.Core.Providers.Vvo.Models;
 
 /// <summary>
 /// Represents a VVO PointFinder API response.
@@ -12,10 +14,25 @@ public sealed class VvoPointResponse
 
 
 	/// <summary>
-	/// Points returned by the provider.
+	/// Raw point entries returned by the provider.
+	///
+	/// Each entry is a pipe-delimited string.
 	/// </summary>
-	public IReadOnlyList<VvoPoint> Points { get; init; }
-		= Array.Empty<VvoPoint>();
+	[JsonPropertyName("Points")]
+	public IReadOnlyList<string> RawPoints { get; init; }
+		= Array.Empty<string>();
+
+
+	/// <summary>
+	/// Parsed points returned by the provider.
+	///
+	/// These objects are created from the raw pipe-delimited entries.
+	/// </summary>
+	[JsonIgnore]
+	public IReadOnlyList<VvoPoint> Points =>
+		RawPoints
+			.Select(VvoPoint.Parse)
+			.ToArray();
 }
 
 

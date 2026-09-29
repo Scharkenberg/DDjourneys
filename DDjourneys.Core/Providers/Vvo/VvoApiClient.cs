@@ -32,7 +32,7 @@ public sealed class VvoApiClient
 			PropertyNameCaseInsensitive = true,
 
 			DefaultIgnoreCondition =
-		System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+				System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
 		};
 
 
@@ -51,8 +51,8 @@ public sealed class VvoApiClient
 		ArgumentException.ThrowIfNullOrWhiteSpace(query);
 
 
-		string requestUri =
-			$"{BaseUrl}/tr/pointfinder?query={Uri.EscapeDataString(query)}";
+		string requestUri =	$"{BaseUrl}/tr/pointfinder" + $"?query={Uri.EscapeDataString(query)}" +
+			"&stopsOnly=true" +	"&limit=30" + "&format=json";
 
 
 		string json =
@@ -66,6 +66,7 @@ public sealed class VvoApiClient
 			json,
 			_jsonOptions);
 	}
+
 
 	/// <summary>
 	/// Searches for journeys using the VVO trip planner.
@@ -94,7 +95,10 @@ public sealed class VvoApiClient
 				cancellationToken)
 			.ConfigureAwait(false);
 
+
 		System.Diagnostics.Debug.WriteLine(jsonResponse);
+
+
 		return JsonSerializer.Deserialize<VvoTripResponse>(
 			jsonResponse,
 			_jsonOptions);
