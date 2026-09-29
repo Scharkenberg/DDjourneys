@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ResourceDictionary x:Class="DDjourneys.ThemeDark">
+	<!-- Dark theme (the original dark palette). Keys must match the other theme files. -->
+	<Color x:Key="Bg">#0C1418</Color>
+	<Color x:Key="Surface">#131D22</Color>
+	<Color x:Key="Raised">#1B2830</Color>
+	<Color x:Key="Outline">#2A3A44</Color>
+	<Color x:Key="Ink">#E9EFF1</Color>
+	<Color x:Key="InkMuted">#93A4AD</Color>
+	<Color x:Key="Accent">#5CC0DA</Color>
+	<Color x:Key="OnAccent">#06222B</Color>
+	<Color x:Key="AccentSoft">#15323C</Color>
+	<Color x:Key="OnTime">#4ADE80</Color>
+	<Color x:Key="Delay">#FFC94D</Color>
+	<Color x:Key="Cancelled">#F87171</Color>
+	<SolidColorBrush x:Key="OutlineBrush" Color="#2A3A44" />
+</ResourceDictionary>

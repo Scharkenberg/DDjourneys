@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ResourceDictionary>
+
+	<Style TargetType="Page" ApplyToDerivedTypes="True">
+		<Setter Property="BackgroundColor" Value="{DynamicResource Bg}" />
+	</Style>
+
+	<Style TargetType="Shell" ApplyToDerivedTypes="True">
+		<Setter Property="Shell.BackgroundColor" Value="{DynamicResource Bg}" />
+		<Setter Property="Shell.ForegroundColor" Value="{DynamicResource Accent}" />
+		<Setter Property="Shell.TitleColor" Value="{DynamicResource Ink}" />
+		<Setter Property="Shell.NavBarHasShadow" Value="False" />
+	</Style>
+
+	<!-- Text. Classes: Headline, Title, Time, Caption, OnTime, Delay, Cancelled -->
+	<Style TargetType="Label">
+		<Setter Property="TextColor" Value="{DynamicResource Ink}" />
+		<Setter Property="FontFamily" Value="OpenSansRegular" />
+		<Setter Property="FontSize" Value="{StaticResource FontBody}" />
+	</Style>
+	<Style TargetType="Label" Class="Headline">
+		<Setter Property="FontFamily" Value="OpenSansSemibold" />
+		<Setter Property="FontSize" Value="{StaticResource FontHeadline}" />
+	</Style>
+	<Style TargetType="Label" Class="Title">
+		<Setter Property="FontFamily" Value="OpenSansSemibold" />
+		<Setter Property="FontSize" Value="{StaticResource FontTitle}" />
+	</Style>
+	<Style TargetType="Label" Class="Time">
+		<Setter Property="FontFamily" Value="OpenSansSemibold" />
+		<Setter Property="FontSize" Value="{StaticResource FontTime}" />
+	</Style>
+	<Style TargetType="Label" Class="Caption">
+		<Setter Property="FontSize" Value="{StaticResource FontCaption}" />
+		<Setter Property="TextColor" Value="{DynamicResource InkMuted}" />
+	</Style>
+	<Style TargetType="Label" Class="OnTime">
+		<Setter Property="FontFamily" Value="OpenSansSemibold" />
+		<Setter Property="FontSize" Value="{StaticResource FontCaption}" />
+		<Setter Property="TextColor" Value="{DynamicResource OnTime}" />
+	</Style>
+	<Style TargetType="Label" Class="Delay">
+		<Setter Property="FontFamily" Value="OpenSansSemibold" />
+		<Setter Property="FontSize" Value="{StaticResource FontCaption}" />
+		<Setter Property="TextColor" Value="{DynamicResource Delay}" />
+	</Style>
+	<Style TargetType="Label" Class="Cancelled">
+		<Setter Property="FontFamily" Value="OpenSansSemibold" />
+		<Setter Property="FontSize" Value="{StaticResource FontCaption}" />
+		<Setter Property="TextColor" Value="{DynamicResource Cancelled}" />
+	</Style>
+
+	<!-- Surfaces. Classes: Card (16), Chip (pill). Tone and outline, no shadows. -->
+	<Style TargetType="Border" Class="Card">
+		<Setter Property="BackgroundColor" Value="{DynamicResource Surface}" />
+		<Setter Property="Stroke" Value="{DynamicResource OutlineBrush}" />
+		<Setter Property="StrokeThickness" Value="1" />
+		<Setter Property="StrokeShape" Value="RoundRectangle 16" />
+		<Setter Property="Padding" Value="{StaticResource PadCard}" />
+	</Style>
+	<Style TargetType="Border" Class="Chip">
+		<Setter Property="BackgroundColor" Value="{DynamicResource Raised}" />
+		<Setter Property="StrokeThickness" Value="0" />
+		<Setter Property="StrokeShape" Value="RoundRectangle 100" />
+		<Setter Property="Padding" Value="10,4" />
+	</Style>
+
+	<!-- Buttons. Default filled; class Tonal for secondary actions. -->
+	<Style TargetType="Button">
+		<Setter Property="BackgroundColor" Value="{DynamicResource Accent}" />
+		<Setter Property="TextColor" Value="{DynamicResource OnAccent}" />
+		<Setter Property="FontFamily" Value="OpenSansSemibold" />
+		<Setter Property="FontSize" Value="{StaticResource FontBody}" />
+		<Setter Property="CornerRadius" Value="12" />
+		<Setter Property="MinimumHeightRequest" Value="52" />
+		<Setter Property="Padding" Value="20,0" />
+		<Setter Property="VisualStateManager.VisualStateGroups">
+			<VisualStateGroupList>
+				<VisualStateGroup x:Name="CommonStates">
+					<VisualState x:Name="Normal" />
+					<VisualState x:Name="Pressed">
+						<VisualState.Setters>
+							<Setter Property="Scale" Value="0.98" />
+						</VisualState.Setters>
+					</VisualState>
+					<VisualState x:Name="Disabled">
+						<VisualState.Setters>
+							<Setter Property="Opacity" Value="0.4" />
+						</VisualState.Setters>
+					</VisualState>
+				</VisualStateGroup>
+			</VisualStateGroupList>
+		</Setter>
+	</Style>
+	<Style TargetType="Button" Class="Tonal">
+		<Setter Property="BackgroundColor" Value="{DynamicResource AccentSoft}" />
+		<Setter Property="TextColor" Value="{DynamicResource Accent}" />
+	</Style>
+
+	<Style TargetType="Entry">
+		<Setter Property="TextColor" Value="{DynamicResource Ink}" />
+		<Setter Property="PlaceholderColor" Value="{DynamicResource InkMuted}" />
+		<Setter Property="FontFamily" Value="OpenSansRegular" />
+		<Setter Property="FontSize" Value="{StaticResource FontBody}" />
+	</Style>
+
+	<Style TargetType="ActivityIndicator">
+		<Setter Property="Color" Value="{DynamicResource Accent}" />
+	</Style>
+
+	<Style TargetType="RefreshView">
+		<Setter Property="RefreshColor" Value="{DynamicResource Accent}" />
+	</Style>
+
+</ResourceDictionary>

@@ -1,0 +1,176 @@
+<ContentPage
+	x:Class="DDjourneys.Pages.PlanPage"
+	xmlns:core="clr-namespace:DDjourneys.Core.Models;assembly=DDjourneys.Core"
+	xmlns:local="clr-namespace:DDjourneys.Pages"
+	x:DataType="local:PlanViewModel"
+	Shell.NavBarIsVisible="False">
+
+	<ContentPage.Resources>
+		<Style TargetType="DatePicker">
+			<Setter Property="TextColor" Value="{DynamicResource Ink}" />
+			<Setter Property="FontFamily" Value="OpenSansSemibold" />
+			<Setter Property="FontSize" Value="15" />
+		</Style>
+		<Style TargetType="TimePicker">
+			<Setter Property="TextColor" Value="{DynamicResource Ink}" />
+			<Setter Property="FontFamily" Value="OpenSansSemibold" />
+			<Setter Property="FontSize" Value="15" />
+		</Style>
+		<Style x:Key="IconButton" TargetType="Button">
+			<Setter Property="BackgroundColor" Value="Transparent" />
+			<Setter Property="TextColor" Value="{DynamicResource Accent}" />
+			<Setter Property="FontSize" Value="22" />
+			<Setter Property="Padding" Value="0" />
+			<Setter Property="MinimumHeightRequest" Value="44" />
+			<Setter Property="MinimumWidthRequest" Value="44" />
+		</Style>
+	</ContentPage.Resources>
+
+	<ScrollView>
+		<VerticalStackLayout Padding="{StaticResource PadPage}" Spacing="{StaticResource SpaceM}">
+
+			<Label StyleClass="Headline" Text="Where to?" />
+
+			<!-- From / To -->
+			<Border StyleClass="Card">
+				<Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="{StaticResource SpaceS}">
+
+					<Grid Grid.Row="0" ColumnDefinitions="*,Auto" Padding="0,8">
+						<VerticalStackLayout Spacing="2" VerticalOptions="Center">
+							<Label StyleClass="Caption" Text="From" />
+							<Label Text="{Binding FromText}" FontFamily="OpenSansSemibold" LineBreakMode="TailTruncation">
+								<Label.Triggers>
+									<DataTrigger TargetType="Label" Binding="{Binding HasFrom}" Value="False">
+										<Setter Property="TextColor" Value="{DynamicResource InkMuted}" />
+									</DataTrigger>
+								</Label.Triggers>
+							</Label>
+							<VerticalStackLayout.GestureRecognizers>
+								<TapGestureRecognizer Command="{Binding PickFromCommand}" />
+							</VerticalStackLayout.GestureRecognizers>
+						</VerticalStackLayout>
+						<Button Grid.Column="1" Style="{StaticResource IconButton}" Text="{Binding FromStar}"
+							Command="{Binding ToggleFromFavouriteCommand}" IsVisible="{Binding HasFrom}"
+							SemanticProperties.Description="Toggle favourite for start" />
+					</Grid>
+
+					<BoxView Grid.Row="1" HeightRequest="1" Color="{DynamicResource Outline}" />
+
+					<Grid Grid.Row="2" ColumnDefinitions="*,Auto" Padding="0,8">
+						<VerticalStackLayout Spacing="2" VerticalOptions="Center">
+							<Label StyleClass="Caption" Text="To" />
+							<Label Text="{Binding ToText}" FontFamily="OpenSansSemibold" LineBreakMode="TailTruncation">
+								<Label.Triggers>
+									<DataTrigger TargetType="Label" Binding="{Binding HasTo}" Value="False">
+										<Setter Property="TextColor" Value="{DynamicResource InkMuted}" />
+									</DataTrigger>
+								</Label.Triggers>
+							</Label>
+							<VerticalStackLayout.GestureRecognizers>
+								<TapGestureRecognizer Command="{Binding PickToCommand}" />
+							</VerticalStackLayout.GestureRecognizers>
+						</VerticalStackLayout>
+						<Button Grid.Column="1" Style="{StaticResource IconButton}" Text="{Binding ToStar}"
+							Command="{Binding ToggleToFavouriteCommand}" IsVisible="{Binding HasTo}"
+							SemanticProperties.Description="Toggle favourite for destination" />
+					</Grid>
+
+					<Button Grid.Column="1" Grid.RowSpan="3" Style="{StaticResource IconButton}" Text="&#x21C5;"
+						VerticalOptions="Center" FontSize="26"
+						Command="{Binding SwapCommand}" Clicked="SwapClicked"
+						SemanticProperties.Description="Swap start and destination" />
+
+				</Grid>
+			</Border>
+
+			<!-- Date and time -->
+			<Border StyleClass="Card">
+				<VerticalStackLayout Spacing="{StaticResource SpaceM}">
+
+					<Grid ColumnDefinitions="*,*" ColumnSpacing="{StaticResource SpaceS}">
+						<Button Grid.Column="0" StyleClass="Tonal" Text="Depart" MinimumHeightRequest="40"
+							Command="{Binding DepartCommand}">
+							<Button.Triggers>
+								<DataTrigger TargetType="Button" Binding="{Binding IsArrival}" Value="False">
+									<Setter Property="BackgroundColor" Value="{DynamicResource Accent}" />
+									<Setter Property="TextColor" Value="{DynamicResource OnAccent}" />
+								</DataTrigger>
+							</Button.Triggers>
+						</Button>
+						<Button Grid.Column="1" StyleClass="Tonal" Text="Arrive by" MinimumHeightRequest="40"
+							Command="{Binding ArriveCommand}">
+							<Button.Triggers>
+								<DataTrigger TargetType="Button" Binding="{Binding IsArrival}" Value="True">
+									<Setter Property="BackgroundColor" Value="{DynamicResource Accent}" />
+									<Setter Property="TextColor" Value="{DynamicResource OnAccent}" />
+								</DataTrigger>
+							</Button.Triggers>
+						</Button>
+					</Grid>
+
+					<Grid ColumnDefinitions="*,*,Auto" ColumnSpacing="{StaticResource SpaceM}">
+						<VerticalStackLayout Grid.Column="0" Spacing="2">
+							<Label StyleClass="Caption" Text="Date" />
+							<DatePicker Date="{Binding Date}" MinimumDate="{Binding MinDate}" Format="ddd, d MMM" />
+						</VerticalStackLayout>
+						<VerticalStackLayout Grid.Column="1" Spacing="2">
+							<Label StyleClass="Caption" Text="Time" />
+							<TimePicker Time="{Binding Time}" Format="HH:mm" />
+						</VerticalStackLayout>
+						<Button Grid.Column="2" StyleClass="Tonal" Text="Now" MinimumHeightRequest="40"
+							VerticalOptions="End" IsVisible="{Binding IsNotNow}" Command="{Binding NowCommand}" />
+					</Grid>
+
+				</VerticalStackLayout>
+			</Border>
+
+			<Button Text="Search journeys" Command="{Binding SearchCommand}" />
+
+			<!-- Favourites -->
+			<VerticalStackLayout Spacing="{StaticResource SpaceS}" IsVisible="{Binding HasFavourites}">
+				<Label StyleClass="Title" Text="Favourites" />
+				<FlexLayout Wrap="Wrap" BindableLayout.ItemsSource="{Binding Favourites}">
+					<BindableLayout.ItemTemplate>
+						<DataTemplate x:DataType="core:Location">
+							<Border StyleClass="Chip" StrokeShape="RoundRectangle 12" Padding="14,12" Margin="0,0,8,8">
+								<Label Text="{Binding Name}" />
+								<Border.GestureRecognizers>
+									<TapGestureRecognizer Tapped="PlaceTapped" />
+								</Border.GestureRecognizers>
+							</Border>
+						</DataTemplate>
+					</BindableLayout.ItemTemplate>
+				</FlexLayout>
+			</VerticalStackLayout>
+
+			<!-- Recent -->
+			<VerticalStackLayout Spacing="{StaticResource SpaceS}" IsVisible="{Binding HasRecents}">
+				<Grid ColumnDefinitions="*,Auto">
+					<Label StyleClass="Title" Text="Recent" VerticalOptions="Center" />
+					<Button Grid.Column="1" Style="{StaticResource IconButton}" FontSize="14" Text="Clear"
+						Command="{Binding ClearRecentsCommand}" />
+				</Grid>
+				<Border StyleClass="Card" Padding="8">
+					<VerticalStackLayout BindableLayout.ItemsSource="{Binding Recents}">
+						<BindableLayout.ItemTemplate>
+							<DataTemplate x:DataType="core:Location">
+								<VerticalStackLayout Padding="8,10" Spacing="2">
+									<Label Text="{Binding Name}" FontFamily="OpenSansSemibold" />
+									<Label StyleClass="Caption" Text="{Binding Place}" />
+									<VerticalStackLayout.GestureRecognizers>
+										<TapGestureRecognizer Tapped="PlaceTapped" />
+									</VerticalStackLayout.GestureRecognizers>
+								</VerticalStackLayout>
+							</DataTemplate>
+						</BindableLayout.ItemTemplate>
+					</VerticalStackLayout>
+				</Border>
+			</VerticalStackLayout>
+
+			<Label StyleClass="Caption" IsVisible="{Binding IsPlacesEmpty}"
+				Text="Places you search for will appear here." />
+
+		</VerticalStackLayout>
+	</ScrollView>
+
+</ContentPage>

@@ -1,24 +1,15 @@
-﻿using DDjourneys.Core.Services;
+using DDjourneys.Support;
 
 namespace DDjourneys;
 
 public partial class App : Application
 {
-	private readonly MainPage _mainPage;
-
-
-	public App(
-		MainPage mainPage)
+	public App()
 	{
 		InitializeComponent();
-
-		_mainPage = mainPage;
+		Theme.Initialize(this);
 	}
 
-
-	protected override Window CreateWindow(
-		IActivationState? activationState)
-	{
-		return new Window(_mainPage);
-	}
+	protected override Window CreateWindow(IActivationState? activationState) =>
+		new Window(new AppShell());
 }

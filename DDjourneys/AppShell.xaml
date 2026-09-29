@@ -1,11 +1,9 @@
 <Shell
-    x:Class="DDjourneys.AppShell"
-    xmlns:local="clr-namespace:DDjourneys"
-    Title="DDjourneys">
+	x:Class="DDjourneys.AppShell"
+	xmlns:pages="clr-namespace:DDjourneys.Pages"
+	FlyoutBehavior="Disabled"
+	Title="DDjourneys">
 
-    <ShellContent
-        Title="Home"
-        ContentTemplate="{DataTemplate local:MainPage}"
-        Route="MainPage" />
+	<ShellContent Route="plan" ContentTemplate="{DataTemplate pages:PlanPage}" />
 
 </Shell>

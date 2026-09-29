@@ -3,6 +3,7 @@ using DDjourneys.Core.Diagnostics;
 using DDjourneys.Core.Providers.Abstractions;
 using DDjourneys.Core.Providers.Vvo;
 using DDjourneys.Core.Services;
+using DDjourneys.Core.Storage;
 
 namespace DDjourneys.Core.Providers;
 
@@ -21,6 +22,8 @@ public static class ProviderCollectionExtensions
 		services.AddSingleton<JourneyProviderDiagnostics>();
 		services.AddSingleton<JourneyService>();
 		services.AddSingleton<ILocationProvider, VvoLocationProvider>();
+		services.AddSingleton<LocationService>();
+		services.AddSingleton<PlaceStore>();
 		services.AddSingleton<ApiClient>();
 
 		return services;

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ResourceDictionary>
+
+	<!-- Theme colours live in Theme*.xaml and are swapped at runtime by Theme.cs -->
+
+	<!-- Mode chips (generic per mode, not official line colours). White text. -->
+	<Color x:Key="ModeTram">#B3261E</Color>
+	<Color x:Key="ModeBus">#6B3FA0</Color>
+	<Color x:Key="ModeSuburban">#1F7A4D</Color>
+	<Color x:Key="ModeTrain">#4B5B66</Color>
+	<Color x:Key="ModeFerry">#1D5FA8</Color>
+	<Color x:Key="ModeCableCar">#8A5A00</Color>
+	<Color x:Key="ModeWalk">#5B6B74</Color>
+
+	<!-- Metrics -->
+	<x:Double x:Key="SpaceXS">4</x:Double>
+	<x:Double x:Key="SpaceS">8</x:Double>
+	<x:Double x:Key="SpaceM">16</x:Double>
+	<x:Double x:Key="SpaceL">24</x:Double>
+	<x:Double x:Key="SpaceXL">32</x:Double>
+	<Thickness x:Key="PadCard">16</Thickness>
+	<Thickness x:Key="PadPage">20</Thickness>
+
+	<!-- Type scale -->
+	<x:Double x:Key="FontCaption">13</x:Double>
+	<x:Double x:Key="FontBody">16</x:Double>
+	<x:Double x:Key="FontTitle">20</x:Double>
+	<x:Double x:Key="FontHeadline">28</x:Double>
+	<x:Double x:Key="FontTime">30</x:Double>
+
+</ResourceDictionary>
