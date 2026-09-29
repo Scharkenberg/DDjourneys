@@ -1,24 +1,74 @@
-﻿namespace DDjourneys
+﻿using Location = DDjourneys.Core.Models.Location;
+using DDjourneys.Core.Models;
+using DDjourneys.Core.Services;
+
+namespace DDjourneys;
+
+public partial class MainPage : ContentPage
 {
-	public partial class MainPage : ContentPage
+	private readonly JourneyService _journeyService;
+
+
+	public MainPage(
+		JourneyService journeyService)
 	{
-		int count = 0;
+		InitializeComponent();
 
-		public MainPage()
+		_journeyService = journeyService;
+	}
+
+
+	private async void SearchClicked(
+		object sender,
+		EventArgs e)
+	{
+		LoadingIndicator.IsVisible = true;
+		LoadingIndicator.IsRunning = true;
+
+
+		try
 		{
-			InitializeComponent();
+			var result =
+				await _journeyService.SearchAsync(
+					new JourneyQuery
+					{
+						From = new Location
+						{
+							Id = "33000336",
+							Name = "Kirschenstraße"
+						},
+
+						To = new Location
+						{
+							Id = "33000001",
+							Name = "Bahnhof Mitte"
+						},
+
+						DateTime = DateTimeOffset.Now,
+
+						MaxResults = 3
+					});
+
+
+			if (!result.IsSuccessful)
+			{
+				await DisplayAlert(
+					"Error",
+					result.ErrorMessage ?? "Unknown error",
+					"OK");
+
+				return;
+			}
+
+
+			JourneyList.ItemsSource =
+				result.Journeys;
+
 		}
-
-		private void OnCounterClicked(object? sender, EventArgs e)
+		finally
 		{
-			count++;
-
-			if (count == 1)
-				CounterBtn.Text = $"Clicked {count} time";
-			else
-				CounterBtn.Text = $"Clicked {count} times";
-
-			SemanticScreenReader.Announce(CounterBtn.Text);
+			LoadingIndicator.IsVisible = false;
+			LoadingIndicator.IsRunning = false;
 		}
 	}
 }

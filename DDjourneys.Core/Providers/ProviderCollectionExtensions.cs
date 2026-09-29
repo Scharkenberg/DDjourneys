@@ -20,6 +20,7 @@ public static class ProviderCollectionExtensions
 
 		services.AddSingleton<JourneyProviderDiagnostics>();
 		services.AddSingleton<JourneyService>();
+		services.AddSingleton<ILocationProvider, VvoLocationProvider>();
 		services.AddSingleton<ApiClient>();
 
 		return services;

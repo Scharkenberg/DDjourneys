@@ -1,6 +1,8 @@
 ﻿using Microsoft.Extensions.Logging;
 using DDjourneys.Core.Providers;
 using DDjourneys.Core.Services;
+using DDjourneys.Core.Providers.Abstractions;
+using DDjourneys.Core.Providers.Vvo;
 
 namespace DDjourneys
 {
@@ -22,6 +24,7 @@ namespace DDjourneys
 #endif
 
 			builder.Services.AddDDjourneysProviders();
+			builder.Services.AddSingleton<MainPage>();
 			return builder.Build();
 		}
 	}

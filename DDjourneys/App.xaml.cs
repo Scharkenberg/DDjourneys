@@ -1,69 +1,24 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using DDjourneys.Core.Models;
-using DDjourneys.Core.Services;
-using Location = DDjourneys.Core.Models.Location;
+﻿using DDjourneys.Core.Services;
 
-namespace DDjourneys
+namespace DDjourneys;
+
+public partial class App : Application
 {
-	public partial class App : Application
+	private readonly MainPage _mainPage;
+
+
+	public App(
+		MainPage mainPage)
 	{
-		private readonly JourneyService _journeyService;
+		InitializeComponent();
+
+		_mainPage = mainPage;
+	}
 
 
-		public App(
-			JourneyService journeyService)
-		{
-			InitializeComponent();
-
-			_journeyService = journeyService;
-			_ = TestAsync(_journeyService);
-		}
-
-		protected override Window CreateWindow(
+	protected override Window CreateWindow(
 		IActivationState? activationState)
-		{
-			return new Window(
-				new ContentPage
-				{
-					Content = new Label
-					{
-						Text = "Testing VVO...",
-						HorizontalOptions = LayoutOptions.Center,
-						VerticalOptions = LayoutOptions.Center
-					}
-				});
-		}
-
-		private static async Task TestAsync(JourneyService journeyService)
-		{
-			var result =
-				await journeyService.SearchAsync(
-					new JourneyQuery
-					{
-						From = new Location
-						{
-							Id = "33000336",
-							Name = "Kirschenstraße"
-						},
-
-						To = new Location
-						{
-							Id = "33000001",
-							Name = "Bahnhof Mitte"
-						},
-
-						DateTime =
-							DateTimeOffset.Now.AddMinutes(0),
-
-						MaxResults = 3
-					});
-
-
-			System.Diagnostics.Debug.WriteLine($"Success: {result.IsSuccessful}");
-
-			System.Diagnostics.Debug.WriteLine($"Error: {result.ErrorMessage}");
-
-			System.Diagnostics.Debug.WriteLine($"Journeys: {result.Journeys.Count}");
-		}
+	{
+		return new Window(_mainPage);
 	}
 }
