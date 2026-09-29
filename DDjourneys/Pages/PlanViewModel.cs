@@ -6,7 +6,7 @@ using Location = DDjourneys.Core.Models.Location;
 
 namespace DDjourneys.Pages;
 
-public sealed class PlanViewModel : ObservableObject
+public sealed partial class PlanViewModel : ObservableObject
 {
 	private readonly PlaceStore _store;
 	private bool _syncing;
@@ -32,8 +32,7 @@ public sealed class PlanViewModel : ObservableObject
 		RefreshPlaces();
 	}
 
-	// Seams filled in by the page (and later by navigation).
-	public Func<string, Task<Location?>>? PickPlace { get; set; }
+	public Func<bool, Task>? OpenPlaceSearch { get; set; }
 	public Func<JourneyQuery, Task>? OpenResults { get; set; }
 
 	public Command PickFromCommand { get; }
@@ -182,26 +181,12 @@ public sealed class PlanViewModel : ObservableObject
 
 	private async Task PickAsync(bool isFrom)
 	{
-		if (PickPlace is null)
+		if (OpenPlaceSearch is null)
 		{
 			return;
 		}
 
-		Location? place = await PickPlace(isFrom ? "From" : "To");
-
-		if (place is null)
-		{
-			return;
-		}
-
-		if (isFrom)
-		{
-			From = place;
-		}
-		else
-		{
-			To = place;
-		}
+		await OpenPlaceSearch(isFrom);
 	}
 
 	private async Task SearchAsync()

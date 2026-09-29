@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8" ?>
+
+<ContentPage
+	x:Class="DDjourneys.Pages.PlaceSearchPage"
+	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+	xmlns:local="clr-namespace:DDjourneys.Pages"
+	xmlns:models="clr-namespace:DDjourneys.Core.Models;assembly=DDjourneys.Core"
+	Title="Choose place"
+	x:DataType="local:PlaceSearchViewModel">
+
+	<ContentPage.Resources>
+		<ResourceDictionary>
+			<Style TargetType="Label">
+				<Setter Property="VerticalTextAlignment" Value="Center" />
+			</Style>
+		</ResourceDictionary>
+	</ContentPage.Resources>
+
+	<Grid
+		Padding="16"
+		RowDefinitions="Auto,Auto,*"
+		RowSpacing="16">
+
+		<SearchBar
+			Grid.Row="0"
+			Placeholder="Search station or place"
+			SearchCommand="{Binding SearchCommand}"
+			SemanticProperties.Description="Search for a departure or arrival place"
+			Text="{Binding Query}" />
+
+		<ActivityIndicator
+			Grid.Row="1"
+			HorizontalOptions="Center"
+			IsRunning="{Binding IsSearching}"
+			IsVisible="{Binding IsSearching}" />
+
+		<CollectionView
+			Grid.Row="2"
+			ItemsSource="{Binding Results}"
+			SelectedItem="{Binding SelectedPlace}"
+			SelectionChanged="PlaceSelectionChanged"
+			SelectionMode="Single">
+
+			<CollectionView.EmptyView>
+				<VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center">
+
+					<Label FontSize="16" Text="No places found" />
+				</VerticalStackLayout>
+			</CollectionView.EmptyView>
+
+			<CollectionView.ItemTemplate>
+				<DataTemplate x:DataType="models:Location">
+
+					<Border Padding="12" StrokeThickness="0">
+
+						<VerticalStackLayout>
+
+							<Label FontSize="16" Text="{Binding Name}" />
+
+							<Label
+								FontSize="13"
+								Opacity="0.7"
+								Text="{Binding Place}" />
+
+						</VerticalStackLayout>
+
+					</Border>
+
+				</DataTemplate>
+			</CollectionView.ItemTemplate>
+
+		</CollectionView>
+
+	</Grid>
+
+</ContentPage>

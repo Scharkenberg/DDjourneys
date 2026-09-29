@@ -31,6 +31,9 @@ public static class MauiProgram
 		builder.Services.AddTransient<PlanPage>();
 		builder.Services.AddTransient<PlanViewModel>();
 
+		builder.Services.AddTransient<PlaceSearchPage>();
+		builder.Services.AddTransient<PlaceSearchViewModel>();
+
 		return builder.Build();
 	}
 }

@@ -1,51 +1,23 @@
-using DDjourneys.Core.Services;
 using DDjourneys.Support;
 using Location = DDjourneys.Core.Models.Location;
 
 namespace DDjourneys.Pages;
 
-public partial class PlanPage : ContentPage
+public partial class PlanPage : ContentPage, IQueryAttributable
 {
 	private readonly PlanViewModel _vm;
 
-	public PlanPage(PlanViewModel vm, LocationService locations)
+	public PlanPage(PlanViewModel vm)
 	{
 		InitializeComponent();
 		BindingContext = _vm = vm;
 
-		// Temporary until the place search page exists: type a query, pick a match.
-		vm.PickPlace = async title =>
-		{
-			string? text = await DisplayPromptAsync(title, "Station or address", "Search", "Cancel");
-
-			if (string.IsNullOrWhiteSpace(text))
+		vm.OpenPlaceSearch = isFrom => Shell.Current.GoToAsync(
+			Routes.PlaceSearch,
+			new Dictionary<string, object>
 			{
-				return null;
-			}
-
-			try
-			{
-				IReadOnlyList<Location> found = await locations.SearchAsync(text);
-				Location[] top = found.Take(8).ToArray();
-
-				if (top.Length == 0)
-				{
-					await DisplayAlertAsync(title, "No places found.", "OK");
-					return null;
-				}
-
-				string[] labels = top.Select((p, i) => $"{i + 1}. {p}").ToArray();
-				string? choice = await DisplayActionSheetAsync(title, "Cancel", null, labels);
-				int index = choice is null ? -1 : Array.IndexOf(labels, choice);
-
-				return index >= 0 ? top[index] : null;
-			}
-			catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
-			{
-				await DisplayAlertAsync(title, "Could not reach the timetable service.", "OK");
-				return null;
-			}
-		};
+				[Routes.TargetIsFrom] = isFrom
+			});
 
 		// Temporary until the Results page exists.
 		vm.OpenResults = query => DisplayAlertAsync(
@@ -54,6 +26,30 @@ public partial class PlanPage : ContentPage
 			+ $"{(query.SearchMode == Core.Models.JourneySearchMode.Arrival ? "Arrive by" : "Depart")} "
 			+ $"{query.DateTime:ddd d MMM}, {Format.Time(query.DateTime)}",
 			"OK");
+	}
+
+	public void ApplyQueryAttributes(IDictionary<string, object> query)
+	{
+		if (!query.TryGetValue(Routes.SelectedPlace, out object? selectedPlace))
+		{
+			return;
+		}
+
+		if (selectedPlace is not Location place
+			|| !query.TryGetValue(Routes.TargetIsFrom, out object? targetIsFrom)
+			|| targetIsFrom is not bool isFrom)
+		{
+			throw new InvalidOperationException("Place search returned invalid navigation data.");
+		}
+
+		if (isFrom)
+		{
+			_vm.From = place;
+		}
+		else
+		{
+			_vm.To = place;
+		}
 	}
 
 	private async void SwapClicked(object? sender, EventArgs e)
