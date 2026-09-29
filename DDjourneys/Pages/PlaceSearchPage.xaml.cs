@@ -9,17 +9,17 @@ public partial class PlaceSearchPage : ContentPage, IQueryAttributable
 	public PlaceSearchPage(PlaceSearchViewModel viewModel)
 	{
 		InitializeComponent();
-		BindingContext = viewModel;
+		BindingContext = null; // viewModel;
 
 		// Delay loading until page is ready
-		Loaded += (s, e) => {
+/*		Loaded += (s, e) => {
 			if (BindingContext is PlaceSearchViewModel vm)
 			{
 				// Trigger initial load - this will populate Results
 				// and the CollectionView will render AFTER the visual tree is ready
 				vm.Initialize();
 			}
-		};
+		}; */
 	}
 
 	public void ApplyQueryAttributes(IDictionary<string, object> query)

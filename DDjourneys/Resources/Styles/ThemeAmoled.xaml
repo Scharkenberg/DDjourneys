@@ -1,6 +1,8 @@
-<?xml version="1.0" encoding="UTF-8" ?>
-<ResourceDictionary x:Class="DDjourneys.ThemeAmoled">
-	<!-- AMOLED: pure black on large surfaces; separation comes from bright outlines. Keys must match the other theme files. -->
+<ResourceDictionary
+	x:Class="DDjourneys.ThemeAmoled"
+	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
+	<!--  AMOLED: pure black on large surfaces; separation comes from bright outlines. Keys must match the other theme files.  -->
 	<Color x:Key="Bg">#000000</Color>
 	<Color x:Key="Surface">#000000</Color>
 	<Color x:Key="Raised">#111B21</Color>

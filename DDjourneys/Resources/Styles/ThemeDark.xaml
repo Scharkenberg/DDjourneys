@@ -1,6 +1,8 @@
-<?xml version="1.0" encoding="UTF-8" ?>
-<ResourceDictionary x:Class="DDjourneys.ThemeDark">
-	<!-- Dark theme (the original dark palette). Keys must match the other theme files. -->
+<ResourceDictionary
+	x:Class="DDjourneys.ThemeDark"
+	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
+	<!--  Dark theme (the original dark palette). Keys must match the other theme files.  -->
 	<Color x:Key="Bg">#0C1418</Color>
 	<Color x:Key="Surface">#131D22</Color>
 	<Color x:Key="Raised">#1B2830</Color>

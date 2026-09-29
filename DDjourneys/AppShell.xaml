@@ -1,9 +1,11 @@
 <Shell
 	x:Class="DDjourneys.AppShell"
+	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
 	xmlns:pages="clr-namespace:DDjourneys.Pages"
-	FlyoutBehavior="Disabled"
-	Title="DDjourneys">
+	Title="DDjourneys"
+	FlyoutBehavior="Disabled">
 
-	<ShellContent Route="plan" ContentTemplate="{DataTemplate pages:PlanPage}" />
+	<ShellContent ContentTemplate="{DataTemplate pages:PlanPage}" Route="plan" />
 
 </Shell>

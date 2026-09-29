@@ -1,30 +1,41 @@
 <ContentPage
 	x:Class="DDjourneys.Pages.ResultsPage"
+	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
 	xmlns:controls="clr-namespace:DDjourneys.Controls"
 	xmlns:local="clr-namespace:DDjourneys.Pages"
 	xmlns:support="clr-namespace:DDjourneys.Support"
-	x:DataType="local:ResultsViewModel"
-	Title="Journeys">
+	Title="Journeys"
+	x:DataType="local:ResultsViewModel">
 
-	<Grid RowDefinitions="Auto,*" Padding="{StaticResource PadPage}" RowSpacing="{StaticResource SpaceM}">
+	<Grid
+		Padding="{StaticResource PadPage}"
+		RowDefinitions="Auto,*"
+		RowSpacing="{StaticResource SpaceM}">
 
 		<VerticalStackLayout Grid.Row="0" Spacing="2">
-			<Label StyleClass="Title" Text="{Binding RouteText}" LineBreakMode="TailTruncation" />
+			<Label
+				LineBreakMode="TailTruncation"
+				StyleClass="Title"
+				Text="{Binding RouteText}" />
 			<Label StyleClass="Caption" Text="{Binding WhenText}" />
 		</VerticalStackLayout>
 
-		<RefreshView Grid.Row="1" IsRefreshing="{Binding IsRefreshing}" Command="{Binding RefreshCommand}">
+		<RefreshView
+			Grid.Row="1"
+			Command="{Binding RefreshCommand}"
+			IsRefreshing="{Binding IsRefreshing}">
 			<CollectionView ItemsSource="{Binding Items}" SelectionMode="None">
 
 				<CollectionView.ItemsLayout>
-					<LinearItemsLayout Orientation="Vertical" ItemSpacing="12" />
+					<LinearItemsLayout ItemSpacing="12" Orientation="Vertical" />
 				</CollectionView.ItemsLayout>
 
 				<CollectionView.EmptyView>
 					<Label
-						StyleClass="Caption"
-						HorizontalTextAlignment="Center"
 						Margin="0,48,0,0"
+						HorizontalTextAlignment="Center"
+						StyleClass="Caption"
 						Text="{Binding StatusText}" />
 				</CollectionView.EmptyView>
 

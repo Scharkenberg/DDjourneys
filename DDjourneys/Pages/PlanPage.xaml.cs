@@ -59,4 +59,36 @@ public partial class PlanPage : ContentPage, IQueryAttributable
 			_vm.UsePlace(place);
 		}
 	}
+	private async void FromTapped(object? sender, TappedEventArgs e)
+	{
+		await OpenPlaceSearchAsync(true);
+	}
+
+	private async void ToTapped(object? sender, TappedEventArgs e)
+	{
+		await OpenPlaceSearchAsync(false);
+	}
+
+	private async Task OpenPlaceSearchAsync(bool isFrom)
+	{
+		try
+		{
+			await Shell.Current.GoToAsync(
+				Routes.PlaceSearch,
+				new ShellNavigationQueryParameters
+				{
+					[Routes.TargetIsFrom] = isFrom
+				});
+		}
+		catch (Exception ex)
+		{
+			System.Diagnostics.Debug.WriteLine(
+				$"Place-search navigation failed:\n{ex}");
+
+			await DisplayAlertAsync(
+				"Navigation error",
+				$"{ex.GetType().Name}\n\n{ex.Message}",
+				"OK");
+		}
+	}
 }

@@ -1,6 +1,8 @@
-<?xml version="1.0" encoding="UTF-8" ?>
-<ResourceDictionary x:Class="DDjourneys.ThemeLight">
-	<!-- Light theme. Keys must match the other theme files. -->
+<ResourceDictionary
+	x:Class="DDjourneys.ThemeLight"
+	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
+	<!--  Light theme. Keys must match the other theme files.  -->
 	<Color x:Key="Bg">#F2F4F5</Color>
 	<Color x:Key="Surface">#FFFFFF</Color>
 	<Color x:Key="Raised">#E7ECEE</Color>
