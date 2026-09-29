@@ -14,41 +14,33 @@ public partial class PlanPage : ContentPage, IQueryAttributable
 
 		vm.OpenPlaceSearch = isFrom => Shell.Current.GoToAsync(
 			Routes.PlaceSearch,
-			new Dictionary<string, object>
+			new ShellNavigationQueryParameters
 			{
 				[Routes.TargetIsFrom] = isFrom
 			});
 
-		// Temporary until the Results page exists.
-		vm.OpenResults = query => DisplayAlertAsync(
-			"Search",
-			$"{query.From} to {query.To}\n"
-			+ $"{(query.SearchMode == Core.Models.JourneySearchMode.Arrival ? "Arrive by" : "Depart")} "
-			+ $"{query.DateTime:ddd d MMM}, {Format.Time(query.DateTime)}",
-			"OK");
+		vm.OpenResults = query => Shell.Current.GoToAsync(
+			Routes.Results,
+			new ShellNavigationQueryParameters
+			{
+				[Routes.Query] = query
+			});
 	}
 
+	/// <summary>Receives the place chosen on the place search page.</summary>
 	public void ApplyQueryAttributes(IDictionary<string, object> query)
 	{
-		if (!query.TryGetValue(Routes.SelectedPlace, out object? selectedPlace))
+		if (query.TryGetValue(Routes.SelectedPlace, out object? chosen) && chosen is Location place
+			&& query.TryGetValue(Routes.TargetIsFrom, out object? target) && target is bool isFrom)
 		{
-			return;
-		}
-
-		if (selectedPlace is not Location place
-			|| !query.TryGetValue(Routes.TargetIsFrom, out object? targetIsFrom)
-			|| targetIsFrom is not bool isFrom)
-		{
-			throw new InvalidOperationException("Place search returned invalid navigation data.");
-		}
-
-		if (isFrom)
-		{
-			_vm.From = place;
-		}
-		else
-		{
-			_vm.To = place;
+			if (isFrom)
+			{
+				_vm.From = place;
+			}
+			else
+			{
+				_vm.To = place;
+			}
 		}
 	}
 

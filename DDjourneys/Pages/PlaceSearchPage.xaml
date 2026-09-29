@@ -38,13 +38,6 @@
 			SelectionChanged="PlaceSelectionChanged"
 			SelectionMode="Single">
 
-			<CollectionView.EmptyView>
-				<VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center">
-
-					<Label FontSize="16" Text="No places found" VerticalTextAlignment="Start" />
-				</VerticalStackLayout>
-			</CollectionView.EmptyView>
-
 			<CollectionView.ItemTemplate>
 				<DataTemplate x:DataType="models:Location">
 
