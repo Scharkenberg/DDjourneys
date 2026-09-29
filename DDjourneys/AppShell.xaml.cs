@@ -8,7 +8,7 @@ namespace DDjourneys
 		public AppShell()
 		{
 			InitializeComponent();
-			Routing.RegisterRoute(Routes.PlaceSearch, typeof(PlaceSearchPage));
+			Routing.RegisterRoute(nameof(PlaceSearchPage), typeof(PlaceSearchPage));
 		}
 	}
 }
