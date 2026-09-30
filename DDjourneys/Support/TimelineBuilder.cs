@@ -6,7 +6,10 @@ public abstract record TimelineItem;
 
 public sealed record RideItem(JourneyLeg Leg) : TimelineItem;
 
-public sealed record WalkItem(JourneyLeg Leg) : TimelineItem;
+public sealed record WalkItem(
+	JourneyLeg Leg,
+	DateTimeOffset? EffectiveDeparture = null,
+	DateTimeOffset? EffectiveArrival = null) : TimelineItem;
 
 /// <summary>
 /// The point between two legs: an interchange, or a provider message
@@ -35,18 +38,62 @@ public static class TimelineBuilder
 		// A provider transfer belongs to exactly one boundary, even if the route
 		// passes the same station twice.
 		var used = new HashSet<JourneyTransfer>();
+		DateTimeOffset? previousEffectiveArrival = null;
 
 		for (int i = 0; i < journey.Legs.Count; i++)
 		{
 			JourneyLeg leg = journey.Legs[i];
-			bool isWalk = leg.Mode == TransitMode.Walk;
+			DateTimeOffset? effectiveArrival = leg.EffectiveArrival;
+			if (leg.Mode == TransitMode.Walk)
+			{
+				DateTimeOffset? departure = leg.EffectiveDeparture;
+				DateTimeOffset? arrival = leg.EffectiveArrival;
+				if (previousEffectiveArrival is { } priorArrival
+					&& leg.ScheduledDeparture is { } scheduledDeparture
+					&& leg.ScheduledArrival is { } scheduledArrival
+					&& scheduledArrival >= scheduledDeparture)
+				{
+					TimeSpan walkDuration = scheduledArrival - scheduledDeparture;
+					departure = priorArrival > scheduledDeparture ? priorArrival : scheduledDeparture;
+					arrival = departure + walkDuration;
+				}
+				effectiveArrival = arrival;
 
-			items.Add(isWalk ? new WalkItem(leg) : new RideItem(leg));
+				items.Add(new WalkItem(leg, departure, arrival));
+			}
+			else
+			{
+				items.Add(new RideItem(leg));
+			}
 
 			if (i == journey.Legs.Count - 1)
 			{
+				// VVO models endpoint footpaths as transfers without a following
+				// transit leg. Preserve that final movement in the timeline.
+				JourneyTransfer? finalWalk = journey.Transfers
+					.Where(t => !used.Contains(t)
+						&& t.Kind == TransferKind.Walk
+						&& t.Duration > TimeSpan.Zero
+						&& Matches(t.Location.Id, leg.To.Id, journey.To.Id))
+					.OrderByDescending(t => t.Duration)
+					.FirstOrDefault();
+
+				if (finalWalk is not null)
+				{
+					used.Add(finalWalk);
+					items.Add(new BoundaryItem(
+						journey.To,
+						TimeSpan.Zero,
+						finalWalk.Notices,
+						ShowWait: false,
+						Endangered: false,
+						WalkTime: finalWalk.Duration));
+				}
+
 				break;
 			}
+
+			previousEffectiveArrival = effectiveArrival;
 
 			JourneyLeg next = journey.Legs[i + 1];
 
@@ -67,7 +114,7 @@ public static class TimelineBuilder
 				.Distinct()
 				.ToArray();
 
-			bool isInterchange = !isWalk && next.Mode != TransitMode.Walk;
+			bool isInterchange = leg.Mode != TransitMode.Walk && next.Mode != TransitMode.Walk;
 
 			if (isInterchange || notes.Length > 0)
 			{
@@ -85,17 +132,6 @@ public static class TimelineBuilder
 					.Select(t => (TimeSpan?)t.Duration)
 					.Max();
 
-				// If this is a walking connection (footpath) between legs, use the actual
-				// effective times to calculate the walk duration, accounting for delays
-				if (isWalk && next.Mode == TransitMode.Walk && walk is null)
-				{
-					// For consecutive walking legs, calculate walk time from effective times
-					if (leg.EffectiveArrival is { } legArrives && next.EffectiveDeparture is { } nextDeparts)
-					{
-						walk = nextDeparts - legArrives;
-					}
-				}
-
 				items.Add(new BoundaryItem(
 					leg.To,
 					wait,
@@ -107,6 +143,31 @@ public static class TimelineBuilder
 		}
 
 		return items;
+	}
+
+	/// <summary>Gets the effective end of a final walking transfer.</summary>
+	public static DateTimeOffset? FinalWalkArrival(Journey journey)
+	{
+		ArgumentNullException.ThrowIfNull(journey);
+
+		IReadOnlyList<TimelineItem> items = Build(journey);
+		if (items.LastOrDefault() is not BoundaryItem { WalkTime: { } walkTime })
+		{
+			return items.LastOrDefault() is WalkItem walk
+				? walk.EffectiveArrival ?? walk.Leg.EffectiveArrival
+				: journey.Arrival;
+		}
+
+		DateTimeOffset? arrival = items
+			.Take(items.Count - 1)
+			.LastOrDefault(item => item is RideItem or WalkItem) switch
+			{
+				WalkItem walk => walk.EffectiveArrival ?? walk.Leg.EffectiveArrival,
+				RideItem ride => ride.Leg.EffectiveArrival,
+				_ => null
+			};
+
+		return arrival is { } time ? time + walkTime : null;
 	}
 
 	private static bool Matches(string? transferId, string? fromId, string? toId) =>

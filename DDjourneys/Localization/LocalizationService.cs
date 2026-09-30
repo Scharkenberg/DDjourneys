@@ -1,6 +1,7 @@
 ﻿using System.ComponentModel;
 using System.Globalization;
 using System.Runtime.CompilerServices;
+using Microsoft.Maui;
 
 namespace DDjourneys.Localization;
 
@@ -13,6 +14,7 @@ public sealed class LocalizationService : INotifyPropertyChanged
 
 	private readonly Dictionary<string, LocalizationPack> _packs =
 		new(StringComparer.OrdinalIgnoreCase);
+	private readonly WeakEventManager _weakEventManager = new();
 
 	private LocalizationPack? _current;
 	private string _languageCode = string.Empty;
@@ -21,7 +23,11 @@ public sealed class LocalizationService : INotifyPropertyChanged
 	{
 	}
 
-	public event PropertyChangedEventHandler? PropertyChanged;
+	public event PropertyChangedEventHandler? PropertyChanged
+	{
+		add => _weakEventManager.AddEventHandler(value, nameof(PropertyChanged));
+		remove => _weakEventManager.RemoveEventHandler(value, nameof(PropertyChanged));
+	}
 
 	public IReadOnlyList<LocalizationPack> AvailableLanguages =>
 		_packs.Values
@@ -176,8 +182,9 @@ public sealed class LocalizationService : INotifyPropertyChanged
 	private void OnPropertyChanged(
 		[CallerMemberName] string? propertyName = null)
 	{
-		PropertyChanged?.Invoke(
+		_weakEventManager.HandleEvent(
 			this,
-			new PropertyChangedEventArgs(propertyName));
+			new PropertyChangedEventArgs(propertyName),
+			nameof(PropertyChanged));
 	}
 }

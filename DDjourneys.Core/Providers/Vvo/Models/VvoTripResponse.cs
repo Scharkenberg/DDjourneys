@@ -193,6 +193,11 @@ public sealed class VvoMot
 	/// </summary>
 	[JsonPropertyName("StatelessId")]
 	public string? StatelessId { get; init; }
+
+
+	/// <summary>Realtime passenger load reported for this service.</summary>
+	[JsonPropertyName("Occupancy")]
+	public string? Occupancy { get; init; }
 }
 
 

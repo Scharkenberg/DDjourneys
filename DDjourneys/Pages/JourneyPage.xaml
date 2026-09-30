@@ -10,7 +10,10 @@
 	x:DataType="local:JourneyViewModel">
 
 	<ContentPage.ToolbarItems>
-		<ToolbarItem Command="{Binding ShareCommand}" Text="\u267A" />
+		<ToolbarItem
+			SemanticProperties.Description="{localization:Tr Common.Share}"
+			Command="{Binding ShareCommand}"
+			Text="&#x2197;" />
 	</ContentPage.ToolbarItems>
 
 	<ContentPage.Resources>
@@ -81,8 +84,8 @@
 
 				<VerticalStackLayout
 					Grid.Column="2"
-					Padding="0,4,0,12"
-					Spacing="2">
+					Padding="0,8,0,16"
+					Spacing="6">
 
 					<Label FontFamily="OpenSansSemibold" Text="{Binding Name}" />
 
@@ -245,11 +248,15 @@
 							TextColor="{DynamicResource Accent}"
 							VerticalOptions="Center" />
 
-						<Label
-							FontSize="{StaticResource FontBody}"
-							Text="{Binding Chevron}"
-							TextColor="{DynamicResource Accent}"
-							VerticalOptions="Center" />
+						<Grid HeightRequest="24" VerticalOptions="Center" WidthRequest="24">
+							<Label
+								FontFamily="OpenSansSemibold"
+								FontSize="18"
+								Text="{Binding Chevron}"
+								TextColor="{DynamicResource Accent}"
+								HorizontalTextAlignment="Center"
+								VerticalTextAlignment="Center" />
+						</Grid>
 
 						<HorizontalStackLayout.GestureRecognizers>
 							<TapGestureRecognizer Tapped="StopsToggled" />
@@ -300,12 +307,12 @@
 				Loaded="RowLoaded"
 				SemanticProperties.Description="{Binding Description}">
 
-				<VerticalStackLayout
+				<Grid
 					Grid.Column="0"
-					Padding="0,4,0,0"
-					Spacing="8">
+					RowDefinitions="*,Auto,*"
+					RowSpacing="0">
 
-					<VerticalStackLayout Spacing="1">
+					<VerticalStackLayout Grid.Row="0" Spacing="1" VerticalOptions="End">
 						<Label FontFamily="OpenSansSemibold" Text="{Binding ArrivalTime}" />
 
 						<Label
@@ -319,7 +326,7 @@
 							Text="{Binding ArrivalOccupancyText}" />
 					</VerticalStackLayout>
 
-					<VerticalStackLayout Spacing="1">
+					<VerticalStackLayout Grid.Row="2" Spacing="1" VerticalOptions="Start">
 						<Label FontFamily="OpenSansSemibold" Text="{Binding DepartureTime}" />
 
 						<Label
@@ -332,7 +339,7 @@
 							StyleClass="Caption"
 							Text="{Binding DepartureOccupancyText}" />
 					</VerticalStackLayout>
-				</VerticalStackLayout>
+				</Grid>
 
 				<Grid Grid.Column="1" RowDefinitions="*,Auto,*" RowSpacing="0">
 					<BoxView
@@ -367,8 +374,8 @@
 
 				<VerticalStackLayout
 					Grid.Column="2"
-					Padding="0,4,0,12"
-					Spacing="4">
+					Padding="0,8,0,16"
+					Spacing="6">
 
 					<Label FontFamily="OpenSansSemibold" Text="{Binding Name}" />
 

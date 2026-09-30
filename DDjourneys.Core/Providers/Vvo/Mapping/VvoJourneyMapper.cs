@@ -53,7 +53,8 @@ public static class VvoJourneyMapper
 					MapLeg(
 						partialRoute,
 						legs.LastOrDefault()?.To,
-						GetFirstStation(partialRoute));
+						GetFirstStation(partialRoute),
+						route.RouteCancelled);
 
 				System.Diagnostics.Debug.WriteLine(
 	$"""
@@ -292,7 +293,8 @@ public static class VvoJourneyMapper
 	private static JourneyLeg MapLeg(
 		VvoPartialRoute route,
 		Station? previousDestination,
-		Station? nextOrigin)
+		Station? nextOrigin,
+		bool routeCancelled)
 	{
 		var stops = route.RegularStops
 			.Select(MapStop)
@@ -310,9 +312,12 @@ public static class VvoJourneyMapper
 		}
 		else
 		{
-			from = previousDestination ?? nextOrigin ?? throw new InvalidOperationException("Cannot determine location of VVO non-stop leg.");
+			Station fallback = previousDestination
+				?? nextOrigin
+				?? throw new InvalidOperationException("Cannot determine location of VVO non-stop leg.");
 
-			to = nextOrigin ?? previousDestination;
+			from = fallback;
+			to = nextOrigin ?? fallback;
 		}
 
 
@@ -350,7 +355,7 @@ public static class VvoJourneyMapper
 
 			ArrivalPlatform = lastStop?.Platform,
 
-			IsCancelled = route.TripCancelled,
+			IsCancelled = route.TripCancelled || routeCancelled,
 
 			Notices =
 				VvoNoticeParser.Parse(route.Infos)
@@ -540,14 +545,14 @@ public static class VvoJourneyMapper
 			return OccupancyLevel.Unknown;
 		}
 
-		return occupancy switch
+		return occupancy.Trim().ToLowerInvariant() switch
 		{
-			"VeryLow" => OccupancyLevel.VeryLow,
-			"Low" => OccupancyLevel.Low,
-			"Medium" => OccupancyLevel.Medium,
-			"High" => OccupancyLevel.High,
-			"Full" => OccupancyLevel.Full,
-			"VeryHigh" or "Overloaded" => OccupancyLevel.Overloaded,
+			"verylow" or "manyseats" => OccupancyLevel.VeryLow,
+			"low" or "fewseats" => OccupancyLevel.Low,
+			"medium" => OccupancyLevel.Medium,
+			"high" or "standingonly" => OccupancyLevel.High,
+			"full" => OccupancyLevel.Full,
+			"veryhigh" or "overloaded" => OccupancyLevel.Overloaded,
 			_ => OccupancyLevel.Unknown
 		};
 	}

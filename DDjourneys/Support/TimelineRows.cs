@@ -175,7 +175,7 @@ public static class TimelineRowFactory
 				EndpointStop(
 					firstWalk.Leg.From.Name,
 					PlaceOf(firstWalk.Leg.From),
-					firstWalk.Leg.EffectiveDeparture,
+					firstWalk.EffectiveDeparture ?? firstWalk.Leg.EffectiveDeparture,
 					Colors.Transparent,
 					WalkColor()));
 		}
@@ -193,8 +193,8 @@ public static class TimelineRowFactory
 					{
 						string walkTime =
 							Format.Duration(
-								walk.Leg.EffectiveDeparture,
-								walk.Leg.EffectiveArrival);
+								walk.EffectiveDeparture ?? walk.Leg.EffectiveDeparture,
+								walk.EffectiveArrival ?? walk.Leg.EffectiveArrival);
 
 						JourneyStrings strings =
 							LocalizationService.Current.CurrentStrings.Journey;
@@ -231,7 +231,19 @@ public static class TimelineRowFactory
 				EndpointStop(
 					lastWalk.Leg.To.Name,
 					PlaceOf(lastWalk.Leg.To),
-					lastWalk.Leg.EffectiveArrival,
+					lastWalk.EffectiveArrival ?? lastWalk.Leg.EffectiveArrival,
+					WalkColor(),
+					Colors.Transparent));
+		}
+		else if (items.Count > 0
+			&& items[^1] is BoundaryItem { WalkTime: not null })
+		{
+			DateTimeOffset? arrival = TimelineBuilder.FinalWalkArrival(journey);
+			rows.Add(
+				EndpointStop(
+					journey.To.Name,
+					PlaceOf(journey.To),
+					arrival,
 					WalkColor(),
 					Colors.Transparent));
 		}
@@ -495,7 +507,7 @@ public static class TimelineRowFactory
 								: $"{Format.Duration(boundary.Wait)} {strings.ToChange}"
 							: null,
 					WalkText =
-						boundary.WalkTime is { } walk
+						options.ShowWalking && boundary.WalkTime is { } walk
 							? $"{strings.WalkAbout} {Format.Duration(walk)} {strings.BetweenStops}"
 							: null,
 					RiskText =
@@ -511,6 +523,22 @@ public static class TimelineRowFactory
 					Description =
 						$"{strings.ChangeAt} {from.To.Name}, " +
 						Format.Duration(boundary.Wait)
+				});
+		}
+		else if (options.ShowWalking
+			&& boundary.WalkTime is { } walkTime
+			&& walkTime > TimeSpan.Zero)
+		{
+			// A final VVO footpath has no following transit leg, so it cannot be
+			// represented by an interchange row. Render it as a normal walk row.
+			rows.Add(
+				new WalkRow
+				{
+					Text = $"{strings.Walk} {Format.Duration(walkTime)}",
+					Caption = $"{strings.To} {boundary.At.Name}",
+					RailTop = RailAt(items, i - 1, -1),
+					RailBottom = WalkColor(),
+					Description = $"{strings.Walk} {Format.Duration(walkTime)} {strings.To} {boundary.At.Name}"
 				});
 		}
 

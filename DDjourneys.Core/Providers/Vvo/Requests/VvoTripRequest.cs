@@ -37,6 +37,11 @@ public sealed class VvoTripRequest
 	public bool IsArrivalTime { get; init; }
 
 
+	/// <summary>Include current short-term route changes and disruption data.</summary>
+	[JsonPropertyName("shorttermchanges")]
+	public bool ShortTermChanges { get; init; } = true;
+
+
 	/// <summary>
 	/// VVO standard journey settings.
 	///

@@ -140,12 +140,12 @@ public sealed class GermanUiStrings : IUiStrings
 		OnTime = "P\u00fcnktlich",
 
 		// Occupancy strings
-		OccupancyVeryLow = "Sehr wenige Fahrgaeste",
-		OccupancyLow = "Wenige Fahrgaeste",
+		OccupancyVeryLow = "Sehr wenige Fahrgäste",
+		OccupancyLow = "Wenige Fahrgäste",
 		OccupancyMedium = "Mittel",
-		OccupancyHigh = "Viele Fahrgaeste",
+		OccupancyHigh = "Viele Fahrgäste",
 		OccupancyFull = "Voll",
-		OccupancyOverloaded = "Ueberfuellt"
+		OccupancyOverloaded = "Überfüllt"
 	};
 
 	public SettingsStrings Settings { get; } = new()

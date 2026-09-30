@@ -376,7 +376,8 @@ public static class VvoNoticeParser
 			// Markdown-style autolinks: <https://...>
 			if (TryReadAngleBracketUrl(
 				raw,
-				out string? angleUrl))
+				out string? angleUrl)
+				&& angleUrl is not null)
 			{
 				AppendText(
 					output,
@@ -391,7 +392,8 @@ public static class VvoNoticeParser
 
 			if (!TryParseTag(
 				raw,
-				out HtmlTag? tag))
+				out HtmlTag? tag)
+				|| tag is null)
 			{
 				index = endExclusive;
 				continue;

@@ -19,7 +19,7 @@ public partial class MainPage : ContentPage
 
 
 	private async void SearchClicked(
-		object sender,
+		object? sender,
 		EventArgs e)
 	{
 		LoadingIndicator.IsVisible = true;
@@ -52,7 +52,7 @@ public partial class MainPage : ContentPage
 
 			if (!result.IsSuccessful)
 			{
-				await DisplayAlert(
+				await DisplayAlertAsync(
 					"Error",
 					result.ErrorMessage ?? "Unknown error",
 					"OK");

@@ -1,6 +1,7 @@
 ﻿using System.Text.Json;
 using DDjourneys.Core.Models;
 using Location = DDjourneys.Core.Models.Location;
+using Microsoft.Maui;
 
 namespace DDjourneys.Core.Storage;
 
@@ -19,11 +20,16 @@ public sealed class PlaceStore
 	private readonly object _gate = new();
 	private readonly List<Location> _recents;
 	private readonly List<Location> _favourites;
+	private readonly WeakEventManager _weakEventManager = new();
 
 	/// <summary>
 	/// Raised after any change to recents or favourites.
 	/// </summary>
-	public event EventHandler? Changed;
+	public event EventHandler? Changed
+	{
+		add => _weakEventManager.AddEventHandler(value, nameof(Changed));
+		remove => _weakEventManager.RemoveEventHandler(value, nameof(Changed));
+	}
 
 	public PlaceStore()
 	{
@@ -129,7 +135,7 @@ public sealed class PlaceStore
 	{
 		try
 		{
-			Changed?.Invoke(this, EventArgs.Empty);
+			_weakEventManager.HandleEvent(this, EventArgs.Empty, nameof(Changed));
 		}
 		catch (Exception ex)
 		{
