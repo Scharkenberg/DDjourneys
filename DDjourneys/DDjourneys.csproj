@@ -16,7 +16,8 @@
 		<SingleProject>true</SingleProject>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
-	    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+		<LangVersion>15.0</LangVersion>
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 
 
 		<!-- Display name -->

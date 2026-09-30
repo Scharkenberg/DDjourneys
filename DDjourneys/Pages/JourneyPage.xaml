@@ -233,7 +233,8 @@
 						<Label
 							FontSize="{StaticResource FontBody}"
 							Text="{Binding Chevron}"
-							TextColor="{DynamicResource Accent}" />
+							TextColor="{DynamicResource Accent}"
+							VerticalOptions="Center" />
 
 						<HorizontalStackLayout.GestureRecognizers>
 							<TapGestureRecognizer Tapped="StopsToggled" />
