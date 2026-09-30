@@ -1,4 +1,4 @@
-﻿using DDjourneys.Core.Models;
+using DDjourneys.Core.Models;
 using DDjourneys.Core.Providers.Vvo.Models;
 using DDjourneys.Core.Providers.Vvo.Parsing;
 
@@ -390,7 +390,9 @@ public static class VvoJourneyMapper
 			IsCancelled =
 				stop.ArrivalState == "Cancelled"
 				||
-				stop.DepartureState == "Cancelled"
+				stop.DepartureState == "Cancelled",
+
+			Occupancy = MapOccupancy(stop.Occupancy)
 		};
 	}
 
@@ -418,7 +420,10 @@ public static class VvoJourneyMapper
 				?? route.Mot.Diva?.Network,
 
 			Destination =
-				route.Mot.Direction
+				route.Mot.Direction,
+
+			DirectionId =
+				route.Mot.Diva?.Number
 		};
 	}
 
@@ -443,7 +448,22 @@ public static class VvoJourneyMapper
 
 			Operator =
 				route.Mot.TransportationCompany
-				?? route.Mot.Diva?.Network
+				?? route.Mot.Diva?.Network,
+
+			OperatorCode =
+				route.Mot.OperatorCode,
+
+			ProductName =
+				route.Mot.ProductName,
+
+			DlId =
+				route.Mot.DlId,
+
+			StatelessId =
+				route.Mot.StatelessId,
+
+			Occupancy =
+				MapOccupancy(route.Mot.Occupancy)
 		};
 	}
 
@@ -510,6 +530,26 @@ public static class VvoJourneyMapper
 
 
 		return TransitMode.Unknown;
+	}
+
+
+	private static OccupancyLevel MapOccupancy(string? occupancy)
+	{
+		if (string.IsNullOrWhiteSpace(occupancy))
+		{
+			return OccupancyLevel.Unknown;
+		}
+
+		return occupancy switch
+		{
+			"VeryLow" => OccupancyLevel.VeryLow,
+			"Low" => OccupancyLevel.Low,
+			"Medium" => OccupancyLevel.Medium,
+			"High" => OccupancyLevel.High,
+			"Full" => OccupancyLevel.Full,
+			"VeryHigh" or "Overloaded" => OccupancyLevel.Overloaded,
+			_ => OccupancyLevel.Unknown
+		};
 	}
 
 

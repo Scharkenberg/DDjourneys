@@ -1,4 +1,4 @@
-﻿namespace DDjourneys.Localization;
+namespace DDjourneys.Localization;
 
 public interface IUiStrings
 {
@@ -127,6 +127,14 @@ public sealed class JourneyStrings
 	public required string Warning { get; init; }
 	public required string Notice { get; init; }
 	public required string OnTime { get; init; }
+
+	// Occupancy strings
+	public required string OccupancyVeryLow { get; init; }
+	public required string OccupancyLow { get; init; }
+	public required string OccupancyMedium { get; init; }
+	public required string OccupancyHigh { get; init; }
+	public required string OccupancyFull { get; init; }
+	public required string OccupancyOverloaded { get; init; }
 }
 
 public sealed class SettingsStrings
