@@ -57,13 +57,7 @@ public static class TimelineBuilder
 				.Distinct()
 				.ToArray();
 
-			bool isWalkingTransfer =
-				transfers.Any(t => t.Kind == TransferKind.Walk);
-
-			bool isInterchange =
-				!isWalk
-				&& next.Mode != TransitMode.Walk
-				&& !isWalkingTransfer;
+			bool isInterchange = !isWalk && next.Mode != TransitMode.Walk;
 
 			if (isInterchange || notes.Length > 0)
 			{
@@ -77,7 +71,7 @@ public static class TimelineBuilder
 						? TimeSpan.Zero
 						: wait,
 					notes,
-					ShowWait: !isWalkingTransfer));
+					ShowWait: !isInterchange));
 			}
 		}
 

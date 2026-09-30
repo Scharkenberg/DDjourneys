@@ -1,5 +1,6 @@
 ﻿using DDjourneys.Core.Models;
 using DDjourneys.Core.Providers.Vvo.Models;
+using DDjourneys.Core.Providers.Vvo.Parsing;
 
 namespace DDjourneys.Core.Providers.Vvo.Mapping;
 
@@ -150,14 +151,16 @@ public static class VvoJourneyMapper
 		};
 	}
 
+
 	private static Station? GetFirstStation(
-	VvoPartialRoute route)
+		VvoPartialRoute route)
 	{
 		return route.RegularStops
 			.Select(MapStop)
 			.FirstOrDefault()
 			?.Station;
 	}
+
 
 	private static bool IsTransfer(VvoPartialRoute route)
 	{
@@ -184,6 +187,7 @@ public static class VvoJourneyMapper
 
 		return false;
 	}
+
 
 	private static JourneyTransfer MapTransfer(
 		VvoPartialRoute route,
@@ -245,9 +249,10 @@ public static class VvoJourneyMapper
 
 
 			Notices =
-				route.Infos
+				VvoNoticeParser.Parse(route.Infos)
 		};
 	}
+
 
 	private static TransferKind DetermineTransferKind(
 		VvoPartialRoute route,
@@ -283,10 +288,11 @@ public static class VvoJourneyMapper
 		return TransferKind.SameStop;
 	}
 
+
 	private static JourneyLeg MapLeg(
-	VvoPartialRoute route,
-	Station? previousDestination,
-	Station? nextOrigin)
+		VvoPartialRoute route,
+		Station? previousDestination,
+		Station? nextOrigin)
 	{
 		var stops = route.RegularStops
 			.Select(MapStop)
@@ -313,6 +319,7 @@ public static class VvoJourneyMapper
 		StopTime? firstStop =
 			stops.FirstOrDefault();
 
+
 		StopTime? lastStop =
 			stops.LastOrDefault();
 
@@ -333,19 +340,20 @@ public static class VvoJourneyMapper
 
 			ScheduledDeparture = firstStop?.ScheduledDeparture,
 
-			RealtimeDeparture =	firstStop?.RealtimeDeparture,
+			RealtimeDeparture = firstStop?.RealtimeDeparture,
 
 			ScheduledArrival = lastStop?.ScheduledArrival,
 
 			RealtimeArrival = lastStop?.RealtimeArrival,
 
-			DeparturePlatform =	firstStop?.Platform,
+			DeparturePlatform = firstStop?.Platform,
 
 			ArrivalPlatform = lastStop?.Platform,
 
 			IsCancelled = route.TripCancelled,
 
-			Notices = route.Infos
+			Notices =
+				VvoNoticeParser.Parse(route.Infos)
 		};
 	}
 
@@ -414,6 +422,7 @@ public static class VvoJourneyMapper
 		};
 	}
 
+
 	private static Vehicle? MapVehicle(
 		VvoPartialRoute route)
 	{
@@ -428,7 +437,9 @@ public static class VvoJourneyMapper
 			Id =
 				route.Mot.StatelessId,
 
-			Name = route.Mot.TrainNumber ?? route.Mot.Name,
+			Name =
+				route.Mot.TrainNumber
+				?? route.Mot.Name,
 
 			Operator =
 				route.Mot.TransportationCompany
@@ -436,12 +447,22 @@ public static class VvoJourneyMapper
 		};
 	}
 
+
 	private static TransitMode MapMode(
 		VvoMot? mot)
 	{
 		if (mot is null)
 		{
 			return TransitMode.Unknown;
+		}
+
+
+		if (string.Equals(
+			mot.Type,
+			"Footpath",
+			StringComparison.OrdinalIgnoreCase))
+		{
+			return TransitMode.Walk;
 		}
 
 
@@ -455,38 +476,47 @@ public static class VvoJourneyMapper
 			return TransitMode.Tram;
 		}
 
+
 		if (value.Contains("bus"))
 		{
 			return TransitMode.Bus;
 		}
 
-		if (value.Contains("s-bahn")|| value.Contains("suburban") || mot.Type == "RapidTransit")
+
+		if (value.Contains("s-bahn")
+			|| value.Contains("suburban")
+			|| mot.Type == "RapidTransit")
 		{
 			return TransitMode.SuburbanRail;
 		}
+
 
 		if (mot.Type == "Train")
 		{
 			return TransitMode.RegionalTrain;
 		}
 
+
 		if (value.Contains("ferry"))
 		{
 			return TransitMode.Ferry;
 		}
+
 
 		if (value.Contains("taxi"))
 		{
 			return TransitMode.Taxi;
 		}
 
+
 		return TransitMode.Unknown;
 	}
 
+
 	private static void DebugTransfer(
-	VvoPartialRoute route,
-	StopTime? firstStop,
-	StopTime? lastStop)
+		VvoPartialRoute route,
+		StopTime? firstStop,
+		StopTime? lastStop)
 	{
 		System.Diagnostics.Debug.WriteLine(
 			$"""
@@ -511,5 +541,4 @@ public static class VvoJourneyMapper
 		  {string.Join(" | ", route.Infos)}
 		""");
 	}
-
 }
