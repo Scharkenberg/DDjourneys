@@ -129,7 +129,7 @@ public static class TimelineRowFactory
 		{
 			rows.Add(EndpointStop(
 				firstWalk.Leg.From.Name,
-				firstWalk.Leg.EffectiveDeparture,
+				firstWalk.Leg.EffectiveDeparture ?? default,
 				top: Colors.Transparent,
 				bottom: WalkColor()));
 		}
@@ -145,10 +145,10 @@ public static class TimelineRowFactory
 				case WalkItem walk:
 					rows.Add(new WalkRow
 					{
-						Text = $"Walk {Format.Duration(walk.Leg.EffectiveArrival - walk.Leg.EffectiveDeparture)}",
+						Text = $"Walk {Format.Duration((walk.Leg.EffectiveArrival ?? default) - (walk.Leg.EffectiveDeparture ?? default))}",
 						Caption = $"to {walk.Leg.To.Name}",
 						RailBottom = WalkColor(),
-						Description = $"Walk {Format.Duration(walk.Leg.EffectiveArrival - walk.Leg.EffectiveDeparture)} to {walk.Leg.To.Name}"
+						Description = $"Walk {Format.Duration((walk.Leg.EffectiveArrival ?? default) - (walk.Leg.EffectiveDeparture ?? default))} to {walk.Leg.To.Name}"
 					});
 					break;
 
@@ -162,7 +162,7 @@ public static class TimelineRowFactory
 		{
 			rows.Add(EndpointStop(
 				lastWalk.Leg.To.Name,
-				lastWalk.Leg.EffectiveArrival,
+				lastWalk.Leg.EffectiveArrival ?? default,
 				top: WalkColor(),
 				bottom: Colors.Transparent));
 		}
@@ -188,15 +188,15 @@ public static class TimelineRowFactory
 
 			rows.Add(new StopRow
 			{
-				Time = Format.Time(leg.EffectiveDeparture),
-				ScheduledTime = delay is null ? null : Format.Time(leg.ScheduledDeparture),
+				Time = Format.Time(leg.EffectiveDeparture ?? default),
+				ScheduledTime = delay is null ? null : Format.Time(leg.ScheduledDeparture ?? default),
 				DelayText = delay,
 				Name = leg.From.Name,
 				PlatformText = PlatformText(leg.DeparturePlatform),
 				NodeColor = color,
 				RailTop = RailAt(items, i - 1, -1),
 				RailBottom = color,
-				Description = $"{Format.Time(leg.EffectiveDeparture)}, depart {leg.From.Name}"
+				Description = $"{Format.Time(leg.EffectiveDeparture ?? default)}, depart {leg.From.Name}"
 			});
 		}
 
@@ -207,7 +207,7 @@ public static class TimelineRowFactory
 			LineText = leg.Line?.Name ?? leg.Mode.ToString(),
 			ModeColor = color,
 			Direction = string.IsNullOrWhiteSpace(leg.Line?.Destination) ? null : $"to {leg.Line!.Destination}",
-			DurationText = Format.Duration(leg.EffectiveArrival - leg.EffectiveDeparture),
+			DurationText = Format.Duration((leg.EffectiveArrival ?? default) - (leg.EffectiveDeparture ?? default)),
 			FeaturesText = Features(leg.Vehicle?.Accessibility),
 			IsCancelled = leg.IsCancelled,
 			IsActive = !leg.IsCancelled && now >= leg.EffectiveDeparture && now <= leg.EffectiveArrival,
@@ -225,7 +225,7 @@ public static class TimelineRowFactory
 				})
 				.ToList(),
 			RailBottom = color,
-			Description = $"{leg.Line?.Name ?? leg.Mode.ToString()}, {Format.Duration(leg.EffectiveArrival - leg.EffectiveDeparture)}"
+			Description = $"{leg.Line?.Name ?? leg.Mode.ToString()}, {Format.Duration((leg.EffectiveArrival ?? default) - (leg.EffectiveDeparture ?? default))}"
 		});
 
 		foreach (string notice in leg.Notices.Distinct())
@@ -239,15 +239,15 @@ public static class TimelineRowFactory
 
 			rows.Add(new StopRow
 			{
-				Time = Format.Time(leg.EffectiveArrival),
-				ScheduledTime = delay is null ? null : Format.Time(leg.ScheduledArrival),
+				Time = Format.Time(leg.EffectiveArrival ?? default),
+				ScheduledTime = delay is null ? null : Format.Time(leg.ScheduledArrival ?? default),
 				DelayText = delay,
 				Name = leg.To.Name,
 				PlatformText = PlatformText(leg.ArrivalPlatform),
 				NodeColor = color,
 				RailTop = color,
 				RailBottom = RailAt(items, i + 1, +1),
-				Description = $"{Format.Time(leg.EffectiveArrival)}, arrive {leg.To.Name}"
+				Description = $"{Format.Time(leg.EffectiveArrival ?? default)}, arrive {leg.To.Name}"
 			});
 		}
 	}
@@ -267,9 +267,9 @@ public static class TimelineRowFactory
 
 			rows.Add(new InterchangeRow
 			{
-				ArrivalTime = Format.Time(from.EffectiveArrival),
+				ArrivalTime = Format.Time(from.EffectiveArrival ?? default),
 				ArrivalDelay = Format.Delay(from.ArrivalDelay),
-				DepartureTime = Format.Time(to.EffectiveDeparture),
+				DepartureTime = Format.Time(to.EffectiveDeparture ?? default),
 				DepartureDelay = Format.Delay(to.DepartureDelay),
 				Name = from.To.Name,
 				ContinuesFrom = from.To.Name == to.From.Name ? null : $"continue from {to.From.Name}",
@@ -317,7 +317,7 @@ public static class TimelineRowFactory
 		return Colors.Transparent;
 	}
 
-	private static Color WalkColor() => ModeColors.For(TransitMode.Walking).WithAlpha(0.5f);
+	private static Color WalkColor() => ModeColors.For(TransitMode.Walk).WithAlpha(0.5f);
 
 	private static string TimeOf(DateTimeOffset? time) => time is { } value ? Format.Time(value) : Dash;
 

@@ -43,28 +43,26 @@
 		RowSpacing="{StaticResource SpaceM}">
 
 		<!--  Query  -->
-		<Border
+		<Grid
 			Grid.Row="0"
-			Padding="12,4"
-			StyleClass="Card">
-			<Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource SpaceS}">
-				<Entry
-					x:Name="QueryEntry"
-					Grid.Column="0"
-					ClearButtonVisibility="WhileEditing"
-					Placeholder="Station, stop or address"
-					ReturnType="Search"
-					SemanticProperties.Description="Search for a place"
-					Text="{Binding Query}" />
-				<ActivityIndicator
-					Grid.Column="1"
-					HeightRequest="20"
-					IsRunning="{Binding IsSearching}"
-					IsVisible="{Binding IsSearching}"
-					VerticalOptions="Center"
-					WidthRequest="20" />
-			</Grid>
-		</Border>
+			ColumnDefinitions="*,Auto"
+			ColumnSpacing="{StaticResource SpaceS}">
+			<Entry
+				x:Name="QueryEntry"
+				Grid.Column="0"
+				ClearButtonVisibility="WhileEditing"
+				Placeholder="Station, stop or address"
+				ReturnType="Search"
+				SemanticProperties.Description="Search for a place"
+				Text="{Binding Query}" />
+			<ActivityIndicator
+				Grid.Column="1"
+				HeightRequest="20"
+				IsRunning="{Binding IsSearching}"
+				IsVisible="{Binding IsSearching}"
+				VerticalOptions="Center"
+				WidthRequest="20" />
+		</Grid>
 
 		<ScrollView Grid.Row="1">
 			<VerticalStackLayout Spacing="{StaticResource SpaceM}">

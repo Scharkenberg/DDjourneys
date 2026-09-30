@@ -71,7 +71,7 @@ public enum TransitMode
 {
 	Unknown = 0,
 
-	Walking,
+	Walk,
 
 	Bus,
 

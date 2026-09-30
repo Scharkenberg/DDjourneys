@@ -17,7 +17,7 @@ public static class ModeColors
 			TransitMode.SuburbanRail => "ModeSuburban",
 			TransitMode.Ferry => "ModeFerry",
 			TransitMode.CableCar => "ModeCableCar",
-			TransitMode.Walking => "ModeWalk",
+			TransitMode.Walk => "ModeWalk",
 			_ => "ModeTrain"
 		};
 
@@ -35,11 +35,11 @@ public sealed class JourneyCardModel
 		ArgumentNullException.ThrowIfNull(journey);
 		Journey = journey;
 
-		JourneyLeg? firstRide = journey.Legs.FirstOrDefault(l => l.Mode != TransitMode.Walking);
-		JourneyLeg? lastRide = journey.Legs.LastOrDefault(l => l.Mode != TransitMode.Walking);
+		JourneyLeg? firstRide = journey.Legs.FirstOrDefault(l => l.Mode != TransitMode.Walk);
+		JourneyLeg? lastRide = journey.Legs.LastOrDefault(l => l.Mode != TransitMode.Walk);
 
-		DepartureTime = Format.Time(journey.Departure);
-		ArrivalTime = Format.Time(journey.Arrival);
+		DepartureTime = Format.Time(journey.Departure ?? default);
+		ArrivalTime = Format.Time(journey.Arrival ?? default);
 		DurationText = Format.Duration(journey.Duration);
 
 		// Delays come from the rides: walking legs carry no realtime data.
@@ -55,8 +55,8 @@ public sealed class JourneyCardModel
 
 		Chips = journey.Legs
 			.Select(leg => new LegChip(
-				leg.Mode == TransitMode.Walking
-					? $"Walk {Format.Duration(leg.EffectiveArrival - leg.EffectiveDeparture)}"
+				leg.Mode == TransitMode.Walk
+					? $"Walk {Format.Duration((leg.EffectiveArrival ?? default) - (leg.EffectiveDeparture ?? default))}"
 					: leg.Line?.Name ?? leg.Mode.ToString(),
 				ModeColors.For(leg.Mode)))
 			.ToList();

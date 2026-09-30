@@ -52,18 +52,18 @@ public sealed class Journey
 	/// <summary>
 	/// Earliest departure of the journey.
 	/// </summary>
-	public DateTimeOffset Departure =>
-		Legs.Count == 0
-			? default
-			: Legs[0].EffectiveDeparture;
+	public DateTimeOffset? Departure =>
+	Legs.Count == 0
+		? null
+		: Legs[0].EffectiveDeparture;
 
 
 	/// <summary>
 	/// Final arrival of the journey.
 	/// </summary>
-	public DateTimeOffset Arrival =>
+	public DateTimeOffset? Arrival =>
 		Legs.Count == 0
-			? default
+			? null
 			: Legs[^1].EffectiveArrival;
 
 
@@ -71,8 +71,15 @@ public sealed class Journey
 	/// Total journey duration.
 	/// </summary>
 	public TimeSpan Duration =>
-		Arrival - Departure;
+	PlannedDuration
+	?? (Departure.HasValue && Arrival.HasValue
+		? Arrival.Value - Departure.Value
+		: TimeSpan.Zero);
 
+	/// <summary>
+	/// Planned journey duration (provider API)
+	/// </summary>
+	public TimeSpan? PlannedDuration { get; init; }
 
 	/// <summary>
 	/// Number of transfers.
@@ -108,6 +115,6 @@ public sealed class Journey
 
 	private static bool IsPublicTransport(JourneyLeg leg)
 	{
-		return leg.Mode != TransitMode.Walking;
+		return leg.Mode != TransitMode.Walk;
 	}
 }

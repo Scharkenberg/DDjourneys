@@ -37,6 +37,31 @@
 		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">24.0</SupportedOSPlatformVersion>
 		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</SupportedOSPlatformVersion>
 		<TargetPlatformMinVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</TargetPlatformMinVersion>
+		<AssemblyTitle>DDjourneys</AssemblyTitle>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net11.0-android|AnyCPU'">
+	  <ApplicationId>dev.Scharkenberg.DDjourneys</ApplicationId>
+	  <ApplicationDisplayVersion>0.2.0</ApplicationDisplayVersion>
+	  <ApplicationVersion>54</ApplicationVersion>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net11.0-windows10.0.26100.0|AnyCPU'">
+	  <ApplicationId>dev.Scharkenberg.DDjourneys</ApplicationId>
+	  <ApplicationDisplayVersion>0.2.0</ApplicationDisplayVersion>
+	  <ApplicationVersion>54</ApplicationVersion>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net11.0-android|AnyCPU'">
+	  <ApplicationId>dev.Scharkenberg.DDjourneys</ApplicationId>
+	  <ApplicationDisplayVersion>0.2.0</ApplicationDisplayVersion>
+	  <ApplicationVersion>54</ApplicationVersion>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net11.0-windows10.0.26100.0|AnyCPU'">
+	  <ApplicationId>dev.Scharkenberg.DDjourneys</ApplicationId>
+	  <ApplicationDisplayVersion>0.2.0</ApplicationDisplayVersion>
+	  <ApplicationVersion>54</ApplicationVersion>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -66,6 +91,5 @@
 	<ItemGroup>
 	  <ProjectReference Include="..\DDjourneys.Core\DDjourneys.Core.csproj" />
 	</ItemGroup>
-
 
 </Project>

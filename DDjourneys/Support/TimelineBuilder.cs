@@ -32,7 +32,7 @@ public static class TimelineBuilder
 		for (int i = 0; i < journey.Legs.Count; i++)
 		{
 			JourneyLeg leg = journey.Legs[i];
-			bool isWalk = leg.Mode == TransitMode.Walking;
+			bool isWalk = leg.Mode == TransitMode.Walk;
 
 			items.Add(isWalk ? new WalkItem(leg) : new RideItem(leg));
 
@@ -52,11 +52,11 @@ public static class TimelineBuilder
 				.Distinct()
 				.ToArray();
 
-			bool isInterchange = !isWalk && next.Mode != TransitMode.Walking;
+			bool isInterchange = !isWalk && next.Mode != TransitMode.Walk;
 
 			if (isInterchange || notes.Length > 0)
 			{
-				TimeSpan wait = next.EffectiveDeparture - leg.EffectiveArrival;
+				TimeSpan wait = (next.EffectiveDeparture ?? default) - (leg.EffectiveArrival ?? default);
 
 				items.Add(new BoundaryItem(
 					leg.To,

@@ -66,7 +66,7 @@ public sealed class JourneyViewModel : ObservableObject, IQueryAttributable
 
 		Summary = new JourneyCardModel(journey);
 		RouteText = $"{journey.From.Name} \u2192 {journey.To.Name}";
-		DayText = journey.Departure.LocalDateTime.ToString("dddd, d MMMM");
+		DayText = journey.Departure?.LocalDateTime.ToString("dddd, d MMMM") ?? string.Empty;
 		Notices = journey.Notices.Distinct().ToList();
 
 		Rows.Clear();
@@ -125,7 +125,7 @@ public sealed class JourneyViewModel : ObservableObject, IQueryAttributable
 		var lines = new List<string>
 		{
 			RouteText,
-			$"{DayText}, {Format.Time(journey.Departure)}\u2013{Format.Time(journey.Arrival)} ({Format.Duration(journey.Duration)})",
+			$"{DayText}, {Format.Time(journey.Departure ?? default)}\u2013{Format.Time(journey.Arrival ?? default)} ({Format.Duration(journey.Duration)})",
 			string.Empty
 		};
 
@@ -134,12 +134,12 @@ public sealed class JourneyViewModel : ObservableObject, IQueryAttributable
 			switch (item)
 			{
 				case RideItem r:
-					lines.Add($"{Format.Time(r.Leg.EffectiveDeparture)} {r.Leg.Line?.ToString() ?? r.Leg.Mode.ToString()}: "
-						+ $"{r.Leg.From.Name} \u2192 {r.Leg.To.Name} ({Format.Time(r.Leg.EffectiveArrival)})");
+					lines.Add($"{Format.Time(r.Leg.EffectiveDeparture ?? default)} {r.Leg.Line?.ToString() ?? r.Leg.Mode.ToString()}: "
+						+ $"{r.Leg.From.Name} \u2192 {r.Leg.To.Name} ({Format.Time(r.Leg.EffectiveArrival ?? default)})");
 					break;
 
 				case WalkItem w:
-					lines.Add($"Walk {Format.Duration(w.Leg.EffectiveArrival - w.Leg.EffectiveDeparture)} to {w.Leg.To.Name}");
+					lines.Add($"Walk {Format.Duration((w.Leg.EffectiveArrival ?? default) - (w.Leg.EffectiveDeparture ?? default))} to {w.Leg.To.Name}");
 					break;
 			}
 		}

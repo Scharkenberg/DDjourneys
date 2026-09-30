@@ -50,7 +50,7 @@ public sealed class JourneyLeg
 	/// <summary>
 	/// Scheduled departure time.
 	/// </summary>
-	public DateTimeOffset ScheduledDeparture { get; init; }
+	public DateTimeOffset? ScheduledDeparture { get; init; }
 
 	/// <summary>
 	/// Realtime departure time.
@@ -62,7 +62,7 @@ public sealed class JourneyLeg
 	/// <summary>
 	/// Scheduled arrival time.
 	/// </summary>
-	public DateTimeOffset ScheduledArrival { get; init; }
+	public DateTimeOffset? ScheduledArrival { get; init; }
 
 	/// <summary>
 	/// Realtime arrival time.
@@ -98,17 +98,33 @@ public sealed class JourneyLeg
 
 
 	/// <summary>
-	/// Gets the effective departure time.
+	/// Effective departure time using realtime data when available.
 	/// </summary>
-	public DateTimeOffset EffectiveDeparture =>
-		RealtimeDeparture ?? ScheduledDeparture;
+	public DateTimeOffset? EffectiveDeparture
+	{
+		get
+		{
+			return RealtimeDeparture
+				?? (ScheduledDeparture != default
+					? ScheduledDeparture
+					: null);
+		}
+	}
 
 
 	/// <summary>
-	/// Gets the effective arrival time.
+	/// Effective arrival time using realtime data when available.
 	/// </summary>
-	public DateTimeOffset EffectiveArrival =>
-		RealtimeArrival ?? ScheduledArrival;
+	public DateTimeOffset? EffectiveArrival
+	{
+		get
+		{
+			return RealtimeArrival
+				?? (ScheduledArrival != default
+					? ScheduledArrival
+					: null);
+		}
+	}
 
 
 	/// <summary>
