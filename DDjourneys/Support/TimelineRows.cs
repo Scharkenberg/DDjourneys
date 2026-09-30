@@ -97,7 +97,8 @@ public sealed class InterchangeRow : TimelineRow
 	public required string Name { get; init; }
 	public string? ContinuesFrom { get; init; }
 	public string? PlatformText { get; init; }
-	public required string WaitText { get; init; }
+	public string? WaitText { get; init; }
+	public bool HasWait => WaitText is not null;
 	public required Color NodeColor { get; init; }
 
 	public bool HasArrivalDelay => ArrivalDelay is not null;
@@ -274,7 +275,7 @@ public static class TimelineRowFactory
 				Name = from.To.Name,
 				ContinuesFrom = from.To.Name == to.From.Name ? null : $"continue from {to.From.Name}",
 				PlatformText = PlatformPair(from.ArrivalPlatform, to.DeparturePlatform),
-				WaitText = $"{Format.Duration(boundary.Wait)} to change",
+				WaitText = boundary.ShowWait ? $"{Format.Duration(boundary.Wait)} to change" : null,
 				NodeColor = ModeColors.For(to.Mode),
 				RailTop = ModeColors.For(from.Mode),
 				RailBottom = ModeColors.For(to.Mode),

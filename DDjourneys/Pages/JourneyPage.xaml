@@ -288,6 +288,7 @@
 					<Border
 						Margin="0,2,0,0"
 						HorizontalOptions="Start"
+						IsVisible="{Binding HasWait}"
 						StyleClass="Chip">
 						<Label StyleClass="Caption" Text="{Binding WaitText}" />
 					</Border>

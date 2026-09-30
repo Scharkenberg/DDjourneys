@@ -15,7 +15,8 @@ public sealed record WalkItem(JourneyLeg Leg) : TimelineItem;
 public sealed record BoundaryItem(
 	Station At,
 	TimeSpan Wait,
-	IReadOnlyList<string> Notes) : TimelineItem;
+	IReadOnlyList<string> Notes,
+	bool ShowWait) : TimelineItem;
 
 /// <summary>
 /// Turns a provider-neutral Journey into a flat, display-ready list.
@@ -45,23 +46,38 @@ public static class TimelineBuilder
 
 			// ASSUMPTION: a provider message belongs to the boundary whose
 			// station ID it carries. Verify against captured VVO responses.
-			string[] notes = journey.Transfers
-				.Where(t => t.Location.Id == leg.To.Id
-						 || t.Location.Id == next.From.Id)
+			var transfers = journey.Transfers
+	.Where(t =>
+		t.Location.Id == leg.To.Id
+		|| t.Location.Id == next.From.Id)
+	.ToArray();
+
+			string[] notes = transfers
 				.SelectMany(t => t.Notices)
 				.Distinct()
 				.ToArray();
 
-			bool isInterchange = !isWalk && next.Mode != TransitMode.Walk;
+			bool isWalkingTransfer =
+				transfers.Any(t => t.Kind == TransferKind.Walk);
+
+			bool isInterchange =
+				!isWalk
+				&& next.Mode != TransitMode.Walk
+				&& !isWalkingTransfer;
 
 			if (isInterchange || notes.Length > 0)
 			{
-				TimeSpan wait = (next.EffectiveDeparture ?? default) - (leg.EffectiveArrival ?? default);
+				TimeSpan wait =
+					(next.EffectiveDeparture ?? default)
+					- (leg.EffectiveArrival ?? default);
 
 				items.Add(new BoundaryItem(
 					leg.To,
-					wait < TimeSpan.Zero ? TimeSpan.Zero : wait,
-					notes));
+					wait < TimeSpan.Zero
+						? TimeSpan.Zero
+						: wait,
+					notes,
+					ShowWait: !isWalkingTransfer));
 			}
 		}
 
