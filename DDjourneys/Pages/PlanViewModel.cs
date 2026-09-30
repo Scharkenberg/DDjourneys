@@ -26,7 +26,7 @@ public sealed partial class PlanViewModel : ObservableObject
 		ArgumentNullException.ThrowIfNull(settings);
 		_store = store;
 		_settings = settings;
-		_store.Changed += (_, _) => RefreshPlaces();
+		_store.Changed += OnStoreChanged;
 
 		PickFromCommand = new Command(async () => await SafeAsync(() => PickAsync(true)));
 		PickToCommand = new Command(async () => await SafeAsync(() => PickAsync(false)));
@@ -52,6 +52,11 @@ public sealed partial class PlanViewModel : ObservableObject
 	public Func<bool, Task>? OpenPlaceSearch { get; set; }
 	public Func<JourneyQuery, Task>? OpenResults { get; set; }
 	public Func<string, Task>? ShowError { get; set; }
+
+	private void OnStoreChanged(object? sender, EventArgs e)
+	{
+		MainThread.BeginInvokeOnMainThread(RefreshPlaces);
+	}
 
 	public Command PickFromCommand { get; }
 	public Command PickToCommand { get; }
@@ -244,7 +249,8 @@ public sealed partial class PlanViewModel : ObservableObject
 			To = To,
 			DateTime = IsNow ? DateTimeOffset.Now : Format.ToOffset(target),
 			SearchMode = IsArrival ? JourneySearchMode.Arrival : JourneySearchMode.Departure,
-			MaxResults = _settings.MaxResults
+			MaxResults = _settings.MaxResults,
+			TimeoutSeconds = _settings.TimeoutSeconds
 		};
 	}
 

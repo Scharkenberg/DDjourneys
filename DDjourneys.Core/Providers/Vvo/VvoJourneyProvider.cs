@@ -62,7 +62,8 @@ public sealed class VvoJourneyProvider : IJourneyProvider
 			var response =
 				await _apiClient.GetTripsAsync(
 					request,
-					cancellationToken)
+					cancellationToken,
+					TimeSpan.FromSeconds(Math.Clamp(query.TimeoutSeconds, 5, 60)))
 				.ConfigureAwait(false);
 
 
@@ -71,22 +72,6 @@ public sealed class VvoJourneyProvider : IJourneyProvider
 				return JourneyResult.Failure(
 					"The VVO provider returned no response.");
 			}
-
-			System.Diagnostics.Debug.WriteLine(
-				$"VVO routes: {response.Routes.Count}");
-
-			foreach (var route in response.Routes)
-			{
-				System.Diagnostics.Debug.WriteLine(
-					$"Partial routes: {route.PartialRoutes.Count}");
-
-				foreach (var partial in route.PartialRoutes)
-				{
-					System.Diagnostics.Debug.WriteLine(
-						$"Stops: {partial.RegularStops.Count}");
-				}
-			}
-
 
 			if (response.Routes.Count == 0)
 			{
@@ -106,10 +91,15 @@ public sealed class VvoJourneyProvider : IJourneyProvider
 		{
 			throw;
 		}
-		catch (Exception ex)
+		catch (DDjourneys.Core.Api.ApiException ex)
 		{
 			return JourneyResult.Failure(
-				$"VVO journey search failed: {ex.Message}");
+				ex.Message);
+		}
+		catch (Exception ex)
+		{
+			System.Diagnostics.Debug.WriteLine($"VVO journey mapping failed: {ex}");
+			return JourneyResult.Failure("The timetable service returned data that could not be read.");
 		}
 	}
 }

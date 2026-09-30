@@ -22,18 +22,21 @@ public sealed class PlaceSearchViewModel : ObservableObject, IQueryAttributable
 
 	private readonly LocationService _locations;
 	private readonly PlaceStore _store;
+	private readonly AppSettings _settings;
 
 	private CancellationTokenSource? _search;
 	private bool _targetIsFrom;
 	private bool _isNavigating;
 
-	public PlaceSearchViewModel(LocationService locations, PlaceStore store)
+	public PlaceSearchViewModel(LocationService locations, PlaceStore store, AppSettings settings)
 	{
 		ArgumentNullException.ThrowIfNull(locations);
 		ArgumentNullException.ThrowIfNull(store);
+		ArgumentNullException.ThrowIfNull(settings);
 
 		_locations = locations;
 		_store = store;
+		_settings = settings;
 
 		SelectPlaceCommand = new Command<Location>(async place => await SelectPlaceAsync(place));
 
@@ -89,13 +92,18 @@ public sealed class PlaceSearchViewModel : ObservableObject, IQueryAttributable
 
 	private void OnQueryChanged()
 	{
-		_search?.Cancel();
+		CancellationTokenSource? previous = _search;
+		if (previous is not null)
+		{
+			previous.Cancel();
+			_ = DisposeWhenFinishedAsync(previous);
+		}
+		_search = null;
 
 		string text = Query.Trim();
 
 		if (text.Length < MinQueryLength)
 		{
-			_search = null;
 			IsSearching = false;
 			Results.Clear();
 
@@ -110,8 +118,16 @@ public sealed class PlaceSearchViewModel : ObservableObject, IQueryAttributable
 		}
 
 		var cts = _search = new CancellationTokenSource();
+		Results.Clear();
 		RefreshState();
 		_ = SearchAsync(text, cts);
+	}
+
+	private static async Task DisposeWhenFinishedAsync(CancellationTokenSource source)
+	{
+		try { await source.CancelAsync(); }
+		catch (ObjectDisposedException) { }
+		finally { source.Dispose(); }
 	}
 
 	/// <summary>
@@ -128,18 +144,20 @@ public sealed class PlaceSearchViewModel : ObservableObject, IQueryAttributable
 
 			IsSearching = true;
 
-			var found = await _locations.SearchAsync(text, token);
+			var found = await _locations.SearchAsync(text, token, TimeSpan.FromSeconds(_settings.TimeoutSeconds));
 
 			token.ThrowIfCancellationRequested();
 
-			Results.Clear();
-
-			foreach (Location place in found)
+			var rows = found.Select(static place => new PlaceRow(place)).ToArray();
+			MainThread.BeginInvokeOnMainThread(() =>
 			{
-				Results.Add(new PlaceRow(place));
-			}
-
-			Message = Results.Count == 0 ? "No places found." : string.Empty;
+				if (!token.IsCancellationRequested && ReferenceEquals(_search, cts))
+				{
+					Results.Clear();
+					foreach (PlaceRow row in rows) Results.Add(row);
+					Message = Results.Count == 0 ? "No places found." : string.Empty;
+				}
+			});
 		}
 		catch (OperationCanceledException) when (token.IsCancellationRequested)
 		{
@@ -151,8 +169,11 @@ public sealed class PlaceSearchViewModel : ObservableObject, IQueryAttributable
 			// Includes HTTP timeouts (TaskCanceledException without our token).
 			Debug.WriteLine($"Place search failed: {ex}");
 
-			Results.Clear();
-			Message = "Could not reach the timetable service. Check your connection.";
+			if (ReferenceEquals(_search, cts))
+			{
+				Results.Clear();
+				Message = "Could not reach the timetable service. Check your connection.";
+			}
 		}
 		finally
 		{
@@ -160,6 +181,7 @@ public sealed class PlaceSearchViewModel : ObservableObject, IQueryAttributable
 			{
 				IsSearching = false;
 				RefreshState();
+				cts.Dispose();
 			}
 		}
 	}

@@ -40,6 +40,10 @@ public sealed class JourneyQuery
 	/// </summary>
 	public int MaxResults { get; init; }
 		= 5;
+
+	/// <summary>Maximum duration of a provider request, in seconds.</summary>
+	public int TimeoutSeconds { get; init; } = 15;
+
 }
 
 

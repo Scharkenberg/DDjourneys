@@ -26,10 +26,12 @@ public sealed class LocationService
 	/// </summary>
 	public Task<IReadOnlyList<Location>> SearchAsync(
 	string query,
-	CancellationToken cancellationToken = default)
+	CancellationToken cancellationToken = default,
+	TimeSpan? timeout = null)
 	{
 		return _provider.SearchAsync(
 			query,
-			cancellationToken);
+			cancellationToken,
+			timeout);
 	}
 }

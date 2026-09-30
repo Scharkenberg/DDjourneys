@@ -86,6 +86,9 @@ public sealed class ResultsViewModel : ObservableObject, IQueryAttributable
 
 		_load?.Cancel();
 		var cts = _load = new CancellationTokenSource();
+		// The previous query may have partially populated this list. Clear at the start
+		// so refresh and navigation never present results for a different request.
+		Items.Clear();
 
 		IsRefreshing = true;
 		StatusText = string.Empty;
@@ -125,7 +128,6 @@ public sealed class ResultsViewModel : ObservableObject, IQueryAttributable
 
 			if (!cts.IsCancellationRequested)
 			{
-				Items.Clear();
 				StatusText = "Could not reach the timetable service. Pull down to try again.";
 			}
 		}
@@ -134,6 +136,7 @@ public sealed class ResultsViewModel : ObservableObject, IQueryAttributable
 			if (ReferenceEquals(_load, cts))
 			{
 				IsRefreshing = false;
+				cts.Dispose();
 			}
 		}
 	}

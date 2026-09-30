@@ -13,5 +13,6 @@ public interface ILocationProvider
 	/// </summary>
 	Task<IReadOnlyList<Location>> SearchAsync(
 		string query,
-		CancellationToken cancellationToken = default);
+		CancellationToken cancellationToken = default,
+		TimeSpan? timeout = null);
 }

@@ -3,6 +3,7 @@ using DDjourneys.Core.Providers.Vvo.Models;
 using DDjourneys.Core.Providers.Vvo.Requests;
 using DDjourneys.Core.Api;
 using DDjourneys.Core.Providers.Vvo.Serialization;
+using DDjourneys.Core.Providers.Vvo.Extensions;
 
 namespace DDjourneys.Core.Providers.Vvo;
 
@@ -20,8 +21,7 @@ public sealed class VvoApiClient
 	private readonly JsonSerializerOptions _jsonOptions;
 
 
-	public VvoApiClient(
-		ApiClient apiClient)
+	public VvoApiClient(ApiClient apiClient)
 	{
 		ArgumentNullException.ThrowIfNull(apiClient);
 
@@ -46,7 +46,8 @@ public sealed class VvoApiClient
 	/// </summary>
 	public async Task<VvoPointResponse?> FindPointsAsync(
 		string query,
-		CancellationToken cancellationToken = default)
+		CancellationToken cancellationToken = default,
+		TimeSpan? timeout = null)
 	{
 		ArgumentException.ThrowIfNullOrWhiteSpace(query);
 
@@ -58,13 +59,16 @@ public sealed class VvoApiClient
 		string json =
 			await _apiClient.GetAsync(
 				requestUri,
-				cancellationToken)
+				cancellationToken,
+				timeout)
 			.ConfigureAwait(false);
 
 
-		return JsonSerializer.Deserialize<VvoPointResponse>(
+		VvoPointResponse? response = JsonSerializer.Deserialize<VvoPointResponse>(
 			json,
 			_jsonOptions);
+		EnsureProviderSuccess(response?.Status);
+		return response;
 	}
 
 
@@ -73,7 +77,8 @@ public sealed class VvoApiClient
 	/// </summary>
 	public async Task<VvoTripResponse?> GetTripsAsync(
 		VvoTripRequest request,
-		CancellationToken cancellationToken = default)
+		CancellationToken cancellationToken = default,
+		TimeSpan? timeout = null)
 	{
 		ArgumentNullException.ThrowIfNull(request);
 
@@ -92,15 +97,24 @@ public sealed class VvoApiClient
 			await _apiClient.PostJsonAsync(
 				requestUri,
 				jsonRequest,
-				cancellationToken)
+				cancellationToken,
+				timeout)
 			.ConfigureAwait(false);
 
 
-		System.Diagnostics.Debug.WriteLine(jsonResponse);
-
-
-		return JsonSerializer.Deserialize<VvoTripResponse>(
+		VvoTripResponse? response = JsonSerializer.Deserialize<VvoTripResponse>(
 			jsonResponse,
 			_jsonOptions);
+		EnsureProviderSuccess(response?.Status);
+		return response;
+	}
+
+	private static void EnsureProviderSuccess(VvoStatus? status)
+	{
+		if (status is null || status.IsSuccess() || status.IsNoData()) return;
+		string? message = status.Message;
+		if (string.IsNullOrWhiteSpace(message)) message = "The VVO service rejected the request.";
+		bool transient = status.IsServerError() || status.Code?.Contains("Server", StringComparison.OrdinalIgnoreCase) == true;
+		throw new ApiException(message, isTransient: transient);
 	}
 }

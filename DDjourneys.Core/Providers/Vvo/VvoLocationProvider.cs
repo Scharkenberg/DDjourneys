@@ -25,7 +25,8 @@ public sealed class VvoLocationProvider : ILocationProvider
 	/// <inheritdoc />
 	public async Task<IReadOnlyList<Location>> SearchAsync(
 		string query,
-		CancellationToken cancellationToken = default)
+		CancellationToken cancellationToken = default,
+		TimeSpan? timeout = null)
 	{
 		ArgumentException.ThrowIfNullOrWhiteSpace(query);
 
@@ -33,7 +34,8 @@ public sealed class VvoLocationProvider : ILocationProvider
 		VvoPointResponse? response =
 			await _apiClient.FindPointsAsync(
 				query,
-				cancellationToken)
+				cancellationToken,
+				timeout)
 			.ConfigureAwait(false);
 
 
@@ -41,9 +43,11 @@ public sealed class VvoLocationProvider : ILocationProvider
 		{
 			return Array.Empty<Location>();
 		}
+		cancellationToken.ThrowIfCancellationRequested();
 
 
 		return response.Points
+			.Where(point => !string.IsNullOrWhiteSpace(point.Id) && !string.IsNullOrWhiteSpace(point.Name))
 			.Select(Map)
 			.ToArray();
 	}
