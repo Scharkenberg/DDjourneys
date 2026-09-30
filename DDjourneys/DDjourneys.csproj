@@ -42,26 +42,26 @@
 
 	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net11.0-android|AnyCPU'">
 	  <ApplicationId>dev.Scharkenberg.DDjourneys</ApplicationId>
-	  <ApplicationDisplayVersion>0.2.0</ApplicationDisplayVersion>
-	  <ApplicationVersion>54</ApplicationVersion>
+	  <ApplicationDisplayVersion>0.3.0</ApplicationDisplayVersion>
+	  <ApplicationVersion>25</ApplicationVersion>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net11.0-windows10.0.26100.0|AnyCPU'">
 	  <ApplicationId>dev.Scharkenberg.DDjourneys</ApplicationId>
-	  <ApplicationDisplayVersion>0.2.0</ApplicationDisplayVersion>
-	  <ApplicationVersion>54</ApplicationVersion>
+	  <ApplicationDisplayVersion>0.3.0</ApplicationDisplayVersion>
+	  <ApplicationVersion>25</ApplicationVersion>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net11.0-android|AnyCPU'">
 	  <ApplicationId>dev.Scharkenberg.DDjourneys</ApplicationId>
-	  <ApplicationDisplayVersion>0.2.0</ApplicationDisplayVersion>
-	  <ApplicationVersion>54</ApplicationVersion>
+	  <ApplicationDisplayVersion>0.3.0</ApplicationDisplayVersion>
+	  <ApplicationVersion>25</ApplicationVersion>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net11.0-windows10.0.26100.0|AnyCPU'">
 	  <ApplicationId>dev.Scharkenberg.DDjourneys</ApplicationId>
-	  <ApplicationDisplayVersion>0.2.0</ApplicationDisplayVersion>
-	  <ApplicationVersion>54</ApplicationVersion>
+	  <ApplicationDisplayVersion>0.3.0</ApplicationDisplayVersion>
+	  <ApplicationVersion>25</ApplicationVersion>
 	</PropertyGroup>
 
   <ItemGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net11.0-android|AnyCPU'">

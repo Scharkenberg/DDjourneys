@@ -2,12 +2,6 @@
 
 /// <summary>
 /// Represents a passenger-visible public transport service.
-/// 
-/// Examples:
-/// Tram 3
-/// Bus 66
-/// S-Bahn S1
-/// Regional train RE50
 /// </summary>
 public sealed class TransitLine
 {
@@ -54,14 +48,8 @@ public sealed class TransitLine
 	/// </summary>
 	public string? DirectionId { get; init; }
 
-	public override string ToString()
-	{
-		return Mode switch
-		{
-			TransitMode.Unknown => Name,
-			_ => $"{Mode} {Name}"
-		};
-	}
+	public override string ToString() =>
+		Name;
 }
 
 /// <summary>

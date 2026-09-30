@@ -117,8 +117,10 @@ public sealed class ResultsViewModel : ObservableObject, IQueryAttributable
 			&& !ReferenceEquals(_query, journeyQuery))
 		{
 			_query = journeyQuery;
+
 			RouteText =
 				$"{journeyQuery.From.Name} \u2192 {journeyQuery.To.Name}";
+
 			WhenText =
 				DescribeWhen(journeyQuery);
 
@@ -186,8 +188,7 @@ public sealed class ResultsViewModel : ObservableObject, IQueryAttributable
 				HasError = true;
 
 				SetStatus(
-					StatusKind.SearchServiceUnavailable,
-					result.ErrorMessage);
+					StatusKind.SearchServiceUnavailable);
 
 				return;
 			}
@@ -204,6 +205,7 @@ public sealed class ResultsViewModel : ObservableObject, IQueryAttributable
 				catch (Exception ex)
 				{
 					skipped++;
+
 					Debug.WriteLine(
 						$"Journey card failed:\n{ex}");
 				}
@@ -231,6 +233,7 @@ public sealed class ResultsViewModel : ObservableObject, IQueryAttributable
 			{
 				Items.Clear();
 				HasError = true;
+
 				SetStatus(
 					StatusKind.SearchServiceUnavailable);
 			}
@@ -260,7 +263,9 @@ public sealed class ResultsViewModel : ObservableObject, IQueryAttributable
 	{
 		try
 		{
-			ShowError?.Invoke(ex.Message);
+			ShowError?.Invoke(
+				_localization.CurrentStrings.Common
+					.CouldNotOpenJourney);
 		}
 		catch (Exception inner)
 		{
@@ -277,7 +282,8 @@ public sealed class ResultsViewModel : ObservableObject, IQueryAttributable
 		{
 			if (_query is not null)
 			{
-				WhenText = DescribeWhen(_query);
+				WhenText =
+					DescribeWhen(_query);
 			}
 
 			foreach (JourneyCardModel item in Items)
@@ -290,58 +296,39 @@ public sealed class ResultsViewModel : ObservableObject, IQueryAttributable
 	}
 
 	private void SetStatus(
-		StatusKind kind,
-		string? customText = null)
+		StatusKind kind)
 	{
 		_statusKind = kind;
 
-		StatusText = customText
-			?? kind switch
-			{
-				StatusKind.NoConnections =>
-					_localization.CurrentStrings.Results
-						.NoConnections,
-
-				StatusKind.JourneysCouldNotBeDisplayed =>
-					_localization.CurrentStrings.Results
-						.JourneysCouldNotBeDisplayed,
-
-				StatusKind.SearchServiceUnavailable =>
-					_localization.CurrentStrings.Results
-						.SearchServiceUnavailable,
-
-				_ =>
-					string.Empty
-			};
+		StatusText =
+			GetStatusText(kind);
 	}
 
 	private void RefreshStatusText()
 	{
-		if (_statusKind == StatusKind.None)
-		{
-			StatusText = string.Empty;
-			return;
-		}
-
 		StatusText =
-			_statusKind switch
-			{
-				StatusKind.NoConnections =>
-					_localization.CurrentStrings.Results
-						.NoConnections,
-
-				StatusKind.JourneysCouldNotBeDisplayed =>
-					_localization.CurrentStrings.Results
-						.JourneysCouldNotBeDisplayed,
-
-				StatusKind.SearchServiceUnavailable =>
-					_localization.CurrentStrings.Results
-						.SearchServiceUnavailable,
-
-				_ =>
-					string.Empty
-			};
+			GetStatusText(_statusKind);
 	}
+
+	private string GetStatusText(
+		StatusKind kind) =>
+		kind switch
+		{
+			StatusKind.NoConnections =>
+				_localization.CurrentStrings.Results
+					.NoConnections,
+
+			StatusKind.JourneysCouldNotBeDisplayed =>
+				_localization.CurrentStrings.Results
+					.JourneysCouldNotBeDisplayed,
+
+			StatusKind.SearchServiceUnavailable =>
+				_localization.CurrentStrings.Results
+					.SearchServiceUnavailable,
+
+			_ =>
+				string.Empty
+		};
 
 	private string DescribeWhen(JourneyQuery query)
 	{
@@ -358,7 +345,9 @@ public sealed class ResultsViewModel : ObservableObject, IQueryAttributable
 
 		return
 			$"{mode} " +
-			$"{wall.ToString("HH:mm", CultureInfo.CurrentCulture)}, " +
+			$"{wall.ToString(
+				"HH:mm",
+				CultureInfo.CurrentCulture)}, " +
 			day;
 	}
 }

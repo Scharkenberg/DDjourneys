@@ -22,7 +22,6 @@ public sealed class JourneyService
 {
 	private readonly IEnumerable<IJourneyProvider> _providers;
 
-
 	/// <summary>
 	/// Creates a new journey service.
 	/// </summary>
@@ -34,18 +33,16 @@ public sealed class JourneyService
 		_providers = providers;
 	}
 
-
 	/// <summary>
 	/// Searches for journeys matching the supplied query.
 	/// </summary>
 	public async Task<JourneyResult> SearchAsync(
-	JourneyQuery query,
-	CancellationToken cancellationToken = default)
+		JourneyQuery query,
+		CancellationToken cancellationToken = default)
 	{
 		ArgumentNullException.ThrowIfNull(query);
 
 		JourneyResult? lastFailure = null;
-
 
 		foreach (IJourneyProvider provider in _providers)
 		{
@@ -55,19 +52,16 @@ public sealed class JourneyService
 					cancellationToken)
 				.ConfigureAwait(false);
 
-
 			if (result.IsSuccessful)
 			{
 				return result;
 			}
 
-
 			lastFailure = result;
 		}
 
-
 		return lastFailure
 			?? JourneyResult.Failure(
-				"No journey providers are registered.");
+				"journey_no_providers");
 	}
 }

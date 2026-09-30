@@ -1,9 +1,9 @@
 ﻿using System.Text.Json;
+using DDjourneys.Core.Api;
+using DDjourneys.Core.Providers.Vvo.Extensions;
 using DDjourneys.Core.Providers.Vvo.Models;
 using DDjourneys.Core.Providers.Vvo.Requests;
-using DDjourneys.Core.Api;
 using DDjourneys.Core.Providers.Vvo.Serialization;
-using DDjourneys.Core.Providers.Vvo.Extensions;
 
 namespace DDjourneys.Core.Providers.Vvo;
 
@@ -15,11 +15,8 @@ public sealed class VvoApiClient
 	private const string BaseUrl =
 		"https://webapi.vvo-online.de";
 
-
 	private readonly ApiClient _apiClient;
-
 	private readonly JsonSerializerOptions _jsonOptions;
-
 
 	public VvoApiClient(ApiClient apiClient)
 	{
@@ -27,19 +24,20 @@ public sealed class VvoApiClient
 
 		_apiClient = apiClient;
 
-		_jsonOptions = new JsonSerializerOptions
-		{
-			PropertyNameCaseInsensitive = true,
+		_jsonOptions =
+			new JsonSerializerOptions
+			{
+				PropertyNameCaseInsensitive = true,
 
-			DefaultIgnoreCondition =
-				System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
-		};
-
+				DefaultIgnoreCondition =
+					System.Text.Json.Serialization
+						.JsonIgnoreCondition
+						.WhenWritingNull
+			};
 
 		_jsonOptions.Converters.Add(
 			new VvoDateTimeOffsetConverter());
 	}
-
 
 	/// <summary>
 	/// Searches for locations using VVO PointFinder.
@@ -51,26 +49,30 @@ public sealed class VvoApiClient
 	{
 		ArgumentException.ThrowIfNullOrWhiteSpace(query);
 
-
-		string requestUri =	$"{BaseUrl}/tr/pointfinder" + $"?query={Uri.EscapeDataString(query)}" +
-			"&stopsOnly=true" +	"&limit=30" + "&format=json";
-
+		string requestUri =
+			$"{BaseUrl}/tr/pointfinder" +
+			$"?query={Uri.EscapeDataString(query)}" +
+			"&stopsOnly=true" +
+			"&limit=30" +
+			"&format=json";
 
 		string json =
 			await _apiClient.GetAsync(
 				requestUri,
 				cancellationToken,
 				timeout)
-			.ConfigureAwait(false);
+				.ConfigureAwait(false);
 
+		VvoPointResponse? response =
+			JsonSerializer.Deserialize<VvoPointResponse>(
+				json,
+				_jsonOptions);
 
-		VvoPointResponse? response = JsonSerializer.Deserialize<VvoPointResponse>(
-			json,
-			_jsonOptions);
-		EnsureProviderSuccess(response?.Status);
+		EnsureProviderSuccess(
+			response?.Status);
+
 		return response;
 	}
-
 
 	/// <summary>
 	/// Searches for journeys using the VVO trip planner.
@@ -82,16 +84,13 @@ public sealed class VvoApiClient
 	{
 		ArgumentNullException.ThrowIfNull(request);
 
-
 		const string requestUri =
 			$"{BaseUrl}/tr/trips";
-
 
 		string jsonRequest =
 			JsonSerializer.Serialize(
 				request,
 				_jsonOptions);
-
 
 		string jsonResponse =
 			await _apiClient.PostJsonAsync(
@@ -99,22 +98,44 @@ public sealed class VvoApiClient
 				jsonRequest,
 				cancellationToken,
 				timeout)
-			.ConfigureAwait(false);
+				.ConfigureAwait(false);
 
+		VvoTripResponse? response =
+			JsonSerializer.Deserialize<VvoTripResponse>(
+				jsonResponse,
+				_jsonOptions);
 
-		VvoTripResponse? response = JsonSerializer.Deserialize<VvoTripResponse>(
-			jsonResponse,
-			_jsonOptions);
-		EnsureProviderSuccess(response?.Status);
+		EnsureProviderSuccess(
+			response?.Status);
+
 		return response;
 	}
 
-	private static void EnsureProviderSuccess(VvoStatus? status)
+	private static void EnsureProviderSuccess(
+		VvoStatus? status)
 	{
-		if (status is null || status.IsSuccess() || status.IsNoData()) return;
+		if (status is null
+			|| status.IsSuccess()
+			|| status.IsNoData())
+		{
+			return;
+		}
+
 		string? message = status.Message;
-		if (string.IsNullOrWhiteSpace(message)) message = "The VVO service rejected the request.";
-		bool transient = status.IsServerError() || status.Code?.Contains("Server", StringComparison.OrdinalIgnoreCase) == true;
-		throw new ApiException(message, isTransient: transient);
+
+		if (string.IsNullOrWhiteSpace(message))
+		{
+			message = null;
+		}
+
+		bool transient =
+			status.IsServerError()
+			|| status.Code?.Contains(
+				"Server",
+				StringComparison.OrdinalIgnoreCase) == true;
+
+		throw new ApiException(
+			message ?? string.Empty,
+			isTransient: transient);
 	}
 }

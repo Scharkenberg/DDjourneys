@@ -127,9 +127,6 @@ public sealed class JourneyViewModel : ObservableObject, IQueryAttributable
 
 	private void BuildLocalizedDisplay(Journey journey)
 	{
-		JourneyStrings strings =
-			_localization.CurrentStrings.Journey;
-
 		Summary =
 			new JourneyCardModel(journey);
 
@@ -191,8 +188,6 @@ public sealed class JourneyViewModel : ObservableObject, IQueryAttributable
 		}
 
 		LoadError = null;
-
-		_ = strings;
 	}
 
 	private void OnLocalizationChanged(
@@ -333,8 +328,8 @@ public sealed class JourneyViewModel : ObservableObject, IQueryAttributable
 				case RideItem ride:
 					{
 						string line =
-							ride.Leg.Line?.ToString()
-							?? ride.Leg.Mode.ToString();
+							ride.Leg.Line?.Name
+							?? Format.TransportMode(ride.Leg.Mode);
 
 						lines.Add(
 							$"{Format.TimeOrDash(ride.Leg.EffectiveDeparture)} " +
@@ -349,7 +344,9 @@ public sealed class JourneyViewModel : ObservableObject, IQueryAttributable
 				case WalkItem walk:
 					lines.Add(
 						$"{strings.Walk} " +
-						$"{Format.Duration(walk.Leg.EffectiveDeparture, walk.Leg.EffectiveArrival)} " +
+						$"{Format.Duration(
+							walk.Leg.EffectiveDeparture,
+							walk.Leg.EffectiveArrival)} " +
 						$"{strings.To} " +
 						walk.Leg.To.Name);
 

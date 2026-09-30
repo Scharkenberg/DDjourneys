@@ -294,7 +294,7 @@ public static class TimelineRowFactory
 			{
 				LineText =
 					leg.Line?.Name
-					?? leg.Mode.ToString(),
+					?? Format.TransportMode(leg.Mode),
 				ModeColor = color,
 				Direction =
 					string.IsNullOrWhiteSpace(
@@ -347,7 +347,7 @@ public static class TimelineRowFactory
 						.ToList(),
 				RailBottom = color,
 				Description =
-					$"{leg.Line?.Name ?? leg.Mode.ToString()}, " +
+					$"{leg.Line?.Name ?? Format.TransportMode(leg.Mode)}, " +
 					Format.Duration(
 						leg.EffectiveDeparture,
 						leg.EffectiveArrival)
@@ -578,22 +578,30 @@ public static class TimelineRowFactory
 		string? departure)
 	{
 		if (string.IsNullOrWhiteSpace(arrival)
-			|| string.IsNullOrWhiteSpace(departure)
-			|| arrival == departure)
+			&& string.IsNullOrWhiteSpace(departure))
 		{
-			return PlatformText(
-				string.IsNullOrWhiteSpace(arrival)
-					? departure
-					: arrival);
+			return null;
 		}
 
-		JourneyStrings strings =
-			LocalizationService.Current.CurrentStrings.Journey;
+		if (string.IsNullOrWhiteSpace(arrival))
+		{
+			return PlatformText(departure);
+		}
 
-		return arrival.Length <= 3
-			&& departure.Length <= 3
-			? $"{strings.Platform} {arrival} \u2192 {departure}"
-			: $"{arrival} \u2192 {departure}";
+		if (string.IsNullOrWhiteSpace(departure))
+		{
+			return PlatformText(arrival);
+		}
+
+		if (string.Equals(
+				arrival,
+				departure,
+				StringComparison.OrdinalIgnoreCase))
+		{
+			return PlatformText(arrival);
+		}
+
+		return $"{PlatformText(arrival)} \u2192 {PlatformText(departure)}";
 	}
 
 	private static string? Features(
@@ -607,25 +615,25 @@ public static class TimelineRowFactory
 		JourneyStrings strings =
 			LocalizationService.Current.CurrentStrings.Journey;
 
-		var features = new List<string>();
+		var values = new List<string>();
 
 		if (info.LowFloor == true)
 		{
-			features.Add(strings.LowFloor);
+			values.Add(strings.LowFloor);
 		}
 
 		if (info.WheelchairAccessible == true)
 		{
-			features.Add(strings.WheelchairAccessible);
+			values.Add(strings.WheelchairAccessible);
 		}
 
 		if (info.BicycleAccessible == true)
 		{
-			features.Add(strings.BicycleAccessible);
+			values.Add(strings.BicycleAccessible);
 		}
 
-		return features.Count == 0
+		return values.Count == 0
 			? null
-			: string.Join(" \u00B7 ", features);
+			: string.Join(" · ", values);
 	}
 }

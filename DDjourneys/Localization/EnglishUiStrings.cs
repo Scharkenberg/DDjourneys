@@ -169,4 +169,19 @@ public sealed class EnglishUiStrings : IUiStrings
 		ResetJourneySettings = "Reset journey settings",
 		VersionPrefix = "DDjourneys {0} ({1})"
 	};
+
+	public TransportStrings Transport { get; } = new()
+	{
+		Walk = "Walk",
+		Bus = "Bus",
+		Tram = "Tram",
+		Subway = "Subway",
+		SuburbanRail = "Suburban rail",
+		RegionalTrain = "Regional train",
+		LongDistanceTrain = "Long-distance train",
+		Ferry = "Ferry",
+		CableCar = "Cable car",
+		Taxi = "Taxi",
+		OnDemand = "On-demand"
+	};
 }

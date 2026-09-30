@@ -181,4 +181,19 @@ public sealed class GermanUiStrings : IUiStrings
 			"Verbindungseinstellungen zurücksetzen",
 		VersionPrefix = "DDjourneys {0} ({1})"
 	};
+
+	public TransportStrings Transport { get; } = new()
+	{
+		Walk = "Zu Fuß",
+		Bus = "Bus",
+		Tram = "Straßenbahn",
+		Subway = "U-Bahn",
+		SuburbanRail = "S-Bahn",
+		RegionalTrain = "Regionalbahn",
+		LongDistanceTrain = "Fernverkehr",
+		Ferry = "Fähre",
+		CableCar = "Seilbahn",
+		Taxi = "Taxi",
+		OnDemand = "On-Demand"
+	};
 }

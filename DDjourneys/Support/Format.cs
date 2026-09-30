@@ -1,10 +1,12 @@
 using System.Globalization;
+using DDjourneys.Core.Models;
 using DDjourneys.Localization;
 
 namespace DDjourneys.Support;
 
 /// <summary>
-/// The single path for every user-visible time and duration string.
+/// The single path for every user-visible time, duration,
+/// delay and transport-mode string.
 /// Timezone handling lives here and nowhere else.
 /// </summary>
 public static class Format
@@ -49,7 +51,7 @@ public static class Format
 
 		if (Zone.IsInvalidTime(local))
 		{
-			local = local.AddHours(1); // spring-forward gap
+			local = local.AddHours(1);
 		}
 
 		TimeSpan offset =
@@ -79,6 +81,54 @@ public static class Format
 			_ => day.ToString(
 				"ddd, d MMM",
 				CultureInfo.CurrentCulture)
+		};
+	}
+
+	/// <summary>
+	/// Returns the localized passenger-visible name of a transport mode.
+	/// </summary>
+	public static string TransportMode(TransitMode mode)
+	{
+		TransportStrings strings =
+			LocalizationService.Current.CurrentStrings.Transport;
+
+		return mode switch
+		{
+			TransitMode.Walk =>
+				strings.Walk,
+
+			TransitMode.Bus =>
+				strings.Bus,
+
+			TransitMode.Tram =>
+				strings.Tram,
+
+			TransitMode.Subway =>
+				strings.Subway,
+
+			TransitMode.SuburbanRail =>
+				strings.SuburbanRail,
+
+			TransitMode.RegionalTrain =>
+				strings.RegionalTrain,
+
+			TransitMode.LongDistanceTrain =>
+				strings.LongDistanceTrain,
+
+			TransitMode.Ferry =>
+				strings.Ferry,
+
+			TransitMode.CableCar =>
+				strings.CableCar,
+
+			TransitMode.Taxi =>
+				strings.Taxi,
+
+			TransitMode.OnDemand =>
+				strings.OnDemand,
+
+			_ =>
+				LocalizationService.Current.CurrentStrings.Common.Unknown
 		};
 	}
 

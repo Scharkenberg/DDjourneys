@@ -12,7 +12,6 @@ public sealed class VvoJourneyProvider : IJourneyProvider
 {
 	private readonly VvoApiClient _apiClient;
 
-
 	public VvoJourneyProvider(
 		VvoApiClient apiClient)
 	{
@@ -21,7 +20,6 @@ public sealed class VvoJourneyProvider : IJourneyProvider
 		_apiClient = apiClient;
 	}
 
-
 	/// <inheritdoc />
 	public async Task<JourneyResult> SearchAsync(
 		JourneyQuery query,
@@ -29,33 +27,26 @@ public sealed class VvoJourneyProvider : IJourneyProvider
 	{
 		ArgumentNullException.ThrowIfNull(query);
 
-
 		if (string.IsNullOrWhiteSpace(query.From.Id))
 		{
 			return JourneyResult.Failure(
-				"Origin does not contain a provider location ID.");
+				"vvo_origin_missing_id");
 		}
-
 
 		if (string.IsNullOrWhiteSpace(query.To.Id))
 		{
 			return JourneyResult.Failure(
-				"Destination does not contain a provider location ID.");
+				"vvo_destination_missing_id");
 		}
-
 
 		var request = new VvoTripRequest
 		{
 			Origin = query.From.Id,
-
 			Destination = query.To.Id,
-
 			Time = query.DateTime,
-
 			IsArrivalTime =
 				query.SearchMode == JourneySearchMode.Arrival
 		};
-
 
 		try
 		{
@@ -63,14 +54,17 @@ public sealed class VvoJourneyProvider : IJourneyProvider
 				await _apiClient.GetTripsAsync(
 					request,
 					cancellationToken,
-					TimeSpan.FromSeconds(Math.Clamp(query.TimeoutSeconds, 5, 60)))
+					TimeSpan.FromSeconds(
+						Math.Clamp(
+							query.TimeoutSeconds,
+							5,
+							60)))
 				.ConfigureAwait(false);
-
 
 			if (response is null)
 			{
 				return JourneyResult.Failure(
-					"The VVO provider returned no response.");
+					"vvo_no_response");
 			}
 
 			if (response.Routes.Count == 0)
@@ -79,10 +73,8 @@ public sealed class VvoJourneyProvider : IJourneyProvider
 					Array.Empty<Journey>());
 			}
 
-
 			var journeys =
 				VvoJourneyMapper.Map(response);
-
 
 			return JourneyResult.Success(
 				journeys);
@@ -98,8 +90,11 @@ public sealed class VvoJourneyProvider : IJourneyProvider
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"VVO journey mapping failed: {ex}");
-			return JourneyResult.Failure("The timetable service returned data that could not be read.");
+			System.Diagnostics.Debug.WriteLine(
+				$"VVO journey mapping failed: {ex}");
+
+			return JourneyResult.Failure(
+				"vvo_response_unreadable");
 		}
 	}
 }

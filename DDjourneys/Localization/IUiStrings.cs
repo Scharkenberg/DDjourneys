@@ -8,6 +8,7 @@ public interface IUiStrings
 	ResultsStrings Results { get; }
 	JourneyStrings Journey { get; }
 	SettingsStrings Settings { get; }
+	TransportStrings Transport { get; }
 }
 
 public sealed class CommonStrings
@@ -160,4 +161,19 @@ public sealed class SettingsStrings
 	public required string ExpandNoticesDescription { get; init; }
 	public required string ResetJourneySettings { get; init; }
 	public required string VersionPrefix { get; init; }
+}
+
+public sealed class TransportStrings
+{
+	public required string Walk { get; init; }
+	public required string Bus { get; init; }
+	public required string Tram { get; init; }
+	public required string Subway { get; init; }
+	public required string SuburbanRail { get; init; }
+	public required string RegionalTrain { get; init; }
+	public required string LongDistanceTrain { get; init; }
+	public required string Ferry { get; init; }
+	public required string CableCar { get; init; }
+	public required string Taxi { get; init; }
+	public required string OnDemand { get; init; }
 }

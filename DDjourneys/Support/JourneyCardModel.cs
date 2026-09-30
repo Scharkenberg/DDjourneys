@@ -1,3 +1,4 @@
+using System.Globalization;
 using DDjourneys.Core.Models;
 using DDjourneys.Localization;
 
@@ -134,37 +135,41 @@ public sealed class JourneyCardModel : ObservableObject
 
 	private void RebuildLocalizedValues(int notices)
 	{
-		JourneyStrings strings = _localization.CurrentStrings.Journey;
+		JourneyStrings strings =
+			_localization.CurrentStrings.Journey;
+
+		_chips = Journey.Legs
+			.Select(
+				leg =>
+					new LegChip(
+						leg.Mode == TransitMode.Walk
+							? string.Format(
+								CultureInfo.CurrentCulture,
+								"{0} {1}",
+								strings.Walk,
+								Format.Duration(
+									leg.EffectiveDeparture,
+									leg.EffectiveArrival))
+							: leg.Line?.Name
+								?? Format.TransportMode(leg.Mode),
+						ModeColors.For(leg.Mode)))
+			.ToList();
 
 		_transfersText = Journey.TransferCount switch
 		{
 			0 => strings.Direct,
 			1 => strings.OneTransfer,
 			int n => string.Format(
-				System.Globalization.CultureInfo.CurrentCulture,
+				CultureInfo.CurrentCulture,
 				strings.MultipleTransfers,
 				n)
 		};
-
-		_chips = Journey.Legs
-			.Select(leg => new LegChip(
-				leg.Mode == TransitMode.Walk
-					? string.Format(
-						System.Globalization.CultureInfo.CurrentCulture,
-						"{0} {1}",
-						strings.Walk,
-						Format.Duration(
-							leg.EffectiveDeparture,
-							leg.EffectiveArrival))
-					: leg.Line?.Name ?? leg.Mode.ToString(),
-				ModeColors.For(leg.Mode)))
-			.ToList();
 
 		_noticesText = notices switch
 		{
 			1 => strings.OneNotice,
 			_ => string.Format(
-				System.Globalization.CultureInfo.CurrentCulture,
+				CultureInfo.CurrentCulture,
 				strings.MultipleNotices,
 				notices)
 		};
@@ -173,7 +178,7 @@ public sealed class JourneyCardModel : ObservableObject
 
 		_accessibilityText =
 			string.Format(
-				System.Globalization.CultureInfo.CurrentCulture,
+				CultureInfo.CurrentCulture,
 				strings.AccessibilitySummary,
 				DepartureTime,
 				ArrivalTime,
@@ -184,13 +189,13 @@ public sealed class JourneyCardModel : ObservableObject
 				: string.Empty)
 			+ (ArrivalDelay is { } late
 				? string.Format(
-					System.Globalization.CultureInfo.CurrentCulture,
+					CultureInfo.CurrentCulture,
 					strings.AccessibilityArrivalDelay,
 					late)
 				: string.Empty)
 			+ (HasNotices
 				? string.Format(
-					System.Globalization.CultureInfo.CurrentCulture,
+					CultureInfo.CurrentCulture,
 					strings.AccessibilityNotices,
 					NoticesText)
 				: string.Empty);
