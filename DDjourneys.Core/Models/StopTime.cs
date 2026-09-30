@@ -1,4 +1,4 @@
-﻿namespace DDjourneys.Core.Models;
+namespace DDjourneys.Core.Models;
 
 /// <summary>
 /// Represents a station visit within a specific journey leg.
@@ -56,6 +56,12 @@ public sealed class StopTime
 	/// Whether this stop has been cancelled.
 	/// </summary>
 	public bool IsCancelled { get; init; }
+
+
+	/// <summary>
+	/// Current occupancy level at this stop.
+	/// </summary>
+	public OccupancyLevel Occupancy { get; init; } = OccupancyLevel.Unknown;
 
 
 	/// <summary>

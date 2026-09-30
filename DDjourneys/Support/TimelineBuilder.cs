@@ -71,15 +71,30 @@ public static class TimelineBuilder
 
 			if (isInterchange || notes.Length > 0)
 			{
+				// Use effective times (realtime if available, otherwise scheduled) to calculate wait
+				// This ensures delays propagate through to footpath/walking times
 				TimeSpan wait =
 					next.EffectiveDeparture is { } departs && leg.EffectiveArrival is { } arrives && departs >= arrives
 						? departs - arrives
 						: TimeSpan.Zero;
 
+				// For footpath legs, calculate walk time from the transfer duration
+				// This ensures delays affect the footpath timing
 				TimeSpan? walk = transfers
 					.Where(t => t.Kind == TransferKind.Walk && t.Duration > TimeSpan.Zero)
 					.Select(t => (TimeSpan?)t.Duration)
 					.Max();
+
+				// If this is a walking connection (footpath) between legs, use the actual
+				// effective times to calculate the walk duration, accounting for delays
+				if (isWalk && next.Mode == TransitMode.Walk && walk is null)
+				{
+					// For consecutive walking legs, calculate walk time from effective times
+					if (leg.EffectiveArrival is { } legArrives && next.EffectiveDeparture is { } nextDeparts)
+					{
+						walk = nextDeparts - legArrives;
+					}
+				}
 
 				items.Add(new BoundaryItem(
 					leg.To,

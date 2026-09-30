@@ -1,4 +1,31 @@
-﻿namespace DDjourneys.Core.Models;
+namespace DDjourneys.Core.Models;
+
+/// <summary>
+/// Represents the occupancy level of a vehicle or stop.
+/// </summary>
+public enum OccupancyLevel
+{
+	/// <summary>Occupancy information is not available.</summary>
+	Unknown = 0,
+
+	/// <summary>Very few passengers, plenty of space.</summary>
+	VeryLow,
+
+	/// <summary>Few passengers, good space available.</summary>
+	Low,
+
+	/// <summary>Moderate number of passengers.</summary>
+	Medium,
+
+	/// <summary>Many passengers, limited space.</summary>
+	High,
+
+	/// <summary>Vehicle is full or nearly full.</summary>
+	Full,
+
+	/// <summary>Vehicle is overloaded, standing room only or no space.</summary>
+	Overloaded
+}
 
 /// <summary>
 /// Represents a physical or operational transport vehicle.
@@ -35,6 +62,39 @@ public sealed class Vehicle
 	/// DVB
 	/// </summary>
 	public string? Operator { get; init; }
+
+	/// <summary>
+	/// Operator code identifier.
+	///
+	/// Examples:
+	/// "8004"
+	/// "LD"
+	/// </summary>
+	public string? OperatorCode { get; init; }
+
+	/// <summary>
+	/// Product name or category.
+	///
+	/// Examples:
+	/// "S-Bahn"
+	/// "Zug"
+	/// </summary>
+	public string? ProductName { get; init; }
+
+	/// <summary>
+	/// VVO data link identifier.
+	/// </summary>
+	public string? DlId { get; init; }
+
+	/// <summary>
+	/// Provider-independent identifier.
+	/// </summary>
+	public string? StatelessId { get; init; }
+
+	/// <summary>
+	/// Current occupancy level of the vehicle.
+	/// </summary>
+	public OccupancyLevel Occupancy { get; init; } = OccupancyLevel.Unknown;
 
 	/// <summary>
 	/// Optional vehicle accessibility information.
