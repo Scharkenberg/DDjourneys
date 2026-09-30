@@ -1,4 +1,4 @@
-﻿namespace DDjourneys.Localization;
+namespace DDjourneys.Localization;
 
 public sealed class EnglishUiStrings : IUiStrings
 {
@@ -35,7 +35,7 @@ public sealed class EnglishUiStrings : IUiStrings
 		ToggleFavouriteFrom = "Toggle favourite for start",
 		ToggleFavouriteTo = "Toggle favourite for destination",
 		SwapDescription = "Swap start and destination",
-		Swap = "⇅",
+		Swap = "\u21c5",
 		SearchJourneys = "Search journeys",
 		Departure = "Leave",
 		Arrival = "Arrive by",
@@ -126,7 +126,15 @@ public sealed class EnglishUiStrings : IUiStrings
 		ShowLessNotice = "Show less of the notice",
 		Warning = "Warning",
 		Notice = "Notice",
-		OnTime = "On time"
+		OnTime = "On time",
+
+		// Occupancy strings
+		OccupancyVeryLow = "Very few passengers",
+		OccupancyLow = "Few passengers",
+		OccupancyMedium = "Moderate",
+		OccupancyHigh = "Many passengers",
+		OccupancyFull = "Full",
+		OccupancyOverloaded = "Overloaded"
 	};
 
 	public SettingsStrings Settings { get; } = new()

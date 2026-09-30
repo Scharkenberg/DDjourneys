@@ -1,4 +1,4 @@
-﻿namespace DDjourneys.Localization;
+namespace DDjourneys.Localization;
 
 public sealed class GermanUiStrings : IUiStrings
 {
@@ -7,8 +7,8 @@ public sealed class GermanUiStrings : IUiStrings
 		Ok = "OK",
 		Cancel = "Abbrechen",
 		Retry = "Erneut versuchen",
-		Close = "Schließen",
-		Loading = "Lädt",
+		Close = "Schlie\u00dfen",
+		Loading = "L\u00e4dt",
 		Searching = "Suche",
 		Today = "Heute",
 		Tomorrow = "Morgen",
@@ -23,7 +23,7 @@ public sealed class GermanUiStrings : IUiStrings
 			"Der Fahrplandienst ist nicht erreichbar.",
 		SomethingWentWrong = "Etwas ist schiefgelaufen.",
 		NavigationError = "Navigationsfehler.",
-		CouldNotOpenJourney = "Verbindung konnte nicht geöffnet werden."
+		CouldNotOpenJourney = "Verbindung konnte nicht ge\u00f6ffnet werden."
 	};
 
 	public PlanStrings Plan { get; } = new()
@@ -31,14 +31,14 @@ public sealed class GermanUiStrings : IUiStrings
 		Title = "Wohin?",
 		FromPlaceholder = "Von",
 		ToPlaceholder = "Nach",
-		ChooseStart = "Start wählen",
-		ChooseDestination = "Ziel wählen",
+		ChooseStart = "Start w\u00e4hlen",
+		ChooseDestination = "Ziel w\u00e4hlen",
 		ToggleFavouriteFrom =
 			"Start als Favorit umschalten",
 		ToggleFavouriteTo =
 			"Ziel als Favorit umschalten",
 		SwapDescription = "Start und Ziel tauschen",
-		Swap = "⇅",
+		Swap = "\u21c5",
 		SearchJourneys = "Verbindungen suchen",
 		Departure = "Abfahrt",
 		Arrival = "Ankunft bis",
@@ -55,7 +55,7 @@ public sealed class GermanUiStrings : IUiStrings
 
 	public PlaceSearchStrings PlaceSearch { get; } = new()
 	{
-		Title = "Ort wählen",
+		Title = "Ort w\u00e4hlen",
 		SearchPlaceholder =
 			"Bahnhof, Haltestelle oder Adresse",
 		Hint =
@@ -65,7 +65,7 @@ public sealed class GermanUiStrings : IUiStrings
 		NoPlacesFound = "Keine Orte gefunden.",
 		Searching = "Suche...",
 		CouldNotReachService =
-			"Der Fahrplandienst ist nicht erreichbar. Verbindung prüfen.",
+			"Der Fahrplandienst ist nicht erreichbar. Verbindung pr\u00fcfen.",
 		SearchForPlace = "Nach einem Ort suchen"
 	};
 
@@ -74,7 +74,7 @@ public sealed class GermanUiStrings : IUiStrings
 		Title = "Verbindungen",
 		Loading = "Verbindungen werden geladen...",
 		NoConnections =
-			"Für diese Zeit wurden keine Verbindungen gefunden.",
+			"F\u00fcr diese Zeit wurden keine Verbindungen gefunden.",
 		JourneysCouldNotBeDisplayed =
 			"Die Verbindungen konnten nicht angezeigt werden.",
 		SearchServiceUnavailable =
@@ -97,7 +97,7 @@ public sealed class GermanUiStrings : IUiStrings
 			"Diese Verbindung konnte nicht angezeigt werden.",
 		ShowOrHideIntermediateStops =
 			"Zwischenhalte ein- oder ausblenden",
-		Walk = "Zu Fuß",
+		Walk = "Zu Fu\u00df",
 		ShareTitle = "Verbindung teilen",
 
 		Direct = "Direkt",
@@ -118,7 +118,7 @@ public sealed class GermanUiStrings : IUiStrings
 		ContinueFrom = "weiter ab",
 		ImmediateChange = "Sofortiger Umstieg",
 		ToChange = "zum Umsteigen",
-		WalkAbout = "Etwa zu Fuß",
+		WalkAbout = "Etwa zu Fu\u00df",
 		BetweenStops = "zwischen Haltestellen",
 		ConnectionMayBeMissed =
 			"Anschluss kann verpasst werden",
@@ -128,16 +128,24 @@ public sealed class GermanUiStrings : IUiStrings
 		WheelchairAccessible =
 			"Rollstuhlgerecht",
 		BicycleAccessible =
-			"Fahrradmitnahme möglich",
+			"Fahrradmitnahme m\u00f6glich",
 		Depart = "Abfahrt",
 		Arrive = "Ankunft",
 		ShowMore = "Mehr anzeigen",
 		ShowLess = "Weniger anzeigen",
-		ShowFullNotice = "Den vollständigen Hinweis anzeigen",
+		ShowFullNotice = "Den vollst\u00e4ndigen Hinweis anzeigen",
 		ShowLessNotice = "Hinweis einklappen",
 		Warning = "Warnung",
 		Notice = "Hinweis",
-		OnTime = "Pünktlich"
+		OnTime = "P\u00fcnktlich",
+
+		// Occupancy strings
+		OccupancyVeryLow = "Sehr wenige Fahrgaeste",
+		OccupancyLow = "Wenige Fahrgaeste",
+		OccupancyMedium = "Mittel",
+		OccupancyHigh = "Viele Fahrgaeste",
+		OccupancyFull = "Voll",
+		OccupancyOverloaded = "Ueberfuellt"
 	};
 
 	public SettingsStrings Settings { get; } = new()
@@ -150,9 +158,9 @@ public sealed class GermanUiStrings : IUiStrings
 		About = "Info",
 		ThemeSystem = "System",
 		ThemeSystemDescription =
-			"Folgt dem Gerät; Dunkel wird AMOLED",
+			"Folgt dem Ger\u00e4t; Dunkel wird AMOLED",
 		ThemeLight = "Hell",
-		ThemeLightDescription = "Helle Flächen",
+		ThemeLightDescription = "Helle Fl\u00e4chen",
 		ThemeDark = "Dunkel",
 		ThemeDarkDescription = "Dunkles Solarized",
 		ThemeAmoled = "Dunkel AMOLED",
@@ -160,38 +168,38 @@ public sealed class GermanUiStrings : IUiStrings
 			"Reines Schwarz, starke Konturen",
 		Animations = "Animationen",
 		AnimationsDescription =
-			"Unaufdringliche Übergänge und Effekte",
+			"Unaufdringliche \u00dcberg\u00e4nge und Effekte",
 		TechnicalDetails = "Technische Details",
 		TechnicalDetailsDescription =
-			"Zusätzliche Details in Hinweisen anzeigen",
+			"Zus\u00e4tzliche Details in Hinweisen anzeigen",
 		Results = "Ergebnisse",
 		ResultsDescription = "Verbindungen pro Suche",
 		RequestTimeout = "Zeitlimit",
 		RequestTimeoutDescription = "Abbruch nach {0} s",
 		ArriveBy = "Ankunft bis",
 		ArriveByDescription =
-			"Planer im Ankunftsmodus öffnen",
-		WalkingLegs = "Fußwege",
+			"Planer im Ankunftsmodus \u00f6ffnen",
+		WalkingLegs = "Fu\u00dfwege",
 		WalkingLegsDescription =
-			"Fußwege in der Zeitlinie anzeigen",
+			"Fu\u00dfwege in der Zeitlinie anzeigen",
 		ExpandNotices = "Hinweise ausklappen",
 		ExpandNoticesDescription =
-			"Verbindungshinweise standardmäßig öffnen",
+			"Verbindungshinweise standardm\u00e4\u00dfig \u00f6ffnen",
 		ResetJourneySettings =
-			"Verbindungseinstellungen zurücksetzen",
+			"Verbindungseinstellungen zur\u00fccksetzen",
 		VersionPrefix = "DDjourneys {0} ({1})"
 	};
 
 	public TransportStrings Transport { get; } = new()
 	{
-		Walk = "Zu Fuß",
+		Walk = "Zu Fu\u00df",
 		Bus = "Bus",
-		Tram = "Straßenbahn",
+		Tram = "Stra\u00dfenbahn",
 		Subway = "U-Bahn",
 		SuburbanRail = "S-Bahn",
 		RegionalTrain = "Regionalbahn",
 		LongDistanceTrain = "Fernverkehr",
-		Ferry = "Fähre",
+		Ferry = "F\u00e4hre",
 		CableCar = "Seilbahn",
 		Taxi = "Taxi",
 		OnDemand = "On-Demand"

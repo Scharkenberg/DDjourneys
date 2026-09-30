@@ -10,7 +10,7 @@
 	x:DataType="local:JourneyViewModel">
 
 	<ContentPage.ToolbarItems>
-		<ToolbarItem Command="{Binding ShareCommand}" Text="{localization:Tr Common.Share}" />
+		<ToolbarItem Command="{Binding ShareCommand}" Text="\u267A" />
 	</ContentPage.ToolbarItems>
 
 	<ContentPage.Resources>
@@ -40,6 +40,11 @@
 						IsVisible="{Binding HasDelay}"
 						StyleClass="Delay"
 						Text="{Binding DelayText}" />
+
+					<Label
+						IsVisible="{Binding HasOccupancy}"
+						StyleClass="Caption"
+						Text="{Binding OccupancyText}" />
 				</VerticalStackLayout>
 
 				<Grid Grid.Column="1" RowDefinitions="16,*">
@@ -149,6 +154,11 @@
 						IsVisible="{Binding IsNotServed}"
 						StyleClass="Cancelled"
 						Text="{localization:Tr Journey.NotServed}" />
+
+					<Label
+						IsVisible="{Binding HasOccupancy}"
+						StyleClass="Caption"
+						Text="{Binding OccupancyText}" />
 				</HorizontalStackLayout>
 			</Grid>
 		</DataTemplate>
@@ -205,6 +215,11 @@
 						Text="{Binding FeaturesText}" />
 
 					<Label
+						IsVisible="{Binding HasOccupancy}"
+						StyleClass="Caption"
+						Text="{Binding OccupancyText}" />
+
+					<Label
 						IsVisible="{Binding IsCancelled}"
 						StyleClass="Cancelled"
 						Text="{localization:Tr Journey.Cancelled}" />
@@ -233,7 +248,8 @@
 						<Label
 							FontSize="{StaticResource FontBody}"
 							Text="{Binding Chevron}"
-							TextColor="{DynamicResource Accent}" />
+							TextColor="{DynamicResource Accent}"
+							VerticalOptions="Center" />
 
 						<HorizontalStackLayout.GestureRecognizers>
 							<TapGestureRecognizer Tapped="StopsToggled" />
@@ -287,7 +303,7 @@
 				<VerticalStackLayout
 					Grid.Column="0"
 					Padding="0,4,0,0"
-					Spacing="10">
+					Spacing="8">
 
 					<VerticalStackLayout Spacing="1">
 						<Label FontFamily="OpenSansSemibold" Text="{Binding ArrivalTime}" />
@@ -296,6 +312,11 @@
 							IsVisible="{Binding HasArrivalDelay}"
 							StyleClass="Delay"
 							Text="{Binding ArrivalDelay}" />
+
+						<Label
+							IsVisible="{Binding HasArrivalOccupancy}"
+							StyleClass="Caption"
+							Text="{Binding ArrivalOccupancyText}" />
 					</VerticalStackLayout>
 
 					<VerticalStackLayout Spacing="1">
@@ -305,27 +326,25 @@
 							IsVisible="{Binding HasDepartureDelay}"
 							StyleClass="Delay"
 							Text="{Binding DepartureDelay}" />
+
+						<Label
+							IsVisible="{Binding HasDepartureOccupancy}"
+							StyleClass="Caption"
+							Text="{Binding DepartureOccupancyText}" />
 					</VerticalStackLayout>
 				</VerticalStackLayout>
 
-				<Grid Grid.Column="1" RowDefinitions="16,*">
+				<Grid Grid.Column="1" RowDefinitions="*,Auto,*" RowSpacing="0">
 					<BoxView
 						Grid.Row="0"
 						HorizontalOptions="Center"
 						WidthRequest="4"
 						Color="{Binding RailTop}" />
 
-					<BoxView
-						Grid.Row="1"
-						HorizontalOptions="Center"
-						WidthRequest="4"
-						Color="{Binding RailBottom}" />
-
 					<Grid
-						Grid.RowSpan="2"
-						Margin="0,7,0,0"
+						Grid.Row="1"
+						Margin="0,0,0,0"
 						HeightRequest="18"
-						VerticalOptions="Start"
 						WidthRequest="18">
 
 						<BoxView CornerRadius="9" Color="{Binding NodeColor}" />
@@ -338,6 +357,12 @@
 							WidthRequest="10"
 							Color="{DynamicResource Surface}" />
 					</Grid>
+
+					<BoxView
+						Grid.Row="2"
+						HorizontalOptions="Center"
+						WidthRequest="4"
+						Color="{Binding RailBottom}" />
 				</Grid>
 
 				<VerticalStackLayout
