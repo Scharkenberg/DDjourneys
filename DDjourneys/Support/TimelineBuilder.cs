@@ -16,7 +16,9 @@ public sealed record BoundaryItem(
 	Station At,
 	TimeSpan Wait,
 	IReadOnlyList<string> Notes,
-	bool ShowWait) : TimelineItem;
+	bool ShowWait,
+	bool Endangered = false,
+	TimeSpan? WalkTime = null) : TimelineItem;
 
 /// <summary>
 /// Turns a provider-neutral Journey into a flat, display-ready list.
@@ -29,6 +31,10 @@ public static class TimelineBuilder
 		ArgumentNullException.ThrowIfNull(journey);
 
 		var items = new List<TimelineItem>(journey.Legs.Count * 2);
+
+		// A provider transfer belongs to exactly one boundary, even if the route
+		// passes the same station twice.
+		var used = new HashSet<JourneyTransfer>();
 
 		for (int i = 0; i < journey.Legs.Count; i++)
 		{
@@ -46,14 +52,18 @@ public static class TimelineBuilder
 
 			// ASSUMPTION: a provider message belongs to the boundary whose
 			// station ID it carries. Verify against captured VVO responses.
-			var transfers = journey.Transfers
-	.Where(t =>
-		t.Location.Id == leg.To.Id
-		|| t.Location.Id == next.From.Id)
-	.ToArray();
+			JourneyTransfer[] transfers = journey.Transfers
+				.Where(t => !used.Contains(t) && Matches(t.Location.Id, leg.To.Id, next.From.Id))
+				.ToArray();
+
+			foreach (JourneyTransfer transfer in transfers)
+			{
+				used.Add(transfer);
+			}
 
 			string[] notes = transfers
 				.SelectMany(t => t.Notices)
+				.Where(n => !string.IsNullOrWhiteSpace(n))
 				.Distinct()
 				.ToArray();
 
@@ -62,19 +72,30 @@ public static class TimelineBuilder
 			if (isInterchange || notes.Length > 0)
 			{
 				TimeSpan wait =
-					(next.EffectiveDeparture ?? default)
-					- (leg.EffectiveArrival ?? default);
+					next.EffectiveDeparture is { } departs && leg.EffectiveArrival is { } arrives && departs >= arrives
+						? departs - arrives
+						: TimeSpan.Zero;
+
+				TimeSpan? walk = transfers
+					.Where(t => t.Kind == TransferKind.Walk && t.Duration > TimeSpan.Zero)
+					.Select(t => (TimeSpan?)t.Duration)
+					.Max();
 
 				items.Add(new BoundaryItem(
 					leg.To,
-					wait < TimeSpan.Zero
-						? TimeSpan.Zero
-						: wait,
+					wait,
 					notes,
-					ShowWait: !isInterchange));
+					ShowWait: isInterchange,
+					Endangered: transfers.Any(t => !t.IsGuaranteed),
+					WalkTime: walk));
 			}
 		}
 
 		return items;
 	}
+
+	private static bool Matches(string? transferId, string? fromId, string? toId) =>
+		!string.IsNullOrWhiteSpace(transferId)
+		&& (string.Equals(transferId, fromId, StringComparison.OrdinalIgnoreCase)
+			|| string.Equals(transferId, toId, StringComparison.OrdinalIgnoreCase));
 }

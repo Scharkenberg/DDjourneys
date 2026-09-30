@@ -1,6 +1,7 @@
 using CommunityToolkit.Maui;
 using DDjourneys.Core.Providers;
 using DDjourneys.Pages;
+using DDjourneys.Support;
 using Microsoft.Extensions.Logging;
 
 namespace DDjourneys;
@@ -28,6 +29,8 @@ public static class MauiProgram
 		InstallLabelContainerDiagnostics();
 #endif
 
+		builder.Services.AddSingleton<AppSettings>();
+
 		// Core services (providers, journey and location services).
 		builder.Services.AddDDjourneysProviders();
 
@@ -43,6 +46,9 @@ public static class MauiProgram
 
 		builder.Services.AddTransient<JourneyPage>();
 		builder.Services.AddTransient<JourneyViewModel>();
+
+		builder.Services.AddTransient<SettingsPage>();
+		builder.Services.AddTransient<SettingsViewModel>();
 
 		return builder.Build();
 	}

@@ -15,5 +15,4 @@
 	<Color x:Key="OnTime">#15803D</Color>
 	<Color x:Key="Delay">#9A5B00</Color>
 	<Color x:Key="Cancelled">#B91C1C</Color>
-	<SolidColorBrush x:Key="OutlineBrush" Color="#D3DBDF" />
 </ResourceDictionary>

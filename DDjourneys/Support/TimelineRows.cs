@@ -98,7 +98,11 @@ public sealed class InterchangeRow : TimelineRow
 	public string? ContinuesFrom { get; init; }
 	public string? PlatformText { get; init; }
 	public string? WaitText { get; init; }
+	public string? WalkText { get; init; }
+	public string? RiskText { get; init; }
 	public bool HasWait => WaitText is not null;
+	public bool HasWalk => WalkText is not null;
+	public bool HasRisk => RiskText is not null;
 	public required Color NodeColor { get; init; }
 
 	public bool HasArrivalDelay => ArrivalDelay is not null;
@@ -111,7 +115,12 @@ public sealed class InterchangeRow : TimelineRow
 public sealed class NoticeRow : TimelineRow
 {
 	public required string Text { get; init; }
+	public bool Expanded { get; init; }
+	public bool Technical { get; init; }
 }
+
+/// <summary>What the timeline shows; comes from the user's settings.</summary>
+public sealed record TimelineOptions(bool ShowWalking = true, bool ExpandNotices = false, bool Technical = false);
 
 /// <summary>
 /// Turns TimelineBuilder items into display rows. Two rides joined by a boundary
@@ -121,8 +130,9 @@ public static class TimelineRowFactory
 {
 	private const string Dash = "\u2013";
 
-	public static IReadOnlyList<TimelineRow> Build(Journey journey)
+	public static IReadOnlyList<TimelineRow> Build(Journey journey, TimelineOptions? options = null)
 	{
+		options ??= new TimelineOptions();
 		IReadOnlyList<TimelineItem> items = TimelineBuilder.Build(journey);
 		var rows = new List<TimelineRow>();
 
@@ -130,7 +140,7 @@ public static class TimelineRowFactory
 		{
 			rows.Add(EndpointStop(
 				firstWalk.Leg.From.Name,
-				firstWalk.Leg.EffectiveDeparture ?? default,
+				firstWalk.Leg.EffectiveDeparture,
 				top: Colors.Transparent,
 				bottom: WalkColor()));
 		}
@@ -140,21 +150,27 @@ public static class TimelineRowFactory
 			switch (items[i])
 			{
 				case RideItem ride:
-					AddRide(rows, items, i, ride.Leg);
+					AddRide(rows, items, i, ride.Leg, options);
 					break;
 
 				case WalkItem walk:
-					rows.Add(new WalkRow
+					if (options.ShowWalking)
 					{
-						Text = $"Walk {Format.Duration((walk.Leg.EffectiveArrival ?? default) - (walk.Leg.EffectiveDeparture ?? default))}",
-						Caption = $"to {walk.Leg.To.Name}",
-						RailBottom = WalkColor(),
-						Description = $"Walk {Format.Duration((walk.Leg.EffectiveArrival ?? default) - (walk.Leg.EffectiveDeparture ?? default))} to {walk.Leg.To.Name}"
-					});
+						string walkTime = Format.Duration(walk.Leg.EffectiveDeparture, walk.Leg.EffectiveArrival);
+
+						rows.Add(new WalkRow
+						{
+							Text = $"Walk {walkTime}",
+							Caption = $"to {walk.Leg.To.Name}",
+							RailBottom = WalkColor(),
+							Description = $"Walk {walkTime} to {walk.Leg.To.Name}"
+						});
+					}
+
 					break;
 
 				case BoundaryItem boundary:
-					AddBoundary(rows, items, i, boundary);
+					AddBoundary(rows, items, i, boundary, options);
 					break;
 			}
 		}
@@ -163,7 +179,7 @@ public static class TimelineRowFactory
 		{
 			rows.Add(EndpointStop(
 				lastWalk.Leg.To.Name,
-				lastWalk.Leg.EffectiveArrival ?? default,
+				lastWalk.Leg.EffectiveArrival,
 				top: WalkColor(),
 				bottom: Colors.Transparent));
 		}
@@ -176,7 +192,7 @@ public static class TimelineRowFactory
 		return rows;
 	}
 
-	private static void AddRide(List<TimelineRow> rows, IReadOnlyList<TimelineItem> items, int i, JourneyLeg leg)
+	private static void AddRide(List<TimelineRow> rows, IReadOnlyList<TimelineItem> items, int i, JourneyLeg leg, TimelineOptions options)
 	{
 		Color color = ModeColors.For(leg.Mode);
 
@@ -189,15 +205,15 @@ public static class TimelineRowFactory
 
 			rows.Add(new StopRow
 			{
-				Time = Format.Time(leg.EffectiveDeparture ?? default),
-				ScheduledTime = delay is null ? null : Format.Time(leg.ScheduledDeparture ?? default),
+				Time = Format.TimeOrDash(leg.EffectiveDeparture),
+				ScheduledTime = delay is null ? null : Format.TimeOrDash(leg.ScheduledDeparture),
 				DelayText = delay,
 				Name = leg.From.Name,
 				PlatformText = PlatformText(leg.DeparturePlatform),
 				NodeColor = color,
 				RailTop = RailAt(items, i - 1, -1),
 				RailBottom = color,
-				Description = $"{Format.Time(leg.EffectiveDeparture ?? default)}, depart {leg.From.Name}"
+				Description = $"{Format.TimeOrDash(leg.EffectiveDeparture)}, depart {leg.From.Name}"
 			});
 		}
 
@@ -208,10 +224,12 @@ public static class TimelineRowFactory
 			LineText = leg.Line?.Name ?? leg.Mode.ToString(),
 			ModeColor = color,
 			Direction = string.IsNullOrWhiteSpace(leg.Line?.Destination) ? null : $"to {leg.Line!.Destination}",
-			DurationText = Format.Duration((leg.EffectiveArrival ?? default) - (leg.EffectiveDeparture ?? default)),
+			DurationText = Format.Duration(leg.EffectiveDeparture, leg.EffectiveArrival),
 			FeaturesText = Features(leg.Vehicle?.Accessibility),
 			IsCancelled = leg.IsCancelled,
-			IsActive = !leg.IsCancelled && now >= leg.EffectiveDeparture && now <= leg.EffectiveArrival,
+			IsActive = !leg.IsCancelled
+				&& leg.EffectiveDeparture is { } start && leg.EffectiveArrival is { } end
+				&& now >= start && now <= end,
 			Intermediates = leg.Stops
 				.Skip(1)
 				.Take(Math.Max(0, leg.Stops.Count - 2))
@@ -226,12 +244,12 @@ public static class TimelineRowFactory
 				})
 				.ToList(),
 			RailBottom = color,
-			Description = $"{leg.Line?.Name ?? leg.Mode.ToString()}, {Format.Duration((leg.EffectiveArrival ?? default) - (leg.EffectiveDeparture ?? default))}"
+			Description = $"{leg.Line?.Name ?? leg.Mode.ToString()}, {Format.Duration(leg.EffectiveDeparture, leg.EffectiveArrival)}"
 		});
 
 		foreach (string notice in leg.Notices.Distinct())
 		{
-			rows.Add(new NoticeRow { Text = notice, RailBottom = color, Description = notice });
+			rows.Add(new NoticeRow { Text = notice, RailBottom = color, Description = notice, Expanded = options.ExpandNotices, Technical = options.Technical });
 		}
 
 		if (!arrivalMerged)
@@ -240,20 +258,20 @@ public static class TimelineRowFactory
 
 			rows.Add(new StopRow
 			{
-				Time = Format.Time(leg.EffectiveArrival ?? default),
-				ScheduledTime = delay is null ? null : Format.Time(leg.ScheduledArrival ?? default),
+				Time = Format.TimeOrDash(leg.EffectiveArrival),
+				ScheduledTime = delay is null ? null : Format.TimeOrDash(leg.ScheduledArrival),
 				DelayText = delay,
 				Name = leg.To.Name,
 				PlatformText = PlatformText(leg.ArrivalPlatform),
 				NodeColor = color,
 				RailTop = color,
 				RailBottom = RailAt(items, i + 1, +1),
-				Description = $"{Format.Time(leg.EffectiveArrival ?? default)}, arrive {leg.To.Name}"
+				Description = $"{Format.TimeOrDash(leg.EffectiveArrival)}, arrive {leg.To.Name}"
 			});
 		}
 	}
 
-	private static void AddBoundary(List<TimelineRow> rows, IReadOnlyList<TimelineItem> items, int i, BoundaryItem boundary)
+	private static void AddBoundary(List<TimelineRow> rows, IReadOnlyList<TimelineItem> items, int i, BoundaryItem boundary, TimelineOptions options)
 	{
 		bool between = i > 0 && i + 1 < items.Count
 			&& items[i - 1] is RideItem
@@ -268,14 +286,18 @@ public static class TimelineRowFactory
 
 			rows.Add(new InterchangeRow
 			{
-				ArrivalTime = Format.Time(from.EffectiveArrival ?? default),
+				ArrivalTime = Format.TimeOrDash(from.EffectiveArrival),
 				ArrivalDelay = Format.Delay(from.ArrivalDelay),
-				DepartureTime = Format.Time(to.EffectiveDeparture ?? default),
+				DepartureTime = Format.TimeOrDash(to.EffectiveDeparture),
 				DepartureDelay = Format.Delay(to.DepartureDelay),
 				Name = from.To.Name,
 				ContinuesFrom = from.To.Name == to.From.Name ? null : $"continue from {to.From.Name}",
 				PlatformText = PlatformPair(from.ArrivalPlatform, to.DeparturePlatform),
-				WaitText = boundary.ShowWait ? $"{Format.Duration(boundary.Wait)} to change" : null,
+				WaitText = boundary.ShowWait
+					? (boundary.Wait < TimeSpan.FromMinutes(1) ? "Immediate change" : $"{Format.Duration(boundary.Wait)} to change")
+					: null,
+				WalkText = boundary.WalkTime is { } walk ? $"Walk about {Format.Duration(walk)} between stops" : null,
+				RiskText = boundary.Endangered ? "Connection may be missed" : null,
 				NodeColor = ModeColors.For(to.Mode),
 				RailTop = ModeColors.For(from.Mode),
 				RailBottom = ModeColors.For(to.Mode),
@@ -285,18 +307,18 @@ public static class TimelineRowFactory
 
 		foreach (string note in boundary.Notes)
 		{
-			rows.Add(new NoticeRow { Text = note, RailBottom = next, Description = note });
+			rows.Add(new NoticeRow { Text = note, RailBottom = next, Description = note, Expanded = options.ExpandNotices, Technical = options.Technical });
 		}
 	}
 
-	private static StopRow EndpointStop(string name, DateTimeOffset time, Color top, Color bottom) => new()
+	private static StopRow EndpointStop(string name, DateTimeOffset? time, Color top, Color bottom) => new()
 	{
-		Time = Format.Time(time),
+		Time = Format.TimeOrDash(time),
 		Name = name,
 		NodeColor = WalkColor(),
 		RailTop = top,
 		RailBottom = bottom,
-		Description = $"{Format.Time(time)}, {name}"
+		Description = $"{Format.TimeOrDash(time)}, {name}"
 	};
 
 	/// <summary>Colour of the neighbouring leg in the given direction, skipping boundaries.</summary>

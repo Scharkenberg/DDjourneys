@@ -1,0 +1,124 @@
+<ContentPage
+	x:Class="DDjourneys.Pages.SettingsPage"
+	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+	xmlns:local="clr-namespace:DDjourneys.Pages"
+	xmlns:support="clr-namespace:DDjourneys.Support"
+	x:DataType="local:SettingsViewModel"
+	Title="Settings">
+
+	<ScrollView>
+		<VerticalStackLayout Padding="{StaticResource PadPage}" Spacing="{StaticResource SpaceS}">
+
+			<Label StyleClass="Section" Text="Theme" />
+			<Border Padding="0" StyleClass="Card">
+				<VerticalStackLayout>
+					<Grid Padding="12,10" ColumnDefinitions="*,Auto" MinimumHeightRequest="52">
+						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
+							<Label FontFamily="OpenSansSemibold" Text="System" />
+							<Label StyleClass="Caption" Text="Follows the device; dark becomes AMOLED" />
+						</VerticalStackLayout>
+						<Label Grid.Column="1" FontSize="20" IsVisible="{Binding IsSystem}" Text="&#x2713;" TextColor="{DynamicResource Accent}" VerticalOptions="Center" />
+						<Grid.GestureRecognizers>
+							<TapGestureRecognizer Command="{Binding SelectThemeCommand}" CommandParameter="{x:Static support:ThemeChoice.System}" />
+						</Grid.GestureRecognizers>
+					</Grid>
+					<BoxView StyleClass="Divider" />
+					<Grid Padding="12,10" ColumnDefinitions="*,Auto" MinimumHeightRequest="52">
+						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
+							<Label FontFamily="OpenSansSemibold" Text="Light" />
+							<Label StyleClass="Caption" Text="Bright surfaces" />
+						</VerticalStackLayout>
+						<Label Grid.Column="1" FontSize="20" IsVisible="{Binding IsLight}" Text="&#x2713;" TextColor="{DynamicResource Accent}" VerticalOptions="Center" />
+						<Grid.GestureRecognizers>
+							<TapGestureRecognizer Command="{Binding SelectThemeCommand}" CommandParameter="{x:Static support:ThemeChoice.Light}" />
+						</Grid.GestureRecognizers>
+					</Grid>
+					<BoxView StyleClass="Divider" />
+					<Grid Padding="12,10" ColumnDefinitions="*,Auto" MinimumHeightRequest="52">
+						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
+							<Label FontFamily="OpenSansSemibold" Text="Dark" />
+							<Label StyleClass="Caption" Text="Solarized-style dark" />
+						</VerticalStackLayout>
+						<Label Grid.Column="1" FontSize="20" IsVisible="{Binding IsDark}" Text="&#x2713;" TextColor="{DynamicResource Accent}" VerticalOptions="Center" />
+						<Grid.GestureRecognizers>
+							<TapGestureRecognizer Command="{Binding SelectThemeCommand}" CommandParameter="{x:Static support:ThemeChoice.Dark}" />
+						</Grid.GestureRecognizers>
+					</Grid>
+					<BoxView StyleClass="Divider" />
+					<Grid Padding="12,10" ColumnDefinitions="*,Auto" MinimumHeightRequest="52">
+						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
+							<Label FontFamily="OpenSansSemibold" Text="Dark AMOLED" />
+							<Label StyleClass="Caption" Text="Pure black, strong outlines" />
+						</VerticalStackLayout>
+						<Label Grid.Column="1" FontSize="20" IsVisible="{Binding IsAmoled}" Text="&#x2713;" TextColor="{DynamicResource Accent}" VerticalOptions="Center" />
+						<Grid.GestureRecognizers>
+							<TapGestureRecognizer Command="{Binding SelectThemeCommand}" CommandParameter="{x:Static support:ThemeChoice.Amoled}" />
+						</Grid.GestureRecognizers>
+					</Grid>
+				</VerticalStackLayout>
+			</Border>
+
+			<Label StyleClass="Section" Text="App" />
+			<Border Padding="0" StyleClass="Card">
+				<VerticalStackLayout>
+					<Grid Padding="12,8" ColumnDefinitions="*,Auto" ColumnSpacing="12" MinimumHeightRequest="52">
+						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
+							<Label FontFamily="OpenSansSemibold" Text="Animations" />
+							<Label StyleClass="Caption" Text="Subtle transitions and effects" />
+						</VerticalStackLayout>
+						<Switch Grid.Column="1" IsToggled="{Binding Animations}" SemanticProperties.Description="Animations" VerticalOptions="Center" />
+					</Grid>
+					<BoxView StyleClass="Divider" />
+					<Grid Padding="12,8" ColumnDefinitions="*,Auto" ColumnSpacing="12" MinimumHeightRequest="52">
+						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
+							<Label FontFamily="OpenSansSemibold" Text="Technical details" />
+							<Label StyleClass="Caption" Text="Show extra detail in notices" />
+						</VerticalStackLayout>
+						<Switch Grid.Column="1" IsToggled="{Binding ShowTechnicalDetails}" SemanticProperties.Description="Technical details" VerticalOptions="Center" />
+					</Grid>
+				</VerticalStackLayout>
+			</Border>
+
+			<Label StyleClass="Section" Text="Journeys" />
+			<Border Padding="0" StyleClass="Card">
+				<VerticalStackLayout>
+					<VerticalStackLayout Padding="12,10" Spacing="4">
+						<Label FontFamily="OpenSansSemibold" Text="Results" />
+						<Label StyleClass="Caption" Text="{Binding MaxResultsText}" />
+						<Slider Maximum="{Binding MaxResultsLimit}" Minimum="{Binding MinResults}" SemanticProperties.Description="Journeys per search" Value="{Binding MaxResults}" />
+					</VerticalStackLayout>
+					<BoxView StyleClass="Divider" />
+					<Grid Padding="12,8" ColumnDefinitions="*,Auto" ColumnSpacing="12" MinimumHeightRequest="52">
+						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
+							<Label FontFamily="OpenSansSemibold" Text="Arrive by" />
+							<Label StyleClass="Caption" Text="Open the planner in arrival mode" />
+						</VerticalStackLayout>
+						<Switch Grid.Column="1" IsToggled="{Binding DefaultArrival}" SemanticProperties.Description="Arrive by" VerticalOptions="Center" />
+					</Grid>
+					<BoxView StyleClass="Divider" />
+					<Grid Padding="12,8" ColumnDefinitions="*,Auto" ColumnSpacing="12" MinimumHeightRequest="52">
+						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
+							<Label FontFamily="OpenSansSemibold" Text="Walking legs" />
+							<Label StyleClass="Caption" Text="Show walks in the timeline" />
+						</VerticalStackLayout>
+						<Switch Grid.Column="1" IsToggled="{Binding ShowWalkingLegs}" SemanticProperties.Description="Walking legs" VerticalOptions="Center" />
+					</Grid>
+					<BoxView StyleClass="Divider" />
+					<Grid Padding="12,8" ColumnDefinitions="*,Auto" ColumnSpacing="12" MinimumHeightRequest="52">
+						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
+							<Label FontFamily="OpenSansSemibold" Text="Expand notices" />
+							<Label StyleClass="Caption" Text="Open journey notices by default" />
+						</VerticalStackLayout>
+						<Switch Grid.Column="1" IsToggled="{Binding ExpandNotices}" SemanticProperties.Description="Expand notices" VerticalOptions="Center" />
+					</Grid>
+				</VerticalStackLayout>
+			</Border>
+
+			<Button Command="{Binding ResetCommand}" Margin="0,8,0,0" StyleClass="Tonal" Text="Reset journey settings" />
+
+			<Label Margin="0,8" HorizontalOptions="Center" StyleClass="Caption" Text="{Binding Version}" />
+
+		</VerticalStackLayout>
+	</ScrollView>
+</ContentPage>

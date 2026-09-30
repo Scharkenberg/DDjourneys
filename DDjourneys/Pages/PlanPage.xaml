@@ -8,16 +8,6 @@
 	Shell.NavBarIsVisible="False">
 
 	<ContentPage.Resources>
-		<Style TargetType="DatePicker">
-			<Setter Property="TextColor" Value="{DynamicResource Ink}" />
-			<Setter Property="FontFamily" Value="OpenSansSemibold" />
-			<Setter Property="FontSize" Value="15" />
-		</Style>
-		<Style TargetType="TimePicker">
-			<Setter Property="TextColor" Value="{DynamicResource Ink}" />
-			<Setter Property="FontFamily" Value="OpenSansSemibold" />
-			<Setter Property="FontSize" Value="15" />
-		</Style>
 		<Style x:Key="IconButton" TargetType="Button">
 			<Setter Property="BackgroundColor" Value="Transparent" />
 			<Setter Property="TextColor" Value="{DynamicResource Accent}" />
@@ -31,7 +21,18 @@
 	<ScrollView>
 		<VerticalStackLayout Padding="{StaticResource PadPage}" Spacing="{StaticResource SpaceM}">
 
-			<Label StyleClass="Headline" Text="Where to?" />
+			<Grid ColumnDefinitions="*,Auto">
+				<Label
+					StyleClass="Headline"
+					Text="Where to?"
+					VerticalOptions="Center" />
+				<Button
+					Grid.Column="1"
+					Clicked="SettingsClicked"
+					SemanticProperties.Description="Settings"
+					Style="{StaticResource IconButton}"
+					Text="&#x2699;" />
+			</Grid>
 
 			<!--  From / To  -->
 			<Border StyleClass="Card">
@@ -42,7 +43,7 @@
 
 					<Grid
 						Grid.Row="0"
-						Padding="0,8"
+						Padding="0,4"
 						ColumnDefinitions="*,Auto">
 						<VerticalStackLayout Spacing="2" VerticalOptions="Center">
 							<Label StyleClass="Caption" Text="From" />
@@ -79,7 +80,7 @@
 
 					<Grid
 						Grid.Row="2"
-						Padding="0,8"
+						Padding="0,4"
 						ColumnDefinitions="*,Auto">
 						<VerticalStackLayout Spacing="2" VerticalOptions="Center">
 							<Label StyleClass="Caption" Text="To" />
@@ -123,66 +124,90 @@
 				</Grid>
 			</Border>
 
-			<!--  Date and time  -->
-			<Border StyleClass="Card">
-				<VerticalStackLayout Spacing="{StaticResource SpaceM}">
+			<!--  Date and time: rows, so native pickers keep their own chrome and breathing room  -->
+			<Border Padding="0" StyleClass="Card">
+				<VerticalStackLayout>
 
-					<Grid ColumnDefinitions="*,*" ColumnSpacing="{StaticResource SpaceS}">
-						<Button
-							Grid.Column="0"
-							Command="{Binding DepartCommand}"
-							MinimumHeightRequest="40"
-							StyleClass="Tonal"
-							Text="Depart">
-							<Button.Triggers>
-								<DataTrigger
-									Binding="{Binding IsArrival}"
-									TargetType="Button"
-									Value="False">
-									<Setter Property="BackgroundColor" Value="{DynamicResource Accent}" />
-									<Setter Property="TextColor" Value="{DynamicResource OnAccent}" />
-								</DataTrigger>
-							</Button.Triggers>
-						</Button>
-						<Button
-							Grid.Column="1"
-							Command="{Binding ArriveCommand}"
-							MinimumHeightRequest="40"
-							StyleClass="Tonal"
-							Text="Arrive by">
-							<Button.Triggers>
-								<DataTrigger
-									Binding="{Binding IsArrival}"
-									TargetType="Button"
-									Value="True">
-									<Setter Property="BackgroundColor" Value="{DynamicResource Accent}" />
-									<Setter Property="TextColor" Value="{DynamicResource OnAccent}" />
-								</DataTrigger>
-							</Button.Triggers>
-						</Button>
-					</Grid>
+				<Grid Padding="12,10" ColumnDefinitions="*,*" ColumnSpacing="{StaticResource SpaceS}">
+					<Button
+						Grid.Column="0"
+						Command="{Binding DepartCommand}"
+						MinimumHeightRequest="38"
+						StyleClass="Tonal"
+						Text="Leave">
+						<Button.Triggers>
+							<DataTrigger Binding="{Binding IsArrival}" TargetType="Button" Value="False">
+								<Setter Property="BackgroundColor" Value="{DynamicResource Accent}" />
+								<Setter Property="TextColor" Value="{DynamicResource OnAccent}" />
+							</DataTrigger>
+						</Button.Triggers>
+					</Button>
+					<Button
+						Grid.Column="1"
+						Command="{Binding ArriveCommand}"
+						MinimumHeightRequest="38"
+						StyleClass="Tonal"
+						Text="Arrive by">
+						<Button.Triggers>
+							<DataTrigger Binding="{Binding IsArrival}" TargetType="Button" Value="True">
+								<Setter Property="BackgroundColor" Value="{DynamicResource Accent}" />
+								<Setter Property="TextColor" Value="{DynamicResource OnAccent}" />
+							</DataTrigger>
+						</Button.Triggers>
+					</Button>
+				</Grid>
 
-					<Grid ColumnDefinitions="*,*,Auto" ColumnSpacing="{StaticResource SpaceM}">
-						<VerticalStackLayout Grid.Column="0" Spacing="2">
-							<Label StyleClass="Caption" Text="Date" />
-							<DatePicker
-								Date="{Binding Date}"
-								Format="ddd, d MMM"
-								MinimumDate="{Binding MinDate}" />
-						</VerticalStackLayout>
-						<VerticalStackLayout Grid.Column="1" Spacing="2">
-							<Label StyleClass="Caption" Text="Time" />
-							<TimePicker Format="HH:mm" Time="{Binding Time}" />
-						</VerticalStackLayout>
-						<Button
-							Grid.Column="2"
-							Command="{Binding NowCommand}"
-							IsVisible="{Binding IsNotNow}"
-							MinimumHeightRequest="40"
-							StyleClass="Tonal"
-							Text="Now"
-							VerticalOptions="End" />
-					</Grid>
+				<BoxView StyleClass="Divider" />
+
+				<Grid Padding="12,4" ColumnDefinitions="*,Auto" MinimumHeightRequest="48">
+					<Label StyleClass="Caption" Text="Date" VerticalOptions="Center" />
+					<DatePicker
+						Grid.Column="1"
+						Date="{Binding Date}"
+						Format="ddd, d MMM"
+						HorizontalOptions="End"
+						MaximumDate="{Binding MaxDate}"
+						MinimumDate="{Binding MinDate}"
+						VerticalOptions="Center" />
+				</Grid>
+
+				<BoxView StyleClass="Divider" />
+
+				<Grid Padding="12,4" ColumnDefinitions="*,Auto" MinimumHeightRequest="48">
+					<Label StyleClass="Caption" Text="Time" VerticalOptions="Center" />
+					<TimePicker
+						Grid.Column="1"
+						Format="HH:mm"
+						HorizontalOptions="End"
+						Time="{Binding Time}"
+						VerticalOptions="Center" />
+				</Grid>
+
+				<BoxView StyleClass="Divider" />
+
+				<!--  Quick steps roll over midnight; "Now" resets  -->
+				<Grid
+					Padding="12,10"
+					ColumnDefinitions="*,*,*,*,*"
+					ColumnSpacing="{StaticResource SpaceS}">
+					<Button Grid.Column="0" Command="{Binding NudgeCommand}" CommandParameter="-60" FontSize="13" MinimumHeightRequest="36" Padding="0" StyleClass="Tonal" Text="&#x2212;1 h" />
+					<Button Grid.Column="1" Command="{Binding NudgeCommand}" CommandParameter="-15" FontSize="13" MinimumHeightRequest="36" Padding="0" StyleClass="Tonal" Text="&#x2212;15" />
+					<Button Grid.Column="2" Command="{Binding NudgeCommand}" CommandParameter="15" FontSize="13" MinimumHeightRequest="36" Padding="0" StyleClass="Tonal" Text="+15" />
+					<Button Grid.Column="3" Command="{Binding NudgeCommand}" CommandParameter="60" FontSize="13" MinimumHeightRequest="36" Padding="0" StyleClass="Tonal" Text="+1 h" />
+					<Button Grid.Column="4" Command="{Binding NowCommand}" FontSize="13" IsEnabled="{Binding IsNotNow}" MinimumHeightRequest="36" Padding="0" StyleClass="Tonal" Text="Now" />
+				</Grid>
+
+				<BoxView StyleClass="Divider" />
+
+				<Label Padding="12,8" HorizontalOptions="Center" StyleClass="Subtitle">
+					<Label.FormattedText>
+						<FormattedString>
+							<Span Text="{Binding ModeText}" TextColor="{DynamicResource InkMuted}" />
+							<Span Text="  " />
+							<Span Text="{Binding WhenText}" TextColor="{DynamicResource Accent}" />
+						</FormattedString>
+					</Label.FormattedText>
+				</Label>
 
 				</VerticalStackLayout>
 			</Border>
@@ -197,9 +222,7 @@
 						<DataTemplate x:DataType="core:Location">
 							<Border
 								Margin="0,0,8,8"
-								Padding="14,12"
-								StrokeShape="RoundRectangle 12"
-								StyleClass="Chip">
+								StyleClass="ChipButton">
 								<Label Text="{Binding Name}" />
 								<Border.GestureRecognizers>
 									<TapGestureRecognizer Tapped="PlaceTapped" />
@@ -224,11 +247,11 @@
 						Style="{StaticResource IconButton}"
 						Text="Clear" />
 				</Grid>
-				<Border Padding="8" StyleClass="Card">
+				<Border Padding="0" StyleClass="Card">
 					<VerticalStackLayout BindableLayout.ItemsSource="{Binding Recents}">
 						<BindableLayout.ItemTemplate>
 							<DataTemplate x:DataType="core:Location">
-								<VerticalStackLayout Padding="8,10" Spacing="2">
+								<VerticalStackLayout Padding="12,8" Spacing="1">
 									<Label FontFamily="OpenSansSemibold" Text="{Binding Name}" />
 									<Label StyleClass="Caption" Text="{Binding Place}" />
 									<VerticalStackLayout.GestureRecognizers>

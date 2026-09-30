@@ -6,25 +6,29 @@ namespace DDjourneys.Pages;
 public partial class PlanPage : ContentPage, IQueryAttributable
 {
 	private readonly PlanViewModel _vm;
+	private readonly AppSettings _settings;
 
-	public PlanPage(PlanViewModel vm)
+	public PlanPage(PlanViewModel vm, AppSettings settings)
 	{
 		InitializeComponent();
+		_settings = settings;
 		BindingContext = _vm = vm;
 
-		vm.OpenPlaceSearch = isFrom => Shell.Current.GoToAsync(
+		vm.OpenPlaceSearch = isFrom => NavigateAsync(
 			Routes.PlaceSearch,
-			new ShellNavigationQueryParameters
-			{
-				[Routes.TargetIsFrom] = isFrom
-			});
+			new ShellNavigationQueryParameters { [Routes.TargetIsFrom] = isFrom });
 
-		vm.OpenResults = query => Shell.Current.GoToAsync(
+		vm.OpenResults = query => NavigateAsync(
 			Routes.Results,
-			new ShellNavigationQueryParameters
-			{
-				[Routes.Query] = query
-			});
+			new ShellNavigationQueryParameters { [Routes.Query] = query });
+
+		vm.ShowError = message => DisplayAlertAsync("Something went wrong", message, "OK");
+	}
+
+	protected override void OnAppearing()
+	{
+		base.OnAppearing();
+		_vm.Refresh(); // new day? stale time? fixed here, not at search time
 	}
 
 	/// <summary>Receives the place chosen on the place search page.</summary>
@@ -44,11 +48,34 @@ public partial class PlanPage : ContentPage, IQueryAttributable
 		}
 	}
 
+	private async Task NavigateAsync(string route, ShellNavigationQueryParameters parameters)
+	{
+		try
+		{
+			await Shell.Current.GoToAsync(route, parameters);
+		}
+		catch (Exception ex)
+		{
+			System.Diagnostics.Debug.WriteLine($"Navigation to '{route}' failed:\n{ex}");
+			await DisplayAlertAsync("Navigation error", ex.Message, "OK");
+		}
+	}
+
+	private async void SettingsClicked(object? sender, EventArgs e) =>
+		await NavigateAsync(Routes.Settings, []);
+
 	private async void SwapClicked(object? sender, EventArgs e)
 	{
-		if (sender is VisualElement swap)
+		try
 		{
-			await swap.RotateToAsync(swap.Rotation + 180, 220, Easing.CubicOut);
+			if (sender is VisualElement swap && _settings.Animations)
+			{
+				await swap.RotateToAsync(swap.Rotation + 180, 220, Easing.CubicOut);
+			}
+		}
+		catch (Exception ex)
+		{
+			System.Diagnostics.Debug.WriteLine($"Swap animation skipped: {ex.Message}");
 		}
 	}
 
@@ -59,36 +86,8 @@ public partial class PlanPage : ContentPage, IQueryAttributable
 			_vm.UsePlace(place);
 		}
 	}
-	private async void FromTapped(object? sender, TappedEventArgs e)
-	{
-		await OpenPlaceSearchAsync(true);
-	}
 
-	private async void ToTapped(object? sender, TappedEventArgs e)
-	{
-		await OpenPlaceSearchAsync(false);
-	}
+	private void FromTapped(object? sender, TappedEventArgs e) => _vm.PickFromCommand.Execute(null);
 
-	private async Task OpenPlaceSearchAsync(bool isFrom)
-	{
-		try
-		{
-			await Shell.Current.GoToAsync(
-				Routes.PlaceSearch,
-				new ShellNavigationQueryParameters
-				{
-					[Routes.TargetIsFrom] = isFrom
-				});
-		}
-		catch (Exception ex)
-		{
-			System.Diagnostics.Debug.WriteLine(
-				$"Place-search navigation failed:\n{ex}");
-
-			await DisplayAlertAsync(
-				"Navigation error",
-				$"{ex.GetType().Name}\n\n{ex.Message}",
-				"OK");
-		}
-	}
+	private void ToTapped(object? sender, TappedEventArgs e) => _vm.PickToCommand.Execute(null);
 }

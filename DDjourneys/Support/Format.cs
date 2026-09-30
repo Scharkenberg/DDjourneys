@@ -10,6 +10,53 @@ public static class Format
 {
 	private static readonly TimeZoneInfo Zone = ResolveZone();
 
+	/// <summary>Current wall-clock time in the provider zone (Europe/Berlin), floored to the minute.</summary>
+	public static DateTime NowLocal()
+	{
+		DateTime n = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, Zone).DateTime;
+		return new DateTime(n.Year, n.Month, n.Day, n.Hour, n.Minute, 0, DateTimeKind.Unspecified);
+	}
+
+	/// <summary>Converts a provider-zone wall-clock time to an offset time. Handles DST gaps and overlaps.</summary>
+	public static DateTimeOffset ToOffset(DateTime wallClock)
+	{
+		DateTime local = DateTime.SpecifyKind(wallClock, DateTimeKind.Unspecified);
+
+		if (Zone.IsInvalidTime(local))
+		{
+			local = local.AddHours(1); // spring-forward gap
+		}
+
+		TimeSpan offset = Zone.IsAmbiguousTime(local)
+			? Zone.GetAmbiguousTimeOffsets(local).Max() // autumn overlap: take the first occurrence
+			: Zone.GetUtcOffset(local);
+
+		return new DateTimeOffset(local, offset);
+	}
+
+	/// <summary>"Today", "Tomorrow" or "Sat, 3 Oct" relative to the provider-zone today.</summary>
+	public static string DayLabel(DateTime day)
+	{
+		int diff = (day.Date - NowLocal().Date).Days;
+
+		return diff switch
+		{
+			0 => "Today",
+			1 => "Tomorrow",
+			_ => day.ToString("ddd, d MMM", CultureInfo.InvariantCulture)
+		};
+	}
+
+	/// <summary>Null-safe time; "\u2013" when the provider gave none (never a bogus 01:00).</summary>
+	public static string TimeOrDash(DateTimeOffset? value) =>
+		value is { } v && v != default ? Time(v) : "\u2013";
+
+	/// <summary>Null-safe duration between two moments; "\u2013" when either is unknown.</summary>
+	public static string Duration(DateTimeOffset? start, DateTimeOffset? end) =>
+		start is { } a && end is { } b && a != default && b != default
+			? Duration(b - a)
+			: "\u2013";
+
 	public static string Time(DateTimeOffset value) =>
 		TimeZoneInfo.ConvertTime(value, Zone)
 			.ToString("HH:mm", CultureInfo.InvariantCulture);

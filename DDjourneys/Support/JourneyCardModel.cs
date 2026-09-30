@@ -38,8 +38,8 @@ public sealed class JourneyCardModel
 		JourneyLeg? firstRide = journey.Legs.FirstOrDefault(l => l.Mode != TransitMode.Walk);
 		JourneyLeg? lastRide = journey.Legs.LastOrDefault(l => l.Mode != TransitMode.Walk);
 
-		DepartureTime = Format.Time(journey.Departure ?? default);
-		ArrivalTime = Format.Time(journey.Arrival ?? default);
+		DepartureTime = Format.TimeOrDash(journey.Departure);
+		ArrivalTime = Format.TimeOrDash(journey.Arrival);
 		DurationText = Format.Duration(journey.Duration);
 
 		// Delays come from the rides: walking legs carry no realtime data.
@@ -56,7 +56,7 @@ public sealed class JourneyCardModel
 		Chips = journey.Legs
 			.Select(leg => new LegChip(
 				leg.Mode == TransitMode.Walk
-					? $"Walk {Format.Duration((leg.EffectiveArrival ?? default) - (leg.EffectiveDeparture ?? default))}"
+					? $"Walk {Format.Duration(leg.EffectiveDeparture, leg.EffectiveArrival)}"
 					: leg.Line?.Name ?? leg.Mode.ToString(),
 				ModeColors.For(leg.Mode)))
 			.ToList();

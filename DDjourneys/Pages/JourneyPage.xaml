@@ -145,29 +145,27 @@
 					Padding="0,0,0,12"
 					Spacing="4">
 
-					<FlexLayout AlignItems="Center" Wrap="Wrap">
-						<Border
-							Margin="0,0,8,4"
-							BackgroundColor="{Binding ModeColor}"
-							StyleClass="Chip">
+					<Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+						<Border BackgroundColor="{Binding ModeColor}" StyleClass="Chip">
 							<Label
 								FontFamily="OpenSansSemibold"
 								FontSize="13"
 								Text="{Binding LineText}"
 								TextColor="White" />
 						</Border>
-
 						<Label
-							Margin="0,0,8,4"
+							Grid.Column="1"
 							IsVisible="{Binding HasDirection}"
+							LineBreakMode="TailTruncation"
 							StyleClass="Caption"
-							Text="{Binding Direction}" />
-
+							Text="{Binding Direction}"
+							VerticalOptions="Center" />
 						<Label
-							Margin="0,0,0,4"
+							Grid.Column="2"
 							StyleClass="Caption"
-							Text="{Binding DurationText}" />
-					</FlexLayout>
+							Text="{Binding DurationText}"
+							VerticalOptions="Center" />
+					</Grid>
 
 					<Label
 						IsVisible="{Binding HasFeatures}"
@@ -187,14 +185,17 @@
 						TextColor="{DynamicResource Accent}" />
 
 					<HorizontalStackLayout
-						Padding="0,8"
 						IsVisible="{Binding HasIntermediates}"
-						Spacing="6">
+						MinimumHeightRequest="36"
+						SemanticProperties.Description="Show or hide intermediate stops"
+						Spacing="6"
+						VerticalOptions="Center">
 						<Label
 							FontFamily="OpenSansSemibold"
 							FontSize="14"
 							Text="{Binding StopsText}"
-							TextColor="{DynamicResource Accent}" />
+							TextColor="{DynamicResource Accent}"
+							VerticalOptions="Center" />
 						<Label
 							FontSize="14"
 							Text="{Binding Chevron}"
@@ -309,6 +310,11 @@
 						StyleClass="Caption"
 						Text="{Binding PlatformText}" />
 
+					<Label
+						IsVisible="{Binding HasWalk}"
+						StyleClass="Caption"
+						Text="{Binding WalkText}" />
+
 					<Border
 						Margin="0,2,0,0"
 						HorizontalOptions="Start"
@@ -316,6 +322,11 @@
 						StyleClass="Chip">
 						<Label StyleClass="Caption" Text="{Binding WaitText}" />
 					</Border>
+
+					<Label
+						IsVisible="{Binding HasRisk}"
+						StyleClass="Delay"
+						Text="{Binding RiskText}" />
 				</VerticalStackLayout>
 			</Grid>
 		</DataTemplate>
@@ -336,31 +347,12 @@
 						Color="{Binding RailBottom}" />
 				</Grid>
 
-				<Border
+				<controls:NoticeCard
 					Grid.Column="2"
-					Margin="0,4,0,12"
-					Padding="12,10"
-					BackgroundColor="{DynamicResource Raised}"
-					StrokeShape="RoundRectangle 12"
-					StrokeThickness="0">
-
-					<Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
-
-						<Label
-							Grid.Column="0"
-							FontFamily="OpenSansSemibold"
-							Text="&#x24D8;"
-							TextColor="{DynamicResource Accent}"
-							VerticalOptions="Start" />
-
-						<controls:NoticeLabel
-							Grid.Column="1"
-							HorizontalOptions="Fill"
-							Text="{Binding Text}"
-							TextColor="{DynamicResource Ink}" />
-
-					</Grid>
-				</Border>
+					Margin="0,2,0,12"
+					Expanded="{Binding Expanded}"
+					Technical="{Binding Technical}"
+					Text="{Binding Text}" />
 			</Grid>
 		</DataTemplate>
 
@@ -397,37 +389,23 @@
 					Spacing="{StaticResource SpaceS}">
 
 					<BindableLayout.ItemTemplate>
-						<DataTemplate x:DataType="x:String">
-							<Border
-								Padding="12,10"
-								BackgroundColor="{DynamicResource Raised}"
-								StrokeShape="RoundRectangle 12"
-								StrokeThickness="0">
-
-								<Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
-
-									<Label
-										Grid.Column="0"
-										FontFamily="OpenSansSemibold"
-										Text="&#x24D8;"
-										TextColor="{DynamicResource Accent}"
-										VerticalOptions="Start" />
-
-									<controls:NoticeLabel
-										Grid.Column="1"
-										HorizontalOptions="Fill"
-										Text="{Binding .}"
-										TextColor="{DynamicResource Ink}" />
-
-								</Grid>
-							</Border>
+						<DataTemplate x:DataType="support:NoticeRow">
+							<controls:NoticeCard
+								Expanded="{Binding Expanded}"
+								Technical="{Binding Technical}"
+								Text="{Binding Text}" />
 						</DataTemplate>
 					</BindableLayout.ItemTemplate>
 				</VerticalStackLayout>
 			</VerticalStackLayout>
 
 
-			<Border Padding="16,16,16,4" StyleClass="Card">
+			<Label
+				IsVisible="{Binding HasError}"
+				StyleClass="Cancelled"
+				Text="{Binding LoadError}" />
+
+			<Border Padding="12,12,12,0" StyleClass="Card">
 
 				<VerticalStackLayout BindableLayout.ItemTemplateSelector="{StaticResource RowSelector}" BindableLayout.ItemsSource="{Binding Rows}" />
 

@@ -7,13 +7,33 @@ namespace DDjourneys.Pages;
 
 public sealed class JourneyViewModel : ObservableObject, IQueryAttributable
 {
+	private readonly AppSettings _settings;
 	private Journey? _journey;
 
-	public JourneyViewModel()
+	public JourneyViewModel(AppSettings settings)
 	{
+		ArgumentNullException.ThrowIfNull(settings);
+		_settings = settings;
+
 		ToggleStopsCommand = new Command<LegRow>(ToggleStops);
 		ShareCommand = new Command(async () => await ShareAsync());
 	}
+
+	/// <summary>Set when the journey could not be displayed; the page shows it instead of crashing.</summary>
+	public string? LoadError
+	{
+		get => field;
+		private set
+		{
+			if (SetProperty(ref field, value))
+			{
+				OnPropertyChanged(nameof(HasError));
+			}
+		}
+	}
+
+	public bool HasError => LoadError is not null;
+
 
 	public Command<LegRow> ToggleStopsCommand { get; }
 	public Command ShareCommand { get; }
@@ -38,7 +58,7 @@ public sealed class JourneyViewModel : ObservableObject, IQueryAttributable
 		private set => SetProperty(ref field, value);
 	} = string.Empty;
 
-	public IReadOnlyList<string> Notices
+	public IReadOnlyList<NoticeRow> Notices
 	{
 		get => field;
 		private set
@@ -62,48 +82,93 @@ public sealed class JourneyViewModel : ObservableObject, IQueryAttributable
 
 	private void Load(Journey journey)
 	{
-		_journey = journey;
-
-		Summary = new JourneyCardModel(journey);
-		RouteText = $"{journey.From.Name} \u2192 {journey.To.Name}";
-		DayText = journey.Departure?.LocalDateTime.ToString("dddd, d MMMM") ?? string.Empty;
-		Notices = journey.Notices.Distinct().ToList();
-
-		Rows.Clear();
-
-		foreach (TimelineRow row in TimelineRowFactory.Build(journey))
+		if (ReferenceEquals(_journey, journey))
 		{
-			Rows.Add(row);
+			return; // Shell may deliver the same parameters twice
+		}
+
+		try
+		{
+			_journey = journey;
+			LoadError = null;
+
+			Summary = new JourneyCardModel(journey);
+			RouteText = $"{journey.From.Name} \u2192 {journey.To.Name}";
+			DayText = journey.Departure is { } departure
+				? departure.DateTime.ToString("dddd, d MMMM", System.Globalization.CultureInfo.InvariantCulture)
+				: string.Empty;
+
+			// Journey-level notices that a leg or transfer already carries would show twice.
+			var nested = journey.Legs.SelectMany(l => l.Notices)
+				.Concat(journey.Transfers.SelectMany(t => t.Notices))
+				.ToHashSet();
+
+			var options = new TimelineOptions(
+				_settings.ShowWalkingLegs,
+				_settings.ExpandNotices,
+				_settings.ShowTechnicalDetails);
+
+			Notices = journey.Notices
+				.Where(n => !string.IsNullOrWhiteSpace(n) && !nested.Contains(n))
+				.Distinct()
+				.Select(n => new NoticeRow
+				{
+					Text = n,
+					Description = n,
+					Expanded = options.ExpandNotices,
+					Technical = options.Technical
+				})
+				.ToList();
+
+			Rows.Clear();
+
+			foreach (TimelineRow row in TimelineRowFactory.Build(journey, options))
+			{
+				Rows.Add(row);
+			}
+		}
+		catch (Exception ex)
+		{
+			System.Diagnostics.Debug.WriteLine($"Journey display failed:\n{ex}");
+			LoadError = "This journey could not be displayed.";
 		}
 	}
 
 	/// <summary>Inserts or removes a leg's intermediate stops directly below its row.</summary>
 	private void ToggleStops(LegRow? leg)
 	{
-		int at = leg is null ? -1 : Rows.IndexOf(leg);
-
-		if (leg is null || at < 0 || !leg.HasIntermediates)
+		try
 		{
-			return;
-		}
+			int at = leg is null ? -1 : Rows.IndexOf(leg);
 
-		if (leg.IsExpanded)
-		{
-			for (int i = 0; i < leg.Intermediates.Count; i++)
+			if (leg is null || at < 0 || !leg.HasIntermediates)
 			{
-				Rows.RemoveAt(at + 1);
+				return;
 			}
-		}
-		else
-		{
-			for (int i = 0; i < leg.Intermediates.Count; i++)
-			{
-				leg.Intermediates[i].Index = i;
-				Rows.Insert(at + 1 + i, leg.Intermediates[i]);
-			}
-		}
 
-		leg.IsExpanded = !leg.IsExpanded;
+			if (leg.IsExpanded)
+			{
+				// Remove only what this leg inserted, never a neighbour.
+				for (int i = 0; i < leg.Intermediates.Count && at + 1 < Rows.Count && Rows[at + 1] is IntermediateRow; i++)
+				{
+					Rows.RemoveAt(at + 1);
+				}
+			}
+			else
+			{
+				for (int i = 0; i < leg.Intermediates.Count; i++)
+				{
+					leg.Intermediates[i].Index = i;
+					Rows.Insert(at + 1 + i, leg.Intermediates[i]);
+				}
+			}
+
+			leg.IsExpanded = !leg.IsExpanded;
+		}
+		catch (Exception ex)
+		{
+			System.Diagnostics.Debug.WriteLine($"Toggle stops failed:\n{ex}");
+		}
 	}
 
 	private async Task ShareAsync()
@@ -113,11 +178,18 @@ public sealed class JourneyViewModel : ObservableObject, IQueryAttributable
 			return;
 		}
 
-		await Share.Default.RequestAsync(new ShareTextRequest
+		try
 		{
-			Title = "Share journey",
-			Text = BuildShareText(_journey)
-		});
+			await Share.Default.RequestAsync(new ShareTextRequest
+			{
+				Title = "Share journey",
+				Text = BuildShareText(_journey)
+			});
+		}
+		catch (Exception ex)
+		{
+			System.Diagnostics.Debug.WriteLine($"Share failed:\n{ex}");
+		}
 	}
 
 	private string BuildShareText(Journey journey)
@@ -125,7 +197,7 @@ public sealed class JourneyViewModel : ObservableObject, IQueryAttributable
 		var lines = new List<string>
 		{
 			RouteText,
-			$"{DayText}, {Format.Time(journey.Departure ?? default)}\u2013{Format.Time(journey.Arrival ?? default)} ({Format.Duration(journey.Duration)})",
+			$"{DayText}, {Format.TimeOrDash(journey.Departure)}\u2013{Format.TimeOrDash(journey.Arrival)} ({Format.Duration(journey.Duration)})",
 			string.Empty
 		};
 
@@ -134,12 +206,12 @@ public sealed class JourneyViewModel : ObservableObject, IQueryAttributable
 			switch (item)
 			{
 				case RideItem r:
-					lines.Add($"{Format.Time(r.Leg.EffectiveDeparture ?? default)} {r.Leg.Line?.ToString() ?? r.Leg.Mode.ToString()}: "
-						+ $"{r.Leg.From.Name} \u2192 {r.Leg.To.Name} ({Format.Time(r.Leg.EffectiveArrival ?? default)})");
+					lines.Add($"{Format.TimeOrDash(r.Leg.EffectiveDeparture)} {r.Leg.Line?.ToString() ?? r.Leg.Mode.ToString()}: "
+						+ $"{r.Leg.From.Name} \u2192 {r.Leg.To.Name} ({Format.TimeOrDash(r.Leg.EffectiveArrival)})");
 					break;
 
 				case WalkItem w:
-					lines.Add($"Walk {Format.Duration((w.Leg.EffectiveArrival ?? default) - (w.Leg.EffectiveDeparture ?? default))} to {w.Leg.To.Name}");
+					lines.Add($"Walk {Format.Duration(w.Leg.EffectiveDeparture, w.Leg.EffectiveArrival)} to {w.Leg.To.Name}");
 					break;
 			}
 		}

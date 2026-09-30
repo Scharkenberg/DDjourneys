@@ -1,3 +1,5 @@
+using DDjourneys.Support;
+
 namespace DDjourneys.Pages;
 
 public partial class JourneyPage : ContentPage
@@ -21,36 +23,34 @@ public partial class JourneyPage : ContentPage
 		}
 
 		_headerShown = true;
-
-		HeaderBlock.Opacity = 0;
-		HeaderBlock.TranslationY = 16;
-
-		await Task.WhenAll(
-			HeaderBlock.FadeToAsync(1, 300, Easing.CubicOut),
-			HeaderBlock.TranslateToAsync(0, 0, 300, Easing.CubicOut));
+		await Motion.RevealAsync(HeaderBlock, 0, 300, 16);
 	}
 
-	/// <summary>Rows slide in one after another; expanded stops use their own short stagger.</summary>
-	private async void RowLoaded(object? sender, EventArgs e)
+	/// <summary>
+	/// Only the text column of a row slides in; the rail and node column stays put, so the
+	/// timeline line never appears broken while rows stagger in.
+	/// </summary>
+	private void RowLoaded(object? sender, EventArgs e)
 	{
-		if (sender is not VisualElement view || view.BindingContext is not Support.TimelineRow row)
+		if (!Motion.Enabled || sender is not Grid grid || grid.BindingContext is not TimelineRow row)
 		{
 			return;
 		}
 
-		view.Opacity = 0;
-		view.TranslationY = 14;
+		int delay = Math.Min(row.Index, 12) * 40;
 
-		await Task.Delay(Math.Min(row.Index, 14) * 45);
-
-		await Task.WhenAll(
-			view.FadeToAsync(1, 260, Easing.CubicOut),
-			view.TranslateToAsync(0, 0, 260, Easing.CubicOut));
+		foreach (IView child in grid.Children.ToArray())
+		{
+			if (child is VisualElement element && Grid.GetColumn(element) != 1)
+			{
+				_ = Motion.RevealAsync(element, delay, 240, 8);
+			}
+		}
 	}
 
 	private void StopsToggled(object? sender, TappedEventArgs e)
 	{
-		if ((sender as BindableObject)?.BindingContext is Support.LegRow leg)
+		if ((sender as BindableObject)?.BindingContext is LegRow leg)
 		{
 			_vm.ToggleStopsCommand.Execute(leg);
 		}
