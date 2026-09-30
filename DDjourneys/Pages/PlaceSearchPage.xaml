@@ -3,16 +3,11 @@
 	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
 	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
 	xmlns:local="clr-namespace:DDjourneys.Pages"
-	Title="Choose place"
+	xmlns:localization="clr-namespace:DDjourneys.Localization"
+	Title="{localization:Tr PlaceSearch.Title}"
 	x:DataType="local:PlaceSearchViewModel">
 
 	<ContentPage.Resources>
-
-		<!--
-			One row, used for results and recents.
-			Rule for this page: no CollectionView and no EmptyView. Every Label lives inside a
-			Grid or StackLayout (a WinUI Panel), never as the direct child of a templated host.
-		-->
 		<DataTemplate x:Key="PlaceRow" x:DataType="local:PlaceRow">
 			<Grid
 				Padding="12,10"
@@ -34,7 +29,6 @@
 				</Grid.GestureRecognizers>
 			</Grid>
 		</DataTemplate>
-
 	</ContentPage.Resources>
 
 	<Grid
@@ -42,7 +36,6 @@
 		RowDefinitions="Auto,*"
 		RowSpacing="{StaticResource SpaceM}">
 
-		<!--  Query  -->
 		<Grid
 			Grid.Row="0"
 			ColumnDefinitions="*,Auto"
@@ -51,9 +44,9 @@
 				x:Name="QueryEntry"
 				Grid.Column="0"
 				ClearButtonVisibility="WhileEditing"
-				Placeholder="Station, stop or address"
+				Placeholder="{localization:Tr PlaceSearch.SearchPlaceholder}"
 				ReturnType="Search"
-				SemanticProperties.Description="Search for a place"
+				SemanticProperties.Description="{localization:Tr PlaceSearch.SearchForPlace}"
 				Text="{Binding Query}" />
 			<ActivityIndicator
 				Grid.Column="1"
@@ -67,7 +60,6 @@
 		<ScrollView Grid.Row="1">
 			<VerticalStackLayout Spacing="{StaticResource SpaceM}">
 
-				<!--  Message: hint, nothing found, or error  -->
 				<Label
 					Margin="0,24,0,0"
 					HorizontalTextAlignment="Center"
@@ -75,7 +67,6 @@
 					StyleClass="Caption"
 					Text="{Binding Message}" />
 
-				<!--  Results  -->
 				<Border
 					Padding="4"
 					IsVisible="{Binding HasResults}"
@@ -83,9 +74,8 @@
 					<VerticalStackLayout BindableLayout.ItemTemplate="{StaticResource PlaceRow}" BindableLayout.ItemsSource="{Binding Results}" />
 				</Border>
 
-				<!--  Recents, shown while the query is empty  -->
 				<VerticalStackLayout IsVisible="{Binding ShowRecents}" Spacing="{StaticResource SpaceS}">
-					<Label StyleClass="Title" Text="Recent" />
+					<Label StyleClass="Title" Text="{localization:Tr Plan.Recent}" />
 					<Border Padding="4" StyleClass="Card">
 						<VerticalStackLayout BindableLayout.ItemTemplate="{StaticResource PlaceRow}" BindableLayout.ItemsSource="{Binding Recents}" />
 					</Border>
@@ -93,7 +83,6 @@
 
 			</VerticalStackLayout>
 		</ScrollView>
-
 	</Grid>
 
 </ContentPage>

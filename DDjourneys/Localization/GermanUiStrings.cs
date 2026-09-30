@@ -20,7 +20,10 @@ public sealed class GermanUiStrings : IUiStrings
 		Clear = "Leeren",
 		SearchFailed = "Die Suche ist fehlgeschlagen.",
 		CouldNotReachService =
-			"Der Fahrplandienst ist nicht erreichbar."
+			"Der Fahrplandienst ist nicht erreichbar.",
+		SomethingWentWrong = "Etwas ist schiefgelaufen.",
+		NavigationError = "Navigationsfehler.",
+		CouldNotOpenJourney = "Verbindung konnte nicht geöffnet werden."
 	};
 
 	public PlanStrings Plan { get; } = new()
@@ -62,7 +65,8 @@ public sealed class GermanUiStrings : IUiStrings
 		NoPlacesFound = "Keine Orte gefunden.",
 		Searching = "Suche...",
 		CouldNotReachService =
-			"Der Fahrplandienst ist nicht erreichbar. Verbindung prüfen."
+			"Der Fahrplandienst ist nicht erreichbar. Verbindung prüfen.",
+		SearchForPlace = "Nach einem Ort suchen"
 	};
 
 	public ResultsStrings Results { get; } = new()
@@ -132,7 +136,8 @@ public sealed class GermanUiStrings : IUiStrings
 		ShowFullNotice = "Den vollständigen Hinweis anzeigen",
 		ShowLessNotice = "Hinweis einklappen",
 		Warning = "Warnung",
-		Notice = "Hinweis"
+		Notice = "Hinweis",
+		OnTime = "Pünktlich"
 	};
 
 	public SettingsStrings Settings { get; } = new()

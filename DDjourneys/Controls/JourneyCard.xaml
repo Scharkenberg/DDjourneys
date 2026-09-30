@@ -2,6 +2,7 @@
 	x:Class="DDjourneys.Controls.JourneyCard"
 	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
 	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+	xmlns:localization="clr-namespace:DDjourneys.Localization"
 	xmlns:support="clr-namespace:DDjourneys.Support"
 	x:DataType="support:JourneyCardModel">
 
@@ -55,7 +56,7 @@
 
 			</Grid>
 
-			<!--  Legs. Pills are fine here: they are not interactive.  -->
+			<!--  Legs  -->
 			<FlexLayout BindableLayout.ItemsSource="{Binding Chips}" Wrap="Wrap">
 				<BindableLayout.ItemTemplate>
 					<DataTemplate x:DataType="support:LegChip">
@@ -75,14 +76,16 @@
 
 			<!--  State  -->
 			<HorizontalStackLayout IsVisible="{Binding HasStatusRow}" Spacing="{StaticResource SpaceM}">
-				<Label
-					IsVisible="{Binding IsCancelled}"
-					StyleClass="Cancelled"
-					Text="Cancelled" />
-				<Label
-					IsVisible="{Binding IsOnTime}"
-					StyleClass="OnTime"
-					Text="On time" />
+				<Label IsVisible="{Binding IsCancelled}" StyleClass="Cancelled">
+					<Label.Text>
+						<localization:Tr Key="Journey.Cancelled" />
+					</Label.Text>
+				</Label>
+				<Label IsVisible="{Binding IsOnTime}" StyleClass="OnTime">
+					<Label.Text>
+						<localization:Tr Key="Journey.OnTime" />
+					</Label.Text>
+				</Label>
 				<Label
 					IsVisible="{Binding HasNotices}"
 					StyleClass="Caption"

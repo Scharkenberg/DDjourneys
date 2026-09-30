@@ -19,7 +19,10 @@ public sealed class EnglishUiStrings : IUiStrings
 		Search = "Search",
 		Clear = "Clear",
 		SearchFailed = "The search failed.",
-		CouldNotReachService = "Could not reach the timetable service."
+		CouldNotReachService = "Could not reach the timetable service.",
+		SomethingWentWrong = "Something went wrong.",
+		NavigationError = "Navigation error.",
+		CouldNotOpenJourney = "Could not open journey."
 	};
 
 	public PlanStrings Plan { get; } = new()
@@ -55,7 +58,8 @@ public sealed class EnglishUiStrings : IUiStrings
 		NoPlacesFound = "No places found.",
 		Searching = "Searching...",
 		CouldNotReachService =
-			"Could not reach the timetable service. Check your connection."
+			"Could not reach the timetable service. Check your connection.",
+		SearchForPlace = "Search for a place"
 	};
 
 	public ResultsStrings Results { get; } = new()
@@ -121,7 +125,8 @@ public sealed class EnglishUiStrings : IUiStrings
 		ShowFullNotice = "Show the full notice",
 		ShowLessNotice = "Show less of the notice",
 		Warning = "Warning",
-		Notice = "Notice"
+		Notice = "Notice",
+		OnTime = "On time"
 	};
 
 	public SettingsStrings Settings { get; } = new()

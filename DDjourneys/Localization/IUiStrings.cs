@@ -28,6 +28,9 @@ public sealed class CommonStrings
 	public required string Clear { get; init; }
 	public required string SearchFailed { get; init; }
 	public required string CouldNotReachService { get; init; }
+	public required string SomethingWentWrong { get; init; }
+	public required string NavigationError { get; init; }
+	public required string CouldNotOpenJourney { get; init; }
 }
 
 public sealed class PlanStrings
@@ -57,6 +60,7 @@ public sealed class PlaceSearchStrings
 {
 	public required string Title { get; init; }
 	public required string SearchPlaceholder { get; init; }
+	public required string SearchForPlace { get; init; }
 	public required string Hint { get; init; }
 	public required string TypeAtLeastTwoCharacters { get; init; }
 	public required string NoPlacesFound { get; init; }
@@ -89,7 +93,6 @@ public sealed class JourneyStrings
 	public required string ShowOrHideIntermediateStops { get; init; }
 	public required string Walk { get; init; }
 	public required string ShareTitle { get; init; }
-
 	public required string Direct { get; init; }
 	public required string OneTransfer { get; init; }
 	public required string MultipleTransfers { get; init; }
@@ -99,7 +102,6 @@ public sealed class JourneyStrings
 	public required string AccessibilityCancelled { get; init; }
 	public required string AccessibilityArrivalDelay { get; init; }
 	public required string AccessibilityNotices { get; init; }
-
 	public required string HideStops { get; init; }
 	public required string OneStop { get; init; }
 	public required string MultipleStops { get; init; }
@@ -123,6 +125,7 @@ public sealed class JourneyStrings
 	public required string ShowLessNotice { get; init; }
 	public required string Warning { get; init; }
 	public required string Notice { get; init; }
+	public required string OnTime { get; init; }
 }
 
 public sealed class SettingsStrings
