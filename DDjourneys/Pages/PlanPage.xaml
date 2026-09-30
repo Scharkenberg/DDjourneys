@@ -2,9 +2,10 @@
 	x:Class="DDjourneys.Pages.PlanPage"
 	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
 	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-	xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
 	xmlns:core="clr-namespace:DDjourneys.Core.Models;assembly=DDjourneys.Core"
 	xmlns:local="clr-namespace:DDjourneys.Pages"
+	xmlns:localization="clr-namespace:DDjourneys.Localization"
+	xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
 	x:DataType="local:PlanViewModel"
 	Shell.NavBarIsVisible="False">
 
@@ -18,12 +19,13 @@
 			<Grid ColumnDefinitions="*,Auto">
 				<Label
 					StyleClass="Headline"
-					Text="Where to?"
+					Text="{localization:Tr Plan.Title}"
 					VerticalOptions="Center" />
+
 				<Button
 					Grid.Column="1"
 					Clicked="SettingsClicked"
-					SemanticProperties.Description="Settings"
+					SemanticProperties.Description="{localization:Tr Settings.Title}"
 					StyleClass="IconButton"
 					Text="&#x2699;" />
 			</Grid>
@@ -39,8 +41,10 @@
 						Grid.Row="0"
 						ColumnDefinitions="*,44"
 						MinimumHeightRequest="64">
+
 						<VerticalStackLayout Spacing="2" VerticalOptions="Center">
-							<Label StyleClass="Caption" Text="From" />
+							<Label StyleClass="Caption" Text="{localization:Tr Plan.FromPlaceholder}" />
+
 							<Label
 								FontFamily="OpenSansSemibold"
 								LineBreakMode="TailTruncation"
@@ -54,16 +58,18 @@
 									</DataTrigger>
 								</Label.Triggers>
 							</Label>
+
 							<VerticalStackLayout.GestureRecognizers>
 								<TapGestureRecognizer Tapped="FromTapped" />
 							</VerticalStackLayout.GestureRecognizers>
 						</VerticalStackLayout>
+
 						<Button
 							Grid.Column="1"
 							Command="{Binding ToggleFromFavouriteCommand}"
 							InputTransparent="{Binding NoFrom}"
 							Opacity="{Binding StarOpacityFrom}"
-							SemanticProperties.Description="Toggle favourite for start"
+							SemanticProperties.Description="{localization:Tr Plan.ToggleFavouriteFrom}"
 							StyleClass="IconButton"
 							Text="{Binding FromStar}" />
 					</Grid>
@@ -77,8 +83,10 @@
 						Grid.Row="2"
 						ColumnDefinitions="*,44"
 						MinimumHeightRequest="64">
+
 						<VerticalStackLayout Spacing="2" VerticalOptions="Center">
-							<Label StyleClass="Caption" Text="To" />
+							<Label StyleClass="Caption" Text="{localization:Tr Plan.ToPlaceholder}" />
+
 							<Label
 								FontFamily="OpenSansSemibold"
 								LineBreakMode="TailTruncation"
@@ -92,16 +100,18 @@
 									</DataTrigger>
 								</Label.Triggers>
 							</Label>
+
 							<VerticalStackLayout.GestureRecognizers>
 								<TapGestureRecognizer Tapped="ToTapped" />
 							</VerticalStackLayout.GestureRecognizers>
 						</VerticalStackLayout>
+
 						<Button
 							Grid.Column="1"
 							Command="{Binding ToggleToFavouriteCommand}"
 							InputTransparent="{Binding NoTo}"
 							Opacity="{Binding StarOpacityTo}"
-							SemanticProperties.Description="Toggle favourite for destination"
+							SemanticProperties.Description="{localization:Tr Plan.ToggleFavouriteTo}"
 							StyleClass="IconButton"
 							Text="{Binding ToStar}" />
 					</Grid>
@@ -112,7 +122,7 @@
 						Clicked="SwapClicked"
 						Command="{Binding SwapCommand}"
 						FontSize="26"
-						SemanticProperties.Description="Swap start and destination"
+						SemanticProperties.Description="{localization:Tr Plan.SwapDescription}"
 						StyleClass="IconButton"
 						Text="&#x21C5;"
 						VerticalOptions="Center" />
@@ -120,109 +130,189 @@
 				</Grid>
 			</Border>
 
-			<!--  Date and time: rows, so native pickers keep their own chrome and breathing room  -->
+			<!--  Date and time  -->
 			<Border Padding="0" StyleClass="Card">
 				<VerticalStackLayout>
 
-				<Grid Padding="12,10" ColumnDefinitions="*,*" ColumnSpacing="{StaticResource SpaceS}">
-					<Button
-						Grid.Column="0"
-						Command="{Binding DepartCommand}"
-						MinimumHeightRequest="38"
-						StyleClass="Tonal"
-						Text="Leave">
-						<Button.Triggers>
-							<DataTrigger Binding="{Binding IsArrival}" TargetType="Button" Value="False">
-								<Setter Property="BackgroundColor" Value="{DynamicResource Accent}" />
-								<Setter Property="TextColor" Value="{DynamicResource OnAccent}" />
-							</DataTrigger>
-						</Button.Triggers>
-					</Button>
-					<Button
-						Grid.Column="1"
-						Command="{Binding ArriveCommand}"
-						MinimumHeightRequest="38"
-						StyleClass="Tonal"
-						Text="Arrive by">
-						<Button.Triggers>
-							<DataTrigger Binding="{Binding IsArrival}" TargetType="Button" Value="True">
-								<Setter Property="BackgroundColor" Value="{DynamicResource Accent}" />
-								<Setter Property="TextColor" Value="{DynamicResource OnAccent}" />
-							</DataTrigger>
-						</Button.Triggers>
-					</Button>
-				</Grid>
+					<Grid
+						Padding="12,10"
+						ColumnDefinitions="*,*"
+						ColumnSpacing="{StaticResource SpaceS}">
 
-				<BoxView StyleClass="Divider" />
+						<Button
+							Grid.Column="0"
+							Command="{Binding DepartCommand}"
+							MinimumHeightRequest="38"
+							StyleClass="Tonal"
+							Text="{localization:Tr Plan.Departure}">
+							<Button.Triggers>
+								<DataTrigger
+									Binding="{Binding IsArrival}"
+									TargetType="Button"
+									Value="False">
+									<Setter Property="BackgroundColor" Value="{DynamicResource Accent}" />
+									<Setter Property="TextColor" Value="{DynamicResource OnAccent}" />
+								</DataTrigger>
+							</Button.Triggers>
+						</Button>
 
-				<Grid Padding="12,4" ColumnDefinitions="*,Auto" MinimumHeightRequest="48">
-					<Label StyleClass="Caption" Text="Date" VerticalOptions="Center" />
-					<DatePicker
-						Grid.Column="1"
-						Date="{Binding Date}"
-						Format="ddd, d MMM"
-						HorizontalOptions="End"
-						MaximumDate="{Binding MaxDate}"
-						MinimumDate="{Binding MinDate}"
-						VerticalOptions="Center" />
-				</Grid>
+						<Button
+							Grid.Column="1"
+							Command="{Binding ArriveCommand}"
+							MinimumHeightRequest="38"
+							StyleClass="Tonal"
+							Text="{localization:Tr Plan.Arrival}">
+							<Button.Triggers>
+								<DataTrigger
+									Binding="{Binding IsArrival}"
+									TargetType="Button"
+									Value="True">
+									<Setter Property="BackgroundColor" Value="{DynamicResource Accent}" />
+									<Setter Property="TextColor" Value="{DynamicResource OnAccent}" />
+								</DataTrigger>
+							</Button.Triggers>
+						</Button>
+					</Grid>
 
-				<BoxView StyleClass="Divider" />
+					<BoxView StyleClass="Divider" />
 
-				<Grid Padding="12,4" ColumnDefinitions="*,Auto" MinimumHeightRequest="48">
-					<Label StyleClass="Caption" Text="Time" VerticalOptions="Center" />
-					<TimePicker
-						Grid.Column="1"
-						Format="HH:mm"
-						HorizontalOptions="End"
-						Time="{Binding Time}"
-						VerticalOptions="Center" />
-				</Grid>
+					<Grid
+						Padding="12,4"
+						ColumnDefinitions="*,Auto"
+						MinimumHeightRequest="48">
 
-				<BoxView StyleClass="Divider" />
+						<Label
+							StyleClass="Caption"
+							Text="{localization:Tr Plan.Date}"
+							VerticalOptions="Center" />
 
-				<!--  Quick steps roll over midnight; "Now" resets  -->
-				<Grid
-					Padding="12,10"
-					ColumnDefinitions="*,*,*,*,*"
-					ColumnSpacing="{StaticResource SpaceS}">
-					<Button Grid.Column="0" Command="{Binding NudgeCommand}" CommandParameter="-60" FontSize="{StaticResource FontCaption}" MinimumHeightRequest="40" Padding="0" StyleClass="Tonal" Text="&#x2212;1 h" />
-					<Button Grid.Column="1" Command="{Binding NudgeCommand}" CommandParameter="-15" FontSize="{StaticResource FontCaption}" MinimumHeightRequest="40" Padding="0" StyleClass="Tonal" Text="&#x2212;15" />
-					<Button Grid.Column="2" Command="{Binding NudgeCommand}" CommandParameter="15" FontSize="{StaticResource FontCaption}" MinimumHeightRequest="40" Padding="0" StyleClass="Tonal" Text="+15" />
-					<Button Grid.Column="3" Command="{Binding NudgeCommand}" CommandParameter="60" FontSize="{StaticResource FontCaption}" MinimumHeightRequest="40" Padding="0" StyleClass="Tonal" Text="+1 h" />
-					<Button Grid.Column="4" Command="{Binding NowCommand}" FontSize="13" IsEnabled="{Binding IsNotNow}" MinimumHeightRequest="36" Padding="0" StyleClass="Tonal" Text="Now" />
-				</Grid>
+						<DatePicker
+							Grid.Column="1"
+							Date="{Binding Date}"
+							Format="ddd, d MMM"
+							HorizontalOptions="End"
+							MaximumDate="{Binding MaxDate}"
+							MinimumDate="{Binding MinDate}"
+							VerticalOptions="Center" />
+					</Grid>
 
-				<BoxView StyleClass="Divider" />
+					<BoxView StyleClass="Divider" />
 
-				<Label Padding="12,8" HorizontalOptions="Center" StyleClass="Subtitle">
-					<Label.FormattedText>
-						<FormattedString>
-							<Span Text="{Binding ModeText}" TextColor="{DynamicResource InkMuted}" />
-							<Span Text="  " />
-							<Span Text="{Binding WhenText}" TextColor="{DynamicResource Accent}" />
-						</FormattedString>
-					</Label.FormattedText>
-				</Label>
+					<Grid
+						Padding="12,4"
+						ColumnDefinitions="*,Auto"
+						MinimumHeightRequest="48">
+
+						<Label
+							StyleClass="Caption"
+							Text="{localization:Tr Plan.Time}"
+							VerticalOptions="Center" />
+
+						<TimePicker
+							Grid.Column="1"
+							Format="HH:mm"
+							HorizontalOptions="End"
+							Time="{Binding Time}"
+							VerticalOptions="Center" />
+					</Grid>
+
+					<BoxView StyleClass="Divider" />
+
+					<!--  Quick steps roll over midnight; "Now" resets  -->
+					<Grid
+						Padding="12,10"
+						ColumnDefinitions="*,*,*,*,*"
+						ColumnSpacing="{StaticResource SpaceS}">
+
+						<Button
+							Grid.Column="0"
+							Padding="0"
+							Command="{Binding NudgeCommand}"
+							CommandParameter="-60"
+							FontSize="{StaticResource FontCaption}"
+							MinimumHeightRequest="40"
+							StyleClass="Tonal"
+							Text="&#x2212;1 h" />
+
+						<Button
+							Grid.Column="1"
+							Padding="0"
+							Command="{Binding NudgeCommand}"
+							CommandParameter="-15"
+							FontSize="{StaticResource FontCaption}"
+							MinimumHeightRequest="40"
+							StyleClass="Tonal"
+							Text="&#x2212;15" />
+
+						<Button
+							Grid.Column="2"
+							Padding="0"
+							Command="{Binding NudgeCommand}"
+							CommandParameter="15"
+							FontSize="{StaticResource FontCaption}"
+							MinimumHeightRequest="40"
+							StyleClass="Tonal"
+							Text="+15" />
+
+						<Button
+							Grid.Column="3"
+							Padding="0"
+							Command="{Binding NudgeCommand}"
+							CommandParameter="60"
+							FontSize="{StaticResource FontCaption}"
+							MinimumHeightRequest="40"
+							StyleClass="Tonal"
+							Text="+1 h" />
+
+						<Button
+							Grid.Column="4"
+							Padding="0"
+							Command="{Binding NowCommand}"
+							FontSize="13"
+							IsEnabled="{Binding IsNotNow}"
+							MinimumHeightRequest="36"
+							StyleClass="Tonal"
+							Text="{localization:Tr Plan.LeaveNow}" />
+					</Grid>
+
+					<BoxView StyleClass="Divider" />
+
+					<Label
+						Padding="12,8"
+						HorizontalOptions="Center"
+						StyleClass="Subtitle">
+
+						<Label.FormattedText>
+							<FormattedString>
+								<Span Text="{Binding ModeText}" TextColor="{DynamicResource InkMuted}" />
+								<Span Text="  " />
+								<Span Text="{Binding WhenText}" TextColor="{DynamicResource Accent}" />
+							</FormattedString>
+						</Label.FormattedText>
+					</Label>
 
 				</VerticalStackLayout>
 			</Border>
 
-			<Button Command="{Binding SearchCommand}" Text="Search journeys" />
+			<Button Command="{Binding SearchCommand}" Text="{localization:Tr Plan.SearchJourneys}" />
 
 			<!--  Favourites  -->
 			<VerticalStackLayout IsVisible="{Binding HasFavourites}" Spacing="{StaticResource SpaceS}">
-				<Label StyleClass="Title" Text="Favourites" />
+
+				<Label StyleClass="Title" Text="{localization:Tr Plan.Favourites}" />
+
 				<FlexLayout BindableLayout.ItemsSource="{Binding Favourites}" Wrap="Wrap">
+
 					<BindableLayout.ItemTemplate>
 						<DataTemplate x:DataType="core:Location">
-							<Border
-								Margin="0,0,8,8"
-								StyleClass="ChipButton">
+							<Border Margin="0,0,8,8" StyleClass="ChipButton">
+
 								<Label Text="{Binding Name}" />
+
 								<Border.GestureRecognizers>
 									<TapGestureRecognizer Tapped="PlaceTapped" />
 								</Border.GestureRecognizers>
+
 							</Border>
 						</DataTemplate>
 					</BindableLayout.ItemTemplate>
@@ -231,31 +321,49 @@
 
 			<!--  Recent  -->
 			<VerticalStackLayout IsVisible="{Binding HasRecents}" Spacing="{StaticResource SpaceS}">
+
 				<Grid ColumnDefinitions="*,Auto">
+
 					<Label
 						StyleClass="Title"
-						Text="Recent"
+						Text="{localization:Tr Plan.Recent}"
 						VerticalOptions="Center" />
+
 					<Button
 						Grid.Column="1"
 						Command="{Binding ClearRecentsCommand}"
 						FontSize="{StaticResource FontBody}"
 						StyleClass="IconButton"
-						Text="Clear" />
+						Text="{localization:Tr Common.Clear}" />
 				</Grid>
+
 				<Border Padding="0" StyleClass="Card">
 					<VerticalStackLayout BindableLayout.ItemsSource="{Binding Recents}">
+
 						<BindableLayout.ItemTemplate>
 							<DataTemplate x:DataType="core:Location">
-								<VerticalStackLayout Padding="14,10" MinimumHeightRequest="48" Spacing="1" VerticalOptions="Center">
+
+								<VerticalStackLayout
+									Padding="14,10"
+									MinimumHeightRequest="48"
+									Spacing="1"
+									VerticalOptions="Center">
+
 									<Label FontFamily="OpenSansSemibold" Text="{Binding Name}" />
-									<Label IsVisible="{Binding Place, Converter={StaticResource HasText}}" StyleClass="Faint" Text="{Binding Place}" />
+
+									<Label
+										IsVisible="{Binding Place, Converter={StaticResource HasText}}"
+										StyleClass="Faint"
+										Text="{Binding Place}" />
+
 									<VerticalStackLayout.GestureRecognizers>
 										<TapGestureRecognizer Tapped="PlaceTapped" />
 									</VerticalStackLayout.GestureRecognizers>
 								</VerticalStackLayout>
+
 							</DataTemplate>
 						</BindableLayout.ItemTemplate>
+
 					</VerticalStackLayout>
 				</Border>
 			</VerticalStackLayout>
@@ -263,7 +371,7 @@
 			<Label
 				IsVisible="{Binding IsPlacesEmpty}"
 				StyleClass="Caption"
-				Text="Places you search for will appear here." />
+				Text="{localization:Tr Plan.PlacesYouSearchForWillAppearHere}" />
 
 		</VerticalStackLayout>
 	</ScrollView>

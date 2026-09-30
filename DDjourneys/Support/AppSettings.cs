@@ -35,6 +35,13 @@ public sealed class AppSettings
 		set => Write("theme", value);
 	}
 
+	/// <summary>UI language as an IETF culture code (for example "en" or "de-DE").</summary>
+	public string LanguageCode
+	{
+		get => Read("language", CultureInfo.CurrentUICulture.Name);
+		set => Write("language", NormalizeCulture(value));
+	}
+
 	/// <summary>Subtle transitions and entrance animations. Off = instant UI.</summary>
 	public bool Animations
 	{
@@ -132,4 +139,7 @@ public sealed class AppSettings
 			System.Diagnostics.Debug.WriteLine($"Settings write '{key}' failed: {ex.Message}");
 		}
 	}
+
+	private static string NormalizeCulture(string languageCode) =>
+	CultureInfo.GetCultureInfo(languageCode).Name;
 }

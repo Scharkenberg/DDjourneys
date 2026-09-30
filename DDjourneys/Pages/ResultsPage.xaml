@@ -4,8 +4,9 @@
 	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
 	xmlns:controls="clr-namespace:DDjourneys.Controls"
 	xmlns:local="clr-namespace:DDjourneys.Pages"
+	xmlns:localization="clr-namespace:DDjourneys.Localization"
 	xmlns:support="clr-namespace:DDjourneys.Support"
-	Title="Journeys"
+	Title="{localization:Tr Results.Title}"
 	x:DataType="local:ResultsViewModel">
 
 	<!--
@@ -23,12 +24,14 @@
 					LineBreakMode="TailTruncation"
 					StyleClass="Title"
 					Text="{Binding RouteText}" />
+
 				<Label StyleClass="Caption" Text="{Binding WhenText}" />
 			</VerticalStackLayout>
+
 			<Button
 				Grid.Column="1"
 				Command="{Binding ReloadCommand}"
-				SemanticProperties.Description="Search again"
+				SemanticProperties.Description="{localization:Tr Common.SearchAgain}"
 				StyleClass="IconButton"
 				Text="&#x21BB;" />
 		</Grid>
@@ -36,6 +39,7 @@
 		<Grid Grid.Row="1">
 
 			<RefreshView Command="{Binding RefreshCommand}" IsRefreshing="{Binding IsRefreshing}">
+
 				<CollectionView ItemsSource="{Binding Items}" SelectionMode="None">
 
 					<CollectionView.ItemsLayout>
@@ -60,6 +64,7 @@
 				IsVisible="{Binding ShowStatus}"
 				Spacing="{StaticResource SpaceM}"
 				VerticalOptions="Start">
+
 				<ActivityIndicator
 					HeightRequest="28"
 					HorizontalOptions="Center"
@@ -67,17 +72,20 @@
 					IsVisible="{Binding IsLoading}"
 					WidthRequest="28"
 					Color="{DynamicResource Accent}" />
+
 				<Label
 					HorizontalTextAlignment="Center"
 					IsVisible="{Binding HasStatusText}"
 					StyleClass="Caption"
 					Text="{Binding StatusText}" />
+
 				<Button
 					Command="{Binding ReloadCommand}"
 					HorizontalOptions="Center"
 					IsVisible="{Binding HasError}"
 					StyleClass="Tonal"
-					Text="Try again" />
+					Text="{localization:Tr Common.TryAgain}" />
+
 			</VerticalStackLayout>
 
 		</Grid>

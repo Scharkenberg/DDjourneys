@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Globalization;
 using DDjourneys.Core.Models;
 using DDjourneys.Core.Storage;
+using DDjourneys.Localization;
 using DDjourneys.Support;
 using Location = DDjourneys.Core.Models.Location;
 
@@ -9,24 +10,26 @@ namespace DDjourneys.Pages;
 
 public sealed partial class PlanViewModel : ObservableObject
 {
-	/// <summary>
-	/// A time earlier than now by at most this much is treated as "now".
-	/// Anything older is taken to mean the same time tomorrow (23:40 → typing 00:15).
-	/// </summary>
 	private static readonly TimeSpan RolloverGrace = TimeSpan.FromMinutes(30);
 
 	private readonly PlaceStore _store;
 	private readonly AppSettings _settings;
-	private DateTime _when; // provider-zone wall clock, minute precision. Single source of truth.
+	private readonly LocalizationService _localization;
+
+	private DateTime _when;
 	private bool _syncing;
 
 	public PlanViewModel(PlaceStore store, AppSettings settings)
 	{
 		ArgumentNullException.ThrowIfNull(store);
 		ArgumentNullException.ThrowIfNull(settings);
+
 		_store = store;
 		_settings = settings;
+		_localization = LocalizationService.Current;
+
 		_store.Changed += OnStoreChanged;
+		_localization.PropertyChanged += OnLocalizationChanged;
 
 		PickFromCommand = new Command(async () => await SafeAsync(() => PickAsync(true)));
 		PickToCommand = new Command(async () => await SafeAsync(() => PickAsync(false)));
@@ -41,6 +44,7 @@ public sealed partial class PlanViewModel : ObservableObject
 		ClearRecentsCommand = new Command(() => Safe(_store.ClearRecents));
 
 		SetNow();
+
 		if (_settings.DefaultArrival)
 		{
 			IsArrival = true;
@@ -53,10 +57,11 @@ public sealed partial class PlanViewModel : ObservableObject
 	public Func<JourneyQuery, Task>? OpenResults { get; set; }
 	public Func<string, Task>? ShowError { get; set; }
 
-	private void OnStoreChanged(object? sender, EventArgs e)
-	{
+	private void OnStoreChanged(object? sender, EventArgs e) =>
 		MainThread.BeginInvokeOnMainThread(RefreshPlaces);
-	}
+
+	private void OnLocalizationChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e) =>
+		MainThread.BeginInvokeOnMainThread(RefreshLocalizedProperties);
 
 	public Command PickFromCommand { get; }
 	public Command PickToCommand { get; }
@@ -107,21 +112,21 @@ public sealed partial class PlanViewModel : ObservableObject
 		}
 	}
 
-	public string FromText => From?.ToString() ?? "Choose start";
-	public string ToText => To?.ToString() ?? "Choose destination";
+	public string FromText =>
+		From?.ToString() ?? _localization.CurrentStrings.Plan.ChooseStart;
+
+	public string ToText =>
+		To?.ToString() ?? _localization.CurrentStrings.Plan.ChooseDestination;
+
 	public bool HasFrom => From is not null;
 	public bool NoFrom => From is null;
 	public bool NoTo => To is null;
-	// The star keeps its space (only its opacity changes) so choosing a stop never resizes the card.
 	public double StarOpacityFrom => From is null ? 0 : 1;
 	public double StarOpacityTo => To is null ? 0 : 1;
 	public bool HasTo => To is not null;
 	public string FromStar => Star(From);
 	public string ToStar => Star(To);
 
-	// ----- When -----
-
-	/// <summary>Bound to the DatePicker. Picking a day keeps the time of day; the past is clamped to now.</summary>
 	public DateTime Date
 	{
 		get => _when.Date;
@@ -134,7 +139,6 @@ public sealed partial class PlanViewModel : ObservableObject
 		}
 	}
 
-	/// <summary>Bound to the TimePicker. A time already past today means the same time tomorrow.</summary>
 	public TimeSpan Time
 	{
 		get => _when.TimeOfDay;
@@ -155,13 +159,15 @@ public sealed partial class PlanViewModel : ObservableObject
 
 	public DateTime MaxDate => MinDate.AddYears(1);
 
-	/// <summary>"Tomorrow · 00:15": the one-line truth about what will be searched.</summary>
 	public string WhenText =>
 		IsNow
-			? "Now"
-			: $"{Format.DayLabel(_when)} \u00B7 {_when.ToString("HH:mm", CultureInfo.InvariantCulture)}";
+			? _localization.CurrentStrings.Plan.LeaveNow
+			: $"{Format.DayLabel(_when)} \u00B7 {_when.ToString("HH:mm", CultureInfo.CurrentCulture)}";
 
-	public string ModeText => IsArrival ? "Arrive by" : "Leave";
+	public string ModeText =>
+		IsArrival
+			? _localization.CurrentStrings.Plan.Arrival
+			: _localization.CurrentStrings.Plan.Departure;
 
 	public bool IsArrival
 	{
@@ -172,7 +178,7 @@ public sealed partial class PlanViewModel : ObservableObject
 			{
 				if (value)
 				{
-					IsNow = false; // "arrive by now" makes no sense
+					IsNow = false;
 				}
 
 				OnPropertyChanged(nameof(ModeText));
@@ -181,7 +187,6 @@ public sealed partial class PlanViewModel : ObservableObject
 		}
 	}
 
-	/// <summary>True until the user chooses a date or time. Search then uses the moment of searching.</summary>
 	public bool IsNow
 	{
 		get => field;
@@ -204,10 +209,6 @@ public sealed partial class PlanViewModel : ObservableObject
 	public bool CanSearch =>
 		From is not null && To is not null && !SamePlace(From, To);
 
-	/// <summary>
-	/// Call when the page appears. Handles the app resting past midnight:
-	/// refreshes "today" and, in Now mode, the displayed clock.
-	/// </summary>
 	public void Refresh()
 	{
 		Safe(() =>
@@ -222,12 +223,11 @@ public sealed partial class PlanViewModel : ObservableObject
 			}
 			else if (_when < now)
 			{
-				Apply(now); // a stale plan is never searched in the past
+				Apply(now);
 			}
 		});
 	}
 
-	/// <summary>Fills the empty start first, otherwise replaces the destination.</summary>
 	public void UsePlace(Location place)
 	{
 		ArgumentNullException.ThrowIfNull(place);
@@ -246,7 +246,8 @@ public sealed partial class PlanViewModel : ObservableObject
 	{
 		if (From is null || To is null)
 		{
-			throw new InvalidOperationException("Start and destination are required.");
+			throw new InvalidOperationException(
+				_localization.CurrentStrings.Plan.StartAndDestinationRequired);
 		}
 
 		DateTime now = Format.NowLocal();
@@ -257,13 +258,13 @@ public sealed partial class PlanViewModel : ObservableObject
 			From = From,
 			To = To,
 			DateTime = IsNow ? DateTimeOffset.Now : Format.ToOffset(target),
-			SearchMode = IsArrival ? JourneySearchMode.Arrival : JourneySearchMode.Departure,
+			SearchMode = IsArrival
+				? JourneySearchMode.Arrival
+				: JourneySearchMode.Departure,
 			MaxResults = _settings.MaxResults,
 			TimeoutSeconds = _settings.TimeoutSeconds
 		};
 	}
-
-	// ----- date/time logic -----
 
 	private void SetWhen(DateTime candidate, bool fromTimeOfDay)
 	{
@@ -271,9 +272,12 @@ public sealed partial class PlanViewModel : ObservableObject
 
 		if (candidate < now)
 		{
-			candidate = fromTimeOfDay && candidate.Date == now.Date && now - candidate > RolloverGrace
-				? candidate.AddDays(1)
-				: now;
+			candidate =
+				fromTimeOfDay
+				&& candidate.Date == now.Date
+				&& now - candidate > RolloverGrace
+					? candidate.AddDays(1)
+					: now;
 		}
 
 		IsNow = false;
@@ -282,7 +286,11 @@ public sealed partial class PlanViewModel : ObservableObject
 
 	private void Nudge(string? minutes)
 	{
-		if (!int.TryParse(minutes, NumberStyles.Integer, CultureInfo.InvariantCulture, out int delta))
+		if (!int.TryParse(
+				minutes,
+				NumberStyles.Integer,
+				CultureInfo.InvariantCulture,
+				out int delta))
 		{
 			return;
 		}
@@ -292,7 +300,7 @@ public sealed partial class PlanViewModel : ObservableObject
 		DateTime next = basis.AddMinutes(delta);
 
 		IsNow = false;
-		Apply(next < now ? now : next); // crosses midnight naturally, never enters the past
+		Apply(next < now ? now : next);
 	}
 
 	private void SetNow()
@@ -302,14 +310,21 @@ public sealed partial class PlanViewModel : ObservableObject
 		IsNow = true;
 	}
 
-	/// <summary>Stores the moment and pushes it to both pickers without re-entering the setters.</summary>
 	private void Apply(DateTime value)
 	{
 		_syncing = true;
 
 		try
 		{
-			_when = new DateTime(value.Year, value.Month, value.Day, value.Hour, value.Minute, 0, DateTimeKind.Unspecified);
+			_when = new DateTime(
+				value.Year,
+				value.Month,
+				value.Day,
+				value.Hour,
+				value.Minute,
+				0,
+				DateTimeKind.Unspecified);
+
 			OnPropertyChanged(nameof(Date));
 			OnPropertyChanged(nameof(Time));
 			OnPropertyChanged(nameof(WhenText));
@@ -319,8 +334,6 @@ public sealed partial class PlanViewModel : ObservableObject
 			_syncing = false;
 		}
 	}
-
-	// ----- actions -----
 
 	private async Task PickAsync(bool isFrom)
 	{
@@ -345,13 +358,16 @@ public sealed partial class PlanViewModel : ObservableObject
 		await OpenResults(query);
 	}
 
-	private void Swap() => (From, To) = (To, From);
+	private void Swap() =>
+		(From, To) = (To, From);
 
 	private void ToggleFavourite(Location? place)
 	{
 		if (place is not null)
 		{
-			_store.SetFavourite(place, !_store.IsFavourite(place));
+			_store.SetFavourite(
+				place,
+				!_store.IsFavourite(place));
 		}
 	}
 
@@ -359,7 +375,10 @@ public sealed partial class PlanViewModel : ObservableObject
 	{
 		try
 		{
-			return place is not null && _store.IsFavourite(place) ? "\u2605" : "\u2606";
+			return place is not null
+				&& _store.IsFavourite(place)
+					? "\u2605"
+					: "\u2606";
 		}
 		catch (Exception)
 		{
@@ -367,7 +386,8 @@ public sealed partial class PlanViewModel : ObservableObject
 		}
 	}
 
-	private void OnRouteChanged() => SearchCommand.ChangeCanExecute();
+	private void OnRouteChanged() =>
+		SearchCommand.ChangeCanExecute();
 
 	private void RefreshPlaces()
 	{
@@ -384,7 +404,17 @@ public sealed partial class PlanViewModel : ObservableObject
 		});
 	}
 
-	private static void Replace(ObservableCollection<Location> target, IReadOnlyList<Location> source)
+	private void RefreshLocalizedProperties()
+	{
+		OnPropertyChanged(nameof(FromText));
+		OnPropertyChanged(nameof(ToText));
+		OnPropertyChanged(nameof(WhenText));
+		OnPropertyChanged(nameof(ModeText));
+	}
+
+	private static void Replace(
+		ObservableCollection<Location> target,
+		IReadOnlyList<Location> source)
 	{
 		target.Clear();
 
@@ -398,8 +428,6 @@ public sealed partial class PlanViewModel : ObservableObject
 		a.IsStation && b.IsStation
 			? a.Id == b.Id
 			: a.Name == b.Name && a.Place == b.Place;
-
-	// ----- error containment: no command may throw into the UI thread -----
 
 	private void Safe(Action action)
 	{
@@ -430,7 +458,8 @@ public sealed partial class PlanViewModel : ObservableObject
 
 	private void Report(Exception ex)
 	{
-		System.Diagnostics.Debug.WriteLine($"Plan error:\n{ex}");
+		System.Diagnostics.Debug.WriteLine(
+			$"Plan error:\n{ex}");
 
 		try
 		{
@@ -438,7 +467,8 @@ public sealed partial class PlanViewModel : ObservableObject
 		}
 		catch (Exception inner)
 		{
-			System.Diagnostics.Debug.WriteLine($"Plan error reporting failed: {inner.Message}");
+			System.Diagnostics.Debug.WriteLine(
+				$"Plan error reporting failed: {inner.Message}");
 		}
 	}
 }

@@ -3,37 +3,54 @@ using System.Diagnostics;
 using System.Globalization;
 using DDjourneys.Core.Models;
 using DDjourneys.Core.Services;
+using DDjourneys.Localization;
 using DDjourneys.Support;
 
 namespace DDjourneys.Pages;
 
 public sealed class ResultsViewModel : ObservableObject, IQueryAttributable
 {
+	private enum StatusKind
+	{
+		None,
+		NoConnections,
+		JourneysCouldNotBeDisplayed,
+		SearchServiceUnavailable
+	}
+
 	private readonly JourneyService _journeys;
+	private readonly LocalizationService _localization;
 
 	private JourneyQuery? _query;
 	private CancellationTokenSource? _load;
+	private StatusKind _statusKind;
 
 	public ResultsViewModel(JourneyService journeys)
 	{
 		ArgumentNullException.ThrowIfNull(journeys);
+
 		_journeys = journeys;
+		_localization = LocalizationService.Current;
 
-		// Pull-to-refresh: RefreshView owns the spinner.
-		RefreshCommand = new Command(() => _ = LoadAsync(pulled: true));
+		_localization.PropertyChanged +=
+			OnLocalizationChanged;
 
-		// Button and retry (Windows has no pull gesture): own spinner in the status panel.
-		ReloadCommand = new Command(() => _ = LoadAsync(pulled: false));
+		RefreshCommand =
+			new Command(() => _ = LoadAsync(pulled: true));
 
-		OpenJourneyCommand = new AsyncCommand<Journey>(OpenAsync, onError: ReportOpenFailure);
+		ReloadCommand =
+			new Command(() => _ = LoadAsync(pulled: false));
 
-		Items.CollectionChanged += (_, _) => OnPropertyChanged(nameof(ShowStatus));
+		OpenJourneyCommand =
+			new AsyncCommand<Journey>(
+				OpenAsync,
+				onError: ReportOpenFailure);
+
+		Items.CollectionChanged +=
+			(_, _) => OnPropertyChanged(nameof(ShowStatus));
 	}
 
-	/// <summary>Filled in by the page (navigation to the journey page).</summary>
 	public Func<Journey, Task>? OpenJourney { get; set; }
-
-	/// <summary>Called when opening a journey fails, so the page can tell the user.</summary>
 	public Func<string, Task>? ShowError { get; set; }
 
 	public Command RefreshCommand { get; }
@@ -54,7 +71,6 @@ public sealed class ResultsViewModel : ObservableObject, IQueryAttributable
 		private set => SetProperty(ref field, value);
 	} = string.Empty;
 
-	/// <summary>Shown when the list is empty: nothing found, or an error.</summary>
 	public string StatusText
 	{
 		get => field;
@@ -67,47 +83,49 @@ public sealed class ResultsViewModel : ObservableObject, IQueryAttributable
 		}
 	} = string.Empty;
 
-	public bool HasStatusText => StatusText.Length > 0;
+	public bool HasStatusText =>
+		StatusText.Length > 0;
 
-	/// <summary>Two-way with RefreshView (pull gesture only).</summary>
 	public bool IsRefreshing
 	{
 		get => field;
 		set => SetProperty(ref field, value);
 	}
 
-	/// <summary>Spinner of the status panel while the list is empty.</summary>
 	public bool IsLoading
 	{
 		get => field;
 		private set => SetProperty(ref field, value);
 	}
 
-	/// <summary>A failed search offers a retry button.</summary>
 	public bool HasError
 	{
 		get => field;
 		private set => SetProperty(ref field, value);
 	}
 
-	/// <summary>The status panel replaces the list while it is empty.</summary>
-	public bool ShowStatus => Items.Count == 0;
+	public bool ShowStatus =>
+		Items.Count == 0;
 
-	public void ApplyQueryAttributes(IDictionary<string, object> query)
+	public void ApplyQueryAttributes(
+		IDictionary<string, object> query)
 	{
-		// Shell may deliver the same parameters again (e.g. when the page is revisited).
-		if (query.TryGetValue(Routes.Query, out object? value)
+		if (query.TryGetValue(
+				Routes.Query,
+				out object? value)
 			&& value is JourneyQuery journeyQuery
 			&& !ReferenceEquals(_query, journeyQuery))
 		{
 			_query = journeyQuery;
-			RouteText = $"{journeyQuery.From.Name} \u2192 {journeyQuery.To.Name}";
-			WhenText = DescribeWhen(journeyQuery);
+			RouteText =
+				$"{journeyQuery.From.Name} \u2192 {journeyQuery.To.Name}";
+			WhenText =
+				DescribeWhen(journeyQuery);
+
 			_ = LoadAsync(pulled: false);
 		}
 	}
 
-	/// <summary>Stops a running search (page left, app going away). Safe to call any time.</summary>
 	public void Cancel()
 	{
 		CancellationTokenSource? running = _load;
@@ -125,10 +143,6 @@ public sealed class ResultsViewModel : ObservableObject, IQueryAttributable
 		IsRefreshing = false;
 	}
 
-	/// <summary>
-	/// Newest load wins. Never throws: it is started fire-and-forget.
-	/// The awaits resume on the UI thread, so the collection may be changed here.
-	/// </summary>
 	private async Task LoadAsync(bool pulled)
 	{
 		JourneyQuery? query = _query;
@@ -138,7 +152,6 @@ public sealed class ResultsViewModel : ObservableObject, IQueryAttributable
 			return;
 		}
 
-		// The previous load owns and disposes its own source; we only cancel it.
 		try
 		{
 			_load?.Cancel();
@@ -147,20 +160,21 @@ public sealed class ResultsViewModel : ObservableObject, IQueryAttributable
 		{
 		}
 
-		var cts = _load = new CancellationTokenSource();
+		var cts =
+			_load = new CancellationTokenSource();
 
-		// The previous query may have partially populated this list. Clear at the start
-		// so refresh and navigation never present results for a different request.
 		Items.Clear();
-
 		HasError = false;
-		StatusText = string.Empty;
+		SetStatus(StatusKind.None);
 		IsLoading = true;
 		IsRefreshing = pulled;
 
 		try
 		{
-			JourneyResult result = await _journeys.SearchAsync(query, cts.Token);
+			JourneyResult result =
+				await _journeys.SearchAsync(
+					query,
+					cts.Token);
 
 			if (cts.IsCancellationRequested)
 			{
@@ -170,7 +184,11 @@ public sealed class ResultsViewModel : ObservableObject, IQueryAttributable
 			if (!result.IsSuccessful)
 			{
 				HasError = true;
-				StatusText = result.ErrorMessage ?? "The search failed.";
+
+				SetStatus(
+					StatusKind.SearchServiceUnavailable,
+					result.ErrorMessage);
+
 				return;
 			}
 
@@ -180,37 +198,41 @@ public sealed class ResultsViewModel : ObservableObject, IQueryAttributable
 			{
 				try
 				{
-					Items.Add(new JourneyCardModel(journey));
+					Items.Add(
+						new JourneyCardModel(journey));
 				}
 				catch (Exception ex)
 				{
-					// One malformed journey must not take the whole list down.
 					skipped++;
-					Debug.WriteLine($"Journey card failed:\n{ex}");
+					Debug.WriteLine(
+						$"Journey card failed:\n{ex}");
 				}
 			}
 
 			if (Items.Count == 0)
 			{
 				HasError = skipped > 0;
-				StatusText = skipped > 0
-					? "The journeys could not be displayed."
-					: "No journeys found for this time.";
+
+				SetStatus(
+					skipped > 0
+						? StatusKind.JourneysCouldNotBeDisplayed
+						: StatusKind.NoConnections);
 			}
 		}
 		catch (OperationCanceledException)
 		{
-			// Superseded by a newer load, or the page was left.
 		}
 		catch (Exception ex)
 		{
-			Debug.WriteLine($"Journey search failed:\n{ex}");
+			Debug.WriteLine(
+				$"Journey search failed:\n{ex}");
 
 			if (!cts.IsCancellationRequested)
 			{
 				Items.Clear();
 				HasError = true;
-				StatusText = "Could not reach the timetable service.";
+				SetStatus(
+					StatusKind.SearchServiceUnavailable);
 			}
 		}
 		finally
@@ -219,7 +241,7 @@ public sealed class ResultsViewModel : ObservableObject, IQueryAttributable
 			{
 				IsLoading = false;
 				IsRefreshing = false;
-				_load = null; // never keep a disposed source around: Cancel() on it would throw
+				_load = null;
 			}
 
 			cts.Dispose();
@@ -242,22 +264,101 @@ public sealed class ResultsViewModel : ObservableObject, IQueryAttributable
 		}
 		catch (Exception inner)
 		{
-			Debug.WriteLine($"Reporting failed: {inner.Message}");
+			Debug.WriteLine(
+				$"Reporting failed: {inner.Message}");
 		}
 	}
 
-	private static string DescribeWhen(JourneyQuery query)
+	private void OnLocalizationChanged(
+		object? sender,
+		System.ComponentModel.PropertyChangedEventArgs e)
 	{
-		DateTime wall = Format.ToWall(query.DateTime);
-		string mode = query.SearchMode == JourneySearchMode.Arrival ? "Arrive by" : "Depart";
-
-		string day = Format.DayLabel(wall);
-
-		if (day is "Today" or "Tomorrow")
+		MainThread.BeginInvokeOnMainThread(() =>
 		{
-			day = day.ToLowerInvariant();
+			if (_query is not null)
+			{
+				WhenText = DescribeWhen(_query);
+			}
+
+			foreach (JourneyCardModel item in Items)
+			{
+				item.RefreshLocalization();
+			}
+
+			RefreshStatusText();
+		});
+	}
+
+	private void SetStatus(
+		StatusKind kind,
+		string? customText = null)
+	{
+		_statusKind = kind;
+
+		StatusText = customText
+			?? kind switch
+			{
+				StatusKind.NoConnections =>
+					_localization.CurrentStrings.Results
+						.NoConnections,
+
+				StatusKind.JourneysCouldNotBeDisplayed =>
+					_localization.CurrentStrings.Results
+						.JourneysCouldNotBeDisplayed,
+
+				StatusKind.SearchServiceUnavailable =>
+					_localization.CurrentStrings.Results
+						.SearchServiceUnavailable,
+
+				_ =>
+					string.Empty
+			};
+	}
+
+	private void RefreshStatusText()
+	{
+		if (_statusKind == StatusKind.None)
+		{
+			StatusText = string.Empty;
+			return;
 		}
 
-		return $"{mode} {wall.ToString("HH:mm", CultureInfo.InvariantCulture)}, {day}";
+		StatusText =
+			_statusKind switch
+			{
+				StatusKind.NoConnections =>
+					_localization.CurrentStrings.Results
+						.NoConnections,
+
+				StatusKind.JourneysCouldNotBeDisplayed =>
+					_localization.CurrentStrings.Results
+						.JourneysCouldNotBeDisplayed,
+
+				StatusKind.SearchServiceUnavailable =>
+					_localization.CurrentStrings.Results
+						.SearchServiceUnavailable,
+
+				_ =>
+					string.Empty
+			};
+	}
+
+	private string DescribeWhen(JourneyQuery query)
+	{
+		DateTime wall =
+			Format.ToWall(query.DateTime);
+
+		string mode =
+			query.SearchMode == JourneySearchMode.Arrival
+				? _localization.CurrentStrings.Plan.Arrival
+				: _localization.CurrentStrings.Plan.Departure;
+
+		string day =
+			Format.DayLabel(wall);
+
+		return
+			$"{mode} " +
+			$"{wall.ToString("HH:mm", CultureInfo.CurrentCulture)}, " +
+			day;
 	}
 }

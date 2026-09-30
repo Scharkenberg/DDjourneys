@@ -1,3 +1,4 @@
+using DDjourneys.Localization;
 using DDjourneys.Support;
 
 namespace DDjourneys.Pages;
@@ -6,18 +7,33 @@ namespace DDjourneys.Pages;
 public sealed class SettingsViewModel : ObservableObject
 {
 	private readonly AppSettings _settings;
+	private readonly LocalizationService _localization;
 
 	public SettingsViewModel(AppSettings settings)
 	{
 		ArgumentNullException.ThrowIfNull(settings);
+
 		_settings = settings;
+		_localization = LocalizationService.Current;
+
+		_localization.PropertyChanged += OnLocalizationChanged;
 
 		SelectThemeCommand = new AsyncCommand<ThemeChoice>(SelectThemeAsync);
+		SelectLanguageCommand = new Command<string>(SelectLanguage);
 		ResetCommand = new Command(Reset);
 	}
 
 	public AsyncCommand<ThemeChoice> SelectThemeCommand { get; }
+	public Command<string> SelectLanguageCommand { get; }
 	public Command ResetCommand { get; }
+
+	// ----- Localization -----
+
+	public IReadOnlyList<LocalizationPack> AvailableLanguages =>
+		_localization.AvailableLanguages;
+
+	public string LanguageCode =>
+		_localization.LanguageCode;
 
 	// ----- Appearance -----
 
@@ -59,22 +75,30 @@ public sealed class SettingsViewModel : ObservableObject
 		}
 	}
 
-	public string MaxResultsText => $"{_settings.MaxResults} journeys per search";
+	public string MaxResultsText =>
+		$"{_settings.MaxResults} " +
+		_localization.CurrentStrings.Settings.ResultsDescription.ToLowerInvariant();
 
 	public double TimeoutSeconds
 	{
 		get => _settings.TimeoutSeconds;
 		set
 		{
-			_settings.TimeoutSeconds = (int)Math.Round(value / 5.0) * 5; // steps of 5 s
+			_settings.TimeoutSeconds =
+				(int)Math.Round(value / 5.0) * 5;
+
 			OnPropertyChanged();
 			OnPropertyChanged(nameof(TimeoutText));
 		}
 	}
 
-	public string TimeoutText => $"Give up after {_settings.TimeoutSeconds} s";
+	public string TimeoutText =>
+		string.Format(
+			_localization.CurrentStrings.Settings.RequestTimeoutDescription,
+			_settings.TimeoutSeconds);
 
 	public double MinResults => AppSettings.MinResults;
+
 	public double MaxResultsLimit => AppSettings.MaxResultsLimit;
 
 	public bool DefaultArrival
@@ -113,7 +137,10 @@ public sealed class SettingsViewModel : ObservableObject
 		{
 			try
 			{
-				return $"DDjourneys {AppInfo.Current.VersionString} ({AppInfo.Current.BuildString})";
+				return string.Format(
+					_localization.CurrentStrings.Settings.VersionPrefix,
+					AppInfo.Current.VersionString,
+					AppInfo.Current.BuildString);
 			}
 			catch (Exception)
 			{
@@ -141,9 +168,46 @@ public sealed class SettingsViewModel : ObservableObject
 		}
 	}
 
+	private void SelectLanguage(string? languageCode)
+	{
+		if (string.IsNullOrWhiteSpace(languageCode))
+		{
+			return;
+		}
+
+		try
+		{
+			_localization.SetLanguage(languageCode);
+			_settings.LanguageCode = _localization.LanguageCode;
+			RefreshLocalizedProperties();
+		}
+		catch (Exception ex)
+		{
+			System.Diagnostics.Debug.WriteLine(
+				$"Language change failed: {ex}");
+		}
+	}
+
+	private void OnLocalizationChanged(
+		object? sender,
+		System.ComponentModel.PropertyChangedEventArgs e)
+	{
+		MainThread.BeginInvokeOnMainThread(RefreshLocalizedProperties);
+	}
+
+	private void RefreshLocalizedProperties()
+	{
+		OnPropertyChanged(nameof(AvailableLanguages));
+		OnPropertyChanged(nameof(LanguageCode));
+		OnPropertyChanged(nameof(MaxResultsText));
+		OnPropertyChanged(nameof(TimeoutText));
+		OnPropertyChanged(nameof(Version));
+	}
+
 	private void Reset()
 	{
 		_settings.ResetJourneyDefaults();
+
 		OnPropertyChanged(nameof(MaxResults));
 		OnPropertyChanged(nameof(MaxResultsText));
 		OnPropertyChanged(nameof(DefaultArrival));

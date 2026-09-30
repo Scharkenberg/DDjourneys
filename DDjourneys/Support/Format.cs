@@ -1,4 +1,5 @@
 using System.Globalization;
+using DDjourneys.Localization;
 
 namespace DDjourneys.Support;
 
@@ -13,61 +14,107 @@ public static class Format
 	/// <summary>Current wall-clock time in the provider zone (Europe/Berlin), floored to the minute.</summary>
 	public static DateTime NowLocal()
 	{
-		DateTime n = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, Zone).DateTime;
-		return new DateTime(n.Year, n.Month, n.Day, n.Hour, n.Minute, 0, DateTimeKind.Unspecified);
+		DateTime n =
+			TimeZoneInfo.ConvertTime(
+				DateTimeOffset.UtcNow,
+				Zone).DateTime;
+
+		return new DateTime(
+			n.Year,
+			n.Month,
+			n.Day,
+			n.Hour,
+			n.Minute,
+			0,
+			DateTimeKind.Unspecified);
 	}
 
-	/// <summary>Provider-zone wall-clock time of a moment (for "Today"/"Tomorrow" labels).</summary>
+	/// <summary>
+	/// Provider-zone wall-clock time of a moment.
+	/// Used for relative day labels.
+	/// </summary>
 	public static DateTime ToWall(DateTimeOffset value) =>
 		TimeZoneInfo.ConvertTime(value, Zone).DateTime;
 
-	/// <summary>Converts a provider-zone wall-clock time to an offset time. Handles DST gaps and overlaps.</summary>
+	/// <summary>
+	/// Converts a provider-zone wall-clock time to an offset time.
+	/// Handles DST gaps and overlaps.
+	/// </summary>
 	public static DateTimeOffset ToOffset(DateTime wallClock)
 	{
-		DateTime local = DateTime.SpecifyKind(wallClock, DateTimeKind.Unspecified);
+		DateTime local =
+			DateTime.SpecifyKind(
+				wallClock,
+				DateTimeKind.Unspecified);
 
 		if (Zone.IsInvalidTime(local))
 		{
 			local = local.AddHours(1); // spring-forward gap
 		}
 
-		TimeSpan offset = Zone.IsAmbiguousTime(local)
-			? Zone.GetAmbiguousTimeOffsets(local).Max() // autumn overlap: take the first occurrence
-			: Zone.GetUtcOffset(local);
+		TimeSpan offset =
+			Zone.IsAmbiguousTime(local)
+				? Zone.GetAmbiguousTimeOffsets(local).Max()
+				: Zone.GetUtcOffset(local);
 
 		return new DateTimeOffset(local, offset);
 	}
 
-	/// <summary>"Today", "Tomorrow" or "Sat, 3 Oct" relative to the provider-zone today.</summary>
+	/// <summary>
+	/// Localized "Today", "Tomorrow" or calendar date relative
+	/// to the provider-zone today.
+	/// </summary>
 	public static string DayLabel(DateTime day)
 	{
-		int diff = (day.Date - NowLocal().Date).Days;
+		int diff =
+			(day.Date - NowLocal().Date).Days;
+
+		IUiStrings strings =
+			LocalizationService.Current.CurrentStrings;
 
 		return diff switch
 		{
-			0 => "Today",
-			1 => "Tomorrow",
-			_ => day.ToString("ddd, d MMM", CultureInfo.InvariantCulture)
+			0 => strings.Common.Today,
+			1 => strings.Common.Tomorrow,
+			_ => day.ToString(
+				"ddd, d MMM",
+				CultureInfo.CurrentCulture)
 		};
 	}
 
-	/// <summary>Null-safe time; "\u2013" when the provider gave none (never a bogus 01:00).</summary>
+	/// <summary>
+	/// Null-safe time; "–" when the provider gave none.
+	/// </summary>
 	public static string TimeOrDash(DateTimeOffset? value) =>
-		value is { } v && v != default ? Time(v) : "\u2013";
+		value is { } v && v != default
+			? Time(v)
+			: "\u2013";
 
-	/// <summary>Null-safe duration between two moments; "\u2013" when either is unknown.</summary>
-	public static string Duration(DateTimeOffset? start, DateTimeOffset? end) =>
-		start is { } a && end is { } b && a != default && b != default
+	/// <summary>
+	/// Null-safe duration between two moments; "–" when either is unknown.
+	/// </summary>
+	public static string Duration(
+		DateTimeOffset? start,
+		DateTimeOffset? end) =>
+		start is { } a
+			&& end is { } b
+			&& a != default
+			&& b != default
 			? Duration(b - a)
 			: "\u2013";
 
 	public static string Time(DateTimeOffset value) =>
 		TimeZoneInfo.ConvertTime(value, Zone)
-			.ToString("HH:mm", CultureInfo.InvariantCulture);
+			.ToString(
+				"HH:mm",
+				CultureInfo.CurrentCulture);
 
 	public static string Duration(TimeSpan value)
 	{
-		int minutes = Math.Max(0, (int)Math.Round(value.TotalMinutes));
+		int minutes =
+			Math.Max(
+				0,
+				(int)Math.Round(value.TotalMinutes));
 
 		return minutes >= 60
 			? $"{minutes / 60} h {minutes % 60:00} min"
@@ -75,7 +122,8 @@ public static class Format
 	}
 
 	/// <summary>
-	/// "+3 min" for late, "−1 min" for early, null when on time or unknown.
+	/// "+3 min" for late, "−1 min" for early,
+	/// null when on time or unknown.
 	/// </summary>
 	public static string? Delay(TimeSpan? value)
 	{
@@ -84,7 +132,8 @@ public static class Format
 			return null;
 		}
 
-		int minutes = (int)Math.Round(delay.TotalMinutes);
+		int minutes =
+			(int)Math.Round(delay.TotalMinutes);
 
 		return minutes switch
 		{
@@ -96,7 +145,12 @@ public static class Format
 
 	private static TimeZoneInfo ResolveZone()
 	{
-		foreach (string id in new[] { "Europe/Berlin", "W. Europe Standard Time" })
+		foreach (string id in
+			new[]
+			{
+				"Europe/Berlin",
+				"W. Europe Standard Time"
+			})
 		{
 			try
 			{

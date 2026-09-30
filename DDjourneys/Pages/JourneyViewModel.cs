@@ -1,5 +1,7 @@
 using System.Collections.ObjectModel;
+using System.Globalization;
 using DDjourneys.Core.Models;
+using DDjourneys.Localization;
 using DDjourneys.Support;
 using Microsoft.Maui.ApplicationModel.DataTransfer;
 
@@ -8,18 +10,31 @@ namespace DDjourneys.Pages;
 public sealed class JourneyViewModel : ObservableObject, IQueryAttributable
 {
 	private readonly AppSettings _settings;
+	private readonly LocalizationService _localization;
+
 	private Journey? _journey;
 
 	public JourneyViewModel(AppSettings settings)
 	{
 		ArgumentNullException.ThrowIfNull(settings);
-		_settings = settings;
 
-		ToggleStopsCommand = new Command<LegRow>(ToggleStops);
-		ShareCommand = new Command(async () => await ShareAsync());
+		_settings = settings;
+		_localization = LocalizationService.Current;
+
+		_localization.PropertyChanged +=
+			OnLocalizationChanged;
+
+		ToggleStopsCommand =
+			new Command<LegRow>(ToggleStops);
+
+		ShareCommand =
+			new Command(async () => await ShareAsync());
 	}
 
-	/// <summary>Set when the journey could not be displayed; the page shows it instead of crashing.</summary>
+	/// <summary>
+	/// Set when the journey could not be displayed;
+	/// the page shows it instead of crashing.
+	/// </summary>
 	public string? LoadError
 	{
 		get => field;
@@ -32,8 +47,8 @@ public sealed class JourneyViewModel : ObservableObject, IQueryAttributable
 		}
 	}
 
-	public bool HasError => LoadError is not null;
-
+	public bool HasError =>
+		LoadError is not null;
 
 	public Command<LegRow> ToggleStopsCommand { get; }
 	public Command ShareCommand { get; }
@@ -70,11 +85,16 @@ public sealed class JourneyViewModel : ObservableObject, IQueryAttributable
 		}
 	} = [];
 
-	public bool HasNotices => Notices.Count > 0;
+	public bool HasNotices =>
+		Notices.Count > 0;
 
-	public void ApplyQueryAttributes(IDictionary<string, object> query)
+	public void ApplyQueryAttributes(
+		IDictionary<string, object> query)
 	{
-		if (query.TryGetValue(Routes.JourneyData, out object? value) && value is Journey journey)
+		if (query.TryGetValue(
+				Routes.JourneyData,
+				out object? value)
+			&& value is Journey journey)
 		{
 			Load(journey);
 		}
@@ -84,7 +104,7 @@ public sealed class JourneyViewModel : ObservableObject, IQueryAttributable
 	{
 		if (ReferenceEquals(_journey, journey))
 		{
-			return; // Shell may deliver the same parameters twice
+			return;
 		}
 
 		try
@@ -92,74 +112,164 @@ public sealed class JourneyViewModel : ObservableObject, IQueryAttributable
 			_journey = journey;
 			LoadError = null;
 
-			Summary = new JourneyCardModel(journey);
-			RouteText = $"{journey.From.Name} \u2192 {journey.To.Name}";
-			DayText = journey.Departure is { } departure
-				? departure.DateTime.ToString("dddd, d MMMM", System.Globalization.CultureInfo.InvariantCulture)
+			BuildLocalizedDisplay(journey);
+		}
+		catch (Exception ex)
+		{
+			System.Diagnostics.Debug.WriteLine(
+				$"Journey display failed:\n{ex}");
+
+			LoadError =
+				_localization.CurrentStrings.Journey
+					.CouldNotBeDisplayed;
+		}
+	}
+
+	private void BuildLocalizedDisplay(Journey journey)
+	{
+		JourneyStrings strings =
+			_localization.CurrentStrings.Journey;
+
+		Summary =
+			new JourneyCardModel(journey);
+
+		RouteText =
+			$"{journey.From.Name} \u2192 {journey.To.Name}";
+
+		DayText =
+			journey.Departure is { } departure
+				? Format.ToWall(departure)
+					.ToString(
+						"dddd, d MMMM",
+						CultureInfo.CurrentCulture)
 				: string.Empty;
 
-			// Journey-level notices that a leg or transfer already carries would show twice.
-			var nested = journey.Legs.SelectMany(l => l.Notices)
-				.Concat(journey.Transfers.SelectMany(t => t.Notices))
+		// Journey-level notices that a leg or transfer already
+		// carries would otherwise show twice.
+		var nested =
+			journey.Legs
+				.SelectMany(l => l.Notices)
+				.Concat(
+					journey.Transfers
+						.SelectMany(t => t.Notices))
 				.ToHashSet();
 
-			var options = new TimelineOptions(
+		var options =
+			new TimelineOptions(
 				_settings.ShowWalkingLegs,
 				_settings.ExpandNotices,
 				_settings.ShowTechnicalDetails);
 
-			Notices = journey.Notices
-				.Where(n => !string.IsNullOrWhiteSpace(n) && !nested.Contains(n))
+		Notices =
+			journey.Notices
+				.Where(
+					n =>
+						!string.IsNullOrWhiteSpace(n)
+						&& !nested.Contains(n))
 				.Distinct()
-				.Select(n => new NoticeRow
-				{
-					Text = n,
-					Description = n,
-					Expanded = options.ExpandNotices,
-					Technical = options.Technical
-				})
+				.Select(
+					n =>
+						new NoticeRow
+						{
+							Text = n,
+							Description = n,
+							Expanded =
+								options.ExpandNotices,
+							Technical =
+								options.Technical
+						})
 				.ToList();
 
-			Rows.Clear();
+		Rows.Clear();
 
-			foreach (TimelineRow row in TimelineRowFactory.Build(journey, options))
-			{
-				Rows.Add(row);
-			}
+		foreach (TimelineRow row in
+			TimelineRowFactory.Build(
+				journey,
+				options))
+		{
+			Rows.Add(row);
+		}
+
+		LoadError = null;
+
+		_ = strings;
+	}
+
+	private void OnLocalizationChanged(
+		object? sender,
+		System.ComponentModel.PropertyChangedEventArgs e)
+	{
+		MainThread.BeginInvokeOnMainThread(
+			RefreshLocalizedDisplay);
+	}
+
+	private void RefreshLocalizedDisplay()
+	{
+		if (_journey is null)
+		{
+			return;
+		}
+
+		try
+		{
+			BuildLocalizedDisplay(_journey);
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Journey display failed:\n{ex}");
-			LoadError = "This journey could not be displayed.";
+			System.Diagnostics.Debug.WriteLine(
+				$"Localized journey refresh failed:\n{ex}");
+
+			LoadError =
+				_localization.CurrentStrings.Journey
+					.CouldNotBeDisplayed;
 		}
 	}
 
-	/// <summary>Inserts or removes a leg's intermediate stops directly below its row.</summary>
+	/// <summary>
+	/// Inserts or removes a leg's intermediate stops directly below its row.
+	/// </summary>
 	private void ToggleStops(LegRow? leg)
 	{
 		try
 		{
-			int at = leg is null ? -1 : Rows.IndexOf(leg);
+			int at =
+				leg is null
+					? -1
+					: Rows.IndexOf(leg);
 
-			if (leg is null || at < 0 || !leg.HasIntermediates)
+			if (leg is null
+				|| at < 0
+				|| !leg.HasIntermediates)
 			{
 				return;
 			}
 
 			if (leg.IsExpanded)
 			{
-				// Remove only what this leg inserted, never a neighbour.
-				for (int i = 0; i < leg.Intermediates.Count && at + 1 < Rows.Count && Rows[at + 1] is IntermediateRow; i++)
+				// Remove only what this leg inserted,
+				// never a neighbour.
+				for (
+					int i = 0;
+					i < leg.Intermediates.Count
+					&& at + 1 < Rows.Count
+					&& Rows[at + 1] is IntermediateRow;
+					i++)
 				{
 					Rows.RemoveAt(at + 1);
 				}
 			}
 			else
 			{
-				for (int i = 0; i < leg.Intermediates.Count; i++)
+				for (
+					int i = 0;
+					i < leg.Intermediates.Count;
+					i++)
 				{
 					leg.Intermediates[i].Index = i;
-					Rows.Insert(at + 1 + i, leg.Intermediates[i]);
+
+					Rows.Insert(
+						at + 1 + i,
+						leg.Intermediates[i]);
 				}
 			}
 
@@ -167,7 +277,8 @@ public sealed class JourneyViewModel : ObservableObject, IQueryAttributable
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Toggle stops failed:\n{ex}");
+			System.Diagnostics.Debug.WriteLine(
+				$"Toggle stops failed:\n{ex}");
 		}
 	}
 
@@ -180,42 +291,74 @@ public sealed class JourneyViewModel : ObservableObject, IQueryAttributable
 
 		try
 		{
-			await Share.Default.RequestAsync(new ShareTextRequest
-			{
-				Title = "Share journey",
-				Text = BuildShareText(_journey)
-			});
+			await Share.Default.RequestAsync(
+				new ShareTextRequest
+				{
+					Title =
+						_localization.CurrentStrings.Journey
+							.ShareTitle,
+					Text =
+						BuildShareText(_journey)
+				});
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Share failed:\n{ex}");
+			System.Diagnostics.Debug.WriteLine(
+				$"Share failed:\n{ex}");
 		}
 	}
 
 	private string BuildShareText(Journey journey)
 	{
-		var lines = new List<string>
-		{
-			RouteText,
-			$"{DayText}, {Format.TimeOrDash(journey.Departure)}\u2013{Format.TimeOrDash(journey.Arrival)} ({Format.Duration(journey.Duration)})",
-			string.Empty
-		};
+		JourneyStrings strings =
+			_localization.CurrentStrings.Journey;
 
-		foreach (TimelineItem item in TimelineBuilder.Build(journey))
+		var lines =
+			new List<string>
+			{
+				RouteText,
+				$"{DayText}, " +
+				$"{Format.TimeOrDash(journey.Departure)}" +
+				$"\u2013{Format.TimeOrDash(journey.Arrival)} " +
+				$"({Format.Duration(journey.Duration)})",
+				string.Empty
+			};
+
+		foreach (
+			TimelineItem item
+			in TimelineBuilder.Build(journey))
 		{
 			switch (item)
 			{
-				case RideItem r:
-					lines.Add($"{Format.TimeOrDash(r.Leg.EffectiveDeparture)} {r.Leg.Line?.ToString() ?? r.Leg.Mode.ToString()}: "
-						+ $"{r.Leg.From.Name} \u2192 {r.Leg.To.Name} ({Format.TimeOrDash(r.Leg.EffectiveArrival)})");
-					break;
+				case RideItem ride:
+					{
+						string line =
+							ride.Leg.Line?.ToString()
+							?? ride.Leg.Mode.ToString();
 
-				case WalkItem w:
-					lines.Add($"Walk {Format.Duration(w.Leg.EffectiveDeparture, w.Leg.EffectiveArrival)} to {w.Leg.To.Name}");
+						lines.Add(
+							$"{Format.TimeOrDash(ride.Leg.EffectiveDeparture)} " +
+							$"{line}: " +
+							$"{ride.Leg.From.Name} " +
+							$"\u2192 {ride.Leg.To.Name} " +
+							$"({Format.TimeOrDash(ride.Leg.EffectiveArrival)})");
+
+						break;
+					}
+
+				case WalkItem walk:
+					lines.Add(
+						$"{strings.Walk} " +
+						$"{Format.Duration(walk.Leg.EffectiveDeparture, walk.Leg.EffectiveArrival)} " +
+						$"{strings.To} " +
+						walk.Leg.To.Name);
+
 					break;
 			}
 		}
 
-		return string.Join("\n", lines);
+		return string.Join(
+			Environment.NewLine,
+			lines);
 	}
 }

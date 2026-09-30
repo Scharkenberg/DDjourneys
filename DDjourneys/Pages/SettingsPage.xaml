@@ -3,127 +3,302 @@
 	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
 	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
 	xmlns:local="clr-namespace:DDjourneys.Pages"
+	xmlns:localization="clr-namespace:DDjourneys.Localization"
 	xmlns:support="clr-namespace:DDjourneys.Support"
-	x:DataType="local:SettingsViewModel"
-	Title="Settings">
+	Title="{localization:Tr Settings.Title}"
+	x:DataType="local:SettingsViewModel">
 
 	<ScrollView>
 		<VerticalStackLayout Padding="{StaticResource PadPage}" Spacing="{StaticResource SpaceS}">
 
-			<Label StyleClass="Section" Text="Theme" />
+			<Label StyleClass="Section" Text="{localization:Tr Settings.Theme}" />
+
 			<Border Padding="0" StyleClass="Card">
 				<VerticalStackLayout>
-					<Grid Padding="12,10" ColumnDefinitions="*,Auto" MinimumHeightRequest="52">
+
+					<Grid
+						Padding="12,10"
+						ColumnDefinitions="*,Auto"
+						MinimumHeightRequest="52">
 						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
-							<Label FontFamily="OpenSansSemibold" Text="System" />
-							<Label StyleClass="Caption" Text="Follows the device; dark becomes AMOLED" />
+							<Label FontFamily="OpenSansSemibold" Text="{localization:Tr Settings.ThemeSystem}" />
+							<Label StyleClass="Caption" Text="{localization:Tr Settings.ThemeSystemDescription}" />
 						</VerticalStackLayout>
-						<Label Grid.Column="1" FontSize="20" IsVisible="{Binding IsSystem}" Text="&#x2713;" TextColor="{DynamicResource Accent}" VerticalOptions="Center" />
+
+						<Label
+							Grid.Column="1"
+							FontSize="20"
+							IsVisible="{Binding IsSystem}"
+							Text="&#x2713;"
+							TextColor="{DynamicResource Accent}"
+							VerticalOptions="Center" />
+
 						<Grid.GestureRecognizers>
 							<TapGestureRecognizer Command="{Binding SelectThemeCommand}" CommandParameter="{x:Static support:ThemeChoice.System}" />
 						</Grid.GestureRecognizers>
 					</Grid>
+
 					<BoxView StyleClass="Divider" />
-					<Grid Padding="12,10" ColumnDefinitions="*,Auto" MinimumHeightRequest="52">
+
+					<Grid
+						Padding="12,10"
+						ColumnDefinitions="*,Auto"
+						MinimumHeightRequest="52">
 						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
-							<Label FontFamily="OpenSansSemibold" Text="Light" />
-							<Label StyleClass="Caption" Text="Bright surfaces" />
+							<Label FontFamily="OpenSansSemibold" Text="{localization:Tr Settings.ThemeLight}" />
+							<Label StyleClass="Caption" Text="{localization:Tr Settings.ThemeLightDescription}" />
 						</VerticalStackLayout>
-						<Label Grid.Column="1" FontSize="20" IsVisible="{Binding IsLight}" Text="&#x2713;" TextColor="{DynamicResource Accent}" VerticalOptions="Center" />
+
+						<Label
+							Grid.Column="1"
+							FontSize="20"
+							IsVisible="{Binding IsLight}"
+							Text="&#x2713;"
+							TextColor="{DynamicResource Accent}"
+							VerticalOptions="Center" />
+
 						<Grid.GestureRecognizers>
 							<TapGestureRecognizer Command="{Binding SelectThemeCommand}" CommandParameter="{x:Static support:ThemeChoice.Light}" />
 						</Grid.GestureRecognizers>
 					</Grid>
+
 					<BoxView StyleClass="Divider" />
-					<Grid Padding="12,10" ColumnDefinitions="*,Auto" MinimumHeightRequest="52">
+
+					<Grid
+						Padding="12,10"
+						ColumnDefinitions="*,Auto"
+						MinimumHeightRequest="52">
 						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
-							<Label FontFamily="OpenSansSemibold" Text="Dark" />
-							<Label StyleClass="Caption" Text="Solarized-style dark" />
+							<Label FontFamily="OpenSansSemibold" Text="{localization:Tr Settings.ThemeDark}" />
+							<Label StyleClass="Caption" Text="{localization:Tr Settings.ThemeDarkDescription}" />
 						</VerticalStackLayout>
-						<Label Grid.Column="1" FontSize="20" IsVisible="{Binding IsDark}" Text="&#x2713;" TextColor="{DynamicResource Accent}" VerticalOptions="Center" />
+
+						<Label
+							Grid.Column="1"
+							FontSize="20"
+							IsVisible="{Binding IsDark}"
+							Text="&#x2713;"
+							TextColor="{DynamicResource Accent}"
+							VerticalOptions="Center" />
+
 						<Grid.GestureRecognizers>
 							<TapGestureRecognizer Command="{Binding SelectThemeCommand}" CommandParameter="{x:Static support:ThemeChoice.Dark}" />
 						</Grid.GestureRecognizers>
 					</Grid>
+
 					<BoxView StyleClass="Divider" />
-					<Grid Padding="12,10" ColumnDefinitions="*,Auto" MinimumHeightRequest="52">
+
+					<Grid
+						Padding="12,10"
+						ColumnDefinitions="*,Auto"
+						MinimumHeightRequest="52">
 						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
-							<Label FontFamily="OpenSansSemibold" Text="Dark AMOLED" />
-							<Label StyleClass="Caption" Text="Pure black, strong outlines" />
+							<Label FontFamily="OpenSansSemibold" Text="{localization:Tr Settings.ThemeAmoled}" />
+							<Label StyleClass="Caption" Text="{localization:Tr Settings.ThemeAmoledDescription}" />
 						</VerticalStackLayout>
-						<Label Grid.Column="1" FontSize="20" IsVisible="{Binding IsAmoled}" Text="&#x2713;" TextColor="{DynamicResource Accent}" VerticalOptions="Center" />
+
+						<Label
+							Grid.Column="1"
+							FontSize="20"
+							IsVisible="{Binding IsAmoled}"
+							Text="&#x2713;"
+							TextColor="{DynamicResource Accent}"
+							VerticalOptions="Center" />
+
 						<Grid.GestureRecognizers>
 							<TapGestureRecognizer Command="{Binding SelectThemeCommand}" CommandParameter="{x:Static support:ThemeChoice.Amoled}" />
 						</Grid.GestureRecognizers>
 					</Grid>
+
 				</VerticalStackLayout>
 			</Border>
 
-			<Label StyleClass="Section" Text="App" />
+			<Label StyleClass="Section" Text="{localization:Tr Settings.Language}" />
+
+			<Border Padding="0" StyleClass="Card">
+				<VerticalStackLayout BindableLayout.ItemsSource="{Binding AvailableLanguages}">
+
+					<BindableLayout.ItemTemplate>
+						<DataTemplate x:DataType="localization:LocalizationPack">
+							<Grid
+								Padding="12,10"
+								ColumnDefinitions="*,Auto"
+								MinimumHeightRequest="52">
+
+								<Label
+									FontFamily="OpenSansSemibold"
+									Text="{Binding DisplayName}"
+									VerticalOptions="Center" />
+
+								<Label
+									Grid.Column="1"
+									FontSize="20"
+									IsVisible="{Binding IsSelected}"
+									Text="&#x2713;"
+									TextColor="{DynamicResource Accent}"
+									VerticalOptions="Center" />
+
+								<Grid.GestureRecognizers>
+									<TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type local:SettingsViewModel}}, Path=SelectLanguageCommand}" CommandParameter="{Binding Code}" />
+								</Grid.GestureRecognizers>
+							</Grid>
+						</DataTemplate>
+					</BindableLayout.ItemTemplate>
+
+				</VerticalStackLayout>
+			</Border>
+
+			<Label StyleClass="Section" Text="{localization:Tr Settings.Appearance}" />
+
 			<Border Padding="0" StyleClass="Card">
 				<VerticalStackLayout>
-					<Grid Padding="12,8" ColumnDefinitions="*,Auto" ColumnSpacing="12" MinimumHeightRequest="52">
+
+					<Grid
+						Padding="12,8"
+						ColumnDefinitions="*,Auto"
+						ColumnSpacing="12"
+						MinimumHeightRequest="52">
+
 						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
-							<Label FontFamily="OpenSansSemibold" Text="Animations" />
-							<Label StyleClass="Caption" Text="Subtle transitions and effects" />
+							<Label FontFamily="OpenSansSemibold" Text="{localization:Tr Settings.Animations}" />
+							<Label StyleClass="Caption" Text="{localization:Tr Settings.AnimationsDescription}" />
 						</VerticalStackLayout>
-						<Switch Grid.Column="1" IsToggled="{Binding Animations}" SemanticProperties.Description="Animations" VerticalOptions="Center" />
+
+						<Switch
+							Grid.Column="1"
+							IsToggled="{Binding Animations}"
+							SemanticProperties.Description="{localization:Tr Settings.Animations}"
+							VerticalOptions="Center" />
 					</Grid>
+
 					<BoxView StyleClass="Divider" />
-					<Grid Padding="12,8" ColumnDefinitions="*,Auto" ColumnSpacing="12" MinimumHeightRequest="52">
+
+					<Grid
+						Padding="12,8"
+						ColumnDefinitions="*,Auto"
+						ColumnSpacing="12"
+						MinimumHeightRequest="52">
+
 						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
-							<Label FontFamily="OpenSansSemibold" Text="Technical details" />
-							<Label StyleClass="Caption" Text="Show extra detail in notices" />
+							<Label FontFamily="OpenSansSemibold" Text="{localization:Tr Settings.TechnicalDetails}" />
+							<Label StyleClass="Caption" Text="{localization:Tr Settings.TechnicalDetailsDescription}" />
 						</VerticalStackLayout>
-						<Switch Grid.Column="1" IsToggled="{Binding ShowTechnicalDetails}" SemanticProperties.Description="Technical details" VerticalOptions="Center" />
+
+						<Switch
+							Grid.Column="1"
+							IsToggled="{Binding ShowTechnicalDetails}"
+							SemanticProperties.Description="{localization:Tr Settings.TechnicalDetails}"
+							VerticalOptions="Center" />
 					</Grid>
+
 				</VerticalStackLayout>
 			</Border>
 
-			<Label StyleClass="Section" Text="Journeys" />
+			<Label StyleClass="Section" Text="{localization:Tr Settings.JourneyOptions}" />
+
 			<Border Padding="0" StyleClass="Card">
 				<VerticalStackLayout>
+
 					<VerticalStackLayout Padding="12,10" Spacing="4">
-						<Label FontFamily="OpenSansSemibold" Text="Results" />
+						<Label FontFamily="OpenSansSemibold" Text="{localization:Tr Settings.Results}" />
+
 						<Label StyleClass="Caption" Text="{Binding MaxResultsText}" />
-						<Slider Maximum="{Binding MaxResultsLimit}" Minimum="{Binding MinResults}" SemanticProperties.Description="Journeys per search" Value="{Binding MaxResults}" />
+
+						<Slider
+							Maximum="{Binding MaxResultsLimit}"
+							Minimum="{Binding MinResults}"
+							SemanticProperties.Description="{localization:Tr Settings.Results}"
+							Value="{Binding MaxResults}" />
 					</VerticalStackLayout>
+
 					<BoxView StyleClass="Divider" />
+
 					<VerticalStackLayout Padding="12,10" Spacing="4">
-						<Label FontFamily="OpenSansSemibold" Text="Request timeout" />
+						<Label FontFamily="OpenSansSemibold" Text="{localization:Tr Settings.RequestTimeout}" />
+
 						<Label StyleClass="Caption" Text="{Binding TimeoutText}" />
-						<Slider Maximum="60" Minimum="5" SemanticProperties.Description="Request timeout in seconds" Value="{Binding TimeoutSeconds}" />
+
+						<Slider
+							Maximum="60"
+							Minimum="5"
+							SemanticProperties.Description="{localization:Tr Settings.RequestTimeout}"
+							Value="{Binding TimeoutSeconds}" />
 					</VerticalStackLayout>
+
 					<BoxView StyleClass="Divider" />
-					<Grid Padding="12,8" ColumnDefinitions="*,Auto" ColumnSpacing="12" MinimumHeightRequest="52">
+
+					<Grid
+						Padding="12,8"
+						ColumnDefinitions="*,Auto"
+						ColumnSpacing="12"
+						MinimumHeightRequest="52">
+
 						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
-							<Label FontFamily="OpenSansSemibold" Text="Arrive by" />
-							<Label StyleClass="Caption" Text="Open the planner in arrival mode" />
+							<Label FontFamily="OpenSansSemibold" Text="{localization:Tr Settings.ArriveBy}" />
+							<Label StyleClass="Caption" Text="{localization:Tr Settings.ArriveByDescription}" />
 						</VerticalStackLayout>
-						<Switch Grid.Column="1" IsToggled="{Binding DefaultArrival}" SemanticProperties.Description="Arrive by" VerticalOptions="Center" />
+
+						<Switch
+							Grid.Column="1"
+							IsToggled="{Binding DefaultArrival}"
+							SemanticProperties.Description="{localization:Tr Settings.ArriveBy}"
+							VerticalOptions="Center" />
 					</Grid>
+
 					<BoxView StyleClass="Divider" />
-					<Grid Padding="12,8" ColumnDefinitions="*,Auto" ColumnSpacing="12" MinimumHeightRequest="52">
+
+					<Grid
+						Padding="12,8"
+						ColumnDefinitions="*,Auto"
+						ColumnSpacing="12"
+						MinimumHeightRequest="52">
+
 						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
-							<Label FontFamily="OpenSansSemibold" Text="Walking legs" />
-							<Label StyleClass="Caption" Text="Show walks in the timeline" />
+							<Label FontFamily="OpenSansSemibold" Text="{localization:Tr Settings.WalkingLegs}" />
+							<Label StyleClass="Caption" Text="{localization:Tr Settings.WalkingLegsDescription}" />
 						</VerticalStackLayout>
-						<Switch Grid.Column="1" IsToggled="{Binding ShowWalkingLegs}" SemanticProperties.Description="Walking legs" VerticalOptions="Center" />
+
+						<Switch
+							Grid.Column="1"
+							IsToggled="{Binding ShowWalkingLegs}"
+							SemanticProperties.Description="{localization:Tr Settings.WalkingLegs}"
+							VerticalOptions="Center" />
 					</Grid>
+
 					<BoxView StyleClass="Divider" />
-					<Grid Padding="12,8" ColumnDefinitions="*,Auto" ColumnSpacing="12" MinimumHeightRequest="52">
+
+					<Grid
+						Padding="12,8"
+						ColumnDefinitions="*,Auto"
+						ColumnSpacing="12"
+						MinimumHeightRequest="52">
+
 						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
-							<Label FontFamily="OpenSansSemibold" Text="Expand notices" />
-							<Label StyleClass="Caption" Text="Open journey notices by default" />
+							<Label FontFamily="OpenSansSemibold" Text="{localization:Tr Settings.ExpandNotices}" />
+							<Label StyleClass="Caption" Text="{localization:Tr Settings.ExpandNoticesDescription}" />
 						</VerticalStackLayout>
-						<Switch Grid.Column="1" IsToggled="{Binding ExpandNotices}" SemanticProperties.Description="Expand notices" VerticalOptions="Center" />
+
+						<Switch
+							Grid.Column="1"
+							IsToggled="{Binding ExpandNotices}"
+							SemanticProperties.Description="{localization:Tr Settings.ExpandNotices}"
+							VerticalOptions="Center" />
 					</Grid>
+
 				</VerticalStackLayout>
 			</Border>
 
-			<Button Command="{Binding ResetCommand}" Margin="0,8,0,0" StyleClass="Tonal" Text="Reset journey settings" />
+			<Button
+				Margin="0,8,0,0"
+				Command="{Binding ResetCommand}"
+				StyleClass="Tonal"
+				Text="{localization:Tr Settings.ResetJourneySettings}" />
 
-			<Label Margin="0,8" HorizontalOptions="Center" StyleClass="Caption" Text="{Binding Version}" />
+			<Label
+				Margin="0,8"
+				HorizontalOptions="Center"
+				StyleClass="Caption"
+				Text="{Binding Version}" />
 
 		</VerticalStackLayout>
 	</ScrollView>

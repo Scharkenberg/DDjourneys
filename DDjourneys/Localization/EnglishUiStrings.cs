@@ -17,6 +17,7 @@ public sealed class EnglishUiStrings : IUiStrings
 		TryAgain = "Try again",
 		Share = "Share",
 		Search = "Search",
+		Clear = "Clear",
 		SearchFailed = "The search failed.",
 		CouldNotReachService = "Could not reach the timetable service."
 	};
@@ -28,6 +29,9 @@ public sealed class EnglishUiStrings : IUiStrings
 		ToPlaceholder = "To",
 		ChooseStart = "Choose start",
 		ChooseDestination = "Choose destination",
+		ToggleFavouriteFrom = "Toggle favourite for start",
+		ToggleFavouriteTo = "Toggle favourite for destination",
+		SwapDescription = "Swap start and destination",
 		Swap = "⇅",
 		SearchJourneys = "Search journeys",
 		Departure = "Leave",
@@ -37,7 +41,9 @@ public sealed class EnglishUiStrings : IUiStrings
 		LeaveNow = "Now",
 		Favourites = "Favourites",
 		Recent = "Recent",
-		PlacesYouSearchForWillAppearHere = "Places you search for will appear here."
+		StartAndDestinationRequired = "Start and destination are required.",
+		PlacesYouSearchForWillAppearHere =
+			"Places you search for will appear here."
 	};
 
 	public PlaceSearchStrings PlaceSearch { get; } = new()
@@ -48,7 +54,8 @@ public sealed class EnglishUiStrings : IUiStrings
 		TypeAtLeastTwoCharacters = "Type at least 2 characters.",
 		NoPlacesFound = "No places found.",
 		Searching = "Searching...",
-		CouldNotReachService = "Could not reach the timetable service. Check your connection."
+		CouldNotReachService =
+			"Could not reach the timetable service. Check your connection."
 	};
 
 	public ResultsStrings Results { get; } = new()
@@ -56,9 +63,12 @@ public sealed class EnglishUiStrings : IUiStrings
 		Title = "Journeys",
 		Loading = "Loading journeys...",
 		NoConnections = "No journeys found for this time.",
+		JourneysCouldNotBeDisplayed =
+			"The journeys could not be displayed.",
+		SearchServiceUnavailable =
+			"Could not reach the timetable service.",
 		Refresh = "Refresh",
-		Retry = "Try again",
-		ErrorLoadingConnections = "Could not reach the timetable service."
+		Retry = "Try again"
 	};
 
 	public JourneyStrings Journey { get; } = new()
@@ -71,10 +81,47 @@ public sealed class EnglishUiStrings : IUiStrings
 		NotServed = "Not served",
 		InProgress = "In progress",
 		Cancelled = "Cancelled",
-		CouldNotBeDisplayed = "This journey could not be displayed.",
-		ShowOrHideIntermediateStops = "Show or hide intermediate stops",
+		CouldNotBeDisplayed =
+			"This journey could not be displayed.",
+		ShowOrHideIntermediateStops =
+			"Show or hide intermediate stops",
 		Walk = "Walk",
-		ShareTitle = "Share journey"
+		ShareTitle = "Share journey",
+
+		Direct = "Direct",
+		OneTransfer = "1 transfer",
+		MultipleTransfers = "{0} transfers",
+		OneNotice = "1 notice",
+		MultipleNotices = "{0} notices",
+		AccessibilitySummary =
+			"Departs {0}, arrives {1}, {2}, {3}",
+		AccessibilityCancelled = ", cancelled",
+		AccessibilityArrivalDelay = ", arrival {0}",
+		AccessibilityNotices = ", {0}",
+
+		HideStops = "Hide stops",
+		OneStop = "1 stop",
+		MultipleStops = "{0} stops",
+		To = "to",
+		ContinueFrom = "continue from",
+		ImmediateChange = "Immediate change",
+		ToChange = "to change",
+		WalkAbout = "Walk about",
+		BetweenStops = "between stops",
+		ConnectionMayBeMissed = "Connection may be missed",
+		ChangeAt = "Change at",
+		Platform = "Platform",
+		LowFloor = "Low floor",
+		WheelchairAccessible = "Wheelchair accessible",
+		BicycleAccessible = "Bicycle accessible",
+		Depart = "depart",
+		Arrive = "arrive",
+		ShowMore = "Show more",
+		ShowLess = "Show less",
+		ShowFullNotice = "Show the full notice",
+		ShowLessNotice = "Show less of the notice",
+		Warning = "Warning",
+		Notice = "Notice"
 	};
 
 	public SettingsStrings Settings { get; } = new()
@@ -86,27 +133,34 @@ public sealed class EnglishUiStrings : IUiStrings
 		JourneyOptions = "Journeys",
 		About = "About",
 		ThemeSystem = "System",
-		ThemeSystemDescription = "Follows the device; dark becomes AMOLED",
+		ThemeSystemDescription =
+			"Follows the device; dark becomes AMOLED",
 		ThemeLight = "Light",
 		ThemeLightDescription = "Bright surfaces",
 		ThemeDark = "Dark",
 		ThemeDarkDescription = "Solarized-style dark",
 		ThemeAmoled = "Dark AMOLED",
-		ThemeAmoledDescription = "Pure black, strong outlines",
+		ThemeAmoledDescription =
+			"Pure black, strong outlines",
 		Animations = "Animations",
-		AnimationsDescription = "Subtle transitions and effects",
+		AnimationsDescription =
+			"Subtle transitions and effects",
 		TechnicalDetails = "Technical details",
-		TechnicalDetailsDescription = "Show extra detail in notices",
+		TechnicalDetailsDescription =
+			"Show extra detail in notices",
 		Results = "Results",
 		ResultsDescription = "Journeys per search",
 		RequestTimeout = "Request timeout",
 		RequestTimeoutDescription = "Give up after {0} s",
 		ArriveBy = "Arrive by",
-		ArriveByDescription = "Open the planner in arrival mode",
+		ArriveByDescription =
+			"Open the planner in arrival mode",
 		WalkingLegs = "Walking legs",
-		WalkingLegsDescription = "Show walks in the timeline",
+		WalkingLegsDescription =
+			"Show walks in the timeline",
 		ExpandNotices = "Expand notices",
-		ExpandNoticesDescription = "Open journey notices by default",
+		ExpandNoticesDescription =
+			"Open journey notices by default",
 		ResetJourneySettings = "Reset journey settings",
 		VersionPrefix = "DDjourneys {0} ({1})"
 	};

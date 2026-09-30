@@ -25,7 +25,9 @@ public sealed class LocalizationService : INotifyPropertyChanged
 
 	public IReadOnlyList<LocalizationPack> AvailableLanguages =>
 		_packs.Values
-			.OrderBy(pack => pack.DisplayName, StringComparer.CurrentCultureIgnoreCase)
+			.OrderBy(
+				pack => pack.DisplayName,
+				StringComparer.CurrentCultureIgnoreCase)
 			.ToArray();
 
 	public string LanguageCode
@@ -44,9 +46,11 @@ public sealed class LocalizationService : INotifyPropertyChanged
 	}
 
 	public LocalizationPack CurrentLanguagePack =>
-		_current ?? throw new InvalidOperationException("No UI language has been selected.");
+		_current ?? throw new InvalidOperationException(
+			"No UI language has been selected.");
 
-	public IUiStrings CurrentStrings => CurrentLanguagePack.Strings;
+	public IUiStrings CurrentStrings =>
+		CurrentLanguagePack.Strings;
 
 	public void Register(LocalizationPack pack)
 	{
@@ -56,7 +60,17 @@ public sealed class LocalizationService : INotifyPropertyChanged
 		ArgumentNullException.ThrowIfNull(pack.Strings);
 
 		string code = Normalize(pack.Code);
+
 		_packs[code] = pack;
+
+		if (_current is not null)
+		{
+			pack.IsSelected =
+				string.Equals(
+					pack.Code,
+					_current.Code,
+					StringComparison.OrdinalIgnoreCase);
+		}
 
 		OnPropertyChanged(nameof(AvailableLanguages));
 	}
@@ -77,7 +91,15 @@ public sealed class LocalizationService : INotifyPropertyChanged
 
 		LocalizationPack pack = ResolvePack(languageCode);
 
+		if (_current is not null &&
+			!ReferenceEquals(_current, pack))
+		{
+			_current.IsSelected = false;
+		}
+
 		_current = pack;
+		_current.IsSelected = true;
+
 		LanguageCode = pack.Code;
 
 		CultureInfo culture = CultureInfo.GetCultureInfo(pack.Code);
@@ -120,9 +142,17 @@ public sealed class LocalizationService : INotifyPropertyChanged
 			return exact;
 		}
 
-		string neutral = CultureInfo.GetCultureInfo(normalized).TwoLetterISOLanguageName;
+		string neutral =
+			CultureInfo.GetCultureInfo(normalized)
+				.TwoLetterISOLanguageName;
 
-		if (_packs.TryGetValue(neutral, out LocalizationPack? neutralPack))
+		LocalizationPack? neutralPack = _packs.Values.FirstOrDefault(
+			pack => string.Equals(
+				CultureInfo.GetCultureInfo(pack.Code).TwoLetterISOLanguageName,
+				neutral,
+				StringComparison.OrdinalIgnoreCase));
+
+		if (neutralPack is not null)
 		{
 			return neutralPack;
 		}
@@ -130,18 +160,24 @@ public sealed class LocalizationService : INotifyPropertyChanged
 		if (_packs.Count > 0)
 		{
 			return _packs.Values
-				.OrderBy(pack => pack.DisplayName, StringComparer.CurrentCultureIgnoreCase)
+				.OrderBy(
+					pack => pack.DisplayName,
+					StringComparer.CurrentCultureIgnoreCase)
 				.First();
 		}
 
-		throw new InvalidOperationException("No UI languages have been registered.");
+		throw new InvalidOperationException(
+			"No UI languages have been registered.");
 	}
 
 	private static string Normalize(string languageCode) =>
 		CultureInfo.GetCultureInfo(languageCode).Name;
 
-	private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+	private void OnPropertyChanged(
+		[CallerMemberName] string? propertyName = null)
 	{
-		PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+		PropertyChanged?.Invoke(
+			this,
+			new PropertyChangedEventArgs(propertyName));
 	}
 }

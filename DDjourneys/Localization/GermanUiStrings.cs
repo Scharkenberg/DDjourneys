@@ -9,7 +9,7 @@ public sealed class GermanUiStrings : IUiStrings
 		Retry = "Erneut versuchen",
 		Close = "Schließen",
 		Loading = "Lädt",
-		Searching = "Sucht",
+		Searching = "Suche",
 		Today = "Heute",
 		Tomorrow = "Morgen",
 		Unknown = "Unbekannt",
@@ -17,8 +17,10 @@ public sealed class GermanUiStrings : IUiStrings
 		TryAgain = "Erneut versuchen",
 		Share = "Teilen",
 		Search = "Suchen",
+		Clear = "Leeren",
 		SearchFailed = "Die Suche ist fehlgeschlagen.",
-		CouldNotReachService = "Der Fahrplandienst ist nicht erreichbar."
+		CouldNotReachService =
+			"Der Fahrplandienst ist nicht erreichbar."
 	};
 
 	public PlanStrings Plan { get; } = new()
@@ -28,6 +30,11 @@ public sealed class GermanUiStrings : IUiStrings
 		ToPlaceholder = "Nach",
 		ChooseStart = "Start wählen",
 		ChooseDestination = "Ziel wählen",
+		ToggleFavouriteFrom =
+			"Start als Favorit umschalten",
+		ToggleFavouriteTo =
+			"Ziel als Favorit umschalten",
+		SwapDescription = "Start und Ziel tauschen",
 		Swap = "⇅",
 		SearchJourneys = "Verbindungen suchen",
 		Departure = "Abfahrt",
@@ -37,28 +44,39 @@ public sealed class GermanUiStrings : IUiStrings
 		LeaveNow = "Jetzt",
 		Favourites = "Favoriten",
 		Recent = "Zuletzt",
-		PlacesYouSearchForWillAppearHere = "Gesuchte Orte erscheinen hier."
+		StartAndDestinationRequired =
+			"Start und Ziel sind erforderlich.",
+		PlacesYouSearchForWillAppearHere =
+			"Gesuchte Orte erscheinen hier."
 	};
 
 	public PlaceSearchStrings PlaceSearch { get; } = new()
 	{
 		Title = "Ort wählen",
-		SearchPlaceholder = "Bahnhof, Haltestelle oder Adresse",
-		Hint = "Bahnhof, Haltestelle oder Adresse eingeben.",
-		TypeAtLeastTwoCharacters = "Mindestens 2 Zeichen eingeben.",
+		SearchPlaceholder =
+			"Bahnhof, Haltestelle oder Adresse",
+		Hint =
+			"Bahnhof, Haltestelle oder Adresse eingeben.",
+		TypeAtLeastTwoCharacters =
+			"Mindestens 2 Zeichen eingeben.",
 		NoPlacesFound = "Keine Orte gefunden.",
 		Searching = "Suche...",
-		CouldNotReachService = "Der Fahrplandienst ist nicht erreichbar. Verbindung prüfen."
+		CouldNotReachService =
+			"Der Fahrplandienst ist nicht erreichbar. Verbindung prüfen."
 	};
 
 	public ResultsStrings Results { get; } = new()
 	{
 		Title = "Verbindungen",
 		Loading = "Verbindungen werden geladen...",
-		NoConnections = "Für diese Zeit wurden keine Verbindungen gefunden.",
+		NoConnections =
+			"Für diese Zeit wurden keine Verbindungen gefunden.",
+		JourneysCouldNotBeDisplayed =
+			"Die Verbindungen konnten nicht angezeigt werden.",
+		SearchServiceUnavailable =
+			"Der Fahrplandienst ist nicht erreichbar.",
 		Refresh = "Aktualisieren",
-		Retry = "Erneut versuchen",
-		ErrorLoadingConnections = "Der Fahrplandienst ist nicht erreichbar."
+		Retry = "Erneut versuchen"
 	};
 
 	public JourneyStrings Journey { get; } = new()
@@ -68,13 +86,53 @@ public sealed class GermanUiStrings : IUiStrings
 		Notes = "Hinweise",
 		NoRealtimeData = "Keine Echtzeitdaten",
 		ShareJourney = "Verbindung teilen",
-		NotServed = "Fällt aus",
+		NotServed = "Wird nicht bedient",
 		InProgress = "Unterwegs",
 		Cancelled = "Ausgefallen",
-		CouldNotBeDisplayed = "Diese Verbindung konnte nicht angezeigt werden.",
-		ShowOrHideIntermediateStops = "Zwischenhalte ein- oder ausblenden",
+		CouldNotBeDisplayed =
+			"Diese Verbindung konnte nicht angezeigt werden.",
+		ShowOrHideIntermediateStops =
+			"Zwischenhalte ein- oder ausblenden",
 		Walk = "Zu Fuß",
-		ShareTitle = "Verbindung teilen"
+		ShareTitle = "Verbindung teilen",
+
+		Direct = "Direkt",
+		OneTransfer = "1 Umstieg",
+		MultipleTransfers = "{0} Umstiege",
+		OneNotice = "1 Hinweis",
+		MultipleNotices = "{0} Hinweise",
+		AccessibilitySummary =
+			"Abfahrt {0}, Ankunft {1}, {2}, {3}",
+		AccessibilityCancelled = ", ausgefallen",
+		AccessibilityArrivalDelay = ", Ankunft {0}",
+		AccessibilityNotices = ", {0}",
+
+		HideStops = "Haltestellen ausblenden",
+		OneStop = "1 Halt",
+		MultipleStops = "{0} Halte",
+		To = "nach",
+		ContinueFrom = "weiter ab",
+		ImmediateChange = "Sofortiger Umstieg",
+		ToChange = "zum Umsteigen",
+		WalkAbout = "Etwa zu Fuß",
+		BetweenStops = "zwischen Haltestellen",
+		ConnectionMayBeMissed =
+			"Anschluss kann verpasst werden",
+		ChangeAt = "Umstieg bei",
+		Platform = "Gleis",
+		LowFloor = "Niederflur",
+		WheelchairAccessible =
+			"Rollstuhlgerecht",
+		BicycleAccessible =
+			"Fahrradmitnahme möglich",
+		Depart = "Abfahrt",
+		Arrive = "Ankunft",
+		ShowMore = "Mehr anzeigen",
+		ShowLess = "Weniger anzeigen",
+		ShowFullNotice = "Den vollständigen Hinweis anzeigen",
+		ShowLessNotice = "Hinweis einklappen",
+		Warning = "Warnung",
+		Notice = "Hinweis"
 	};
 
 	public SettingsStrings Settings { get; } = new()
@@ -86,28 +144,36 @@ public sealed class GermanUiStrings : IUiStrings
 		JourneyOptions = "Verbindungen",
 		About = "Info",
 		ThemeSystem = "System",
-		ThemeSystemDescription = "Folgt dem Gerät; Dunkel wird AMOLED",
+		ThemeSystemDescription =
+			"Folgt dem Gerät; Dunkel wird AMOLED",
 		ThemeLight = "Hell",
 		ThemeLightDescription = "Helle Flächen",
 		ThemeDark = "Dunkel",
 		ThemeDarkDescription = "Dunkles Solarized",
 		ThemeAmoled = "Dunkel AMOLED",
-		ThemeAmoledDescription = "Reines Schwarz, starke Konturen",
+		ThemeAmoledDescription =
+			"Reines Schwarz, starke Konturen",
 		Animations = "Animationen",
-		AnimationsDescription = "Unaufdringliche Übergänge und Effekte",
+		AnimationsDescription =
+			"Unaufdringliche Übergänge und Effekte",
 		TechnicalDetails = "Technische Details",
-		TechnicalDetailsDescription = "Mehr Details in Hinweisen anzeigen",
+		TechnicalDetailsDescription =
+			"Zusätzliche Details in Hinweisen anzeigen",
 		Results = "Ergebnisse",
 		ResultsDescription = "Verbindungen pro Suche",
 		RequestTimeout = "Zeitlimit",
 		RequestTimeoutDescription = "Abbruch nach {0} s",
 		ArriveBy = "Ankunft bis",
-		ArriveByDescription = "Planer im Ankunftsmodus öffnen",
+		ArriveByDescription =
+			"Planer im Ankunftsmodus öffnen",
 		WalkingLegs = "Fußwege",
-		WalkingLegsDescription = "Fußwege in der Zeitlinie anzeigen",
+		WalkingLegsDescription =
+			"Fußwege in der Zeitlinie anzeigen",
 		ExpandNotices = "Hinweise ausklappen",
-		ExpandNoticesDescription = "Verbindungshinweise standardmäßig öffnen",
-		ResetJourneySettings = "Verbindungseinstellungen zurücksetzen",
+		ExpandNoticesDescription =
+			"Verbindungshinweise standardmäßig öffnen",
+		ResetJourneySettings =
+			"Verbindungseinstellungen zurücksetzen",
 		VersionPrefix = "DDjourneys {0} ({1})"
 	};
 }
