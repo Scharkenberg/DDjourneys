@@ -12,11 +12,11 @@ public sealed class SettingsViewModel : ObservableObject
 		ArgumentNullException.ThrowIfNull(settings);
 		_settings = settings;
 
-		SelectThemeCommand = new Command<ThemeChoice>(async choice => await SelectThemeAsync(choice));
+		SelectThemeCommand = new AsyncCommand<ThemeChoice>(SelectThemeAsync);
 		ResetCommand = new Command(Reset);
 	}
 
-	public Command<ThemeChoice> SelectThemeCommand { get; }
+	public AsyncCommand<ThemeChoice> SelectThemeCommand { get; }
 	public Command ResetCommand { get; }
 
 	// ----- Appearance -----
@@ -60,6 +60,19 @@ public sealed class SettingsViewModel : ObservableObject
 	}
 
 	public string MaxResultsText => $"{_settings.MaxResults} journeys per search";
+
+	public double TimeoutSeconds
+	{
+		get => _settings.TimeoutSeconds;
+		set
+		{
+			_settings.TimeoutSeconds = (int)Math.Round(value / 5.0) * 5; // steps of 5 s
+			OnPropertyChanged();
+			OnPropertyChanged(nameof(TimeoutText));
+		}
+	}
+
+	public string TimeoutText => $"Give up after {_settings.TimeoutSeconds} s";
 
 	public double MinResults => AppSettings.MinResults;
 	public double MaxResultsLimit => AppSettings.MaxResultsLimit;
@@ -136,5 +149,7 @@ public sealed class SettingsViewModel : ObservableObject
 		OnPropertyChanged(nameof(DefaultArrival));
 		OnPropertyChanged(nameof(ShowWalkingLegs));
 		OnPropertyChanged(nameof(ExpandNotices));
+		OnPropertyChanged(nameof(TimeoutSeconds));
+		OnPropertyChanged(nameof(TimeoutText));
 	}
 }

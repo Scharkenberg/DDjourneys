@@ -5,13 +5,13 @@
 	<!--  AMOLED: pure black on large surfaces; separation comes from bright outlines. Keys must match the other theme files.  -->
 	<Color x:Key="Bg">#000000</Color>
 	<Color x:Key="Surface">#000000</Color>
-	<Color x:Key="Raised">#111B21</Color>
-	<Color x:Key="Outline">#5A6D79</Color>
+	<Color x:Key="Raised">#16232A</Color>
+	<Color x:Key="Outline">#647985</Color>
 	<Color x:Key="Ink">#F2F6F8</Color>
-	<Color x:Key="InkMuted">#A3B3BB</Color>
+	<Color x:Key="InkMuted">#AFBFC7</Color>
 	<Color x:Key="Accent">#5CC0DA</Color>
 	<Color x:Key="OnAccent">#06222B</Color>
-	<Color x:Key="AccentSoft">#0F2A33</Color>
+	<Color x:Key="AccentSoft">#12323C</Color>
 	<Color x:Key="OnTime">#4ADE80</Color>
 	<Color x:Key="Delay">#FFC94D</Color>
 	<Color x:Key="Cancelled">#F87171</Color>

@@ -29,6 +29,7 @@ public partial class PlanPage : ContentPage, IQueryAttributable
 	{
 		base.OnAppearing();
 		_vm.Refresh(); // new day? stale time? fixed here, not at search time
+		Motion.EnterPage(this);
 	}
 
 	/// <summary>Receives the place chosen on the place search page.</summary>
@@ -83,6 +84,11 @@ public partial class PlanPage : ContentPage, IQueryAttributable
 	{
 		if ((sender as BindableObject)?.BindingContext is Location place)
 		{
+			if (sender is VisualElement chip)
+			{
+				_ = Motion.TapAsync(chip);
+			}
+
 			_vm.UsePlace(place);
 		}
 	}

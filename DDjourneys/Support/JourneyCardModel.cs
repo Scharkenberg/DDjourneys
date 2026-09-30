@@ -30,6 +30,9 @@ public static class ModeColors
 /// <summary>Display-ready view of a Journey for the results list.</summary>
 public sealed class JourneyCardModel
 {
+	/// <summary>Set once the entrance animation ran, so recycled cards never replay it while scrolling.</summary>
+	public bool Revealed { get; set; }
+
 	public JourneyCardModel(Journey journey)
 	{
 		ArgumentNullException.ThrowIfNull(journey);

@@ -1,11 +1,18 @@
+using System.Runtime.CompilerServices;
+
 namespace DDjourneys.Support;
 
 /// <summary>
 /// Central switch and helpers for animations. Every animation in the app goes through here,
 /// so the "Animations" setting, cancellation and failures are handled in exactly one place.
+/// Rules: never block interaction, never leave a view invisible, never throw.
 /// </summary>
 public static class Motion
 {
+	private const int CascadeCap = 8;
+
+	private static readonly ConditionalWeakTable<Page, object> Entered = new();
+
 	public static bool Enabled { get; private set; } = true;
 
 	public static void Bind(AppSettings settings)
@@ -59,6 +66,97 @@ public static class Motion
 		{
 			view.Opacity = 1;
 			view.TranslationY = 0;
+		}
+	}
+
+	/// <summary>Reveals views one after another (a short wave instead of one big pop).</summary>
+	public static void Cascade(IEnumerable<IView> views, int stepMs = 45, uint duration = 260, double rise = 12)
+	{
+		if (!Enabled)
+		{
+			return;
+		}
+
+		try
+		{
+			int index = 0;
+
+			foreach (IView view in views)
+			{
+				if (view is VisualElement element && element.IsVisible)
+				{
+					_ = RevealAsync(element, Math.Min(index, CascadeCap) * stepMs, duration, rise);
+					index++;
+				}
+			}
+		}
+		catch (Exception ex)
+		{
+			System.Diagnostics.Debug.WriteLine($"Cascade skipped: {ex.Message}");
+		}
+	}
+
+	/// <summary>
+	/// Page entrance: the top-level blocks of the page wave in, once per page instance.
+	/// Coming back to a page (Pop) shows it immediately: no replay, no flicker.
+	/// Call from OnAppearing.
+	/// </summary>
+	public static void EnterPage(ContentPage page)
+	{
+		ArgumentNullException.ThrowIfNull(page);
+
+		if (!Enabled || Entered.TryGetValue(page, out _))
+		{
+			return;
+		}
+
+		Entered.Add(page, new object());
+
+		try
+		{
+			IView? content = page.Content;
+
+			if (content is ScrollView { Content: Layout inner })
+			{
+				Cascade(inner.Children);
+			}
+			else if (content is Layout layout)
+			{
+				Cascade(layout.Children);
+			}
+			else if (content is VisualElement single)
+			{
+				_ = RevealAsync(single, 0, 260, 12);
+			}
+		}
+		catch (Exception ex)
+		{
+			System.Diagnostics.Debug.WriteLine($"EnterPage skipped: {ex.Message}");
+		}
+	}
+
+	/// <summary>Quick press feedback (scale down, spring back). Fire and forget.</summary>
+	public static async Task TapAsync(VisualElement view)
+	{
+		ArgumentNullException.ThrowIfNull(view);
+
+		if (!Enabled)
+		{
+			return;
+		}
+
+		try
+		{
+			await view.ScaleToAsync(0.97, 70, Easing.CubicOut);
+			await view.ScaleToAsync(1, 120, Easing.CubicIn);
+		}
+		catch (Exception ex)
+		{
+			System.Diagnostics.Debug.WriteLine($"Tap feedback skipped: {ex.Message}");
+		}
+		finally
+		{
+			view.Scale = 1;
 		}
 	}
 }

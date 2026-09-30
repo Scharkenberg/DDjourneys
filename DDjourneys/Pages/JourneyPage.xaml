@@ -17,7 +17,7 @@
 		<!--  Stop where a leg starts or ends  -->
 		<DataTemplate x:Key="StopTemplate" x:DataType="support:StopRow">
 			<Grid
-				ColumnDefinitions="56,18,*"
+				ColumnDefinitions="60,18,*"
 				ColumnSpacing="12"
 				Loaded="RowLoaded"
 				SemanticProperties.Description="{Binding Description}">
@@ -71,6 +71,10 @@
 					Spacing="2">
 					<Label FontFamily="OpenSansSemibold" Text="{Binding Name}" />
 					<Label
+						IsVisible="{Binding HasPlace}"
+						StyleClass="Faint"
+						Text="{Binding PlaceText}" />
+					<Label
 						IsVisible="{Binding HasPlatform}"
 						StyleClass="Caption"
 						Text="{Binding PlatformText}" />
@@ -82,7 +86,7 @@
 		<!--  Stop between departure and arrival  -->
 		<DataTemplate x:Key="IntermediateTemplate" x:DataType="support:IntermediateRow">
 			<Grid
-				ColumnDefinitions="56,18,*"
+				ColumnDefinitions="60,18,*"
 				ColumnSpacing="12"
 				Loaded="RowLoaded"
 				SemanticProperties.Description="{Binding Description}">
@@ -114,6 +118,11 @@
 					Spacing="8">
 					<Label StyleClass="Caption" Text="{Binding Name}" />
 					<Label
+						IsVisible="{Binding HasPlace}"
+						StyleClass="Faint"
+						Text="{Binding PlaceText}"
+						VerticalOptions="Center" />
+					<Label
 						IsVisible="{Binding HasDelay}"
 						StyleClass="Delay"
 						Text="{Binding DelayText}" />
@@ -129,7 +138,7 @@
 		<!--  Ride: line, direction, duration, expand toggle  -->
 		<DataTemplate x:Key="LegTemplate" x:DataType="support:LegRow">
 			<Grid
-				ColumnDefinitions="56,18,*"
+				ColumnDefinitions="60,18,*"
 				ColumnSpacing="12"
 				Loaded="RowLoaded"
 				SemanticProperties.Description="{Binding Description}">
@@ -149,7 +158,7 @@
 						<Border BackgroundColor="{Binding ModeColor}" StyleClass="Chip">
 							<Label
 								FontFamily="OpenSansSemibold"
-								FontSize="13"
+								FontSize="{StaticResource FontCaption}"
 								Text="{Binding LineText}"
 								TextColor="White" />
 						</Border>
@@ -179,7 +188,7 @@
 
 					<Label
 						FontFamily="OpenSansSemibold"
-						FontSize="13"
+						FontSize="{StaticResource FontCaption}"
 						IsVisible="{Binding IsActive}"
 						Text="In progress"
 						TextColor="{DynamicResource Accent}" />
@@ -192,12 +201,12 @@
 						VerticalOptions="Center">
 						<Label
 							FontFamily="OpenSansSemibold"
-							FontSize="14"
+							FontSize="{StaticResource FontBody}"
 							Text="{Binding StopsText}"
 							TextColor="{DynamicResource Accent}"
 							VerticalOptions="Center" />
 						<Label
-							FontSize="14"
+							FontSize="{StaticResource FontBody}"
 							Text="{Binding Chevron}"
 							TextColor="{DynamicResource Accent}" />
 
@@ -213,7 +222,7 @@
 		<!--  Walking  -->
 		<DataTemplate x:Key="WalkTemplate" x:DataType="support:WalkRow">
 			<Grid
-				ColumnDefinitions="56,18,*"
+				ColumnDefinitions="60,18,*"
 				ColumnSpacing="12"
 				Loaded="RowLoaded"
 				SemanticProperties.Description="{Binding Description}">
@@ -241,7 +250,7 @@
 		<!--  Change from one ride to the next  -->
 		<DataTemplate x:Key="InterchangeTemplate" x:DataType="support:InterchangeRow">
 			<Grid
-				ColumnDefinitions="56,18,*"
+				ColumnDefinitions="60,18,*"
 				ColumnSpacing="12"
 				Loaded="RowLoaded"
 				SemanticProperties.Description="{Binding Description}">
@@ -301,6 +310,10 @@
 					<Label FontFamily="OpenSansSemibold" Text="{Binding Name}" />
 
 					<Label
+						IsVisible="{Binding HasPlace}"
+						StyleClass="Faint"
+						Text="{Binding PlaceText}" />
+					<Label
 						IsVisible="{Binding HasContinuesFrom}"
 						StyleClass="Caption"
 						Text="{Binding ContinuesFrom}" />
@@ -335,7 +348,7 @@
 		<!--  Provider message  -->
 		<DataTemplate x:Key="NoticeTemplate" x:DataType="support:NoticeRow">
 			<Grid
-				ColumnDefinitions="56,18,*"
+				ColumnDefinitions="60,18,*"
 				ColumnSpacing="12"
 				Loaded="RowLoaded"
 				SemanticProperties.Description="{Binding Description}">

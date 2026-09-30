@@ -66,7 +66,7 @@ public sealed class PlaceStore
 			Save(RecentsKey, _recents);
 		}
 
-		Changed?.Invoke(this, EventArgs.Empty);
+		RaiseChanged();
 	}
 
 	public void ClearRecents()
@@ -82,7 +82,7 @@ public sealed class PlaceStore
 			Save(RecentsKey, _recents);
 		}
 
-		Changed?.Invoke(this, EventArgs.Empty);
+		RaiseChanged();
 	}
 
 	public bool IsFavourite(Location place)
@@ -122,7 +122,19 @@ public sealed class PlaceStore
 			Save(FavouritesKey, _favourites);
 		}
 
-		Changed?.Invoke(this, EventArgs.Empty);
+		RaiseChanged();
+	}
+
+	private void RaiseChanged()
+	{
+		try
+		{
+			Changed?.Invoke(this, EventArgs.Empty);
+		}
+		catch (Exception ex)
+		{
+			System.Diagnostics.Debug.WriteLine($"PlaceStore subscriber failed: {ex.Message}");
+		}
 	}
 
 	// Stations are identified by provider ID, free-form places by name and position.
@@ -142,15 +154,15 @@ public sealed class PlaceStore
 
 	private static List<Location> Load(string key)
 	{
-		string json = Preferences.Get(key, string.Empty);
-
-		if (string.IsNullOrWhiteSpace(json))
-		{
-			return [];
-		}
-
 		try
 		{
+			string json = Preferences.Get(key, string.Empty);
+
+			if (string.IsNullOrWhiteSpace(json))
+			{
+				return [];
+			}
+
 			return (JsonSerializer.Deserialize<List<Entry>>(json) ?? [])
 				.Where(e => !string.IsNullOrWhiteSpace(e.Name))
 				.Select(e => new Location
@@ -163,18 +175,27 @@ public sealed class PlaceStore
 				})
 				.ToList();
 		}
-		catch (JsonException)
+		catch (Exception ex)
 		{
-			// Unreadable data must never stop the app from starting.
+			// Unreadable or inaccessible data must never stop the app from starting.
+			System.Diagnostics.Debug.WriteLine($"PlaceStore load '{key}' failed: {ex.Message}");
 			return [];
 		}
 	}
 
 	private static void Save(string key, List<Location> places)
 	{
-		var entries = places.Select(p => new Entry(
-			p.Id, p.Name, p.Place, p.Latitude, p.Longitude));
+		try
+		{
+			var entries = places.Select(p => new Entry(
+				p.Id, p.Name, p.Place, p.Latitude, p.Longitude));
 
-		Preferences.Set(key, JsonSerializer.Serialize(entries));
+			Preferences.Set(key, JsonSerializer.Serialize(entries));
+		}
+		catch (Exception ex)
+		{
+			// Losing persistence must not break the running session.
+			System.Diagnostics.Debug.WriteLine($"PlaceStore save '{key}' failed: {ex.Message}");
+		}
 	}
 }

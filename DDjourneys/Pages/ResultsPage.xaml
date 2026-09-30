@@ -8,50 +8,79 @@
 	Title="Journeys"
 	x:DataType="local:ResultsViewModel">
 
+	<!--
+		No EmptyView: on Windows a Label as direct child of a templated host has crashed before.
+		The status panel is an ordinary sibling of the list instead.
+	-->
 	<Grid
 		Padding="{StaticResource PadPage}"
 		RowDefinitions="Auto,*"
 		RowSpacing="{StaticResource SpaceM}">
 
-		<VerticalStackLayout Grid.Row="0" Spacing="2">
-			<Label
-				LineBreakMode="TailTruncation"
-				StyleClass="Title"
-				Text="{Binding RouteText}" />
-			<Label StyleClass="Caption" Text="{Binding WhenText}" />
-		</VerticalStackLayout>
+		<Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+			<VerticalStackLayout Spacing="2" VerticalOptions="Center">
+				<Label
+					LineBreakMode="TailTruncation"
+					StyleClass="Title"
+					Text="{Binding RouteText}" />
+				<Label StyleClass="Caption" Text="{Binding WhenText}" />
+			</VerticalStackLayout>
+			<Button
+				Grid.Column="1"
+				Command="{Binding ReloadCommand}"
+				SemanticProperties.Description="Search again"
+				StyleClass="IconButton"
+				Text="&#x21BB;" />
+		</Grid>
 
-		<RefreshView
-			Grid.Row="1"
-			Command="{Binding RefreshCommand}"
-			IsRefreshing="{Binding IsRefreshing}">
-			<CollectionView ItemsSource="{Binding Items}" SelectionMode="None">
+		<Grid Grid.Row="1">
 
-				<CollectionView.ItemsLayout>
-					<LinearItemsLayout ItemSpacing="12" Orientation="Vertical" />
-				</CollectionView.ItemsLayout>
+			<RefreshView Command="{Binding RefreshCommand}" IsRefreshing="{Binding IsRefreshing}">
+				<CollectionView ItemsSource="{Binding Items}" SelectionMode="None">
 
-				<CollectionView.EmptyView>
-					<Label
-						Margin="0,48,0,0"
-						HorizontalTextAlignment="Center"
-						StyleClass="Caption"
-						Text="{Binding StatusText}" />
-				</CollectionView.EmptyView>
+					<CollectionView.ItemsLayout>
+						<LinearItemsLayout ItemSpacing="10" Orientation="Vertical" />
+					</CollectionView.ItemsLayout>
 
-				<CollectionView.ItemTemplate>
-					<DataTemplate x:DataType="support:JourneyCardModel">
-						<controls:JourneyCard>
-							<controls:JourneyCard.GestureRecognizers>
-								<TapGestureRecognizer Tapped="JourneyTapped" />
-							</controls:JourneyCard.GestureRecognizers>
-						</controls:JourneyCard>
-					</DataTemplate>
-				</CollectionView.ItemTemplate>
+					<CollectionView.ItemTemplate>
+						<DataTemplate x:DataType="support:JourneyCardModel">
+							<controls:JourneyCard Loaded="CardLoaded">
+								<controls:JourneyCard.GestureRecognizers>
+									<TapGestureRecognizer Tapped="JourneyTapped" />
+								</controls:JourneyCard.GestureRecognizers>
+							</controls:JourneyCard>
+						</DataTemplate>
+					</CollectionView.ItemTemplate>
 
-			</CollectionView>
-		</RefreshView>
+				</CollectionView>
+			</RefreshView>
 
+			<VerticalStackLayout
+				Margin="0,48,0,0"
+				IsVisible="{Binding ShowStatus}"
+				Spacing="{StaticResource SpaceM}"
+				VerticalOptions="Start">
+				<ActivityIndicator
+					HeightRequest="28"
+					HorizontalOptions="Center"
+					IsRunning="{Binding IsLoading}"
+					IsVisible="{Binding IsLoading}"
+					WidthRequest="28"
+					Color="{DynamicResource Accent}" />
+				<Label
+					HorizontalTextAlignment="Center"
+					IsVisible="{Binding HasStatusText}"
+					StyleClass="Caption"
+					Text="{Binding StatusText}" />
+				<Button
+					Command="{Binding ReloadCommand}"
+					HorizontalOptions="Center"
+					IsVisible="{Binding HasError}"
+					StyleClass="Tonal"
+					Text="Try again" />
+			</VerticalStackLayout>
+
+		</Grid>
 	</Grid>
 
 </ContentPage>

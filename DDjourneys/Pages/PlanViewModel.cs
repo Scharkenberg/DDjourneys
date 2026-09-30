@@ -82,6 +82,8 @@ public sealed partial class PlanViewModel : ObservableObject
 			{
 				OnPropertyChanged(nameof(FromText));
 				OnPropertyChanged(nameof(HasFrom));
+				OnPropertyChanged(nameof(NoFrom));
+				OnPropertyChanged(nameof(StarOpacityFrom));
 				OnPropertyChanged(nameof(FromStar));
 				OnRouteChanged();
 			}
@@ -97,6 +99,8 @@ public sealed partial class PlanViewModel : ObservableObject
 			{
 				OnPropertyChanged(nameof(ToText));
 				OnPropertyChanged(nameof(HasTo));
+				OnPropertyChanged(nameof(NoTo));
+				OnPropertyChanged(nameof(StarOpacityTo));
 				OnPropertyChanged(nameof(ToStar));
 				OnRouteChanged();
 			}
@@ -106,6 +110,11 @@ public sealed partial class PlanViewModel : ObservableObject
 	public string FromText => From?.ToString() ?? "Choose start";
 	public string ToText => To?.ToString() ?? "Choose destination";
 	public bool HasFrom => From is not null;
+	public bool NoFrom => From is null;
+	public bool NoTo => To is null;
+	// The star keeps its space (only its opacity changes) so choosing a stop never resizes the card.
+	public double StarOpacityFrom => From is null ? 0 : 1;
+	public double StarOpacityTo => To is null ? 0 : 1;
 	public bool HasTo => To is not null;
 	public string FromStar => Star(From);
 	public string ToStar => Star(To);

@@ -7,6 +7,10 @@ public sealed class ApiClient : IDisposable
 	private readonly bool _ownsClient;
 	private const int MaxRetries = 3;
 
+	/// <summary>Budget used when the caller passes none. The HttpClient itself has no timeout of its own,
+	/// otherwise it would cap every per-call timeout longer than its fixed value.</summary>
+	private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(15);
+
 	public ApiClient()
 	{
 		_httpClient = CreateHttpClient();
@@ -23,9 +27,9 @@ public sealed class ApiClient : IDisposable
 	/// <summary>Sends a GET request with bounded retries for transient failures.</summary>
 	public async Task<string> GetAsync(string requestUri, CancellationToken cancellationToken = default, TimeSpan? timeout = null)
 	{
-		using var timeoutCts = timeout is { } duration ? new CancellationTokenSource(duration) : null;
-		using var linkedCts = timeoutCts is null ? null : CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
-		CancellationToken requestToken = linkedCts?.Token ?? cancellationToken;
+		using var timeoutCts = new CancellationTokenSource(timeout ?? DefaultTimeout);
+		using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
+		CancellationToken requestToken = linkedCts.Token;
 		for (int attempt = 1; ; attempt++)
 		{
 			try
@@ -62,9 +66,9 @@ public sealed class ApiClient : IDisposable
 	{
 		try
 		{
-			using var timeoutCts = timeout is { } duration ? new CancellationTokenSource(duration) : null;
-			using var linkedCts = timeoutCts is null ? null : CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
-			CancellationToken requestToken = linkedCts?.Token ?? cancellationToken;
+			using var timeoutCts = new CancellationTokenSource(timeout ?? DefaultTimeout);
+			using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
+			CancellationToken requestToken = linkedCts.Token;
 			using var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
 			using HttpResponseMessage response = await _httpClient.PostAsync(requestUri, content, requestToken).ConfigureAwait(false);
 			string responseContent = await response.Content.ReadAsStringAsync(requestToken).ConfigureAwait(false);
@@ -121,7 +125,7 @@ public sealed class ApiClient : IDisposable
 
 	private static HttpClient CreateHttpClient()
 	{
-		var client = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
+		var client = new HttpClient { Timeout = Timeout.InfiniteTimeSpan };
 		client.DefaultRequestHeaders.Accept.ParseAdd("application/json");
 		client.DefaultRequestHeaders.UserAgent.ParseAdd("DDjourneys/0.2");
 		return client;

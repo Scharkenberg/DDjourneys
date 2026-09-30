@@ -1,4 +1,6 @@
-﻿namespace DDjourneys.Pages;
+using DDjourneys.Support;
+
+namespace DDjourneys.Pages;
 
 public partial class PlaceSearchPage : ContentPage
 {
@@ -15,14 +17,30 @@ public partial class PlaceSearchPage : ContentPage
 	protected override void OnAppearing()
 	{
 		base.OnAppearing();
-		QueryEntry.Focus();
+		Motion.EnterPage(this);
+
+		try
+		{
+			QueryEntry.Focus();
+		}
+		catch (Exception ex)
+		{
+			System.Diagnostics.Debug.WriteLine($"Focus failed: {ex.Message}");
+		}
+	}
+
+	protected override void OnDisappearing()
+	{
+		base.OnDisappearing();
+		_vm.Cancel(); // no request outlives the page
 	}
 
 	private void PlaceTapped(object? sender, TappedEventArgs e)
 	{
-		if ((sender as BindableObject)?.BindingContext is PlaceRow row)
+		if (sender is VisualElement row && (sender as BindableObject)?.BindingContext is PlaceRow place)
 		{
-			_vm.SelectPlaceCommand.Execute(row.Place);
+			_ = Motion.TapAsync(row);
+			_vm.SelectPlaceCommand.Execute(place.Place);
 		}
 	}
 }

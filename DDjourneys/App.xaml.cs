@@ -13,6 +13,9 @@ public partial class App : Application
 		Theme.Initialize(this, settings);
 		_shellFactory = () => new AppShell();
 
+		AppDomain.CurrentDomain.UnhandledException += (_, e) =>
+			System.Diagnostics.Debug.WriteLine($"Unhandled exception (terminating={e.IsTerminating}): {e.ExceptionObject}");
+
 		// Last line of defence: log instead of dying on unobserved task faults.
 		TaskScheduler.UnobservedTaskException += (_, e) =>
 		{

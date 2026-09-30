@@ -65,7 +65,7 @@
 							StyleClass="Chip">
 							<Label
 								FontFamily="OpenSansSemibold"
-								FontSize="13"
+								FontSize="{StaticResource FontCaption}"
 								Text="{Binding Text}"
 								TextColor="White" />
 						</Border>

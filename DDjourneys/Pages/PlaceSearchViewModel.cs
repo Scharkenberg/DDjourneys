@@ -1,5 +1,6 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
+using DDjourneys.Core.Api;
 using DDjourneys.Core.Services;
 using DDjourneys.Core.Storage;
 using DDjourneys.Support;
@@ -24,6 +25,8 @@ public sealed class PlaceSearchViewModel : ObservableObject, IQueryAttributable
 	private readonly PlaceStore _store;
 	private readonly AppSettings _settings;
 
+	// Lifetime rule: every search owns its source and disposes it in its own finally block.
+	// Everyone else may only Cancel() it (guarded), never Dispose() it.
 	private CancellationTokenSource? _search;
 	private bool _targetIsFrom;
 	private bool _isNavigating;
@@ -38,17 +41,24 @@ public sealed class PlaceSearchViewModel : ObservableObject, IQueryAttributable
 		_store = store;
 		_settings = settings;
 
-		SelectPlaceCommand = new Command<Location>(async place => await SelectPlaceAsync(place));
+		SelectPlaceCommand = new AsyncCommand<Location>(SelectPlaceAsync);
 
-		foreach (Location place in _store.Recents)
+		try
 		{
-			Recents.Add(new PlaceRow(place));
+			foreach (Location place in _store.Recents)
+			{
+				Recents.Add(new PlaceRow(place));
+			}
+		}
+		catch (Exception ex)
+		{
+			Debug.WriteLine($"Recents unavailable: {ex.Message}");
 		}
 
 		Message = Recents.Count == 0 ? "Type a station, stop or address." : string.Empty;
 	}
 
-	public Command<Location> SelectPlaceCommand { get; }
+	public AsyncCommand<Location> SelectPlaceCommand { get; }
 
 	public ObservableCollection<PlaceRow> Results { get; } = [];
 	public ObservableCollection<PlaceRow> Recents { get; } = [];
@@ -90,15 +100,31 @@ public sealed class PlaceSearchViewModel : ObservableObject, IQueryAttributable
 		}
 	}
 
+	/// <summary>Stops a pending search (page left). Safe to call any time.</summary>
+	public void Cancel()
+	{
+		CancelCurrent();
+		IsSearching = false;
+	}
+
+	private void CancelCurrent()
+	{
+		CancellationTokenSource? current = _search;
+		_search = null;
+
+		try
+		{
+			current?.Cancel();
+		}
+		catch (ObjectDisposedException)
+		{
+			// Its search already finished and disposed it.
+		}
+	}
+
 	private void OnQueryChanged()
 	{
-		CancellationTokenSource? previous = _search;
-		if (previous is not null)
-		{
-			previous.Cancel();
-			_ = DisposeWhenFinishedAsync(previous);
-		}
-		_search = null;
+		CancelCurrent();
 
 		string text = Query.Trim();
 
@@ -119,15 +145,9 @@ public sealed class PlaceSearchViewModel : ObservableObject, IQueryAttributable
 
 		var cts = _search = new CancellationTokenSource();
 		Results.Clear();
+		Message = string.Empty;
 		RefreshState();
 		_ = SearchAsync(text, cts);
-	}
-
-	private static async Task DisposeWhenFinishedAsync(CancellationTokenSource source)
-	{
-		try { await source.CancelAsync(); }
-		catch (ObjectDisposedException) { }
-		finally { source.Dispose(); }
 	}
 
 	/// <summary>
@@ -146,49 +166,53 @@ public sealed class PlaceSearchViewModel : ObservableObject, IQueryAttributable
 
 			var found = await _locations.SearchAsync(text, token, TimeSpan.FromSeconds(_settings.TimeoutSeconds));
 
-			token.ThrowIfCancellationRequested();
-
-			var rows = found.Select(static place => new PlaceRow(place)).ToArray();
-			MainThread.BeginInvokeOnMainThread(() =>
+			if (token.IsCancellationRequested || !ReferenceEquals(_search, cts))
 			{
-				if (!token.IsCancellationRequested && ReferenceEquals(_search, cts))
-				{
-					Results.Clear();
-					foreach (PlaceRow row in rows) Results.Add(row);
-					Message = Results.Count == 0 ? "No places found." : string.Empty;
-				}
-			});
+				return; // superseded
+			}
+
+			Results.Clear();
+
+			foreach (Location place in found)
+			{
+				Results.Add(new PlaceRow(place));
+			}
+
+			Message = Results.Count == 0 ? "No places found." : string.Empty;
 		}
 		catch (OperationCanceledException) when (token.IsCancellationRequested)
 		{
 			// Superseded by a newer query.
-			return;
 		}
 		catch (Exception ex)
 		{
-			// Includes HTTP timeouts (TaskCanceledException without our token).
-			Debug.WriteLine($"Place search failed: {ex}");
+			// Includes provider errors and HTTP timeouts (cancellation without our token).
+			Debug.WriteLine($"Place search failed:\n{ex}");
 
 			if (ReferenceEquals(_search, cts))
 			{
 				Results.Clear();
-				Message = "Could not reach the timetable service. Check your connection.";
+				Message = ex is ApiException { Message.Length: > 0 } api
+					? api.Message
+					: "Could not reach the timetable service. Check your connection.";
 			}
 		}
 		finally
 		{
 			if (ReferenceEquals(_search, cts))
 			{
+				_search = null; // finished: nobody may Cancel() the source we dispose next
 				IsSearching = false;
 				RefreshState();
-				cts.Dispose();
 			}
+
+			cts.Dispose();
 		}
 	}
 
-	private async Task SelectPlaceAsync(Location? place)
+	private async Task SelectPlaceAsync(Location place)
 	{
-		if (place is null || _isNavigating)
+		if (_isNavigating)
 		{
 			return;
 		}
@@ -197,7 +221,14 @@ public sealed class PlaceSearchViewModel : ObservableObject, IQueryAttributable
 
 		try
 		{
-			_store.AddRecent(place);
+			try
+			{
+				_store.AddRecent(place);
+			}
+			catch (Exception ex)
+			{
+				Debug.WriteLine($"Remembering the place failed: {ex.Message}"); // never blocks the choice
+			}
 
 			await Shell.Current.GoToAsync(
 				"..",
@@ -209,7 +240,7 @@ public sealed class PlaceSearchViewModel : ObservableObject, IQueryAttributable
 		}
 		catch (Exception ex)
 		{
-			Debug.WriteLine($"Returning the chosen place failed: {ex}");
+			Debug.WriteLine($"Returning the chosen place failed:\n{ex}");
 		}
 		finally
 		{

@@ -24,10 +24,12 @@ public sealed class StopRow : TimelineRow
 	public string? ScheduledTime { get; init; }
 	public string? DelayText { get; init; }
 	public required string Name { get; init; }
+	public string? PlaceText { get; init; }
 	public string? PlatformText { get; init; }
 	public required Color NodeColor { get; init; }
 
 	public bool HasDelay => DelayText is not null;
+	public bool HasPlace => PlaceText is not null;
 	public bool HasPlatform => PlatformText is not null;
 }
 
@@ -36,10 +38,12 @@ public sealed class IntermediateRow : TimelineRow
 {
 	public required string Time { get; init; }
 	public required string Name { get; init; }
+	public string? PlaceText { get; init; }
 	public string? DelayText { get; init; }
 	public bool IsNotServed { get; init; }
 
 	public bool HasDelay => DelayText is not null;
+	public bool HasPlace => PlaceText is not null;
 }
 
 /// <summary>Line, direction and duration of a ride, with the expand toggle.</summary>
@@ -95,6 +99,8 @@ public sealed class InterchangeRow : TimelineRow
 	public required string DepartureTime { get; init; }
 	public string? DepartureDelay { get; init; }
 	public required string Name { get; init; }
+	public string? PlaceText { get; init; }
+	public bool HasPlace => PlaceText is not null;
 	public string? ContinuesFrom { get; init; }
 	public string? PlatformText { get; init; }
 	public string? WaitText { get; init; }
@@ -140,6 +146,7 @@ public static class TimelineRowFactory
 		{
 			rows.Add(EndpointStop(
 				firstWalk.Leg.From.Name,
+				PlaceOf(firstWalk.Leg.From),
 				firstWalk.Leg.EffectiveDeparture,
 				top: Colors.Transparent,
 				bottom: WalkColor()));
@@ -179,6 +186,7 @@ public static class TimelineRowFactory
 		{
 			rows.Add(EndpointStop(
 				lastWalk.Leg.To.Name,
+				PlaceOf(lastWalk.Leg.To),
 				lastWalk.Leg.EffectiveArrival,
 				top: WalkColor(),
 				bottom: Colors.Transparent));
@@ -209,6 +217,7 @@ public static class TimelineRowFactory
 				ScheduledTime = delay is null ? null : Format.TimeOrDash(leg.ScheduledDeparture),
 				DelayText = delay,
 				Name = leg.From.Name,
+				PlaceText = PlaceOf(leg.From),
 				PlatformText = PlatformText(leg.DeparturePlatform),
 				NodeColor = color,
 				RailTop = RailAt(items, i - 1, -1),
@@ -237,6 +246,7 @@ public static class TimelineRowFactory
 				{
 					Time = TimeOf(stop.EffectiveDeparture ?? stop.EffectiveArrival),
 					Name = stop.Station.Name,
+					PlaceText = PlaceOf(stop.Station),
 					DelayText = Format.Delay(stop.DepartureDelay ?? stop.ArrivalDelay),
 					IsNotServed = stop.IsCancelled,
 					RailBottom = color,
@@ -262,6 +272,7 @@ public static class TimelineRowFactory
 				ScheduledTime = delay is null ? null : Format.TimeOrDash(leg.ScheduledArrival),
 				DelayText = delay,
 				Name = leg.To.Name,
+				PlaceText = PlaceOf(leg.To),
 				PlatformText = PlatformText(leg.ArrivalPlatform),
 				NodeColor = color,
 				RailTop = color,
@@ -291,6 +302,7 @@ public static class TimelineRowFactory
 				DepartureTime = Format.TimeOrDash(to.EffectiveDeparture),
 				DepartureDelay = Format.Delay(to.DepartureDelay),
 				Name = from.To.Name,
+				PlaceText = PlaceOf(from.To),
 				ContinuesFrom = from.To.Name == to.From.Name ? null : $"continue from {to.From.Name}",
 				PlatformText = PlatformPair(from.ArrivalPlatform, to.DeparturePlatform),
 				WaitText = boundary.ShowWait
@@ -311,8 +323,9 @@ public static class TimelineRowFactory
 		}
 	}
 
-	private static StopRow EndpointStop(string name, DateTimeOffset? time, Color top, Color bottom) => new()
+	private static StopRow EndpointStop(string name, string? place, DateTimeOffset? time, Color top, Color bottom) => new()
 	{
+		PlaceText = place,
 		Time = Format.TimeOrDash(time),
 		Name = name,
 		NodeColor = WalkColor(),
@@ -339,6 +352,13 @@ public static class TimelineRowFactory
 
 		return Colors.Transparent;
 	}
+
+	/// <summary>The city/village/region the provider delivers with a stop; null when absent or already in the name.</summary>
+	private static string? PlaceOf(Station station) =>
+		string.IsNullOrWhiteSpace(station.Place)
+			|| station.Name.Contains(station.Place, StringComparison.OrdinalIgnoreCase)
+			? null
+			: station.Place.Trim();
 
 	private static Color WalkColor() => ModeColors.For(TransitMode.Walk).WithAlpha(0.5f);
 

@@ -2,20 +2,14 @@
 	x:Class="DDjourneys.Pages.PlanPage"
 	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
 	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+	xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
 	xmlns:core="clr-namespace:DDjourneys.Core.Models;assembly=DDjourneys.Core"
 	xmlns:local="clr-namespace:DDjourneys.Pages"
 	x:DataType="local:PlanViewModel"
 	Shell.NavBarIsVisible="False">
 
 	<ContentPage.Resources>
-		<Style x:Key="IconButton" TargetType="Button">
-			<Setter Property="BackgroundColor" Value="Transparent" />
-			<Setter Property="TextColor" Value="{DynamicResource Accent}" />
-			<Setter Property="FontSize" Value="22" />
-			<Setter Property="Padding" Value="0" />
-			<Setter Property="MinimumHeightRequest" Value="44" />
-			<Setter Property="MinimumWidthRequest" Value="44" />
-		</Style>
+		<toolkit:IsStringNotNullOrWhiteSpaceConverter x:Key="HasText" />
 	</ContentPage.Resources>
 
 	<ScrollView>
@@ -30,7 +24,7 @@
 					Grid.Column="1"
 					Clicked="SettingsClicked"
 					SemanticProperties.Description="Settings"
-					Style="{StaticResource IconButton}"
+					StyleClass="IconButton"
 					Text="&#x2699;" />
 			</Grid>
 
@@ -43,8 +37,8 @@
 
 					<Grid
 						Grid.Row="0"
-						Padding="0,4"
-						ColumnDefinitions="*,Auto">
+						ColumnDefinitions="*,44"
+						MinimumHeightRequest="64">
 						<VerticalStackLayout Spacing="2" VerticalOptions="Center">
 							<Label StyleClass="Caption" Text="From" />
 							<Label
@@ -67,9 +61,10 @@
 						<Button
 							Grid.Column="1"
 							Command="{Binding ToggleFromFavouriteCommand}"
-							IsVisible="{Binding HasFrom}"
+							InputTransparent="{Binding NoFrom}"
+							Opacity="{Binding StarOpacityFrom}"
 							SemanticProperties.Description="Toggle favourite for start"
-							Style="{StaticResource IconButton}"
+							StyleClass="IconButton"
 							Text="{Binding FromStar}" />
 					</Grid>
 
@@ -80,8 +75,8 @@
 
 					<Grid
 						Grid.Row="2"
-						Padding="0,4"
-						ColumnDefinitions="*,Auto">
+						ColumnDefinitions="*,44"
+						MinimumHeightRequest="64">
 						<VerticalStackLayout Spacing="2" VerticalOptions="Center">
 							<Label StyleClass="Caption" Text="To" />
 							<Label
@@ -104,9 +99,10 @@
 						<Button
 							Grid.Column="1"
 							Command="{Binding ToggleToFavouriteCommand}"
-							IsVisible="{Binding HasTo}"
+							InputTransparent="{Binding NoTo}"
+							Opacity="{Binding StarOpacityTo}"
 							SemanticProperties.Description="Toggle favourite for destination"
-							Style="{StaticResource IconButton}"
+							StyleClass="IconButton"
 							Text="{Binding ToStar}" />
 					</Grid>
 
@@ -117,7 +113,7 @@
 						Command="{Binding SwapCommand}"
 						FontSize="26"
 						SemanticProperties.Description="Swap start and destination"
-						Style="{StaticResource IconButton}"
+						StyleClass="IconButton"
 						Text="&#x21C5;"
 						VerticalOptions="Center" />
 
@@ -190,10 +186,10 @@
 					Padding="12,10"
 					ColumnDefinitions="*,*,*,*,*"
 					ColumnSpacing="{StaticResource SpaceS}">
-					<Button Grid.Column="0" Command="{Binding NudgeCommand}" CommandParameter="-60" FontSize="13" MinimumHeightRequest="36" Padding="0" StyleClass="Tonal" Text="&#x2212;1 h" />
-					<Button Grid.Column="1" Command="{Binding NudgeCommand}" CommandParameter="-15" FontSize="13" MinimumHeightRequest="36" Padding="0" StyleClass="Tonal" Text="&#x2212;15" />
-					<Button Grid.Column="2" Command="{Binding NudgeCommand}" CommandParameter="15" FontSize="13" MinimumHeightRequest="36" Padding="0" StyleClass="Tonal" Text="+15" />
-					<Button Grid.Column="3" Command="{Binding NudgeCommand}" CommandParameter="60" FontSize="13" MinimumHeightRequest="36" Padding="0" StyleClass="Tonal" Text="+1 h" />
+					<Button Grid.Column="0" Command="{Binding NudgeCommand}" CommandParameter="-60" FontSize="{StaticResource FontCaption}" MinimumHeightRequest="40" Padding="0" StyleClass="Tonal" Text="&#x2212;1 h" />
+					<Button Grid.Column="1" Command="{Binding NudgeCommand}" CommandParameter="-15" FontSize="{StaticResource FontCaption}" MinimumHeightRequest="40" Padding="0" StyleClass="Tonal" Text="&#x2212;15" />
+					<Button Grid.Column="2" Command="{Binding NudgeCommand}" CommandParameter="15" FontSize="{StaticResource FontCaption}" MinimumHeightRequest="40" Padding="0" StyleClass="Tonal" Text="+15" />
+					<Button Grid.Column="3" Command="{Binding NudgeCommand}" CommandParameter="60" FontSize="{StaticResource FontCaption}" MinimumHeightRequest="40" Padding="0" StyleClass="Tonal" Text="+1 h" />
 					<Button Grid.Column="4" Command="{Binding NowCommand}" FontSize="13" IsEnabled="{Binding IsNotNow}" MinimumHeightRequest="36" Padding="0" StyleClass="Tonal" Text="Now" />
 				</Grid>
 
@@ -243,17 +239,17 @@
 					<Button
 						Grid.Column="1"
 						Command="{Binding ClearRecentsCommand}"
-						FontSize="14"
-						Style="{StaticResource IconButton}"
+						FontSize="{StaticResource FontBody}"
+						StyleClass="IconButton"
 						Text="Clear" />
 				</Grid>
 				<Border Padding="0" StyleClass="Card">
 					<VerticalStackLayout BindableLayout.ItemsSource="{Binding Recents}">
 						<BindableLayout.ItemTemplate>
 							<DataTemplate x:DataType="core:Location">
-								<VerticalStackLayout Padding="12,8" Spacing="1">
+								<VerticalStackLayout Padding="14,10" MinimumHeightRequest="48" Spacing="1" VerticalOptions="Center">
 									<Label FontFamily="OpenSansSemibold" Text="{Binding Name}" />
-									<Label StyleClass="Caption" Text="{Binding Place}" />
+									<Label IsVisible="{Binding Place, Converter={StaticResource HasText}}" StyleClass="Faint" Text="{Binding Place}" />
 									<VerticalStackLayout.GestureRecognizers>
 										<TapGestureRecognizer Tapped="PlaceTapped" />
 									</VerticalStackLayout.GestureRecognizers>

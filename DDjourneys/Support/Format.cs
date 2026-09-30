@@ -17,6 +17,10 @@ public static class Format
 		return new DateTime(n.Year, n.Month, n.Day, n.Hour, n.Minute, 0, DateTimeKind.Unspecified);
 	}
 
+	/// <summary>Provider-zone wall-clock time of a moment (for "Today"/"Tomorrow" labels).</summary>
+	public static DateTime ToWall(DateTimeOffset value) =>
+		TimeZoneInfo.ConvertTime(value, Zone).DateTime;
+
 	/// <summary>Converts a provider-zone wall-clock time to an offset time. Handles DST gaps and overlaps.</summary>
 	public static DateTimeOffset ToOffset(DateTime wallClock)
 	{

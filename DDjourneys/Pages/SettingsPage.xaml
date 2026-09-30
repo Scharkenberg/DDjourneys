@@ -89,6 +89,12 @@
 						<Slider Maximum="{Binding MaxResultsLimit}" Minimum="{Binding MinResults}" SemanticProperties.Description="Journeys per search" Value="{Binding MaxResults}" />
 					</VerticalStackLayout>
 					<BoxView StyleClass="Divider" />
+					<VerticalStackLayout Padding="12,10" Spacing="4">
+						<Label FontFamily="OpenSansSemibold" Text="Request timeout" />
+						<Label StyleClass="Caption" Text="{Binding TimeoutText}" />
+						<Slider Maximum="60" Minimum="5" SemanticProperties.Description="Request timeout in seconds" Value="{Binding TimeoutSeconds}" />
+					</VerticalStackLayout>
+					<BoxView StyleClass="Divider" />
 					<Grid Padding="12,8" ColumnDefinitions="*,Auto" ColumnSpacing="12" MinimumHeightRequest="52">
 						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
 							<Label FontFamily="OpenSansSemibold" Text="Arrive by" />

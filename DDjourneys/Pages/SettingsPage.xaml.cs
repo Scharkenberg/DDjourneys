@@ -1,3 +1,5 @@
+using DDjourneys.Support;
+
 namespace DDjourneys.Pages;
 
 public partial class SettingsPage : ContentPage
@@ -6,5 +8,11 @@ public partial class SettingsPage : ContentPage
 	{
 		InitializeComponent();
 		BindingContext = vm;
+	}
+
+	protected override void OnAppearing()
+	{
+		base.OnAppearing();
+		Motion.EnterPage(this);
 	}
 }
