@@ -68,6 +68,10 @@ public sealed class JourneyTransfer
 
 	public string? DeparturePlatform { get; init; }
 
+	public Station? From { get; init; }
+
+	public Station? To { get; init; }
+
 
 	public IReadOnlyList<string> Notices { get; init; }
 		= [];

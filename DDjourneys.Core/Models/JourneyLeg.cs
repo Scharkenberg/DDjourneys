@@ -119,6 +119,11 @@ public sealed class JourneyLeg
 
 
 	/// <summary>
+	/// Provider-independent identifier of this movement segment.
+	/// </summary>
+	public string? Id { get; init; }
+
+	/// <summary>
 	/// Effective arrival time using realtime data when available.
 	/// </summary>
 	public DateTimeOffset? EffectiveArrival

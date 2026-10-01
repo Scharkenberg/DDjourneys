@@ -347,15 +347,33 @@ public static class VvoJourneyMapper
 			path.Count);
 
 
-		Station location =
-			arrivalStop?.Station
-			?? departureStop!.Station;
+		StopTime[] transferStops =
+	route.RegularStops
+		.Select(MapStop)
+		.ToArray();
 
+		Station? from =
+			transferStops.FirstOrDefault()?.Station;
+
+		Station? to =
+			transferStops.LastOrDefault()?.Station;
+
+		Station location =
+			from
+			?? to
+			?? throw new InvalidOperationException(
+				"VVO transfer has no identifiable location.");
 
 		return new JourneyTransfer
 		{
 			Location =
 				location,
+
+			From =
+				from,
+
+			To =
+				to,
 
 			Duration =
 				TimeSpan.FromMinutes(
@@ -578,6 +596,10 @@ public static class VvoJourneyMapper
 
 			Path =
 				path,
+
+			Id =
+	route.PartialRouteId.ToString(
+		System.Globalization.CultureInfo.InvariantCulture),
 
 			Notices =
 				VvoNoticeParser.Parse(
