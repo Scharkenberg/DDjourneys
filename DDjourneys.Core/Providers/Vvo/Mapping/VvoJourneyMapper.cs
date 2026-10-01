@@ -1,6 +1,8 @@
 using DDjourneys.Core.Models;
 using DDjourneys.Core.Providers.Vvo.Models;
 using DDjourneys.Core.Providers.Vvo.Parsing;
+using ProjNet.CoordinateSystems;
+using ProjNet.CoordinateSystems.Transformations;
 
 namespace DDjourneys.Core.Providers.Vvo.Mapping;
 
@@ -513,22 +515,33 @@ public static class VvoJourneyMapper
 	private static StopTime MapStop(
 		VvoStop stop)
 	{
+		(double? latitude, double? longitude) = MapCoordinates(stop);
+
 		return new StopTime
 		{
 			Station =
-				new Station
-				{
-					Id =
-						stop.DataId
-						?? string.Empty,
+	new Station
+	{
+		Id =
+			stop.DataId
+			?? string.Empty,
 
-					Name =
-						stop.Name
-						?? string.Empty,
+		Name =
+			stop.Name
+			?? string.Empty,
 
-					Place =
-						stop.Place
-				},
+		Place =
+			stop.Place,
+
+		Latitude =
+			latitude,
+
+		Longitude =
+			longitude,
+
+		Platform =
+			stop.Platform?.Name
+	},
 
 			ScheduledArrival =
 				stop.ArrivalTime,
@@ -555,6 +568,73 @@ public static class VvoJourneyMapper
 		};
 	}
 
+	private static (
+	double? Latitude,
+	double? Longitude)
+	MapCoordinates(
+		VvoStop stop)
+	{
+		if (stop.Latitude <= 0
+			|| stop.Longitude <= 0)
+		{
+			return (null, null);
+		}
+
+
+		CoordinateSystemFactory coordinateSystemFactory =
+			new();
+
+		CoordinateTransformationFactory transformationFactory =
+			new();
+
+
+		const string gk4Wkt =
+			"""
+		PROJCS["DHDN / 3-degree Gauss-Kruger zone 4",
+			GEOGCS["DHDN",
+				DATUM["Deutsches_Hauptdreiecksnetz",
+					SPHEROID["Bessel 1841",6377397.155,299.1528128],
+					TOWGS84[598.1,73.7,418.2,0.202,0.045,-2.455,6.7]],
+				PRIMEM["Greenwich",0],
+				UNIT["degree",0.0174532925199433]],
+			PROJECTION["Transverse_Mercator"],
+			PARAMETER["latitude_of_origin",0],
+			PARAMETER["central_meridian",12],
+			PARAMETER["scale_factor",1],
+			PARAMETER["false_easting",4500000],
+			PARAMETER["false_northing",0],
+			UNIT["metre",1]]
+		""";
+
+
+		CoordinateSystem source =
+			coordinateSystemFactory.CreateFromWkt(
+				gk4Wkt);
+
+		CoordinateSystem target =
+			GeographicCoordinateSystem.WGS84;
+
+
+		var transformation =
+			transformationFactory
+				.CreateFromCoordinateSystems(
+					source,
+					target);
+
+
+		double[] result =
+			transformation.MathTransform.Transform(
+				new[]
+				{
+				stop.Longitude,
+				stop.Latitude
+				});
+
+
+		return (
+			Latitude: result[1],
+			Longitude: result[0]);
+	}
 
 	private static TransitLine? MapLine(
 		VvoPartialRoute route)

@@ -19,7 +19,7 @@ public sealed class SchutzengelTrackerContractTests
 		var token = await api.CreateAccountAsync(CancellationToken.None);
 
 		Assert.Equal("anonymous-token", token);
-		Assert.Equal("https://schutzengel.ivi.fraunhofer.de/api/create-account", handler.Requests.Single().Uri);
+		Assert.Equal("https://m.dvb.de/schutzengel/api/create-account", handler.Requests.Single().Uri); 
 		Assert.Equal(HttpMethod.Post, handler.Requests.Single().Method);
 	}
 
@@ -32,38 +32,138 @@ public sealed class SchutzengelTrackerContractTests
 
 		using var result = await api.CreatePlanAsync("{\"legs\":[]}", CancellationToken.None);
 
-		Assert.Equal("https://schutzengel.ivi.fraunhofer.de/api/plans", handler.Requests.Single().Uri);
+		Assert.Equal("https://m.dvb.de/schutzengel/plans", handler.Requests.Single().Uri);
 		Assert.Equal("Bearer anonymous-token", handler.Requests.Single().Authentication);
 		Assert.Contains("\"legs\":[]", handler.Requests.Single().Body);
 		Assert.Equal("p-42", result.RootElement.GetProperty("plan_id").GetString());
 	}
 
 	[Fact]
-	public void Journey_translation_keeps_identity_leg_order_interchanges_times_and_risk_hints()
+	public void Journey_translation_uses_the_actual_schutzengel_schema()
 	{
-		var departure = new DateTimeOffset(2026, 10, 2, 8, 0, 0, TimeSpan.FromHours(2));
-		var interchange = Station("x", "Central");
-		var journey = new Journey
-		{
-			Id = "journey-7",
-			From = Station("a", "Origin"),
-			To = Station("z", "Destination"),
-			Legs = new[]
-			{
-				new JourneyLeg { Mode = TransitMode.Tram, From = Station("a", "Origin"), To = interchange, ScheduledDeparture = departure, ScheduledArrival = departure.AddMinutes(10), Line = new TransitLine { Name = "3", Mode = TransitMode.Tram } },
-				new JourneyLeg { Mode = TransitMode.RegionalTrain, From = interchange, To = Station("z", "Destination"), ScheduledDeparture = departure.AddMinutes(13), ScheduledArrival = departure.AddMinutes(30), Line = new TransitLine { Name = "RE1", Mode = TransitMode.RegionalTrain } }
-			},
-			Transfers = new[] { new JourneyTransfer { Location = interchange, PreviousLegIndex = 0, NextLegIndex = 1, Duration = TimeSpan.FromMinutes(3), IsGuaranteed = false } }
-		};
+		var departure =
+			new DateTimeOffset(
+				2026,
+				10,
+				2,
+				8,
+				0,
+				0,
+				TimeSpan.FromHours(2));
 
-		using var plan = JsonDocument.Parse(SchutzengelPlanTranslator.Serialize(journey));
-		var root = plan.RootElement;
-		Assert.Equal("journey-7", root.GetProperty("client_journey_id").GetString());
-		Assert.Equal("3", root.GetProperty("legs")[0].GetProperty("line").GetString());
-		Assert.Equal("RE1", root.GetProperty("legs")[1].GetProperty("line").GetString());
-		Assert.Equal("x", root.GetProperty("interchanges")[0].GetProperty("location").GetProperty("id").GetString());
-		Assert.Equal(1, root.GetProperty("initial_risk_hints").GetProperty("at_risk_transfers").GetInt32());
-		Assert.Equal(departure.ToUniversalTime().ToString("O"), root.GetProperty("legs")[0].GetProperty("departure").GetString());
+		var from =
+			Station(
+				"a",
+				"Origin");
+
+		var to =
+			Station(
+				"z",
+				"Destination");
+
+		var journey =
+			new Journey
+			{
+				Id = "journey-7",
+
+				From =
+					from,
+
+				To =
+					to,
+
+				Legs =
+				[
+					new JourneyLeg
+				{
+					Mode =
+						TransitMode.Tram,
+
+					From =
+						from,
+
+					To =
+						to,
+
+					Stops =
+					[
+						new StopTime
+						{
+							Station =
+								from,
+
+							ScheduledDeparture =
+								departure
+						},
+
+						new StopTime
+						{
+							Station =
+								to,
+
+							ScheduledArrival =
+								departure.AddMinutes(10)
+						}
+					],
+
+					ScheduledDeparture =
+						departure,
+
+					ScheduledArrival =
+						departure.AddMinutes(10),
+
+					Line =
+						new TransitLine
+						{
+							Name = "3",
+							Mode = TransitMode.Tram,
+							Destination = "Destination"
+						}
+				}
+				]
+			};
+
+		using var plan =
+			JsonDocument.Parse(
+				SchutzengelPlanTranslator.Serialize(
+					journey));
+
+		JsonElement episode =
+			plan.RootElement
+				.GetProperty("journey")
+				.GetProperty("episodes")[0];
+
+		Assert.Equal(
+			"public",
+			episode.GetProperty("type").GetString());
+
+		Assert.Equal(
+			"vvo",
+			episode.GetProperty("api").GetString());
+
+		Assert.Equal(
+			"0",
+			episode.GetProperty("id").GetString());
+
+		Assert.Equal(
+			"TRAM",
+			episode.GetProperty("mot").GetProperty("type").GetString());
+
+		Assert.Equal(
+			"3",
+			episode.GetProperty("mot").GetProperty("name").GetString());
+
+		Assert.Equal(
+			2,
+			episode.GetProperty("allStations").GetArrayLength());
+
+		Assert.Equal(
+			"a",
+			episode.GetProperty("from").GetProperty("id").GetString());
+
+		Assert.Equal(
+			"z",
+			episode.GetProperty("to").GetProperty("id").GetString());
 	}
 
 	[Theory]
@@ -94,11 +194,17 @@ public sealed class SchutzengelTrackerContractTests
 		using var paused = await api.DeactivateAsync("p-1", CancellationToken.None);
 		using var deleted = await api.DeletePlanAsync("p-1", CancellationToken.None);
 		using var allDeleted = await api.DeleteAllPlansAsync(CancellationToken.None);
-		Assert.EndsWith("/api/deactivatePlan", handler.Requests[0].Uri);
+		Assert.EndsWith(
+	"/schutzengel/deactivatePlan",
+	handler.Requests[0].Uri);
 		Assert.Equal(HttpMethod.Delete, handler.Requests[1].Method);
-		Assert.EndsWith("/api/plan?plan_id=p-1", handler.Requests[1].Uri);
+		Assert.EndsWith(
+	"/schutzengel/plan?plan_id=p-1",
+	handler.Requests[1].Uri);
 		Assert.Equal(HttpMethod.Delete, handler.Requests[2].Method);
-		Assert.EndsWith("/api/allPlans", handler.Requests[2].Uri);
+		Assert.EndsWith(
+	"/schutzengel/allPlans",
+	handler.Requests[2].Uri);
 	}
 
 	[Fact]
@@ -116,8 +222,26 @@ public sealed class SchutzengelTrackerContractTests
 		using var registered = await api.RegisterFirebaseAsync("fcm-9", default);
 		using var unregistered = await api.UnregisterFirebaseAsync("fcm-9", default);
 
-		Assert.Equal(new[] { "serverTime", "plansMinimal", "planRealtime?trip_id=trip%209", "notifications?trip_id=trip%209", "planSetOptions", "activatePlan", "register-firebase", "unregister-firebase" },
-			handler.Requests.Select(r => new Uri(r.Uri).PathAndQuery.Split('/').Last()).ToArray());
+		Assert.Equal(
+	new[]
+	{
+		"serverTime",
+		"plansMinimal",
+		"planRealtime?trip_id=trip%209",
+		"notifications",
+		"planSetOptions",
+		"activatePlan",
+		"register-firebase",
+		"unregister-firebase"
+	},
+	handler.Requests
+		.Select(
+			r =>
+				new Uri(r.Uri)
+					.PathAndQuery
+					.Split('/')
+					.Last())
+		.ToArray());
 		Assert.All(handler.Requests, request => Assert.Equal("Bearer token-9", request.Authentication));
 	}
 

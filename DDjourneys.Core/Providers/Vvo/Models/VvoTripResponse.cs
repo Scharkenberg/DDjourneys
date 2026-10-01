@@ -50,6 +50,11 @@ public sealed class VvoRoute
 	[JsonPropertyName("PartialRoutes")]
 	public IReadOnlyList<VvoPartialRoute> PartialRoutes { get; init; }
 		= Array.Empty<VvoPartialRoute>();
+
+
+	[JsonPropertyName("MapData")]
+	public IReadOnlyList<string> MapData { get; init; }
+	= Array.Empty<string>();
 }
 
 
@@ -86,6 +91,9 @@ public sealed class VvoPartialRoute
 	[JsonPropertyName("RegularStops")]
 	public IReadOnlyList<VvoStop> RegularStops { get; init; }
 		= Array.Empty<VvoStop>();
+
+	[JsonPropertyName("MapDataIndex")]
+	public int MapDataIndex { get; init; }
 }
 
 
@@ -266,6 +274,14 @@ public sealed class VvoStop
 
 	[JsonPropertyName("Occupancy")]
 	public string? Occupancy { get; init; }
+
+
+	[JsonPropertyName("Latitude")]
+	public double Latitude { get; init; }
+
+
+	[JsonPropertyName("Longitude")]
+	public double Longitude { get; init; }
 }
 
 

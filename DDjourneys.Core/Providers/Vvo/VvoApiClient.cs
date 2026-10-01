@@ -112,6 +112,8 @@ public sealed class VvoApiClient
 				jsonResponse,
 				_jsonOptions);
 
+		System.Diagnostics.Debug.WriteLine(jsonResponse);
+
 		EnsureProviderSuccess(
 			response?.Status);
 

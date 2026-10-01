@@ -94,7 +94,7 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker
 					{
 						_planId = storedPlan;
 						_tripId = storedTrip;
-						await _api.ActivateAsync(_planId, ct);
+						// await _api.ActivateAsync(_planId, ct);
 					}
 				}
 				catch { throw; }
@@ -106,21 +106,58 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker
 			}
 			if (_planId is null)
 			{
-				using var created = await _api.CreatePlanAsync(SchutzengelPlanTranslator.Serialize(journey), ct);
-				_planId = ReadId(created.RootElement, "plan_id", "id", "planId");
-				_tripId = ReadId(created.RootElement, "trip_id", "tripId");
-				if (_planId is null || _tripId is null) throw new InvalidOperationException("Schutzengel plan response did not include plan and trip IDs.");
-				Preferences.Default.Set("schutzengel_active_plan", _planId);
-				Preferences.Default.Set("schutzengel_active_trip", _tripId);
-				Preferences.Default.Set("schutzengel_active_journey", JourneyIdentity(journey));
-				await _api.SetOptionsAsync(_planId, ct);
-				await _api.ActivateAsync(_planId, ct);
+				using var created =
+	await _api.CreatePlanAsync(
+		SchutzengelPlanTranslator.Serialize(journey),
+		ct);
+
+				_planId =
+					ReadId(
+						created.RootElement,
+						"plan_id",
+						"id",
+						"planId");
+
+				if (_planId is null)
+				{
+					throw new InvalidOperationException(
+						"Schutzengel plan response did not include a plan ID.");
+				}
+
+				using var plans =
+					await _api.GetAllPlansAsync(ct);
+
+				_tripId =
+					ReadActiveTripId(
+						plans.RootElement,
+						_planId);
+
+				if (_tripId is null)
+				{
+					throw new InvalidOperationException(
+						"Schutzengel plansMinimal response did not include an active trip ID for the created plan.");
+				}
+
+				Preferences.Default.Set(
+					"schutzengel_active_plan",
+					_planId);
+
+				Preferences.Default.Set(
+					"schutzengel_active_trip",
+					_tripId);
+
+				Preferences.Default.Set(
+					"schutzengel_active_journey",
+					JourneyIdentity(journey));
+				// await _api.SetOptionsAsync(_planId, ct);
+				// await _api.ActivateAsync(_planId, ct);
 			}
 			_state = LocalState(journey, TrackingPhase.Planned, "Monitoring with Schutzengel");
 		}
 		catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
 		catch (Exception ex)
 		{
+			System.Diagnostics.Debug.WriteLine($"[SCHUTZENGEL] StartAsync failed: {ex}");
 			var savedJourney = Preferences.Default.Get("schutzengel_active_journey", string.Empty);
 			var mayResumeSavedPlan = string.IsNullOrWhiteSpace(savedJourney) || savedJourney == JourneyIdentity(journey);
 			_planId = mayResumeSavedPlan ? Preferences.Default.Get("schutzengel_active_plan", string.Empty) : string.Empty;
@@ -131,6 +168,41 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker
 		}
 		Publish(JourneyTrackingEventKind.Started, _state!);
 		_loopTask = _tripId is null ? LocalLoopAsync(ct) : PollLoopAsync(ct);
+	}
+
+	private static string? ReadActiveTripId(
+	JsonElement plans,
+	string planId)
+	{
+		if (plans.ValueKind != JsonValueKind.Array)
+		{
+			return null;
+		}
+
+		foreach (JsonElement plan in plans.EnumerateArray())
+		{
+			if (!plan.TryGetProperty(
+				"plan_id",
+				out JsonElement planIdElement)
+				|| planIdElement.ValueKind != JsonValueKind.String
+				|| !string.Equals(
+					planIdElement.GetString(),
+					planId,
+					StringComparison.Ordinal))
+			{
+				continue;
+			}
+
+			if (plan.TryGetProperty(
+				"active_trip_id",
+				out JsonElement tripIdElement)
+				&& tripIdElement.ValueKind == JsonValueKind.String)
+			{
+				return tripIdElement.GetString();
+			}
+		}
+
+		return null;
 	}
 
 	private async Task LocalLoopAsync(CancellationToken ct)
@@ -334,20 +406,83 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker
 		}
 		return null;
 	}
-	private void SynchronizeServerTime(JsonElement root)
+	private void SynchronizeServerTime(
+	JsonElement root)
 	{
-		foreach (var propertyName in new[] { "serverTime", "server_time", "timestamp", "time" })
-		{
-			if (!root.TryGetProperty(propertyName, out var value)) continue;
-			DateTimeOffset? serverTime = value.ValueKind switch
+		DateTimeOffset? serverTime =
+			root.ValueKind switch
 			{
-				JsonValueKind.String when DateTimeOffset.TryParse(value.GetString(), out var parsed) => parsed,
-				JsonValueKind.Number when value.TryGetInt64(out var epoch) => DateTimeOffset.FromUnixTimeMilliseconds(Math.Abs(epoch) > 100_000_000_000 ? epoch : epoch * 1000),
-				_ => null
+				JsonValueKind.String
+					when DateTimeOffset.TryParse(
+						root.GetString(),
+						out DateTimeOffset parsed)
+					=> parsed,
+
+				JsonValueKind.Number
+					when root.TryGetInt64(
+						out long epoch)
+					=> DateTimeOffset.FromUnixTimeMilliseconds(
+						Math.Abs(epoch) > 100_000_000_000
+							? epoch
+							: epoch * 1000),
+
+				JsonValueKind.Object =>
+					ReadServerTimeProperty(
+						root),
+
+				_ =>
+					null
 			};
-			if (serverTime is { } time) _serverTimeOffset = time - DateTimeOffset.UtcNow;
-			return;
+
+		if (serverTime is { } time)
+		{
+			_serverTimeOffset =
+				time - DateTimeOffset.UtcNow;
 		}
+	}
+
+
+	private static DateTimeOffset? ReadServerTimeProperty(
+		JsonElement root)
+	{
+		foreach (string propertyName in
+			new[]
+			{
+			"serverTime",
+			"server_time",
+			"timestamp",
+			"time"
+			})
+		{
+			if (!root.TryGetProperty(
+				propertyName,
+				out JsonElement value))
+			{
+				continue;
+			}
+
+			return value.ValueKind switch
+			{
+				JsonValueKind.String
+					when DateTimeOffset.TryParse(
+						value.GetString(),
+						out DateTimeOffset parsed)
+					=> parsed,
+
+				JsonValueKind.Number
+					when value.TryGetInt64(
+						out long epoch)
+					=> DateTimeOffset.FromUnixTimeMilliseconds(
+						Math.Abs(epoch) > 100_000_000_000
+							? epoch
+							: epoch * 1000),
+
+				_ =>
+					null
+			};
+		}
+
+		return null;
 	}
 	private static string JourneyIdentity(Journey journey) => $"{journey.Id}:{journey.From.Id}:{journey.To.Id}:{journey.Departure:O}:{journey.Arrival:O}";
 	private static void ClearSavedPlan() { Preferences.Default.Remove("schutzengel_active_plan"); Preferences.Default.Remove("schutzengel_active_trip"); Preferences.Default.Remove("schutzengel_active_journey"); }
