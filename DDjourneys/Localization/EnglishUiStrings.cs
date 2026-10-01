@@ -83,6 +83,8 @@ public sealed class EnglishUiStrings : IUiStrings
 	public JourneyStrings Journey { get; } = new()
 	{
 		Title = "Journey",
+		FollowJourney = "Follow journey",
+		DeactivateTracking = "Deactivate tracking",
 		Refresh = "Refresh",
 		Notes = "Notes",
 		NoRealtimeData = "No realtime data",

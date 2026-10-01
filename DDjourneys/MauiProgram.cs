@@ -4,6 +4,7 @@ using DDjourneys.Core.Diagnostics;
 using DDjourneys.Core.Providers.Abstractions;
 using DDjourneys.Core.Providers.Vvo;
 using DDjourneys.Core.Services;
+using DDjourneys.Core.Tracking;
 using DDjourneys.Localization;
 using DDjourneys.Pages;
 using DDjourneys.Support;
@@ -51,6 +52,12 @@ public static class MauiProgram
 
 		builder.Services.AddSingleton<ILocationProvider, VvoLocationProvider>();
 		builder.Services.AddSingleton<LocationService>();
+
+#if ANDROID
+		builder.Services.AddSingleton<IJourneyTracker, Platforms.Android.LiveJourney.Schutzengel.SchutzengelJourneyTracker>();
+#elif WINDOWS
+		builder.Services.AddSingleton<IJourneyTracker, Platforms.Windows.NoOpJourneyTracker>();
+#endif
 
 		builder.Services.AddSingleton<PlaceStore>();
 

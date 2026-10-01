@@ -17,6 +17,7 @@ public partial class JourneyPage : ContentPage
 	{
 		base.OnAppearing();
 		_vm.RefreshFromSettings();
+		_vm.StartObservingTracking();
 
 		if (_headerShown)
 		{
@@ -25,6 +26,12 @@ public partial class JourneyPage : ContentPage
 
 		_headerShown = true;
 		await Motion.RevealAsync(HeaderBlock, 0, 300, 16);
+	}
+
+	protected override void OnDisappearing()
+	{
+		_vm.StopObservingTracking();
+		base.OnDisappearing();
 	}
 
 	/// <summary>

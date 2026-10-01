@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
 using DDjourneys.Core.Models;
+using DDjourneys.Core.Tracking;
 using DDjourneys.Localization;
 using DDjourneys.Support;
 using Microsoft.Maui.ApplicationModel.DataTransfer;
@@ -13,18 +14,22 @@ public sealed class JourneyViewModel :
 {
 	private readonly AppSettings _settings;
 	private readonly LocalizationService _localization;
+	private readonly IJourneyTracker _tracker;
+	private CancellationTokenSource? _trackingObservation;
 
 	private Journey? _journey;
 
 
 	public JourneyViewModel(
-		AppSettings settings)
+		AppSettings settings,
+		IJourneyTracker tracker)
 	{
 		ArgumentNullException.ThrowIfNull(
 			settings);
 
 		_settings =
 			settings;
+		_tracker = tracker ?? throw new ArgumentNullException(nameof(tracker));
 
 		_localization =
 			LocalizationService.Current;
@@ -42,6 +47,8 @@ public sealed class JourneyViewModel :
 		ShareCommand =
 			new AsyncCommand(
 				ShareAsync);
+		FollowJourneyCommand = new AsyncCommand(FollowJourneyAsync, () => _journey is not null && _tracker.IsAvailable, ShowTrackingError);
+		DeactivateTrackingCommand = new AsyncCommand(DeactivateTrackingAsync, () => IsTracking, ShowTrackingError);
 	}
 
 
@@ -73,6 +80,65 @@ public sealed class JourneyViewModel :
 	public Command<LegRow> ToggleStopsCommand { get; }
 
 	public AsyncCommand ShareCommand { get; }
+	public AsyncCommand FollowJourneyCommand { get; }
+	public AsyncCommand DeactivateTrackingCommand { get; }
+	public bool IsTrackingAvailable => _tracker.IsAvailable;
+	public bool IsTracking { get; private set { if (SetProperty(ref field, value)) { DeactivateTrackingCommand.RaiseCanExecuteChanged(); OnPropertyChanged(nameof(CanFollow)); } } }
+	public bool CanFollow => IsTrackingAvailable && !IsTracking;
+	public string? TrackingStatus { get; private set => SetProperty(ref field, value); }
+
+	public void StartObservingTracking()
+	{
+		if (_trackingObservation is not null) return;
+		_trackingObservation = new CancellationTokenSource();
+		_ = ObserveTrackingAsync(_trackingObservation.Token);
+	}
+
+	public void StopObservingTracking()
+	{
+		_trackingObservation?.Cancel();
+		_trackingObservation?.Dispose();
+		_trackingObservation = null;
+	}
+
+	private async Task ObserveTrackingAsync(CancellationToken cancellationToken)
+	{
+		try
+		{
+			await foreach (var update in _tracker.Events.WithCancellation(cancellationToken))
+			{
+				MainThread.BeginInvokeOnMainThread(() =>
+				{
+					IsTracking = update.Kind is not (JourneyTrackingEventKind.Cancelled or JourneyTrackingEventKind.Arrived);
+					TrackingStatus = update.State.Message ?? update.State.Phase switch
+					{
+						TrackingPhase.AtRisk => "Connection at risk",
+						TrackingPhase.Cancelled => "Journey cancelled",
+						TrackingPhase.Arrived => "Arrived",
+						_ => "Journey tracking is active. Progress appears in your notification shade."
+					};
+				});
+			}
+		}
+		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+	}
+
+	private async Task FollowJourneyAsync()
+	{
+		if (_journey is null) return;
+		await _tracker.StartAsync(_journey);
+		IsTracking = true;
+		TrackingStatus = "Journey tracking is active. Progress appears in your notification shade.";
+	}
+
+	private async Task DeactivateTrackingAsync()
+	{
+		await _tracker.StopAsync();
+		IsTracking = false;
+		TrackingStatus = "Journey tracking paused.";
+	}
+
+	private void ShowTrackingError(Exception ex) => TrackingStatus = $"Journey tracking could not be started: {ex.Message}";
 
 
 	public ObservableCollection<TimelineRow> Rows { get; } =
@@ -182,6 +248,7 @@ public sealed class JourneyViewModel :
 		{
 			_journey =
 				journey;
+			FollowJourneyCommand.RaiseCanExecuteChanged();
 
 			LoadError =
 				null;

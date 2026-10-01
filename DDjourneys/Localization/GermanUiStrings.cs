@@ -88,6 +88,8 @@ public sealed class GermanUiStrings : IUiStrings
 	public JourneyStrings Journey { get; } = new()
 	{
 		Title = "Verbindung",
+		FollowJourney = "Verbindung verfolgen",
+		DeactivateTracking = "Verfolgung beenden",
 		Refresh = "Aktualisieren",
 		Notes = "Hinweise",
 		NoRealtimeData = "Keine Echtzeitdaten",

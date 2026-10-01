@@ -84,6 +84,8 @@ public sealed class ResultsStrings
 public sealed class JourneyStrings
 {
 	public required string Title { get; init; }
+	public required string FollowJourney { get; init; }
+	public required string DeactivateTracking { get; init; }
 	public required string Refresh { get; init; }
 	public required string Notes { get; init; }
 	public required string NoRealtimeData { get; init; }

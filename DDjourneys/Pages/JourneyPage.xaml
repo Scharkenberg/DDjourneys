@@ -497,6 +497,12 @@
 
 				<controls:JourneyCard BindingContext="{Binding Summary}" />
 
+				<VerticalStackLayout IsVisible="{Binding IsTrackingAvailable}" Spacing="8">
+					<Button Command="{Binding FollowJourneyCommand}" IsVisible="{Binding CanFollow}" Text="{localization:Tr Journey.FollowJourney}" />
+					<Button Command="{Binding DeactivateTrackingCommand}" IsVisible="{Binding IsTracking}" Text="{localization:Tr Journey.DeactivateTracking}" />
+					<Label StyleClass="Caption" Text="{Binding TrackingStatus}" />
+				</VerticalStackLayout>
+
 				<VerticalStackLayout
 					BindableLayout.ItemsSource="{Binding Notices}"
 					IsVisible="{Binding HasNotices}"
