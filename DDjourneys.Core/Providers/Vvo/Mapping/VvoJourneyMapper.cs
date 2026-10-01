@@ -903,8 +903,8 @@ MapCoordinates(
 				(values.Length - 1) / 2);
 
 		for (int i = 1;
-			i + 1 < values.Length;
-			i += 2)
+	i + 1 < values.Length;
+	i += 2)
 		{
 			if (!double.TryParse(
 				values[i],
@@ -926,8 +926,8 @@ MapCoordinates(
 
 			path.Add(
 				ConvertGk4ToWgs84(
-					x,
-					y));
+					y,
+					x));
 		}
 
 		return path;

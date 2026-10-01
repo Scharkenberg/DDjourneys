@@ -107,13 +107,23 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker
 			}
 			if (_planId is null)
 			{
+				System.Diagnostics.Debug.WriteLine("[SCHUTZENGEL] Creating new plan...");
+				var serializedPlan =
+	SchutzengelPlanTranslator.Serialize(
+		journey,
+		SchutzengelRawDataTranslator.Translate(journey),
+		journey.Id ?? string.Empty);
+
+				System.Diagnostics.Debug.WriteLine(
+					$"[SCHUTZENGEL] Plan JSON length = {serializedPlan.Length}");
+
 				using var created =
-	await _api.CreatePlanAsync(
-		SchutzengelPlanTranslator.Serialize(
-	journey,
-	SchutzengelRawDataTranslator.Translate(journey),
-	journey.Id ?? string.Empty),
-		ct);
+					await _api.CreatePlanAsync(
+						serializedPlan,
+						ct);
+
+				System.Diagnostics.Debug.WriteLine(
+	$"[SCHUTZENGEL] CreatePlan response = {created.RootElement}");
 
 				_planId =
 					ReadId(
@@ -128,8 +138,10 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker
 						"Schutzengel plan response did not include a plan ID.");
 				}
 
+				System.Diagnostics.Debug.WriteLine("[SCHUTZENGEL] Fetching plansMinimal...");
 				using var plans =
 					await _api.GetAllPlansAsync(ct);
+				System.Diagnostics.Debug.WriteLine($"[SCHUTZENGEL] plansMinimal = {plans.RootElement}");
 
 				_tripId =
 					ReadActiveTripId(
