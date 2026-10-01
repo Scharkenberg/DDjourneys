@@ -15,74 +15,98 @@ public static class VvoJourneyMapper
 		ArgumentNullException.ThrowIfNull(response);
 
 		return response.Routes
-			.Select(MapJourney)
+			.Select(
+				route =>
+					MapJourney(
+						route,
+						response.SessionId))
 			.ToArray();
 	}
 
 
-	private static Journey MapJourney(VvoRoute route)
+	private static Journey MapJourney(
+		VvoRoute route,
+		string? sessionId)
 	{
 		VvoDebug.DumpRoute(route);
-		var legs = new List<JourneyLeg>();
-		var transfers = new List<JourneyTransfer>();
+
+		var legs =
+			new List<JourneyLeg>();
+
+		var transfers =
+			new List<JourneyTransfer>();
 
 		var mappedParts =
-			new List<(VvoPartialRoute Route, JourneyLeg? Leg)>();
+			new List<
+				(
+					VvoPartialRoute Route,
+					JourneyLeg? Leg,
+					int? LegIndex
+				)>();
 
 
-		// First pass: map all movement legs.
-		foreach (var partialRoute in route.PartialRoutes)
+		// First pass: map movement legs only.
+		// Transfer/accessibility instructions remain out of Journey.Legs.
+		foreach (VvoPartialRoute partialRoute
+			in route.PartialRoutes)
 		{
 			System.Diagnostics.Debug.WriteLine(
-	$"""
-	[VVO PARTIAL]
-	Type={partialRoute.Mot?.Type}
-	Name={partialRoute.Mot?.Name}
-	Duration={partialRoute.Duration}
-	Stops={partialRoute.RegularStops.Count}
-	"""
-);
+				$"""
+				[VVO PARTIAL]
+				Type={partialRoute.Mot?.Type}
+				Name={partialRoute.Mot?.Name}
+				Duration={partialRoute.Duration}
+				Stops={partialRoute.RegularStops.Count}
+				""");
+
 			if (IsTransfer(partialRoute))
 			{
 				mappedParts.Add(
-					(partialRoute, null));
-			}
-			else
-			{
-				var leg =
-					MapLeg(
-						partialRoute,
-						legs.LastOrDefault()?.To,
-						GetFirstStation(partialRoute),
-						route.RouteCancelled);
+					(partialRoute, null, null));
 
-				System.Diagnostics.Debug.WriteLine(
-	$"""
-	[VVO LEG]
-	Index: {legs.Count}
-	Type: {partialRoute.Mot?.Type}
-	Name: {partialRoute.Mot?.Name}
-	Duration: {partialRoute.Duration} min
-	FirstStop:
-	  {partialRoute.RegularStops.FirstOrDefault()?.Name}
-	  {partialRoute.RegularStops.FirstOrDefault()?.DepartureTime}
-	LastStop:
-	  {partialRoute.RegularStops.LastOrDefault()?.Name}
-	  {partialRoute.RegularStops.LastOrDefault()?.ArrivalTime}
-	""");
-				legs.Add(leg);
-
-				mappedParts.Add(
-					(partialRoute, leg));
+				continue;
 			}
+
+			JourneyLeg leg =
+				MapLeg(
+					partialRoute,
+					legs.LastOrDefault()?.To,
+					GetFirstStation(partialRoute),
+					route.RouteCancelled);
+
+			int legIndex =
+				legs.Count;
+
+			System.Diagnostics.Debug.WriteLine(
+				$"""
+				[VVO LEG]
+				Index: {legIndex}
+				Type: {partialRoute.Mot?.Type}
+				Name: {partialRoute.Mot?.Name}
+				Duration: {partialRoute.Duration} min
+				FirstStop:
+				  {partialRoute.RegularStops.FirstOrDefault()?.Name}
+				  {partialRoute.RegularStops.FirstOrDefault()?.DepartureTime}
+				LastStop:
+				  {partialRoute.RegularStops.LastOrDefault()?.Name}
+				  {partialRoute.RegularStops.LastOrDefault()?.ArrivalTime}
+				""");
+
+			legs.Add(leg);
+
+			mappedParts.Add(
+				(partialRoute, leg, legIndex));
 		}
 
 
-		// Second pass: map transfers with surrounding leg context.
-		for (int i = 0; i < mappedParts.Count; i++)
+		// Second pass: map transfer instructions with exact
+		// surrounding leg indices.
+		for (int i = 0;
+			i < mappedParts.Count;
+			i++)
 		{
-			var part = mappedParts[i];
-
+			var part =
+				mappedParts[i];
 
 			if (!IsTransfer(part.Route))
 			{
@@ -91,17 +115,21 @@ public static class VvoJourneyMapper
 
 
 			JourneyLeg? previousLeg = null;
+			int? previousLegIndex = null;
+
 			JourneyLeg? nextLeg = null;
+			int? nextLegIndex = null;
 
 
 			for (int previous = i - 1;
 				previous >= 0;
 				previous--)
 			{
-				if (mappedParts[previous].Leg is not null)
+				if (mappedParts[previous].Leg is { } leg)
 				{
-					previousLeg =
-						mappedParts[previous].Leg;
+					previousLeg = leg;
+					previousLegIndex =
+						mappedParts[previous].LegIndex;
 
 					break;
 				}
@@ -112,10 +140,11 @@ public static class VvoJourneyMapper
 				next < mappedParts.Count;
 				next++)
 			{
-				if (mappedParts[next].Leg is not null)
+				if (mappedParts[next].Leg is { } leg)
 				{
-					nextLeg =
-						mappedParts[next].Leg;
+					nextLeg = leg;
+					nextLegIndex =
+						mappedParts[next].LegIndex;
 
 					break;
 				}
@@ -126,29 +155,45 @@ public static class VvoJourneyMapper
 				MapTransfer(
 					part.Route,
 					previousLeg,
-					nextLeg));
+					previousLegIndex,
+					nextLeg,
+					nextLegIndex));
 		}
 
 
 		if (legs.Count == 0)
 		{
 			throw new InvalidOperationException(
-				"VVO route contains no partial routes.");
+				"VVO route contains no movement legs.");
 		}
 
 
 		return new Journey
 		{
-			From = legs[0].From,
+			From =
+				legs[0].From,
 
-			To = legs[^1].To,
+			To =
+				legs[^1].To,
 
-			Legs = legs,
+			Legs =
+				legs,
 
-			Transfers = transfers,
+			Transfers =
+				transfers,
+
+			Id =
+				route.RouteId.ToString(
+					System.Globalization.CultureInfo.InvariantCulture),
+
+			Context =
+				string.IsNullOrWhiteSpace(sessionId)
+					? null
+					: sessionId,
 
 			PlannedDuration =
-				TimeSpan.FromMinutes(route.Duration)
+				TimeSpan.FromMinutes(
+					route.Duration)
 		};
 	}
 
@@ -163,10 +208,15 @@ public static class VvoJourneyMapper
 	}
 
 
-	private static bool IsTransfer(VvoPartialRoute route)
+	private static bool IsTransfer(
+		VvoPartialRoute route)
 	{
+		string? type =
+			route.Mot?.Type;
+
+
 		if (string.Equals(
-			route.Mot?.Type,
+			type,
 			"StayForConnection",
 			StringComparison.OrdinalIgnoreCase))
 		{
@@ -174,10 +224,10 @@ public static class VvoJourneyMapper
 		}
 
 
-		// VVO represents walking connections as Footpath.
-		// If it has no transport stops, it is a transfer, not a journey leg.
+		// A Footpath without regular stops is a transfer instruction.
+		// It is represented by JourneyTransfer rather than JourneyLeg.
 		if (string.Equals(
-			route.Mot?.Type,
+			type,
 			"Footpath",
 			StringComparison.OrdinalIgnoreCase)
 			&& route.RegularStops.Count == 0)
@@ -186,22 +236,29 @@ public static class VvoJourneyMapper
 		}
 
 
-		return false;
+		// Mobility instructions describe accessibility movement
+		// inside a transfer, not passenger transport.
+		return type?.StartsWith(
+			"Mobility",
+			StringComparison.OrdinalIgnoreCase)
+			== true;
 	}
 
 
 	private static JourneyTransfer MapTransfer(
 		VvoPartialRoute route,
 		JourneyLeg? previousLeg,
-		JourneyLeg? nextLeg)
+		int? previousLegIndex,
+		JourneyLeg? nextLeg,
+		int? nextLegIndex)
 	{
-		var arrivalStop =
+		StopTime? arrivalStop =
 			previousLeg?
 				.Stops
 				.LastOrDefault();
 
 
-		var departureStop =
+		StopTime? departureStop =
 			nextLeg?
 				.Stops
 				.FirstOrDefault();
@@ -214,21 +271,32 @@ public static class VvoJourneyMapper
 				"VVO transfer has no identifiable location.");
 		}
 
-		DebugTransfer(route, departureStop, arrivalStop);
 
-		var location =
+		DebugTransfer(
+			route,
+			departureStop,
+			arrivalStop);
+
+
+		Station location =
 			arrivalStop?.Station
 			?? departureStop!.Station;
 
 
 		return new JourneyTransfer
 		{
-			Location = location,
-
+			Location =
+				location,
 
 			Duration =
-				TimeSpan.FromMinutes(route.Duration),
+				TimeSpan.FromMinutes(
+					route.Duration),
 
+			WaitingTime =
+				DetermineWaitingTime(
+					route,
+					arrivalStop,
+					departureStop),
 
 			Kind =
 				DetermineTransferKind(
@@ -236,22 +304,51 @@ public static class VvoJourneyMapper
 					arrivalStop,
 					departureStop),
 
-
 			IsGuaranteed =
 				!route.ChangeoverEndangered,
-
 
 			ArrivalPlatform =
 				arrivalStop?.Platform,
 
-
 			DeparturePlatform =
 				departureStop?.Platform,
 
+			PreviousLegIndex =
+				previousLegIndex,
+
+			NextLegIndex =
+				nextLegIndex,
 
 			Notices =
-				VvoNoticeParser.Parse(route.Infos)
+				VvoNoticeParser.Parse(
+					route.Infos)
 		};
+	}
+
+
+	private static TimeSpan? DetermineWaitingTime(
+		VvoPartialRoute route,
+		StopTime? arrival,
+		StopTime? departure)
+	{
+		if (!string.Equals(
+			route.Mot?.Type,
+			"StayForConnection",
+			StringComparison.OrdinalIgnoreCase))
+		{
+			return null;
+		}
+
+
+		if (arrival?.EffectiveArrival is { } arrives
+			&& departure?.EffectiveDeparture is { } departs
+			&& departs >= arrives)
+		{
+			return departs - arrives;
+		}
+
+
+		return null;
 	}
 
 
@@ -260,17 +357,42 @@ public static class VvoJourneyMapper
 		StopTime? arrival,
 		StopTime? departure)
 	{
-		if (route.Mot?.Type == "Footpath")
+		string? type =
+			route.Mot?.Type;
+
+
+		if (string.Equals(
+			type,
+			"Footpath",
+			StringComparison.OrdinalIgnoreCase))
 		{
 			return TransferKind.Walk;
 		}
 
 
-		if (arrival?.Station.Id != null
-			&& departure?.Station.Id != null
+		if (type?.StartsWith(
+			"Mobility",
+			StringComparison.OrdinalIgnoreCase)
+			== true)
+		{
+			return TransferKind.Accessibility;
+		}
+
+
+		if (string.Equals(
+			type,
+			"StayForConnection",
+			StringComparison.OrdinalIgnoreCase))
+		{
+			return TransferKind.Waiting;
+		}
+
+
+		if (arrival?.Station.Id is { } arrivalId
+			&& departure?.Station.Id is { } departureId
 			&& !string.Equals(
-				arrival.Station.Id,
-				departure.Station.Id,
+				arrivalId,
+				departureId,
 				StringComparison.OrdinalIgnoreCase))
 		{
 			return TransferKind.Walk;
@@ -278,9 +400,9 @@ public static class VvoJourneyMapper
 
 
 		if (!string.Equals(
-				arrival?.Platform,
-				departure?.Platform,
-				StringComparison.OrdinalIgnoreCase))
+			arrival?.Platform,
+			departure?.Platform,
+			StringComparison.OrdinalIgnoreCase))
 		{
 			return TransferKind.PlatformChange;
 		}
@@ -296,9 +418,10 @@ public static class VvoJourneyMapper
 		Station? nextOrigin,
 		bool routeCancelled)
 	{
-		var stops = route.RegularStops
-			.Select(MapStop)
-			.ToArray();
+		StopTime[] stops =
+			route.RegularStops
+				.Select(MapStop)
+				.ToArray();
 
 
 		Station from;
@@ -307,17 +430,26 @@ public static class VvoJourneyMapper
 
 		if (stops.Length > 0)
 		{
-			from = stops[0].Station;
-			to = stops[^1].Station;
+			from =
+				stops[0].Station;
+
+			to =
+				stops[^1].Station;
 		}
 		else
 		{
-			Station fallback = previousDestination
+			Station fallback =
+				previousDestination
 				?? nextOrigin
-				?? throw new InvalidOperationException("Cannot determine location of VVO non-stop leg.");
+				?? throw new InvalidOperationException(
+					"Cannot determine location of VVO non-stop leg.");
 
-			from = fallback;
-			to = nextOrigin ?? fallback;
+			from =
+				fallback;
+
+			to =
+				nextOrigin
+				?? fallback;
 		}
 
 
@@ -331,34 +463,49 @@ public static class VvoJourneyMapper
 
 		return new JourneyLeg
 		{
-			Mode = MapMode(route.Mot),
+			Mode =
+				MapMode(route.Mot),
 
-			From = from,
+			From =
+				from,
 
-			To = to,
+			To =
+				to,
 
-			Stops = stops,
+			Stops =
+				stops,
 
-			Line = MapLine(route),
+			Line =
+				MapLine(route),
 
-			Vehicle = MapVehicle(route),
+			Vehicle =
+				MapVehicle(route),
 
-			ScheduledDeparture = firstStop?.ScheduledDeparture,
+			ScheduledDeparture =
+				firstStop?.ScheduledDeparture,
 
-			RealtimeDeparture = firstStop?.RealtimeDeparture,
+			RealtimeDeparture =
+				firstStop?.RealtimeDeparture,
 
-			ScheduledArrival = lastStop?.ScheduledArrival,
+			ScheduledArrival =
+				lastStop?.ScheduledArrival,
 
-			RealtimeArrival = lastStop?.RealtimeArrival,
+			RealtimeArrival =
+				lastStop?.RealtimeArrival,
 
-			DeparturePlatform = firstStop?.Platform,
+			DeparturePlatform =
+				firstStop?.Platform,
 
-			ArrivalPlatform = lastStop?.Platform,
+			ArrivalPlatform =
+				lastStop?.Platform,
 
-			IsCancelled = route.TripCancelled || routeCancelled,
+			IsCancelled =
+				route.TripCancelled
+				|| routeCancelled,
 
 			Notices =
-				VvoNoticeParser.Parse(route.Infos)
+				VvoNoticeParser.Parse(
+					route.Infos)
 		};
 	}
 
@@ -368,14 +515,20 @@ public static class VvoJourneyMapper
 	{
 		return new StopTime
 		{
-			Station = new Station
-			{
-				Id = stop.DataId ?? string.Empty,
+			Station =
+				new Station
+				{
+					Id =
+						stop.DataId
+						?? string.Empty,
 
-				Name = stop.Name ?? string.Empty,
+					Name =
+						stop.Name
+						?? string.Empty,
 
-				Place = stop.Place
-			},
+					Place =
+						stop.Place
+				},
 
 			ScheduledArrival =
 				stop.ArrivalTime,
@@ -394,10 +547,11 @@ public static class VvoJourneyMapper
 
 			IsCancelled =
 				stop.ArrivalState == "Cancelled"
-				||
-				stop.DepartureState == "Cancelled",
+				|| stop.DepartureState == "Cancelled",
 
-			Occupancy = MapOccupancy(stop.Occupancy)
+			Occupancy =
+				MapOccupancy(
+					stop.Occupancy)
 		};
 	}
 
@@ -468,7 +622,8 @@ public static class VvoJourneyMapper
 				route.Mot.StatelessId,
 
 			Occupancy =
-				MapOccupancy(route.Mot.Occupancy)
+				MapOccupancy(
+					route.Mot.Occupancy)
 		};
 	}
 
@@ -510,13 +665,19 @@ public static class VvoJourneyMapper
 
 		if (value.Contains("s-bahn")
 			|| value.Contains("suburban")
-			|| mot.Type == "RapidTransit")
+			|| string.Equals(
+				mot.Type,
+				"RapidTransit",
+				StringComparison.OrdinalIgnoreCase))
 		{
 			return TransitMode.SuburbanRail;
 		}
 
 
-		if (mot.Type == "Train")
+		if (string.Equals(
+			mot.Type,
+			"Train",
+			StringComparison.OrdinalIgnoreCase))
 		{
 			return TransitMode.RegionalTrain;
 		}
@@ -538,52 +699,74 @@ public static class VvoJourneyMapper
 	}
 
 
-	private static OccupancyLevel MapOccupancy(string? occupancy)
+	private static OccupancyLevel MapOccupancy(
+		string? occupancy)
 	{
-		if (string.IsNullOrWhiteSpace(occupancy))
+		if (string.IsNullOrWhiteSpace(
+			occupancy))
 		{
 			return OccupancyLevel.Unknown;
 		}
 
-		return occupancy.Trim().ToLowerInvariant() switch
+
+		return occupancy
+			.Trim()
+			.ToLowerInvariant()
+			switch
 		{
-			"verylow" or "manyseats" => OccupancyLevel.VeryLow,
-			"low" or "fewseats" => OccupancyLevel.Low,
-			"medium" => OccupancyLevel.Medium,
-			"high" or "standingonly" => OccupancyLevel.High,
-			"full" => OccupancyLevel.Full,
-			"veryhigh" or "overloaded" => OccupancyLevel.Overloaded,
-			_ => OccupancyLevel.Unknown
+			"verylow" or "manyseats" =>
+				OccupancyLevel.VeryLow,
+
+			"low" or "fewseats" =>
+				OccupancyLevel.Low,
+
+			"medium" =>
+				OccupancyLevel.Medium,
+
+			"high" or "standingonly" =>
+				OccupancyLevel.High,
+
+			"full" =>
+				OccupancyLevel.Full,
+
+			"veryhigh" or "overloaded" =>
+				OccupancyLevel.Overloaded,
+
+			_ =>
+				OccupancyLevel.Unknown
 		};
 	}
 
 
 	private static void DebugTransfer(
 		VvoPartialRoute route,
-		StopTime? firstStop,
-		StopTime? lastStop)
+		StopTime? departureStop,
+		StopTime? arrivalStop)
 	{
 		System.Diagnostics.Debug.WriteLine(
 			$"""
-		[VVO TRANSFER]
-		PartialRouteId: {route.PartialRouteId}
-		Duration raw: {route.Duration} min
-		Kind: {route.Mot?.Type} / {route.Mot?.Name}
-		Stops: {route.RegularStops.Count}
-		First:
-		  Station: {firstStop?.Station.Name}
-		  Id: {firstStop?.Station.Id}
-		  Arrival: {firstStop?.ScheduledArrival:o}
-		  Departure: {firstStop?.ScheduledDeparture:o}
-		  Platform: {firstStop?.Platform}
-		Last:
-		  Station: {lastStop?.Station.Name}
-		  Id: {lastStop?.Station.Id}
-		  Arrival: {lastStop?.ScheduledArrival:o}
-		  Departure: {lastStop?.ScheduledDeparture:o}
-		  Platform: {lastStop?.Platform}
-		Infos:
-		  {string.Join(" | ", route.Infos)}
-		""");
+			[VVO TRANSFER]
+			PartialRouteId: {route.PartialRouteId}
+			Duration raw: {route.Duration} min
+			Kind: {route.Mot?.Type} / {route.Mot?.Name}
+			Stops: {route.RegularStops.Count}
+
+			Previous:
+			  Station: {arrivalStop?.Station.Name}
+			  Id: {arrivalStop?.Station.Id}
+			  Arrival: {arrivalStop?.ScheduledArrival:o}
+			  Departure: {arrivalStop?.ScheduledDeparture:o}
+			  Platform: {arrivalStop?.Platform}
+
+			Next:
+			  Station: {departureStop?.Station.Name}
+			  Id: {departureStop?.Station.Id}
+			  Arrival: {departureStop?.ScheduledArrival:o}
+			  Departure: {departureStop?.ScheduledDeparture:o}
+			  Platform: {departureStop?.Platform}
+
+			Infos:
+			  {string.Join(" | ", route.Infos)}
+			""");
 	}
 }

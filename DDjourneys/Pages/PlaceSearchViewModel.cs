@@ -2,7 +2,6 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using DDjourneys.Core.Api;
 using DDjourneys.Core.Services;
-using DDjourneys.Core.Storage;
 using DDjourneys.Localization;
 using DDjourneys.Support;
 using Location = DDjourneys.Core.Models.Location;

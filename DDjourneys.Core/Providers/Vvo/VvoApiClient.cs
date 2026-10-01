@@ -18,9 +18,12 @@ public sealed class VvoApiClient
 	private readonly ApiClient _apiClient;
 	private readonly JsonSerializerOptions _jsonOptions;
 
-	public VvoApiClient(ApiClient apiClient)
+
+	public VvoApiClient(
+		ApiClient apiClient)
 	{
-		ArgumentNullException.ThrowIfNull(apiClient);
+		ArgumentNullException.ThrowIfNull(
+			apiClient);
 
 		_apiClient = apiClient;
 
@@ -39,6 +42,7 @@ public sealed class VvoApiClient
 			new VvoDateTimeOffsetConverter());
 	}
 
+
 	/// <summary>
 	/// Searches for locations using VVO PointFinder.
 	/// </summary>
@@ -47,7 +51,8 @@ public sealed class VvoApiClient
 		CancellationToken cancellationToken = default,
 		TimeSpan? timeout = null)
 	{
-		ArgumentException.ThrowIfNullOrWhiteSpace(query);
+		ArgumentException.ThrowIfNullOrWhiteSpace(
+			query);
 
 		string requestUri =
 			$"{BaseUrl}/tr/pointfinder" +
@@ -74,6 +79,7 @@ public sealed class VvoApiClient
 		return response;
 	}
 
+
 	/// <summary>
 	/// Searches for journeys using the VVO trip planner.
 	/// </summary>
@@ -82,7 +88,8 @@ public sealed class VvoApiClient
 		CancellationToken cancellationToken = default,
 		TimeSpan? timeout = null)
 	{
-		ArgumentNullException.ThrowIfNull(request);
+		ArgumentNullException.ThrowIfNull(
+			request);
 
 		const string requestUri =
 			$"{BaseUrl}/tr/trips";
@@ -111,6 +118,46 @@ public sealed class VvoApiClient
 		return response;
 	}
 
+
+	/// <summary>
+	/// Gets earlier or later connections from a VVO trip-planning session.
+	/// </summary>
+	public async Task<VvoTripResponse?> GetPreviousNextTripsAsync(
+		VvoPrevNextRequest request,
+		CancellationToken cancellationToken = default,
+		TimeSpan? timeout = null)
+	{
+		ArgumentNullException.ThrowIfNull(
+			request);
+
+		const string requestUri =
+			$"{BaseUrl}/tr/prevnext";
+
+		string jsonRequest =
+			JsonSerializer.Serialize(
+				request,
+				_jsonOptions);
+
+		string jsonResponse =
+			await _apiClient.PostJsonAsync(
+				requestUri,
+				jsonRequest,
+				cancellationToken,
+				timeout)
+				.ConfigureAwait(false);
+
+		VvoTripResponse? response =
+			JsonSerializer.Deserialize<VvoTripResponse>(
+				jsonResponse,
+				_jsonOptions);
+
+		EnsureProviderSuccess(
+			response?.Status);
+
+		return response;
+	}
+
+
 	private static void EnsureProviderSuccess(
 		VvoStatus? status)
 	{
@@ -121,7 +168,8 @@ public sealed class VvoApiClient
 			return;
 		}
 
-		string? message = status.Message;
+		string? message =
+			status.Message;
 
 		if (string.IsNullOrWhiteSpace(message))
 		{
@@ -132,7 +180,8 @@ public sealed class VvoApiClient
 			status.IsServerError()
 			|| status.Code?.Contains(
 				"Server",
-				StringComparison.OrdinalIgnoreCase) == true;
+				StringComparison.OrdinalIgnoreCase)
+				== true;
 
 		throw new ApiException(
 			message ?? string.Empty,

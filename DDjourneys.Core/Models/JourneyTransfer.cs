@@ -6,8 +6,26 @@ public sealed class JourneyTransfer
 
 
 	/// <summary>
-	/// Total time reserved for this transfer by the routing engine.
-	/// Includes walking and/or waiting depending on transfer kind.
+	/// Zero-based index of the journey leg immediately before this transfer.
+	///
+	/// Null means the transfer occurs before the first leg.
+	/// </summary>
+	public int? PreviousLegIndex { get; init; }
+
+
+	/// <summary>
+	/// Zero-based index of the journey leg immediately after this transfer.
+	///
+	/// Null means the transfer occurs after the final leg.
+	/// </summary>
+	public int? NextLegIndex { get; init; }
+
+
+	/// <summary>
+	/// Duration represented by this provider transfer instruction.
+	///
+	/// This is the duration of this individual instruction, not necessarily
+	/// the complete time available between the surrounding journey legs.
 	/// </summary>
 	public TimeSpan Duration
 	{
@@ -46,5 +64,5 @@ public sealed class JourneyTransfer
 
 
 	public IReadOnlyList<string> Notices { get; init; }
-		= Array.Empty<string>();
+		= [];
 }

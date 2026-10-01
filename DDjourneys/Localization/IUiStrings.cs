@@ -78,8 +78,9 @@ public sealed class ResultsStrings
 	public required string SearchServiceUnavailable { get; init; }
 	public required string Refresh { get; init; }
 	public required string Retry { get; init; }
+	public required string Previous { get; init; }
+	public required string Next { get; init; }
 }
-
 public sealed class JourneyStrings
 {
 	public required string Title { get; init; }

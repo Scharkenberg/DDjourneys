@@ -52,13 +52,16 @@ public sealed class EnglishUiStrings : IUiStrings
 	public PlaceSearchStrings PlaceSearch { get; } = new()
 	{
 		Title = "Choose place",
-		SearchPlaceholder = "Station, stop or address",
-		Hint = "Type a station, stop or address.",
-		TypeAtLeastTwoCharacters = "Type at least 2 characters.",
+		SearchPlaceholder =
+		"Station, stop or address",
+		Hint =
+		"Type a station, stop or address.",
+		TypeAtLeastTwoCharacters =
+		"Type at least 2 characters.",
 		NoPlacesFound = "No places found.",
 		Searching = "Searching...",
 		CouldNotReachService =
-			"Could not reach the timetable service. Check your connection.",
+		"Could not reach the timetable service. Check your connection.",
 		SearchForPlace = "Search for a place"
 	};
 
@@ -72,7 +75,9 @@ public sealed class EnglishUiStrings : IUiStrings
 		SearchServiceUnavailable =
 			"Could not reach the timetable service.",
 		Refresh = "Refresh",
-		Retry = "Try again"
+		Retry = "Try again",
+		Previous = "Earlier",
+		Next = "Later"
 	};
 
 	public JourneyStrings Journey { get; } = new()

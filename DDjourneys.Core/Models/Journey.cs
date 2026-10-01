@@ -1,120 +1,124 @@
 ﻿namespace DDjourneys.Core.Models;
 
-/// <summary>
-/// Represents a complete route from origin to destination.
-/// </summary>
 public sealed class Journey
 {
-	/// <summary>
-	/// Individual movement segments making up this journey.
-	/// </summary>
 	public required IReadOnlyList<JourneyLeg> Legs { get; init; }
 
-
-	/// <summary>
-	/// Original search origin.
-	/// </summary>
 	public required Station From { get; init; }
 
-
-	/// <summary>
-	/// Final destination.
-	/// </summary>
 	public required Station To { get; init; }
 
-
-	/// <summary>
-	/// Optional provider identifier.
-	///
-	/// Some journey APIs provide stable identifiers.
-	/// Others do not.
-	/// </summary>
 	public string? Id { get; init; }
 
-
-	/// <summary>
-	/// Provider-specific continuation context.
-	///
-	/// Used for requests like:
-	/// "show later journeys"
-	/// "refresh this journey"
-	/// </summary>
 	public string? Context { get; init; }
 
-
-	/// <summary>
-	/// Additional messages applying to the entire journey.
-	/// </summary>
 	public IReadOnlyList<string> Notices { get; init; }
 		= Array.Empty<string>();
 
+	/// <summary>
+	/// Effective time at which the passenger starts the journey,
+	/// including any provider-described transfer before the first leg.
+	/// </summary>
+	public DateTimeOffset? Departure
+	{
+		get
+		{
+			if (Legs.Count == 0
+				|| Legs[0].EffectiveDeparture is not { } departure)
+			{
+				return null;
+			}
+
+			TimeSpan accessDuration =
+				TerminalTransferDuration(
+					previousLegIndex: null,
+					nextLegIndex: 0);
+
+			return departure - accessDuration;
+		}
+	}
 
 	/// <summary>
-	/// Earliest departure of the journey.
+	/// Effective time at which the passenger reaches the destination,
+	/// including any provider-described transfer after the final leg.
 	/// </summary>
-	public DateTimeOffset? Departure =>
-	Legs.Count == 0
-		? null
-		: Legs[0].EffectiveDeparture;
+	public DateTimeOffset? Arrival
+	{
+		get
+		{
+			if (Legs.Count == 0
+				|| Legs[^1].EffectiveArrival is not { } arrival)
+			{
+				return null;
+			}
 
+			TimeSpan accessDuration =
+				TerminalTransferDuration(
+					previousLegIndex: Legs.Count - 1,
+					nextLegIndex: null);
 
-	/// <summary>
-	/// Final arrival of the journey.
-	/// </summary>
-	public DateTimeOffset? Arrival =>
-		Legs.Count == 0
-			? null
-			: Legs[^1].EffectiveArrival;
-
+			return arrival + accessDuration;
+		}
+	}
 
 	/// <summary>
 	/// Total journey duration.
+	/// Uses the provider's planned duration when available.
 	/// </summary>
 	public TimeSpan Duration =>
-	PlannedDuration
-	?? (Departure.HasValue && Arrival.HasValue
-		? Arrival.Value - Departure.Value
-		: TimeSpan.Zero);
+		PlannedDuration
+		?? (Departure.HasValue && Arrival.HasValue
+			? Arrival.Value - Departure.Value
+			: TimeSpan.Zero);
 
-	/// <summary>
-	/// Planned journey duration (provider API)
-	/// </summary>
 	public TimeSpan? PlannedDuration { get; init; }
 
-	/// <summary>
-	/// Number of transfers.
-	/// </summary>
 	public int TransferCount =>
 		Math.Max(
 			0,
 			Legs.Count(leg => IsPublicTransport(leg)) - 1);
 
-
-	/// <summary>
-	/// Whether any leg is delayed.
-	/// </summary>
 	public bool HasDelay =>
-		Legs.Any(leg =>
-			leg.DepartureDelay is { } departureDelay && departureDelay != TimeSpan.Zero
-			||
-			leg.ArrivalDelay is { } arrivalDelay && arrivalDelay != TimeSpan.Zero);
+		Legs.Any(
+			leg =>
+				leg.DepartureDelay is { } departureDelay
+					&& departureDelay != TimeSpan.Zero
+				||
+				leg.ArrivalDelay is { } arrivalDelay
+					&& arrivalDelay != TimeSpan.Zero);
 
-
-	/// <summary>
-	/// Whether any part of the journey has been cancelled.
-	/// </summary>
 	public bool IsCancelled =>
 		Legs.Any(leg => leg.IsCancelled);
 
-	/// <summary>
-	/// List of transfers for the journey.
-	/// </summary>
 	public IReadOnlyList<JourneyTransfer> Transfers { get; init; }
-	= Array.Empty<JourneyTransfer>();
+		= Array.Empty<JourneyTransfer>();
 
-
-	private static bool IsPublicTransport(JourneyLeg leg)
+	private TimeSpan TerminalTransferDuration(
+		int? previousLegIndex,
+		int? nextLegIndex)
 	{
-		return leg.Mode != TransitMode.Walk;
+		if (Transfers.Count == 0)
+		{
+			return TimeSpan.Zero;
+		}
+
+		TimeSpan total = TimeSpan.Zero;
+
+		foreach (JourneyTransfer transfer in Transfers)
+		{
+			if (transfer.PreviousLegIndex != previousLegIndex
+				|| transfer.NextLegIndex != nextLegIndex
+				|| transfer.Duration <= TimeSpan.Zero)
+			{
+				continue;
+			}
+
+			total += transfer.Duration;
+		}
+
+		return total;
 	}
+
+	private static bool IsPublicTransport(JourneyLeg leg) =>
+		leg.Mode != TransitMode.Walk;
 }

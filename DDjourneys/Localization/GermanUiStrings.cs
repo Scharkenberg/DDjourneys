@@ -55,7 +55,7 @@ public sealed class GermanUiStrings : IUiStrings
 
 	public PlaceSearchStrings PlaceSearch { get; } = new()
 	{
-		Title = "Ort w\u00e4hlen",
+		Title = "Ort wählen",
 		SearchPlaceholder =
 			"Bahnhof, Haltestelle oder Adresse",
 		Hint =
@@ -65,7 +65,7 @@ public sealed class GermanUiStrings : IUiStrings
 		NoPlacesFound = "Keine Orte gefunden.",
 		Searching = "Suche...",
 		CouldNotReachService =
-			"Der Fahrplandienst ist nicht erreichbar. Verbindung pr\u00fcfen.",
+			"Der Fahrplandienst ist nicht erreichbar. Verbindung prüfen.",
 		SearchForPlace = "Nach einem Ort suchen"
 	};
 
@@ -74,13 +74,15 @@ public sealed class GermanUiStrings : IUiStrings
 		Title = "Verbindungen",
 		Loading = "Verbindungen werden geladen...",
 		NoConnections =
-			"F\u00fcr diese Zeit wurden keine Verbindungen gefunden.",
+		"Für diese Zeit wurden keine Verbindungen gefunden.",
 		JourneysCouldNotBeDisplayed =
-			"Die Verbindungen konnten nicht angezeigt werden.",
+		"Die Verbindungen konnten nicht angezeigt werden.",
 		SearchServiceUnavailable =
-			"Der Fahrplandienst ist nicht erreichbar.",
+		"Der Fahrplandienst ist nicht erreichbar.",
 		Refresh = "Aktualisieren",
-		Retry = "Erneut versuchen"
+		Retry = "Erneut versuchen",
+		Previous = "Früher",
+		Next = "Später"
 	};
 
 	public JourneyStrings Journey { get; } = new()

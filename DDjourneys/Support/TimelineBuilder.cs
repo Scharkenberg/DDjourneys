@@ -4,7 +4,8 @@ namespace DDjourneys.Support;
 
 public abstract record TimelineItem;
 
-public sealed record RideItem(JourneyLeg Leg) : TimelineItem;
+public sealed record RideItem(
+	JourneyLeg Leg) : TimelineItem;
 
 public sealed record WalkItem(
 	JourneyLeg Leg,
@@ -12,8 +13,8 @@ public sealed record WalkItem(
 	DateTimeOffset? EffectiveArrival = null) : TimelineItem;
 
 /// <summary>
-/// The point between two legs: an interchange, or a provider message
-/// attached to it (for example a guaranteed connection).
+/// The boundary between two journey legs, or a terminal walking transfer
+/// at the beginning or end of the journey.
 /// </summary>
 public sealed record BoundaryItem(
 	Station At,
@@ -24,154 +25,275 @@ public sealed record BoundaryItem(
 	TimeSpan? WalkTime = null) : TimelineItem;
 
 /// <summary>
-/// Turns a provider-neutral Journey into a flat, display-ready list.
-/// This is the only place that interprets provider quirks for the UI.
+/// Converts the provider-neutral journey model into a flat, display-ready
+/// sequence. Transfer ownership is determined exclusively by leg indices.
 /// </summary>
 public static class TimelineBuilder
 {
-	public static IReadOnlyList<TimelineItem> Build(Journey journey)
+	public static IReadOnlyList<TimelineItem> Build(
+		Journey journey)
 	{
 		ArgumentNullException.ThrowIfNull(journey);
 
-		var items = new List<TimelineItem>(journey.Legs.Count * 2);
+		if (journey.Legs.Count == 0)
+		{
+			return Array.Empty<TimelineItem>();
+		}
 
-		// A provider transfer belongs to exactly one boundary, even if the route
-		// passes the same station twice.
-		var used = new HashSet<JourneyTransfer>();
+		var items =
+			new List<TimelineItem>(
+				journey.Legs.Count * 2 + 2);
+
+		// A transfer before the first movement leg is an access transfer.
+		JourneyTransfer[] initialTransfers =
+			GetTransfers(
+				journey,
+				previousLegIndex: null,
+				nextLegIndex: 0);
+
+		if (initialTransfers.Length > 0)
+		{
+			items.Add(
+				CreateBoundary(
+					journey.From,
+					initialTransfers,
+					showWait: false));
+		}
+
 		DateTimeOffset? previousEffectiveArrival = null;
 
 		for (int i = 0; i < journey.Legs.Count; i++)
 		{
-			JourneyLeg leg = journey.Legs[i];
-			DateTimeOffset? effectiveArrival = leg.EffectiveArrival;
+			JourneyLeg leg =
+				journey.Legs[i];
+
 			if (leg.Mode == TransitMode.Walk)
 			{
-				DateTimeOffset? departure = leg.EffectiveDeparture;
-				DateTimeOffset? arrival = leg.EffectiveArrival;
-				if (previousEffectiveArrival is { } priorArrival
-					&& leg.ScheduledDeparture is { } scheduledDeparture
-					&& leg.ScheduledArrival is { } scheduledArrival
-					&& scheduledArrival >= scheduledDeparture)
-				{
-					TimeSpan walkDuration = scheduledArrival - scheduledDeparture;
-					departure = priorArrival > scheduledDeparture ? priorArrival : scheduledDeparture;
-					arrival = departure + walkDuration;
-				}
-				effectiveArrival = arrival;
+				WalkItem walk =
+					CreateWalkItem(
+						leg,
+						previousEffectiveArrival);
 
-				items.Add(new WalkItem(leg, departure, arrival));
+				items.Add(walk);
+
+				previousEffectiveArrival =
+					walk.EffectiveArrival
+					?? leg.EffectiveArrival;
 			}
 			else
 			{
-				items.Add(new RideItem(leg));
+				items.Add(
+					new RideItem(leg));
+
+				previousEffectiveArrival =
+					leg.EffectiveArrival;
 			}
 
 			if (i == journey.Legs.Count - 1)
 			{
-				// VVO models endpoint footpaths as transfers without a following
-				// transit leg. Preserve that final movement in the timeline.
-				JourneyTransfer? finalWalk = journey.Transfers
-					.Where(t => !used.Contains(t)
-						&& t.Kind == TransferKind.Walk
-						&& t.Duration > TimeSpan.Zero
-						&& Matches(t.Location.Id, leg.To.Id, journey.To.Id))
-					.OrderByDescending(t => t.Duration)
-					.FirstOrDefault();
+				JourneyTransfer[] finalTransfers =
+					GetTransfers(
+						journey,
+						previousLegIndex: i,
+						nextLegIndex: null);
 
-				if (finalWalk is not null)
+				if (finalTransfers.Length > 0)
 				{
-					used.Add(finalWalk);
-					items.Add(new BoundaryItem(
-						journey.To,
-						TimeSpan.Zero,
-						finalWalk.Notices,
-						ShowWait: false,
-						Endangered: false,
-						WalkTime: finalWalk.Duration));
+					items.Add(
+						CreateBoundary(
+							journey.To,
+							finalTransfers,
+							showWait: false));
 				}
 
 				break;
 			}
 
-			previousEffectiveArrival = effectiveArrival;
+			JourneyLeg next =
+				journey.Legs[i + 1];
 
-			JourneyLeg next = journey.Legs[i + 1];
+			JourneyTransfer[] transfers =
+				GetTransfers(
+					journey,
+					previousLegIndex: i,
+					nextLegIndex: i + 1);
 
-			// ASSUMPTION: a provider message belongs to the boundary whose
-			// station ID it carries. Verify against captured VVO responses.
-			JourneyTransfer[] transfers = journey.Transfers
-				.Where(t => !used.Contains(t) && Matches(t.Location.Id, leg.To.Id, next.From.Id))
-				.ToArray();
+			bool isInterchange =
+				leg.Mode != TransitMode.Walk
+				&& next.Mode != TransitMode.Walk;
 
-			foreach (JourneyTransfer transfer in transfers)
+			if (transfers.Length > 0
+				|| isInterchange)
 			{
-				used.Add(transfer);
-			}
-
-			string[] notes = transfers
-				.SelectMany(t => t.Notices)
-				.Where(n => !string.IsNullOrWhiteSpace(n))
-				.Distinct()
-				.ToArray();
-
-			bool isInterchange = leg.Mode != TransitMode.Walk && next.Mode != TransitMode.Walk;
-
-			if (isInterchange || notes.Length > 0)
-			{
-				// Use effective times (realtime if available, otherwise scheduled) to calculate wait
-				// This ensures delays propagate through to footpath/walking times
-				TimeSpan wait =
-					next.EffectiveDeparture is { } departs && leg.EffectiveArrival is { } arrives && departs >= arrives
-						? departs - arrives
-						: TimeSpan.Zero;
-
-				// For footpath legs, calculate walk time from the transfer duration
-				// This ensures delays affect the footpath timing
-				TimeSpan? walk = transfers
-					.Where(t => t.Kind == TransferKind.Walk && t.Duration > TimeSpan.Zero)
-					.Select(t => (TimeSpan?)t.Duration)
-					.Max();
-
-				items.Add(new BoundaryItem(
-					leg.To,
-					wait,
-					notes,
-					ShowWait: isInterchange,
-					Endangered: transfers.Any(t => !t.IsGuaranteed),
-					WalkTime: walk));
+				items.Add(
+					CreateBoundary(
+						leg.To,
+						transfers,
+						showWait: isInterchange,
+						nextLeg: next,
+						previousArrival: previousEffectiveArrival));
 			}
 		}
 
 		return items;
 	}
 
-	/// <summary>Gets the effective end of a final walking transfer.</summary>
-	public static DateTimeOffset? FinalWalkArrival(Journey journey)
+	private static WalkItem CreateWalkItem(
+		JourneyLeg leg,
+		DateTimeOffset? previousEffectiveArrival)
 	{
-		ArgumentNullException.ThrowIfNull(journey);
+		DateTimeOffset? departure =
+			leg.EffectiveDeparture;
 
-		IReadOnlyList<TimelineItem> items = Build(journey);
-		if (items.LastOrDefault() is not BoundaryItem { WalkTime: { } walkTime })
+		DateTimeOffset? arrival =
+			leg.EffectiveArrival;
+
+		// Walking time is treated as a movable duration. When the preceding
+		// leg is delayed past the planned walking departure, shift the entire
+		// walking segment forward instead of preserving an impossible overlap.
+		if (previousEffectiveArrival is { } priorArrival
+			&& leg.ScheduledDeparture is { } scheduledDeparture
+			&& leg.ScheduledArrival is { } scheduledArrival
+			&& scheduledArrival >= scheduledDeparture)
 		{
-			return items.LastOrDefault() is WalkItem walk
-				? walk.EffectiveArrival ?? walk.Leg.EffectiveArrival
-				: journey.Arrival;
+			TimeSpan duration =
+				scheduledArrival - scheduledDeparture;
+
+			departure =
+				priorArrival > scheduledDeparture
+					? priorArrival
+					: scheduledDeparture;
+
+			arrival =
+				departure + duration;
 		}
 
-		DateTimeOffset? arrival = items
-			.Take(items.Count - 1)
-			.LastOrDefault(item => item is RideItem or WalkItem) switch
-			{
-				WalkItem walk => walk.EffectiveArrival ?? walk.Leg.EffectiveArrival,
-				RideItem ride => ride.Leg.EffectiveArrival,
-				_ => null
-			};
-
-		return arrival is { } time ? time + walkTime : null;
+		return new WalkItem(
+			leg,
+			departure,
+			arrival);
 	}
 
-	private static bool Matches(string? transferId, string? fromId, string? toId) =>
-		!string.IsNullOrWhiteSpace(transferId)
-		&& (string.Equals(transferId, fromId, StringComparison.OrdinalIgnoreCase)
-			|| string.Equals(transferId, toId, StringComparison.OrdinalIgnoreCase));
+	private static BoundaryItem CreateBoundary(
+		Station location,
+		IReadOnlyList<JourneyTransfer> transfers,
+		bool showWait,
+		JourneyLeg? nextLeg = null,
+		DateTimeOffset? previousArrival = null)
+	{
+		TimeSpan? walkTime =
+			GetWalkingDuration(transfers);
+
+		TimeSpan wait =
+			DetermineWait(
+				transfers,
+				previousArrival,
+				nextLeg?.EffectiveDeparture,
+				walkTime);
+
+		string[] notes =
+			transfers
+				.SelectMany(
+					transfer => transfer.Notices)
+				.Where(
+					n => !string.IsNullOrWhiteSpace(n))
+				.Distinct()
+				.ToArray();
+
+		bool endangered =
+			transfers.Any(
+				transfer => !transfer.IsGuaranteed);
+
+		return new BoundaryItem(
+			location,
+			wait,
+			notes,
+			showWait,
+			endangered,
+			walkTime);
+	}
+
+	private static TimeSpan DetermineWait(
+		IReadOnlyList<JourneyTransfer> transfers,
+		DateTimeOffset? previousArrival,
+		DateTimeOffset? nextDeparture,
+		TimeSpan? walkTime)
+	{
+		TimeSpan? explicitWaiting =
+			transfers
+				.Where(
+					transfer =>
+						transfer.WaitingTime is { } waiting
+						&& waiting >= TimeSpan.Zero)
+				.Select(
+					transfer =>
+						transfer.WaitingTime)
+				.Aggregate(
+					(TimeSpan?)null,
+					(total, value) =>
+						total is { } current
+							&& value is { } additional
+							? current + additional
+							: value);
+
+		if (explicitWaiting is { } knownWaiting)
+		{
+			return knownWaiting;
+		}
+
+		if (previousArrival is not { } arrives
+			|| nextDeparture is not { } departs
+			|| departs < arrives)
+		{
+			return TimeSpan.Zero;
+		}
+
+		TimeSpan connectionWindow =
+			departs - arrives;
+
+		if (walkTime is not { } walking
+			|| walking <= TimeSpan.Zero)
+		{
+			return connectionWindow;
+		}
+
+		return connectionWindow > walking
+			? connectionWindow - walking
+			: TimeSpan.Zero;
+	}
+
+	private static TimeSpan? GetWalkingDuration(
+		IReadOnlyList<JourneyTransfer> transfers)
+	{
+		TimeSpan total =
+			TimeSpan.Zero;
+
+		foreach (JourneyTransfer transfer in transfers)
+		{
+			if (transfer.Kind != TransferKind.Walk
+				|| transfer.Duration <= TimeSpan.Zero)
+			{
+				continue;
+			}
+
+			total += transfer.Duration;
+		}
+
+		return total > TimeSpan.Zero
+			? total
+			: null;
+	}
+
+	private static JourneyTransfer[] GetTransfers(
+		Journey journey,
+		int? previousLegIndex,
+		int? nextLegIndex) =>
+		journey.Transfers
+			.Where(
+				transfer =>
+					transfer.PreviousLegIndex
+						== previousLegIndex
+					&& transfer.NextLegIndex
+						== nextLegIndex)
+			.ToArray();
 }

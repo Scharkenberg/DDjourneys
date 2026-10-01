@@ -10,143 +10,254 @@ namespace DDjourneys.Support;
 /// </summary>
 public abstract class TimelineRow : ObservableObject
 {
-	public Color RailTop { get; init; } = Colors.Transparent;
-	public Color RailBottom { get; init; } = Colors.Transparent;
-	public string Description { get; init; } = string.Empty;
+	public Color RailTop { get; init; } =
+		Colors.Transparent;
 
-	/// <summary>Position used to stagger the entrance animation.</summary>
+
+	public Color RailBottom { get; init; } =
+		Colors.Transparent;
+
+
+	public string Description { get; init; } =
+		string.Empty;
+
+
+	/// <summary>
+	/// Position used to stagger the entrance animation.
+	/// </summary>
 	public int Index { get; set; }
 }
 
-/// <summary>A stop where a leg starts or ends (or the journey's walking start/end).</summary>
+
+/// <summary>
+/// A stop where a leg starts or ends (or the journey's walking start/end).
+/// </summary>
 public sealed class StopRow : TimelineRow
 {
 	public required string Time { get; init; }
+
 	public string? ScheduledTime { get; init; }
+
 	public string? DelayText { get; init; }
+
 	public required string Name { get; init; }
+
 	public string? PlaceText { get; init; }
+
 	public string? PlatformText { get; init; }
+
 	public required Color NodeColor { get; init; }
+
 	public string? OccupancyText { get; init; }
 
-	public bool HasDelay => DelayText is not null;
-	public bool HasPlace => PlaceText is not null;
-	public bool HasPlatform => PlatformText is not null;
-	public bool HasOccupancy => OccupancyText is not null;
+	public bool HasDelay =>
+		DelayText is not null;
+
+	public bool HasPlace =>
+		PlaceText is not null;
+
+	public bool HasPlatform =>
+		PlatformText is not null;
+
+	public bool HasOccupancy =>
+		OccupancyText is not null;
 }
 
-/// <summary>A stop between departure and arrival, shown when a leg is expanded.</summary>
+
+/// <summary>
+/// A stop between departure and arrival, shown when a leg is expanded.
+/// </summary>
 public sealed class IntermediateRow : TimelineRow
 {
 	public required string Time { get; init; }
+
 	public required string Name { get; init; }
+
 	public string? PlaceText { get; init; }
+
 	public string? DelayText { get; init; }
+
 	public bool IsNotServed { get; init; }
+
 	public string? OccupancyText { get; init; }
 
-	public bool HasDelay => DelayText is not null;
-	public bool HasPlace => PlaceText is not null;
-	public bool HasOccupancy => OccupancyText is not null;
+	public bool HasDelay =>
+		DelayText is not null;
+
+	public bool HasPlace =>
+		PlaceText is not null;
+
+	public bool HasOccupancy =>
+		OccupancyText is not null;
 }
 
-/// <summary>Line, direction and duration of a ride, with the expand toggle.</summary>
+
+/// <summary>
+/// Line, direction and duration of a ride, with the expand toggle.
+/// </summary>
 public sealed class LegRow : TimelineRow
 {
 	public required string LineText { get; init; }
-	public required Color ModeColor { get; init; }
-	public string? Direction { get; init; }
-	public required string DurationText { get; init; }
-	public string? FeaturesText { get; init; }
-	public string? OccupancyText { get; init; }
-	public bool IsCancelled { get; init; }
-	public bool IsActive { get; init; }
-	public IReadOnlyList<IntermediateRow> Intermediates { get; init; } = [];
 
-	public bool HasDirection => Direction is not null;
-	public bool HasFeatures => FeaturesText is not null;
-	public bool HasOccupancy => OccupancyText is not null;
-	public bool HasIntermediates => Intermediates.Count > 0;
+	public required Color ModeColor { get; init; }
+
+	public string? Direction { get; init; }
+
+	public required string DurationText { get; init; }
+
+	public string? FeaturesText { get; init; }
+
+	public string? OccupancyText { get; init; }
+
+	public bool IsCancelled { get; init; }
+
+	public bool IsActive { get; init; }
+
+	public IReadOnlyList<IntermediateRow> Intermediates { get; init; } =
+		[];
+
+
+	public bool HasDirection =>
+		Direction is not null;
+
+	public bool HasFeatures =>
+		FeaturesText is not null;
+
+	public bool HasOccupancy =>
+		OccupancyText is not null;
+
+	public bool HasIntermediates =>
+		Intermediates.Count > 0;
+
 
 	public bool IsExpanded
 	{
 		get => field;
 		set
 		{
-			if (SetProperty(ref field, value))
+			if (SetProperty(
+					ref field,
+					value))
 			{
-				OnPropertyChanged(nameof(StopsText));
-				OnPropertyChanged(nameof(Chevron));
+				OnPropertyChanged(
+					nameof(StopsText));
+
+				OnPropertyChanged(
+					nameof(Chevron));
 			}
 		}
 	}
 
+
 	public string StopsText =>
 		IsExpanded
-			? LocalizationService.Current.CurrentStrings.Journey.HideStops
+			? LocalizationService.Current
+				.CurrentStrings
+				.Journey
+				.HideStops
 			: Intermediates.Count == 1
-				? LocalizationService.Current.CurrentStrings.Journey.OneStop
+				? LocalizationService.Current
+					.CurrentStrings
+					.Journey
+					.OneStop
 				: string.Format(
 					System.Globalization.CultureInfo.CurrentCulture,
-					LocalizationService.Current.CurrentStrings.Journey.MultipleStops,
+					LocalizationService.Current
+						.CurrentStrings
+						.Journey
+						.MultipleStops,
 					Intermediates.Count);
 
+
 	public string Chevron =>
-		IsExpanded ? "\u25B4" : "\u25BE";
+		IsExpanded
+			? "\u2303"
+			: "\u2304";
 }
+
 
 public sealed class WalkRow : TimelineRow
 {
 	public required string Text { get; init; }
+
 	public string? Caption { get; init; }
 
-	public bool HasCaption => Caption is not null;
+	public bool HasCaption =>
+		Caption is not null;
 }
 
-/// <summary>Arrival of one ride and departure of the next, at the same place.</summary>
+
+/// <summary>
+/// Arrival of one ride and departure of the next, at the same place.
+/// </summary>
 public sealed class InterchangeRow : TimelineRow
 {
 	public required string ArrivalTime { get; init; }
+
 	public string? ArrivalDelay { get; init; }
-	public string? ArrivalOccupancyText { get; init; }
+
 	public required string DepartureTime { get; init; }
+
 	public string? DepartureDelay { get; init; }
-	public string? DepartureOccupancyText { get; init; }
+
 	public required string Name { get; init; }
+
 	public string? PlaceText { get; init; }
-	public bool HasPlace => PlaceText is not null;
-	public string? ContinuesFrom { get; init; }
-	public string? PlatformText { get; init; }
+
+	public string? ConnectionText { get; init; }
+
 	public string? WaitText { get; init; }
+
 	public string? WalkText { get; init; }
+
 	public string? RiskText { get; init; }
-	public bool HasWait => WaitText is not null;
-	public bool HasWalk => WalkText is not null;
-	public bool HasRisk => RiskText is not null;
+
+	public bool HasPlace =>
+		PlaceText is not null;
+
+	public bool HasConnection =>
+		ConnectionText is not null;
+
+	public bool HasWait =>
+		WaitText is not null;
+
+	public bool HasWalk =>
+		WalkText is not null;
+
+	public bool HasRisk =>
+		RiskText is not null;
+
 	public required Color NodeColor { get; init; }
 
-	public bool HasArrivalDelay => ArrivalDelay is not null;
-	public bool HasDepartureDelay => DepartureDelay is not null;
-	public bool HasArrivalOccupancy => ArrivalOccupancyText is not null;
-	public bool HasDepartureOccupancy => DepartureOccupancyText is not null;
-	public bool HasContinuesFrom => ContinuesFrom is not null;
-	public bool HasPlatform => PlatformText is not null;
+	public bool HasArrivalDelay =>
+		ArrivalDelay is not null;
+
+	public bool HasDepartureDelay =>
+		DepartureDelay is not null;
 }
 
-/// <summary>A message from the provider (leg notice, or a note on a boundary).</summary>
+
+/// <summary>
+/// A message from the provider (leg notice, or a note on a boundary).
+/// </summary>
 public sealed class NoticeRow : TimelineRow
 {
 	public required string Text { get; init; }
+
 	public bool Expanded { get; init; }
+
 	public bool Technical { get; init; }
 }
 
-/// <summary>What the timeline shows; comes from the user's settings.</summary>
+
+/// <summary>
+/// What the timeline shows; comes from the user's settings.
+/// </summary>
 public sealed record TimelineOptions(
 	bool ShowWalking = true,
 	bool ExpandNotices = false,
 	bool Technical = false);
+
 
 /// <summary>
 /// Turns TimelineBuilder items into display rows. Two rides joined by a boundary
@@ -154,7 +265,9 @@ public sealed record TimelineOptions(
 /// </summary>
 public static class TimelineRowFactory
 {
-	private const string Dash = "\u2013";
+	private const string Dash =
+		"\u2013";
+
 
 	public static IReadOnlyList<TimelineRow> Build(
 		Journey journey,
@@ -162,57 +275,83 @@ public static class TimelineRowFactory
 	{
 		ArgumentNullException.ThrowIfNull(journey);
 
-		options ??= new TimelineOptions();
+		options ??=
+			new TimelineOptions();
+
 
 		IReadOnlyList<TimelineItem> items =
 			TimelineBuilder.Build(journey);
 
-		var rows = new List<TimelineRow>();
 
-		if (items.Count > 0 && items[0] is WalkItem firstWalk)
+		var rows =
+			new List<TimelineRow>();
+
+
+		if (items.Count > 0
+			&& items[0] is WalkItem firstWalk)
 		{
 			rows.Add(
 				EndpointStop(
 					firstWalk.Leg.From.Name,
 					PlaceOf(firstWalk.Leg.From),
-					firstWalk.EffectiveDeparture ?? firstWalk.Leg.EffectiveDeparture,
+					firstWalk.EffectiveDeparture
+						?? firstWalk.Leg.EffectiveDeparture,
 					Colors.Transparent,
 					WalkColor()));
 		}
+
 
 		for (int i = 0; i < items.Count; i++)
 		{
 			switch (items[i])
 			{
 				case RideItem ride:
-					AddRide(rows, items, i, ride.Leg, options);
+					AddRide(
+						rows,
+						items,
+						i,
+						ride.Leg,
+						options);
 					break;
+
 
 				case WalkItem walk:
 					if (options.ShowWalking)
 					{
 						string walkTime =
 							Format.Duration(
-								walk.EffectiveDeparture ?? walk.Leg.EffectiveDeparture,
-								walk.EffectiveArrival ?? walk.Leg.EffectiveArrival);
+								walk.EffectiveDeparture
+									?? walk.Leg.EffectiveDeparture,
+								walk.EffectiveArrival
+									?? walk.Leg.EffectiveArrival);
+
 
 						JourneyStrings strings =
-							LocalizationService.Current.CurrentStrings.Journey;
+							LocalizationService.Current
+								.CurrentStrings
+								.Journey;
+
 
 						rows.Add(
 							new WalkRow
 							{
 								Text =
 									$"{strings.Walk} {walkTime}",
+
 								Caption =
 									$"{strings.To} {walk.Leg.To.Name}",
-								RailBottom = WalkColor(),
+
+								RailBottom =
+									WalkColor(),
+
 								Description =
-									$"{strings.Walk} {walkTime} {strings.To} {walk.Leg.To.Name}"
+									$"{strings.Walk} {walkTime} " +
+									$"{strings.To} {walk.Leg.To.Name}"
 							});
 					}
 
 					break;
+
 
 				case BoundaryItem boundary:
 					AddBoundary(
@@ -225,36 +364,45 @@ public static class TimelineRowFactory
 			}
 		}
 
-		if (items.Count > 0 && items[^1] is WalkItem lastWalk)
+
+		if (items.Count > 0
+			&& items[^1] is WalkItem lastWalk)
 		{
 			rows.Add(
 				EndpointStop(
 					lastWalk.Leg.To.Name,
 					PlaceOf(lastWalk.Leg.To),
-					lastWalk.EffectiveArrival ?? lastWalk.Leg.EffectiveArrival,
+					lastWalk.EffectiveArrival
+						?? lastWalk.Leg.EffectiveArrival,
 					WalkColor(),
 					Colors.Transparent));
 		}
 		else if (items.Count > 0
-			&& items[^1] is BoundaryItem { WalkTime: not null })
+	&& items[^1] is BoundaryItem
+	{
+		WalkTime: not null
+	})
 		{
-			DateTimeOffset? arrival = TimelineBuilder.FinalWalkArrival(journey);
 			rows.Add(
 				EndpointStop(
 					journey.To.Name,
 					PlaceOf(journey.To),
-					arrival,
+					journey.Arrival,
 					WalkColor(),
 					Colors.Transparent));
 		}
 
+
 		for (int i = 0; i < rows.Count; i++)
 		{
-			rows[i].Index = i;
+			rows[i].Index =
+				i;
 		}
+
 
 		return rows;
 	}
+
 
 	private static void AddRide(
 		List<TimelineRow> rows,
@@ -263,32 +411,47 @@ public static class TimelineRowFactory
 		JourneyLeg leg,
 		TimelineOptions options)
 	{
-		Color color = ModeColors.For(leg.Mode);
+		Color color =
+			ModeColors.For(leg.Mode);
+
+
 		JourneyStrings strings =
-			LocalizationService.Current.CurrentStrings.Journey;
+			LocalizationService.Current
+				.CurrentStrings
+				.Journey;
+
 
 		bool departureMerged =
 			i >= 2
 			&& items[i - 1] is BoundaryItem
 			&& items[i - 2] is RideItem;
 
+
 		bool arrivalMerged =
 			i + 2 < items.Count
 			&& items[i + 1] is BoundaryItem
 			&& items[i + 2] is RideItem;
 
-		// Get occupancy text for the leg (from vehicle)
-		string? occupancyText = FormatOccupancy(leg.Vehicle?.Occupancy);
+
+		string? occupancyText =
+			FormatOccupancy(
+				leg.Vehicle?.Occupancy);
+
 
 		if (!departureMerged)
 		{
 			string? delay =
-				Format.Delay(leg.DepartureDelay);
+				Format.Delay(
+					leg.DepartureDelay);
 
-			// Get occupancy for first stop if available
-			string? stopOccupancy = leg.Stops.FirstOrDefault()?.Occupancy != OccupancyLevel.Unknown
-				? FormatOccupancy(leg.Stops.FirstOrDefault()?.Occupancy)
-				: null;
+
+			string? stopOccupancy =
+				leg.Stops.FirstOrDefault()?.Occupancy
+					is not OccupancyLevel.Unknown
+						? FormatOccupancy(
+							leg.Stops.FirstOrDefault()?.Occupancy)
+						: null;
+
 
 			rows.Add(
 				new StopRow
@@ -296,56 +459,93 @@ public static class TimelineRowFactory
 					Time =
 						Format.TimeOrDash(
 							leg.EffectiveDeparture),
+
 					ScheduledTime =
 						delay is null
 							? null
 							: Format.TimeOrDash(
 								leg.ScheduledDeparture),
-					DelayText = delay,
-					Name = leg.From.Name,
-					PlaceText = PlaceOf(leg.From),
+
+					DelayText =
+						delay,
+
+					Name =
+						leg.From.Name,
+
+					PlaceText =
+						PlaceOf(leg.From),
+
 					PlatformText =
 						PlatformText(
 							leg.DeparturePlatform),
-					NodeColor = color,
-					OccupancyText = stopOccupancy ?? occupancyText,
+
+					NodeColor =
+						color,
+
+					OccupancyText =
+						stopOccupancy
+						?? occupancyText,
+
 					RailTop =
-						RailAt(items, i - 1, -1),
-					RailBottom = color,
+						RailAt(
+							items,
+							i - 1,
+							-1),
+
+					RailBottom =
+						color,
+
 					Description =
 						$"{Format.TimeOrDash(leg.EffectiveDeparture)}, " +
 						$"{strings.Depart} {leg.From.Name}"
 				});
 		}
 
-		DateTimeOffset now = DateTimeOffset.Now;
+
+		DateTime now =
+			DateTime.Now;
+
 
 		rows.Add(
 			new LegRow
 			{
 				LineText =
 					leg.Line?.Name
-					?? Format.TransportMode(leg.Mode),
-				ModeColor = color,
+					?? Format.TransportMode(
+						leg.Mode),
+
+				ModeColor =
+					color,
+
 				Direction =
 					string.IsNullOrWhiteSpace(
 						leg.Line?.Destination)
 						? null
-						: $"{strings.To} {leg.Line!.Destination}",
+						: $"{strings.To} " +
+							$"{leg.Line!.Destination}",
+
 				DurationText =
 					Format.Duration(
 						leg.EffectiveDeparture,
 						leg.EffectiveArrival),
+
 				FeaturesText =
-					Features(leg.Vehicle?.Accessibility),
-				OccupancyText = occupancyText,
-				IsCancelled = leg.IsCancelled,
+					Features(
+						leg.Vehicle?.Accessibility),
+
+				OccupancyText =
+					occupancyText,
+
+				IsCancelled =
+					leg.IsCancelled,
+
 				IsActive =
 					!leg.IsCancelled
 					&& leg.EffectiveDeparture is { } start
 					&& leg.EffectiveArrival is { } end
 					&& now >= start
 					&& now <= end,
+
 				Intermediates =
 					leg.Stops
 						.Skip(1)
@@ -361,24 +561,38 @@ public static class TimelineRowFactory
 										TimeOf(
 											stop.EffectiveDeparture
 											?? stop.EffectiveArrival),
+
 									Name =
 										stop.Station.Name,
+
 									PlaceText =
-										PlaceOf(stop.Station),
+										PlaceOf(
+											stop.Station),
+
 									DelayText =
 										Format.Delay(
 											stop.DepartureDelay
 											?? stop.ArrivalDelay),
+
 									IsNotServed =
 										stop.IsCancelled,
-									OccupancyText = FormatOccupancy(stop.Occupancy),
-									RailBottom = color,
+
+									OccupancyText =
+										FormatOccupancy(
+											stop.Occupancy),
+
+									RailBottom =
+										color,
+
 									Description =
 										$"{TimeOf(stop.EffectiveDeparture ?? stop.EffectiveArrival)}, " +
 										$"{stop.Station.Name}"
 								})
 						.ToList(),
-				RailBottom = color,
+
+				RailBottom =
+					color,
+
 				Description =
 					$"{leg.Line?.Name ?? Format.TransportMode(leg.Mode)}, " +
 					Format.Duration(
@@ -386,28 +600,44 @@ public static class TimelineRowFactory
 						leg.EffectiveArrival)
 			});
 
+
 		foreach (string notice in leg.Notices.Distinct())
 		{
 			rows.Add(
 				new NoticeRow
 				{
-					Text = notice,
-					RailBottom = color,
-					Description = notice,
-					Expanded = options.ExpandNotices,
-					Technical = options.Technical
+					Text =
+						notice,
+
+					RailBottom =
+						color,
+
+					Description =
+						notice,
+
+					Expanded =
+						options.ExpandNotices,
+
+					Technical =
+						options.Technical
 				});
 		}
+
 
 		if (!arrivalMerged)
 		{
 			string? delay =
-				Format.Delay(leg.ArrivalDelay);
+				Format.Delay(
+					leg.ArrivalDelay);
 
-			// Get occupancy for last stop if available
-			string? lastStopOccupancy = leg.Stops.LastOrDefault()?.Occupancy != OccupancyLevel.Unknown
-				? FormatOccupancy(leg.Stops.LastOrDefault()?.Occupancy)
-				: null;
+
+			string? lastStopOccupancy =
+				leg.Stops.LastOrDefault()?.Occupancy
+					is not OccupancyLevel.Unknown
+						? FormatOccupancy(
+							leg.Stops.LastOrDefault()?.Occupancy)
+						: null;
+
 
 			rows.Add(
 				new StopRow
@@ -415,28 +645,49 @@ public static class TimelineRowFactory
 					Time =
 						Format.TimeOrDash(
 							leg.EffectiveArrival),
+
 					ScheduledTime =
 						delay is null
 							? null
 							: Format.TimeOrDash(
 								leg.ScheduledArrival),
-					DelayText = delay,
-					Name = leg.To.Name,
-					PlaceText = PlaceOf(leg.To),
+
+					DelayText =
+						delay,
+
+					Name =
+						leg.To.Name,
+
+					PlaceText =
+						PlaceOf(leg.To),
+
 					PlatformText =
 						PlatformText(
 							leg.ArrivalPlatform),
-					NodeColor = color,
-					OccupancyText = lastStopOccupancy ?? occupancyText,
-					RailTop = color,
+
+					NodeColor =
+						color,
+
+					OccupancyText =
+						lastStopOccupancy
+						?? occupancyText,
+
+					RailTop =
+						color,
+
 					RailBottom =
-						RailAt(items, i + 1, +1),
+						RailAt(
+							items,
+							i + 1,
+							+1),
+
 					Description =
 						$"{Format.TimeOrDash(leg.EffectiveArrival)}, " +
 						$"{strings.Arrive} {leg.To.Name}"
 				});
 		}
 	}
+
 
 	private static void AddBoundary(
 		List<TimelineRow> rows,
@@ -451,28 +702,39 @@ public static class TimelineRowFactory
 			&& items[i - 1] is RideItem
 			&& items[i + 1] is RideItem;
 
+
 		Color next =
-			RailAt(items, i + 1, +1);
+			RailAt(
+				items,
+				i + 1,
+				+1);
+
 
 		JourneyStrings strings =
-			LocalizationService.Current.CurrentStrings.Journey;
+			LocalizationService.Current
+				.CurrentStrings
+				.Journey;
+
 
 		if (between)
 		{
 			JourneyLeg from =
 				((RideItem)items[i - 1]).Leg;
 
+
 			JourneyLeg to =
 				((RideItem)items[i + 1]).Leg;
 
-			// Get occupancy for arrival and departure
-			string? arrivalOccupancy = from.Stops.LastOrDefault()?.Occupancy != OccupancyLevel.Unknown
-				? FormatOccupancy(from.Stops.LastOrDefault()?.Occupancy)
-				: FormatOccupancy(from.Vehicle?.Occupancy);
 
-			string? departureOccupancy = to.Stops.FirstOrDefault()?.Occupancy != OccupancyLevel.Unknown
-				? FormatOccupancy(to.Stops.FirstOrDefault()?.Occupancy)
-				: FormatOccupancy(to.Vehicle?.Occupancy);
+			string? connectionText =
+				JoinText(
+					from.To.Name == to.From.Name
+						? null
+						: $"{strings.ContinueFrom} {to.From.Name}",
+					PlatformPair(
+						from.ArrivalPlatform,
+						to.DeparturePlatform));
+
 
 			rows.Add(
 				new InterchangeRow
@@ -480,46 +742,58 @@ public static class TimelineRowFactory
 					ArrivalTime =
 						Format.TimeOrDash(
 							from.EffectiveArrival),
+
 					ArrivalDelay =
-						Format.Delay(from.ArrivalDelay),
-					ArrivalOccupancyText = arrivalOccupancy,
+						Format.Delay(
+							from.ArrivalDelay),
+
 					DepartureTime =
 						Format.TimeOrDash(
 							to.EffectiveDeparture),
+
 					DepartureDelay =
-						Format.Delay(to.DepartureDelay),
-					DepartureOccupancyText = departureOccupancy,
-					Name = from.To.Name,
+						Format.Delay(
+							to.DepartureDelay),
+
+					Name =
+						from.To.Name,
+
 					PlaceText =
 						PlaceOf(from.To),
-					ContinuesFrom =
-						from.To.Name == to.From.Name
-							? null
-							: $"{strings.ContinueFrom} {to.From.Name}",
-					PlatformText =
-						PlatformPair(
-							from.ArrivalPlatform,
-							to.DeparturePlatform),
+
+					ConnectionText =
+						connectionText,
+
 					WaitText =
 						boundary.ShowWait
 							? boundary.Wait < TimeSpan.FromMinutes(1)
 								? strings.ImmediateChange
-								: $"{Format.Duration(boundary.Wait)} {strings.ToChange}"
+								: $"{Format.Duration(boundary.Wait)} " +
+									$"{strings.ToChange}"
 							: null,
+
 					WalkText =
-						options.ShowWalking && boundary.WalkTime is { } walk
-							? $"{strings.WalkAbout} {Format.Duration(walk)} {strings.BetweenStops}"
+						options.ShowWalking
+						&& boundary.WalkTime is { } walk
+							? $"{strings.WalkAbout} " +
+								$"{Format.Duration(walk)} " +
+								$"{strings.BetweenStops}"
 							: null,
+
 					RiskText =
 						boundary.Endangered
 							? strings.ConnectionMayBeMissed
 							: null,
+
 					NodeColor =
 						ModeColors.For(to.Mode),
+
 					RailTop =
 						ModeColors.For(from.Mode),
+
 					RailBottom =
 						ModeColors.For(to.Mode),
+
 					Description =
 						$"{strings.ChangeAt} {from.To.Name}, " +
 						Format.Duration(boundary.Wait)
@@ -529,32 +803,56 @@ public static class TimelineRowFactory
 			&& boundary.WalkTime is { } walkTime
 			&& walkTime > TimeSpan.Zero)
 		{
-			// A final VVO footpath has no following transit leg, so it cannot be
-			// represented by an interchange row. Render it as a normal walk row.
 			rows.Add(
 				new WalkRow
 				{
-					Text = $"{strings.Walk} {Format.Duration(walkTime)}",
-					Caption = $"{strings.To} {boundary.At.Name}",
-					RailTop = RailAt(items, i - 1, -1),
-					RailBottom = WalkColor(),
-					Description = $"{strings.Walk} {Format.Duration(walkTime)} {strings.To} {boundary.At.Name}"
+					Text =
+						$"{strings.Walk} " +
+						Format.Duration(walkTime),
+
+					Caption =
+						$"{strings.To} {boundary.At.Name}",
+
+					RailTop =
+						RailAt(
+							items,
+							i - 1,
+							-1),
+
+					RailBottom =
+						WalkColor(),
+
+					Description =
+						$"{strings.Walk} " +
+						Format.Duration(walkTime) +
+						$" {strings.To} {boundary.At.Name}"
 				});
 		}
+
 
 		foreach (string note in boundary.Notes)
 		{
 			rows.Add(
 				new NoticeRow
 				{
-					Text = note,
-					RailBottom = next,
-					Description = note,
-					Expanded = options.ExpandNotices,
-					Technical = options.Technical
+					Text =
+						note,
+
+					RailBottom =
+						next,
+
+					Description =
+						note,
+
+					Expanded =
+						options.ExpandNotices,
+
+					Technical =
+						options.Technical
 				});
 		}
 	}
+
 
 	private static StopRow EndpointStop(
 		string name,
@@ -564,15 +862,28 @@ public static class TimelineRowFactory
 		Color bottom) =>
 		new()
 		{
-			PlaceText = place,
-			Time = Format.TimeOrDash(time),
-			Name = name,
-			NodeColor = WalkColor(),
-			RailTop = top,
-			RailBottom = bottom,
+			PlaceText =
+				place,
+
+			Time =
+				Format.TimeOrDash(time),
+
+			Name =
+				name,
+
+			NodeColor =
+				WalkColor(),
+
+			RailTop =
+				top,
+
+			RailBottom =
+				bottom,
+
 			Description =
 				$"{Format.TimeOrDash(time)}, {name}"
 		};
+
 
 	/// <summary>
 	/// Colour of the neighbouring leg in the given direction,
@@ -583,12 +894,15 @@ public static class TimelineRowFactory
 		int index,
 		int step)
 	{
-		while (index >= 0 && index < items.Count)
+		while (
+			index >= 0
+			&& index < items.Count)
 		{
 			switch (items[index])
 			{
 				case RideItem ride:
-					return ModeColors.For(ride.Leg.Mode);
+					return ModeColors.For(
+						ride.Leg.Mode);
 
 				case WalkItem:
 					return WalkColor();
@@ -597,40 +911,71 @@ public static class TimelineRowFactory
 			index += step;
 		}
 
+
 		return Colors.Transparent;
 	}
+
+
+	private static string? JoinText(
+		params string?[] values)
+	{
+		string[] parts =
+	values
+		.Where(value => !string.IsNullOrWhiteSpace(value))
+		.Select(value => value!)
+		.ToArray();
+
+
+		return parts.Length == 0
+			? null
+			: string.Join(
+				" \u00b7 ",
+				parts);
+	}
+
 
 	/// <summary>
 	/// The city/village/region the provider delivers with a stop;
 	/// null when absent or already in the name.
 	/// </summary>
-	private static string? PlaceOf(Station station) =>
-		string.IsNullOrWhiteSpace(station.Place)
+	private static string? PlaceOf(
+		Station station) =>
+		string.IsNullOrWhiteSpace(
+			station.Place)
 			|| station.Name.Contains(
 				station.Place,
 				StringComparison.OrdinalIgnoreCase)
 			? null
 			: station.Place.Trim();
 
+
 	private static Color WalkColor() =>
 		ModeColors
 			.For(TransitMode.Walk)
 			.WithAlpha(0.5f);
 
-	private static string TimeOf(DateTimeOffset? time) =>
+
+	private static string TimeOf(
+		DateTimeOffset? time) =>
 		time is { } value
 			? Format.Time(value)
 			: Dash;
 
-	private static string? PlatformText(string? platform)
+
+	private static string? PlatformText(
+		string? platform)
 	{
 		if (string.IsNullOrWhiteSpace(platform))
 		{
 			return null;
 		}
 
+
 		JourneyStrings strings =
-			LocalizationService.Current.CurrentStrings.Journey;
+			LocalizationService.Current
+				.CurrentStrings
+				.Journey;
+
 
 		// Short values ("3", "A") read as a platform number;
 		// longer ones are shown as given.
@@ -638,6 +983,7 @@ public static class TimelineRowFactory
 			? $"{strings.Platform} {platform}"
 			: platform;
 	}
+
 
 	private static string? PlatformPair(
 		string? arrival,
@@ -649,15 +995,18 @@ public static class TimelineRowFactory
 			return null;
 		}
 
+
 		if (string.IsNullOrWhiteSpace(arrival))
 		{
 			return PlatformText(departure);
 		}
 
+
 		if (string.IsNullOrWhiteSpace(departure))
 		{
 			return PlatformText(arrival);
 		}
+
 
 		if (string.Equals(
 				arrival,
@@ -667,8 +1016,11 @@ public static class TimelineRowFactory
 			return PlatformText(arrival);
 		}
 
-		return $"{PlatformText(arrival)} \u2192 {PlatformText(departure)}";
+
+		return
+			$"{PlatformText(arrival)} \u2192 {PlatformText(departure)}";
 	}
+
 
 	private static string? Features(
 		AccessibilityInfo? info)
@@ -678,50 +1030,84 @@ public static class TimelineRowFactory
 			return null;
 		}
 
-		JourneyStrings strings =
-			LocalizationService.Current.CurrentStrings.Journey;
 
-		var values = new List<string>();
+		JourneyStrings strings =
+			LocalizationService.Current
+				.CurrentStrings
+				.Journey;
+
+
+		var values =
+			new List<string>();
+
 
 		if (info.LowFloor == true)
 		{
-			values.Add(strings.LowFloor);
+			values.Add(
+				strings.LowFloor);
 		}
+
 
 		if (info.WheelchairAccessible == true)
 		{
-			values.Add(strings.WheelchairAccessible);
+			values.Add(
+				strings.WheelchairAccessible);
 		}
+
 
 		if (info.BicycleAccessible == true)
 		{
-			values.Add(strings.BicycleAccessible);
+			values.Add(
+				strings.BicycleAccessible);
 		}
+
 
 		return values.Count == 0
 			? null
-			: string.Join(" \u00b7 ", values);
+			: string.Join(
+				" \u00b7 ",
+				values);
 	}
 
-	private static string? FormatOccupancy(OccupancyLevel? occupancy)
+
+	private static string? FormatOccupancy(
+		OccupancyLevel? occupancy)
 	{
-		if (occupancy is null || occupancy == OccupancyLevel.Unknown)
+		if (occupancy is null
+			|| occupancy == OccupancyLevel.Unknown)
 		{
 			return null;
 		}
 
+
 		JourneyStrings strings =
-			LocalizationService.Current.CurrentStrings.Journey;
+			LocalizationService.Current
+				.CurrentStrings
+				.Journey;
+
 
 		return occupancy switch
 		{
-			OccupancyLevel.VeryLow => strings.OccupancyVeryLow,
-			OccupancyLevel.Low => strings.OccupancyLow,
-			OccupancyLevel.Medium => strings.OccupancyMedium,
-			OccupancyLevel.High => strings.OccupancyHigh,
-			OccupancyLevel.Full => strings.OccupancyFull,
-			OccupancyLevel.Overloaded => strings.OccupancyOverloaded,
-			_ => null
+			OccupancyLevel.VeryLow =>
+				strings.OccupancyVeryLow,
+
+			OccupancyLevel.Low =>
+				strings.OccupancyLow,
+
+			OccupancyLevel.Medium =>
+				strings.OccupancyMedium,
+
+			OccupancyLevel.High =>
+				strings.OccupancyHigh,
+
+			OccupancyLevel.Full =>
+				strings.OccupancyFull,
+
+			OccupancyLevel.Overloaded =>
+				strings.OccupancyOverloaded,
+
+			_ =>
+				null
 		};
 	}
 }

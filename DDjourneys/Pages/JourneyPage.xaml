@@ -11,15 +11,16 @@
 
 	<ContentPage.ToolbarItems>
 		<ToolbarItem
-			SemanticProperties.Description="{localization:Tr Common.Share}"
 			Command="{Binding ShareCommand}"
-			Text="&#x2197;" />
+			SemanticProperties.Description="{localization:Tr Common.Share}"
+			Text="&#x2934;" />
 	</ContentPage.ToolbarItems>
 
 	<ContentPage.Resources>
 
 		<!--  Stop where a leg starts or ends  -->
 		<DataTemplate x:Key="StopTemplate" x:DataType="support:StopRow">
+
 			<Grid
 				ColumnDefinitions="60,18,*"
 				ColumnSpacing="12"
@@ -51,6 +52,7 @@
 				</VerticalStackLayout>
 
 				<Grid Grid.Column="1" RowDefinitions="16,*">
+
 					<BoxView
 						Grid.Row="0"
 						HorizontalOptions="Center"
@@ -84,8 +86,8 @@
 
 				<VerticalStackLayout
 					Grid.Column="2"
-					Padding="0,8,0,16"
-					Spacing="6">
+					Padding="0,4,0,10"
+					Spacing="4">
 
 					<Label FontFamily="OpenSansSemibold" Text="{Binding Name}" />
 
@@ -99,12 +101,14 @@
 						StyleClass="Caption"
 						Text="{Binding PlatformText}" />
 				</VerticalStackLayout>
+
 			</Grid>
 		</DataTemplate>
 
 
 		<!--  Stop between departure and arrival  -->
 		<DataTemplate x:Key="IntermediateTemplate" x:DataType="support:IntermediateRow">
+
 			<Grid
 				ColumnDefinitions="60,18,*"
 				ColumnSpacing="12"
@@ -120,6 +124,7 @@
 				</HorizontalStackLayout>
 
 				<Grid Grid.Column="1">
+
 					<BoxView
 						HorizontalOptions="Center"
 						WidthRequest="4"
@@ -137,8 +142,8 @@
 
 				<HorizontalStackLayout
 					Grid.Column="2"
-					Padding="0,4,0,10"
-					Spacing="8">
+					Padding="0,4,0,6"
+					Spacing="6">
 
 					<Label StyleClass="Caption" Text="{Binding Name}" />
 
@@ -169,6 +174,7 @@
 
 		<!--  Ride: line, direction, duration, expand toggle  -->
 		<DataTemplate x:Key="LegTemplate" x:DataType="support:LegRow">
+
 			<Grid
 				ColumnDefinitions="60,18,*"
 				ColumnSpacing="12"
@@ -176,6 +182,7 @@
 				SemanticProperties.Description="{Binding Description}">
 
 				<Grid Grid.Column="1">
+
 					<BoxView
 						HorizontalOptions="Center"
 						WidthRequest="4"
@@ -184,10 +191,11 @@
 
 				<VerticalStackLayout
 					Grid.Column="2"
-					Padding="0,0,0,12"
-					Spacing="4">
+					Padding="0,0,0,8"
+					Spacing="3">
 
 					<Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+
 						<Border BackgroundColor="{Binding ModeColor}" StyleClass="Chip">
 
 							<Label
@@ -248,13 +256,19 @@
 							TextColor="{DynamicResource Accent}"
 							VerticalOptions="Center" />
 
-						<Grid HeightRequest="24" VerticalOptions="Center" WidthRequest="24">
+						<Grid
+							HeightRequest="24"
+							VerticalOptions="Center"
+							WidthRequest="24">
+
 							<Label
 								FontFamily="OpenSansSemibold"
-								FontSize="18"
+								FontSize="17"
+								HorizontalTextAlignment="Center"
+								LineHeight="1"
 								Text="{Binding Chevron}"
 								TextColor="{DynamicResource Accent}"
-								HorizontalTextAlignment="Center"
+								VerticalOptions="Center"
 								VerticalTextAlignment="Center" />
 						</Grid>
 
@@ -270,6 +284,7 @@
 
 		<!--  Walking  -->
 		<DataTemplate x:Key="WalkTemplate" x:DataType="support:WalkRow">
+
 			<Grid
 				ColumnDefinitions="60,18,*"
 				ColumnSpacing="12"
@@ -277,6 +292,7 @@
 				SemanticProperties.Description="{Binding Description}">
 
 				<Grid Grid.Column="1">
+
 					<BoxView
 						HorizontalOptions="Center"
 						WidthRequest="4"
@@ -285,7 +301,7 @@
 
 				<VerticalStackLayout
 					Grid.Column="2"
-					Padding="0,4,0,16"
+					Padding="0,4,0,10"
 					Spacing="2">
 
 					<Label FontFamily="OpenSansSemibold" Text="{Binding Text}" />
@@ -301,6 +317,7 @@
 
 		<!--  Change from one ride to the next  -->
 		<DataTemplate x:Key="InterchangeTemplate" x:DataType="support:InterchangeRow">
+
 			<Grid
 				ColumnDefinitions="60,18,*"
 				ColumnSpacing="12"
@@ -309,39 +326,43 @@
 
 				<Grid
 					Grid.Column="0"
-					RowDefinitions="*,Auto,*"
+					RowDefinitions="34,18,34"
 					RowSpacing="0">
 
-					<VerticalStackLayout Grid.Row="0" Spacing="1" VerticalOptions="End">
+					<VerticalStackLayout
+						Grid.Row="0"
+						HeightRequest="34"
+						Spacing="1"
+						VerticalOptions="Center">
+
 						<Label FontFamily="OpenSansSemibold" Text="{Binding ArrivalTime}" />
 
 						<Label
 							IsVisible="{Binding HasArrivalDelay}"
 							StyleClass="Delay"
 							Text="{Binding ArrivalDelay}" />
-
-						<Label
-							IsVisible="{Binding HasArrivalOccupancy}"
-							StyleClass="Caption"
-							Text="{Binding ArrivalOccupancyText}" />
 					</VerticalStackLayout>
 
-					<VerticalStackLayout Grid.Row="2" Spacing="1" VerticalOptions="Start">
+					<VerticalStackLayout
+						Grid.Row="2"
+						HeightRequest="34"
+						Spacing="1"
+						VerticalOptions="Center">
+
 						<Label FontFamily="OpenSansSemibold" Text="{Binding DepartureTime}" />
 
 						<Label
 							IsVisible="{Binding HasDepartureDelay}"
 							StyleClass="Delay"
 							Text="{Binding DepartureDelay}" />
-
-						<Label
-							IsVisible="{Binding HasDepartureOccupancy}"
-							StyleClass="Caption"
-							Text="{Binding DepartureOccupancyText}" />
 					</VerticalStackLayout>
 				</Grid>
 
-				<Grid Grid.Column="1" RowDefinitions="*,Auto,*" RowSpacing="0">
+				<Grid
+					Grid.Column="1"
+					RowDefinitions="34,18,34"
+					RowSpacing="0">
+
 					<BoxView
 						Grid.Row="0"
 						HorizontalOptions="Center"
@@ -350,8 +371,8 @@
 
 					<Grid
 						Grid.Row="1"
-						Margin="0,0,0,0"
 						HeightRequest="18"
+						VerticalOptions="Center"
 						WidthRequest="18">
 
 						<BoxView CornerRadius="9" Color="{Binding NodeColor}" />
@@ -374,8 +395,8 @@
 
 				<VerticalStackLayout
 					Grid.Column="2"
-					Padding="0,8,0,16"
-					Spacing="6">
+					Padding="0,4,0,10"
+					Spacing="4">
 
 					<Label FontFamily="OpenSansSemibold" Text="{Binding Name}" />
 
@@ -385,25 +406,16 @@
 						Text="{Binding PlaceText}" />
 
 					<Label
-						IsVisible="{Binding HasContinuesFrom}"
+						IsVisible="{Binding HasConnection}"
 						StyleClass="Caption"
-						Text="{Binding ContinuesFrom}" />
-
-					<Label
-						IsVisible="{Binding HasPlatform}"
-						StyleClass="Caption"
-						Text="{Binding PlatformText}" />
+						Text="{Binding ConnectionText}" />
 
 					<Label
 						IsVisible="{Binding HasWalk}"
 						StyleClass="Caption"
 						Text="{Binding WalkText}" />
 
-					<Border
-						Margin="0,2,0,0"
-						HorizontalOptions="Start"
-						IsVisible="{Binding HasWait}"
-						StyleClass="Chip">
+					<Border IsVisible="{Binding HasWait}" StyleClass="Chip">
 
 						<Label StyleClass="Caption" Text="{Binding WaitText}" />
 					</Border>
@@ -412,6 +424,7 @@
 						IsVisible="{Binding HasRisk}"
 						StyleClass="Delay"
 						Text="{Binding RiskText}" />
+
 				</VerticalStackLayout>
 			</Grid>
 		</DataTemplate>
@@ -419,6 +432,7 @@
 
 		<!--  Provider message  -->
 		<DataTemplate x:Key="NoticeTemplate" x:DataType="support:NoticeRow">
+
 			<Grid
 				ColumnDefinitions="60,18,*"
 				ColumnSpacing="12"
@@ -426,6 +440,7 @@
 				SemanticProperties.Description="{Binding Description}">
 
 				<Grid Grid.Column="1">
+
 					<BoxView
 						HorizontalOptions="Center"
 						WidthRequest="4"
@@ -434,7 +449,7 @@
 
 				<controls:NoticeCard
 					Grid.Column="2"
-					Margin="0,2,0,12"
+					Margin="0,2,0,8"
 					Expanded="{Binding Expanded}"
 					Technical="{Binding Technical}"
 					Text="{Binding Text}" />
@@ -460,6 +475,7 @@
 			<VerticalStackLayout x:Name="HeaderBlock" Spacing="{StaticResource SpaceM}">
 
 				<VerticalStackLayout Spacing="2">
+
 					<Label StyleClass="Title" Text="{Binding RouteText}" />
 
 					<Label StyleClass="Caption" Text="{Binding DayText}" />
@@ -474,13 +490,16 @@
 
 					<BindableLayout.ItemTemplate>
 						<DataTemplate x:DataType="support:NoticeRow">
+
 							<controls:NoticeCard
 								Expanded="{Binding Expanded}"
 								Technical="{Binding Technical}"
 								Text="{Binding Text}" />
+
 						</DataTemplate>
 					</BindableLayout.ItemTemplate>
 				</VerticalStackLayout>
+
 			</VerticalStackLayout>
 
 			<Label
@@ -489,6 +508,7 @@
 				Text="{Binding LoadError}" />
 
 			<Border Padding="12,12,12,0" StyleClass="Card">
+
 				<VerticalStackLayout BindableLayout.ItemTemplateSelector="{StaticResource RowSelector}" BindableLayout.ItemsSource="{Binding Rows}" />
 			</Border>
 

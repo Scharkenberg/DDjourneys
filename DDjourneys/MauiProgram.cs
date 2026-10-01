@@ -1,5 +1,9 @@
 using CommunityToolkit.Maui;
-using DDjourneys.Core.Providers;
+using DDjourneys.Core.Api;
+using DDjourneys.Core.Diagnostics;
+using DDjourneys.Core.Providers.Abstractions;
+using DDjourneys.Core.Providers.Vvo;
+using DDjourneys.Core.Services;
 using DDjourneys.Localization;
 using DDjourneys.Pages;
 using DDjourneys.Support;
@@ -36,8 +40,19 @@ public static class MauiProgram
 
 		builder.Services.AddSingleton(settings);
 
-		// Core services (providers, journey and location services).
-		builder.Services.AddDDjourneysProviders();
+		// Core services.
+		builder.Services.AddSingleton<ApiClient>();
+		builder.Services.AddSingleton<VvoApiClient>();
+
+		builder.Services.AddSingleton<IJourneyProvider, VvoJourneyProvider>();
+
+		builder.Services.AddSingleton<JourneyProviderDiagnostics>();
+		builder.Services.AddSingleton<JourneyService>();
+
+		builder.Services.AddSingleton<ILocationProvider, VvoLocationProvider>();
+		builder.Services.AddSingleton<LocationService>();
+
+		builder.Services.AddSingleton<PlaceStore>();
 
 		// Pages are transient; view models are added with their pages.
 		builder.Services.AddTransient<PlanPage>();
@@ -59,26 +74,31 @@ public static class MauiProgram
 	}
 
 #if WINDOWS && DEBUG
-	/// <summary>
-	/// Debug aid for WinUI's "No installed components were detected" (0x800F1000).
-	/// MAUI wraps a Label's TextBlock in a container when it gets a Background, Clip or Shadow.
-	/// If the TextBlock already sits inside something that is not a Panel, WinUI refuses.
-	/// This logs exactly that situation, with the label text, before the crash happens.
-	/// Remove once the crash is confirmed gone.
-	/// </summary>
 	private static void InstallLabelContainerDiagnostics()
 	{
-		foreach (string key in new[] { nameof(IView.Background), nameof(IView.Clip), nameof(IView.Shadow) })
+		foreach (string key in new[]
 		{
-			Microsoft.Maui.Handlers.LabelHandler.Mapper.PrependToMapping(key, (handler, view) =>
-			{
-				if (handler.PlatformView is Microsoft.UI.Xaml.FrameworkElement { Parent: { } parent }
-					&& parent is not Microsoft.UI.Xaml.Controls.Panel)
+			nameof(IView.Background),
+			nameof(IView.Clip),
+			nameof(IView.Shadow)
+		})
+		{
+			Microsoft.Maui.Handlers.LabelHandler.Mapper.PrependToMapping(
+				key,
+				(handler, view) =>
 				{
-					System.Diagnostics.Debug.WriteLine(
-						$"[DIAG] Label '{(view as Label)?.Text}': {key} mapped while its TextBlock is parented by {parent.GetType().Name}");
-				}
-			});
+					if (handler.PlatformView is Microsoft.UI.Xaml.FrameworkElement
+						{
+							Parent: { } parent
+						}
+						&& parent is not Microsoft.UI.Xaml.Controls.Panel)
+					{
+						System.Diagnostics.Debug.WriteLine(
+							$"[DIAG] Label '{(view as Label)?.Text}': " +
+							$"{key} mapped while its TextBlock is parented by " +
+							$"{parent.GetType().Name}");
+					}
+				});
 		}
 	}
 #endif

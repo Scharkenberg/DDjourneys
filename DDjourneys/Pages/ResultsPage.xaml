@@ -9,23 +9,23 @@
 	Title="{localization:Tr Results.Title}"
 	x:DataType="local:ResultsViewModel">
 
-	<!--
-		No EmptyView: on Windows a Label as direct child of a templated host has crashed before.
-		The status panel is an ordinary sibling of the list instead.
-	-->
 	<Grid
 		Padding="{StaticResource PadPage}"
-		RowDefinitions="Auto,*"
+		RowDefinitions="Auto,Auto,*"
 		RowSpacing="{StaticResource SpaceM}">
 
+		<!--  Result header  -->
 		<Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+
 			<VerticalStackLayout Spacing="2" VerticalOptions="Center">
+
 				<Label
 					LineBreakMode="TailTruncation"
 					StyleClass="Title"
 					Text="{Binding RouteText}" />
 
 				<Label StyleClass="Caption" Text="{Binding WhenText}" />
+
 			</VerticalStackLayout>
 
 			<Button
@@ -34,9 +34,12 @@
 				SemanticProperties.Description="{localization:Tr Common.SearchAgain}"
 				StyleClass="IconButton"
 				Text="&#x21BB;" />
+
 		</Grid>
 
-		<Grid Grid.Row="1">
+
+
+		<Grid Grid.Row="2">
 
 			<RefreshView Command="{Binding RefreshCommand}" IsRefreshing="{Binding IsRefreshing}">
 
@@ -48,16 +51,22 @@
 
 					<CollectionView.ItemTemplate>
 						<DataTemplate x:DataType="support:JourneyCardModel">
+
 							<controls:JourneyCard Loaded="CardLoaded">
+
 								<controls:JourneyCard.GestureRecognizers>
 									<TapGestureRecognizer Tapped="JourneyTapped" />
 								</controls:JourneyCard.GestureRecognizers>
+
 							</controls:JourneyCard>
+
 						</DataTemplate>
 					</CollectionView.ItemTemplate>
 
 				</CollectionView>
+
 			</RefreshView>
+
 
 			<VerticalStackLayout
 				Margin="0,48,0,0"
@@ -89,6 +98,7 @@
 			</VerticalStackLayout>
 
 		</Grid>
+
 	</Grid>
 
 </ContentPage>

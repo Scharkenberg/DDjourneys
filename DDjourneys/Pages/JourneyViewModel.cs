@@ -7,29 +7,43 @@ using Microsoft.Maui.ApplicationModel.DataTransfer;
 
 namespace DDjourneys.Pages;
 
-public sealed class JourneyViewModel : ObservableObject, IQueryAttributable
+public sealed class JourneyViewModel :
+	ObservableObject,
+	IQueryAttributable
 {
 	private readonly AppSettings _settings;
 	private readonly LocalizationService _localization;
 
 	private Journey? _journey;
 
-	public JourneyViewModel(AppSettings settings)
-	{
-		ArgumentNullException.ThrowIfNull(settings);
 
-		_settings = settings;
-		_localization = LocalizationService.Current;
+	public JourneyViewModel(
+		AppSettings settings)
+	{
+		ArgumentNullException.ThrowIfNull(
+			settings);
+
+		_settings =
+			settings;
+
+		_localization =
+			LocalizationService.Current;
+
 
 		_localization.PropertyChanged +=
 			OnLocalizationChanged;
 
+
 		ToggleStopsCommand =
-			new Command<LegRow>(ToggleStops);
+			new Command<LegRow>(
+				ToggleStops);
+
 
 		ShareCommand =
-			new Command(async () => await ShareAsync());
+			new AsyncCommand(
+				ShareAsync);
 	}
+
 
 	/// <summary>
 	/// Set when the journey could not be displayed;
@@ -38,55 +52,89 @@ public sealed class JourneyViewModel : ObservableObject, IQueryAttributable
 	public string? LoadError
 	{
 		get => field;
+
 		private set
 		{
-			if (SetProperty(ref field, value))
+			if (SetProperty(
+					ref field,
+					value))
 			{
-				OnPropertyChanged(nameof(HasError));
+				OnPropertyChanged(
+					nameof(HasError));
 			}
 		}
 	}
+
 
 	public bool HasError =>
 		LoadError is not null;
 
-	public Command<LegRow> ToggleStopsCommand { get; }
-	public Command ShareCommand { get; }
 
-	public ObservableCollection<TimelineRow> Rows { get; } = [];
+	public Command<LegRow> ToggleStopsCommand { get; }
+
+	public AsyncCommand ShareCommand { get; }
+
+
+	public ObservableCollection<TimelineRow> Rows { get; } =
+		[];
+
 
 	public JourneyCardModel? Summary
 	{
 		get => field;
-		private set => SetProperty(ref field, value);
+
+		private set =>
+			SetProperty(
+				ref field,
+				value);
 	}
+
 
 	public string RouteText
 	{
 		get => field;
-		private set => SetProperty(ref field, value);
-	} = string.Empty;
+
+		private set =>
+			SetProperty(
+				ref field,
+				value);
+	} =
+		string.Empty;
+
 
 	public string DayText
 	{
 		get => field;
-		private set => SetProperty(ref field, value);
-	} = string.Empty;
+
+		private set =>
+			SetProperty(
+				ref field,
+				value);
+	} =
+		string.Empty;
+
 
 	public IReadOnlyList<NoticeRow> Notices
 	{
 		get => field;
+
 		private set
 		{
-			if (SetProperty(ref field, value))
+			if (SetProperty(
+					ref field,
+					value))
 			{
-				OnPropertyChanged(nameof(HasNotices));
+				OnPropertyChanged(
+					nameof(HasNotices));
 			}
 		}
-	} = [];
+	} =
+		[];
+
 
 	public bool HasNotices =>
 		Notices.Count > 0;
+
 
 	public void ApplyQueryAttributes(
 		IDictionary<string, object> query)
@@ -100,38 +148,56 @@ public sealed class JourneyViewModel : ObservableObject, IQueryAttributable
 		}
 	}
 
-	private void Load(Journey journey)
+
+	private void Load(
+		Journey journey)
 	{
-		if (ReferenceEquals(_journey, journey))
+		if (ReferenceEquals(
+				_journey,
+				journey))
 		{
 			return;
 		}
 
+
 		try
 		{
-			_journey = journey;
-			LoadError = null;
+			_journey =
+				journey;
 
-			BuildLocalizedDisplay(journey);
+			LoadError =
+				null;
+
+			BuildLocalizedDisplay(
+				journey);
 		}
 		catch (Exception ex)
 		{
 			System.Diagnostics.Debug.WriteLine(
 				$"Journey display failed:\n{ex}");
 
+
 			LoadError =
-				_localization.CurrentStrings.Journey
+				_localization
+					.CurrentStrings
+					.Journey
 					.CouldNotBeDisplayed;
 		}
 	}
 
-	private void BuildLocalizedDisplay(Journey journey)
+
+	private void BuildLocalizedDisplay(
+		Journey journey)
 	{
 		Summary =
-			new JourneyCardModel(journey);
+			new JourneyCardModel(
+				journey);
+
 
 		RouteText =
-			$"{journey.From.Name} \u2192 {journey.To.Name}";
+			$"{journey.From.Name} " +
+			$"\u2192 {journey.To.Name}";
+
 
 		DayText =
 			journey.Departure is { } departure
@@ -141,21 +207,26 @@ public sealed class JourneyViewModel : ObservableObject, IQueryAttributable
 						CultureInfo.CurrentCulture)
 				: string.Empty;
 
+
 		// Journey-level notices that a leg or transfer already
 		// carries would otherwise show twice.
 		var nested =
 			journey.Legs
-				.SelectMany(l => l.Notices)
+				.SelectMany(
+					l => l.Notices)
 				.Concat(
 					journey.Transfers
-						.SelectMany(t => t.Notices))
+						.SelectMany(
+							t => t.Notices))
 				.ToHashSet();
+
 
 		var options =
 			new TimelineOptions(
 				_settings.ShowWalkingLegs,
 				_settings.ExpandNotices,
 				_settings.ShowTechnicalDetails);
+
 
 		Notices =
 			journey.Notices
@@ -168,16 +239,23 @@ public sealed class JourneyViewModel : ObservableObject, IQueryAttributable
 					n =>
 						new NoticeRow
 						{
-							Text = n,
-							Description = n,
+							Text =
+								n,
+
+							Description =
+								n,
+
 							Expanded =
 								options.ExpandNotices,
+
 							Technical =
 								options.Technical
 						})
 				.ToList();
 
+
 		Rows.Clear();
+
 
 		foreach (TimelineRow row in
 			TimelineRowFactory.Build(
@@ -187,8 +265,11 @@ public sealed class JourneyViewModel : ObservableObject, IQueryAttributable
 			Rows.Add(row);
 		}
 
-		LoadError = null;
+
+		LoadError =
+			null;
 	}
+
 
 	private void OnLocalizationChanged(
 		object? sender,
@@ -198,6 +279,7 @@ public sealed class JourneyViewModel : ObservableObject, IQueryAttributable
 			RefreshLocalizedDisplay);
 	}
 
+
 	private void RefreshLocalizedDisplay()
 	{
 		if (_journey is null)
@@ -205,32 +287,41 @@ public sealed class JourneyViewModel : ObservableObject, IQueryAttributable
 			return;
 		}
 
+
 		try
 		{
-			BuildLocalizedDisplay(_journey);
+			BuildLocalizedDisplay(
+				_journey);
 		}
 		catch (Exception ex)
 		{
 			System.Diagnostics.Debug.WriteLine(
 				$"Localized journey refresh failed:\n{ex}");
 
+
 			LoadError =
-				_localization.CurrentStrings.Journey
+				_localization
+					.CurrentStrings
+					.Journey
 					.CouldNotBeDisplayed;
 		}
 	}
 
+
 	/// <summary>
 	/// Inserts or removes a leg's intermediate stops directly below its row.
 	/// </summary>
-	private void ToggleStops(LegRow? leg)
+	private void ToggleStops(
+		LegRow? leg)
 	{
 		try
 		{
 			int at =
 				leg is null
 					? -1
-					: Rows.IndexOf(leg);
+					: Rows.IndexOf(
+						leg);
+
 
 			if (leg is null
 				|| at < 0
@@ -238,6 +329,7 @@ public sealed class JourneyViewModel : ObservableObject, IQueryAttributable
 			{
 				return;
 			}
+
 
 			if (leg.IsExpanded)
 			{
@@ -250,7 +342,8 @@ public sealed class JourneyViewModel : ObservableObject, IQueryAttributable
 					&& Rows[at + 1] is IntermediateRow;
 					i++)
 				{
-					Rows.RemoveAt(at + 1);
+					Rows.RemoveAt(
+						at + 1);
 				}
 			}
 			else
@@ -260,7 +353,9 @@ public sealed class JourneyViewModel : ObservableObject, IQueryAttributable
 					i < leg.Intermediates.Count;
 					i++)
 				{
-					leg.Intermediates[i].Index = i;
+					leg.Intermediates[i].Index =
+						i;
+
 
 					Rows.Insert(
 						at + 1 + i,
@@ -268,7 +363,9 @@ public sealed class JourneyViewModel : ObservableObject, IQueryAttributable
 				}
 			}
 
-			leg.IsExpanded = !leg.IsExpanded;
+
+			leg.IsExpanded =
+				!leg.IsExpanded;
 		}
 		catch (Exception ex)
 		{
@@ -277,6 +374,7 @@ public sealed class JourneyViewModel : ObservableObject, IQueryAttributable
 		}
 	}
 
+
 	private async Task ShareAsync()
 	{
 		if (_journey is null)
@@ -284,17 +382,23 @@ public sealed class JourneyViewModel : ObservableObject, IQueryAttributable
 			return;
 		}
 
+
 		try
 		{
-			await Share.Default.RequestAsync(
-				new ShareTextRequest
-				{
-					Title =
-						_localization.CurrentStrings.Journey
-							.ShareTitle,
-					Text =
-						BuildShareText(_journey)
-				});
+			await Share.Default
+				.RequestAsync(
+					new ShareTextRequest
+					{
+						Title =
+							_localization
+								.CurrentStrings
+								.Journey
+								.ShareTitle,
+
+						Text =
+							BuildShareText(
+								_journey)
+					});
 		}
 		catch (Exception ex)
 		{
@@ -303,21 +407,29 @@ public sealed class JourneyViewModel : ObservableObject, IQueryAttributable
 		}
 	}
 
-	private string BuildShareText(Journey journey)
+
+	private string BuildShareText(
+		Journey journey)
 	{
 		JourneyStrings strings =
-			_localization.CurrentStrings.Journey;
+			_localization
+				.CurrentStrings
+				.Journey;
+
 
 		var lines =
 			new List<string>
 			{
 				RouteText,
+
 				$"{DayText}, " +
 				$"{Format.TimeOrDash(journey.Departure)}" +
 				$"\u2013{Format.TimeOrDash(journey.Arrival)} " +
 				$"({Format.Duration(journey.Duration)})",
+
 				string.Empty
 			};
+
 
 		foreach (
 			TimelineItem item
@@ -329,7 +441,9 @@ public sealed class JourneyViewModel : ObservableObject, IQueryAttributable
 					{
 						string line =
 							ride.Leg.Line?.Name
-							?? Format.TransportMode(ride.Leg.Mode);
+							?? Format.TransportMode(
+								ride.Leg.Mode);
+
 
 						lines.Add(
 							$"{Format.TimeOrDash(ride.Leg.EffectiveDeparture)} " +
@@ -338,8 +452,10 @@ public sealed class JourneyViewModel : ObservableObject, IQueryAttributable
 							$"\u2192 {ride.Leg.To.Name} " +
 							$"({Format.TimeOrDash(ride.Leg.EffectiveArrival)})");
 
+
 						break;
 					}
+
 
 				case WalkItem walk:
 					lines.Add(
@@ -353,6 +469,7 @@ public sealed class JourneyViewModel : ObservableObject, IQueryAttributable
 					break;
 			}
 		}
+
 
 		return string.Join(
 			Environment.NewLine,
