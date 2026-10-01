@@ -69,6 +69,8 @@ public static class MauiProgram
 
 		builder.Services.AddTransient<SettingsPage>();
 		builder.Services.AddTransient<SettingsViewModel>();
+		builder.Services.AddTransient<ThemesPage>();
+		builder.Services.AddTransient<ThemesViewModel>();
 
 		return builder.Build();
 	}

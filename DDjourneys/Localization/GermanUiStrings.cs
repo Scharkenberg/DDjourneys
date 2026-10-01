@@ -168,6 +168,11 @@ public sealed class GermanUiStrings : IUiStrings
 		ThemeAmoled = "Dunkel AMOLED",
 		ThemeAmoledDescription =
 			"Reines Schwarz, starke Konturen",
+		ThemeOther = "Anderes Design",
+		ThemeOtherDescription = "Aus allen Farbdesigns w\u00e4hlen",
+		ThemesTitle = "Farbdesigns",
+		ThemesLightHeader = "Hell",
+		ThemesDarkHeader = "Dunkel",
 		Animations = "Animationen",
 		AnimationsDescription =
 			"Unaufdringliche \u00dcberg\u00e4nge und Effekte",

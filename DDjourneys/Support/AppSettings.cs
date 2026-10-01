@@ -29,10 +29,19 @@ public sealed class AppSettings
 
 	// ----- App -----
 
-	public ThemeChoice Theme
+	/// <summary>Theme id from <see cref="ThemeCatalog"/>, or "system".</summary>
+	public string ThemeId
 	{
-		get => Read("theme", ThemeChoice.System);
-		set => Write("theme", value);
+		get
+		{
+			string id = Read("themeId", string.Empty);
+
+			// Older versions stored the enum name under "theme".
+			return id.Length > 0
+				? id
+				: Read("theme", "System").ToLowerInvariant();
+		}
+		set => Write("themeId", value);
 	}
 
 	/// <summary>UI language as an IETF culture code (for example "en" or "de-DE").</summary>
@@ -114,6 +123,7 @@ public sealed class AppSettings
 			{
 				var t when t == typeof(bool) => bool.TryParse(raw, out bool b) ? b : (object?)fallback,
 				var t when t == typeof(int) => int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out int i) ? i : (object?)fallback,
+				var t when t == typeof(string) => raw,
 				var t when t.IsEnum => Enum.TryParse(t, raw, out object? e) && Enum.IsDefined(t, e!) ? e : (object?)fallback,
 				_ => (object?)fallback
 			};

@@ -16,6 +16,7 @@ public partial class JourneyPage : ContentPage
 	protected override async void OnAppearing()
 	{
 		base.OnAppearing();
+		_vm.RefreshFromSettings();
 
 		if (_headerShown)
 		{

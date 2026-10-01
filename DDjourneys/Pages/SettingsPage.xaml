@@ -16,6 +16,7 @@
 			<Border Padding="0" StyleClass="Card">
 				<VerticalStackLayout>
 
+					<!--  System: follows the device; dark becomes AMOLED  -->
 					<Grid
 						Padding="12,10"
 						ColumnDefinitions="*,Auto"
@@ -28,85 +29,49 @@
 						<Label
 							Grid.Column="1"
 							FontSize="20"
-							IsVisible="{Binding IsSystem}"
+							IsVisible="{Binding IsSystemTheme}"
 							Text="&#x2713;"
 							TextColor="{DynamicResource Accent}"
 							VerticalOptions="Center" />
 
 						<Grid.GestureRecognizers>
-							<TapGestureRecognizer Command="{Binding SelectThemeCommand}" CommandParameter="{x:Static support:ThemeChoice.System}" />
+							<TapGestureRecognizer Command="{Binding SelectSystemThemeCommand}" />
 						</Grid.GestureRecognizers>
 					</Grid>
 
 					<BoxView StyleClass="Divider" />
 
+					<!--  Other: opens the list of all colour themes  -->
 					<Grid
 						Padding="12,10"
-						ColumnDefinitions="*,Auto"
+						ColumnDefinitions="*,Auto,Auto"
+						ColumnSpacing="10"
 						MinimumHeightRequest="52">
 						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
-							<Label FontFamily="OpenSansSemibold" Text="{localization:Tr Settings.ThemeLight}" />
-							<Label StyleClass="Caption" Text="{localization:Tr Settings.ThemeLightDescription}" />
+							<Label FontFamily="OpenSansSemibold" Text="{localization:Tr Settings.ThemeOther}" />
+							<Label
+								LineBreakMode="TailTruncation"
+								StyleClass="Caption"
+								Text="{Binding OtherThemeText}" />
 						</VerticalStackLayout>
 
 						<Label
 							Grid.Column="1"
 							FontSize="20"
-							IsVisible="{Binding IsLight}"
+							IsVisible="{Binding IsOtherTheme}"
 							Text="&#x2713;"
 							TextColor="{DynamicResource Accent}"
 							VerticalOptions="Center" />
-
-						<Grid.GestureRecognizers>
-							<TapGestureRecognizer Command="{Binding SelectThemeCommand}" CommandParameter="{x:Static support:ThemeChoice.Light}" />
-						</Grid.GestureRecognizers>
-					</Grid>
-
-					<BoxView StyleClass="Divider" />
-
-					<Grid
-						Padding="12,10"
-						ColumnDefinitions="*,Auto"
-						MinimumHeightRequest="52">
-						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
-							<Label FontFamily="OpenSansSemibold" Text="{localization:Tr Settings.ThemeDark}" />
-							<Label StyleClass="Caption" Text="{localization:Tr Settings.ThemeDarkDescription}" />
-						</VerticalStackLayout>
 
 						<Label
-							Grid.Column="1"
-							FontSize="20"
-							IsVisible="{Binding IsDark}"
-							Text="&#x2713;"
-							TextColor="{DynamicResource Accent}"
+							Grid.Column="2"
+							FontSize="22"
+							Text="&#x203A;"
+							TextColor="{DynamicResource InkMuted}"
 							VerticalOptions="Center" />
 
 						<Grid.GestureRecognizers>
-							<TapGestureRecognizer Command="{Binding SelectThemeCommand}" CommandParameter="{x:Static support:ThemeChoice.Dark}" />
-						</Grid.GestureRecognizers>
-					</Grid>
-
-					<BoxView StyleClass="Divider" />
-
-					<Grid
-						Padding="12,10"
-						ColumnDefinitions="*,Auto"
-						MinimumHeightRequest="52">
-						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
-							<Label FontFamily="OpenSansSemibold" Text="{localization:Tr Settings.ThemeAmoled}" />
-							<Label StyleClass="Caption" Text="{localization:Tr Settings.ThemeAmoledDescription}" />
-						</VerticalStackLayout>
-
-						<Label
-							Grid.Column="1"
-							FontSize="20"
-							IsVisible="{Binding IsAmoled}"
-							Text="&#x2713;"
-							TextColor="{DynamicResource Accent}"
-							VerticalOptions="Center" />
-
-						<Grid.GestureRecognizers>
-							<TapGestureRecognizer Command="{Binding SelectThemeCommand}" CommandParameter="{x:Static support:ThemeChoice.Amoled}" />
+							<TapGestureRecognizer Command="{Binding OpenThemesCommand}" />
 						</Grid.GestureRecognizers>
 					</Grid>
 

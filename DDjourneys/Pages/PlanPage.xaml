@@ -221,7 +221,7 @@
 					<!--  Quick steps roll over midnight; "Now" resets  -->
 					<Grid
 						Padding="12,10"
-						ColumnDefinitions="*,*,*,*,*"
+						ColumnDefinitions="*,*,*,*"
 						ColumnSpacing="{StaticResource SpaceS}">
 
 						<Button
@@ -263,33 +263,40 @@
 							MinimumHeightRequest="40"
 							StyleClass="Tonal"
 							Text="+1 h" />
+					</Grid>
 
+					<BoxView StyleClass="Divider" />
+
+					<Grid
+						Padding="12,8"
+						ColumnDefinitions="*,Auto"
+						ColumnSpacing="{StaticResource SpaceS}">
+
+						<Label
+							LineBreakMode="TailTruncation"
+							StyleClass="Subtitle"
+							VerticalOptions="Center">
+
+							<Label.FormattedText>
+								<FormattedString>
+									<Span Text="{Binding ModeText}" TextColor="{DynamicResource InkMuted}" />
+									<Span Text="  " />
+									<Span Text="{Binding WhenText}" TextColor="{DynamicResource Accent}" />
+								</FormattedString>
+							</Label.FormattedText>
+						</Label>
+
+						<!--  Own slot: "Leave now" does not fit a fifth of the row  -->
 						<Button
-							Grid.Column="4"
-							Padding="0"
+							Grid.Column="1"
+							Padding="14,0"
 							Command="{Binding NowCommand}"
-							FontSize="13"
+							FontSize="{StaticResource FontCaption}"
 							IsEnabled="{Binding IsNotNow}"
 							MinimumHeightRequest="36"
 							StyleClass="Tonal"
 							Text="{localization:Tr Plan.LeaveNow}" />
 					</Grid>
-
-					<BoxView StyleClass="Divider" />
-
-					<Label
-						Padding="12,8"
-						HorizontalOptions="Center"
-						StyleClass="Subtitle">
-
-						<Label.FormattedText>
-							<FormattedString>
-								<Span Text="{Binding ModeText}" TextColor="{DynamicResource InkMuted}" />
-								<Span Text="  " />
-								<Span Text="{Binding WhenText}" TextColor="{DynamicResource Accent}" />
-							</FormattedString>
-						</Label.FormattedText>
-					</Label>
 
 				</VerticalStackLayout>
 			</Border>

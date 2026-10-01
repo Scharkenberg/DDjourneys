@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<ResourceDictionary>
+<ResourceDictionary
+	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
 
 	<Style TargetType="Page" ApplyToDerivedTypes="True">
 		<Setter Property="BackgroundColor" Value="{DynamicResource Bg}" />
@@ -67,7 +69,17 @@
 		<Setter Property="BackgroundColor" Value="{DynamicResource Raised}" />
 		<Setter Property="StrokeThickness" Value="0" />
 		<Setter Property="StrokeShape" Value="RoundRectangle 100" />
-		<Setter Property="Padding" Value="10,3" />
+		<!-- Generous horizontal padding: Android measures the semibold font a hair too narrow -->
+		<Setter Property="Padding" Value="12,4" />
+		<Setter Property="MinimumHeightRequest" Value="28" />
+	</Style>
+	<!-- Pill text must never wrap or truncate ("Walk 20 min" -> "Walk 20") -->
+	<Style TargetType="Label" Class="ChipLabel">
+		<Setter Property="LineBreakMode" Value="NoWrap" />
+		<Setter Property="MaxLines" Value="1" />
+		<Setter Property="HorizontalOptions" Value="Center" />
+		<Setter Property="VerticalOptions" Value="Center" />
+		<Setter Property="HorizontalTextAlignment" Value="Center" />
 	</Style>
 
 	<!-- Buttons. Default filled; class Tonal for secondary actions. -->

@@ -18,12 +18,14 @@ public sealed class SettingsViewModel : ObservableObject
 
 		_localization.PropertyChanged += OnLocalizationChanged;
 
-		SelectThemeCommand = new AsyncCommand<ThemeChoice>(SelectThemeAsync);
+		SelectSystemThemeCommand = new AsyncCommand(SelectSystemThemeAsync);
+		OpenThemesCommand = new AsyncCommand(OpenThemesAsync);
 		SelectLanguageCommand = new Command<string>(SelectLanguage);
 		ResetCommand = new Command(Reset);
 	}
 
-	public AsyncCommand<ThemeChoice> SelectThemeCommand { get; }
+	public AsyncCommand SelectSystemThemeCommand { get; }
+	public AsyncCommand OpenThemesCommand { get; }
 	public Command<string> SelectLanguageCommand { get; }
 	public Command ResetCommand { get; }
 
@@ -36,11 +38,6 @@ public sealed class SettingsViewModel : ObservableObject
 		_localization.LanguageCode;
 
 	// ----- Appearance -----
-
-	public bool IsSystem => _settings.Theme == ThemeChoice.System;
-	public bool IsLight => _settings.Theme == ThemeChoice.Light;
-	public bool IsDark => _settings.Theme == ThemeChoice.Dark;
-	public bool IsAmoled => _settings.Theme == ThemeChoice.Amoled;
 
 	public bool Animations
 	{
@@ -69,7 +66,15 @@ public sealed class SettingsViewModel : ObservableObject
 		get => _settings.MaxResults;
 		set
 		{
-			_settings.MaxResults = (int)Math.Round(value);
+			int rounded = (int)Math.Round(value);
+
+			// The slider reports fractional values while dragging; only a
+			// whole-step change is stored. Always notify so the slider snaps.
+			if (rounded != _settings.MaxResults)
+			{
+				_settings.MaxResults = rounded;
+			}
+
 			OnPropertyChanged();
 			OnPropertyChanged(nameof(MaxResultsText));
 		}
@@ -84,8 +89,12 @@ public sealed class SettingsViewModel : ObservableObject
 		get => _settings.TimeoutSeconds;
 		set
 		{
-			_settings.TimeoutSeconds =
-				(int)Math.Round(value / 5.0) * 5;
+			int stepped = (int)Math.Round(value / 5.0) * 5;
+
+			if (stepped != _settings.TimeoutSeconds)
+			{
+				_settings.TimeoutSeconds = stepped;
+			}
 
 			OnPropertyChanged();
 			OnPropertyChanged(nameof(TimeoutText));
@@ -149,11 +158,39 @@ public sealed class SettingsViewModel : ObservableObject
 		}
 	}
 
-	private async Task SelectThemeAsync(ThemeChoice choice)
+	// ----- Theme: only "System" or "Other" is chosen here -----
+
+	public bool IsSystemTheme =>
+		Theme.Choice == ThemeCatalog.SystemId;
+
+	public bool IsOtherTheme => !IsSystemTheme;
+
+	/// <summary>Shows which theme "Other" currently stands for.</summary>
+	public string OtherThemeText
+	{
+		get
+		{
+			SettingsStrings strings = _localization.CurrentStrings.Settings;
+
+			return IsSystemTheme
+				? strings.ThemeOtherDescription
+				: ThemeOption.NameOf(ThemeCatalog.Find(Theme.Choice), strings);
+		}
+	}
+
+	/// <summary>Called when the page (re)appears, e.g. after returning from the theme list.</summary>
+	public void RefreshTheme()
+	{
+		OnPropertyChanged(nameof(IsSystemTheme));
+		OnPropertyChanged(nameof(IsOtherTheme));
+		OnPropertyChanged(nameof(OtherThemeText));
+	}
+
+	private async Task SelectSystemThemeAsync()
 	{
 		try
 		{
-			await Theme.SetAsync(choice);
+			await Theme.SetAsync(ThemeCatalog.SystemId);
 		}
 		catch (Exception ex)
 		{
@@ -161,10 +198,19 @@ public sealed class SettingsViewModel : ObservableObject
 		}
 		finally
 		{
-			OnPropertyChanged(nameof(IsSystem));
-			OnPropertyChanged(nameof(IsLight));
-			OnPropertyChanged(nameof(IsDark));
-			OnPropertyChanged(nameof(IsAmoled));
+			RefreshTheme();
+		}
+	}
+
+	private async Task OpenThemesAsync()
+	{
+		try
+		{
+			await Shell.Current.GoToAsync(Routes.Themes);
+		}
+		catch (Exception ex)
+		{
+			System.Diagnostics.Debug.WriteLine($"Opening themes failed: {ex}");
 		}
 	}
 
@@ -197,6 +243,7 @@ public sealed class SettingsViewModel : ObservableObject
 
 	private void RefreshLocalizedProperties()
 	{
+		RefreshTheme();
 		OnPropertyChanged(nameof(AvailableLanguages));
 		OnPropertyChanged(nameof(LanguageCode));
 		OnPropertyChanged(nameof(MaxResultsText));

@@ -196,13 +196,21 @@
 
 					<Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
 
-						<Border BackgroundColor="{Binding ModeColor}" StyleClass="Chip">
+						<Border
+							BackgroundColor="{Binding Look.Fill}"
+							StrokeDashArray="{Binding Look.Dashes}"
+							StrokeShape="{Binding Look.Shape}"
+							StrokeThickness="{Binding Look.StrokeThickness}"
+							StyleClass="Chip"
+							Stroke="{Binding Look.Stroke}"
+							VerticalOptions="Center">
 
 							<Label
 								FontFamily="OpenSansSemibold"
 								FontSize="{StaticResource FontCaption}"
+								StyleClass="ChipLabel"
 								Text="{Binding LineText}"
-								TextColor="White" />
+								TextColor="{Binding Look.Text}" />
 						</Border>
 
 						<Label
@@ -261,15 +269,14 @@
 							VerticalOptions="Center"
 							WidthRequest="24">
 
-							<Label
-								FontFamily="OpenSansSemibold"
-								FontSize="17"
-								HorizontalTextAlignment="Center"
-								LineHeight="1"
-								Text="{Binding Chevron}"
-								TextColor="{DynamicResource Accent}"
+							<Polygon
+								Fill="{DynamicResource Accent}"
+								HeightRequest="8"
+								HorizontalOptions="Center"
+								Points="0,0 12,0 6,8"
+								Rotation="{Binding ChevronRotation}"
 								VerticalOptions="Center"
-								VerticalTextAlignment="Center" />
+								WidthRequest="12" />
 						</Grid>
 
 						<HorizontalStackLayout.GestureRecognizers>
@@ -315,7 +322,10 @@
 		</DataTemplate>
 
 
-		<!--  Change from one ride to the next  -->
+		<!--  Change from one ride to the next.
+		     Left: arrival time above the node, departure time below it, symmetric.
+		     Middle: rail fills the full row height (top 34 / node 18 / rest).
+		     Right: the name sits on the node's line; details follow below.  -->
 		<DataTemplate x:Key="InterchangeTemplate" x:DataType="support:InterchangeRow">
 
 			<Grid
@@ -326,14 +336,14 @@
 
 				<Grid
 					Grid.Column="0"
-					RowDefinitions="34,18,34"
+					RowDefinitions="34,18,*"
 					RowSpacing="0">
 
 					<VerticalStackLayout
 						Grid.Row="0"
-						HeightRequest="34"
+						Padding="0,0,0,2"
 						Spacing="1"
-						VerticalOptions="Center">
+						VerticalOptions="End">
 
 						<Label FontFamily="OpenSansSemibold" Text="{Binding ArrivalTime}" />
 
@@ -345,9 +355,9 @@
 
 					<VerticalStackLayout
 						Grid.Row="2"
-						HeightRequest="34"
+						Padding="0,2,0,0"
 						Spacing="1"
-						VerticalOptions="Center">
+						VerticalOptions="Start">
 
 						<Label FontFamily="OpenSansSemibold" Text="{Binding DepartureTime}" />
 
@@ -360,7 +370,7 @@
 
 				<Grid
 					Grid.Column="1"
-					RowDefinitions="34,18,34"
+					RowDefinitions="34,18,*"
 					RowSpacing="0">
 
 					<BoxView
@@ -395,8 +405,8 @@
 
 				<VerticalStackLayout
 					Grid.Column="2"
-					Padding="0,4,0,10"
-					Spacing="4">
+					Padding="0,32,0,10"
+					Spacing="3">
 
 					<Label FontFamily="OpenSansSemibold" Text="{Binding Name}" />
 
@@ -415,7 +425,11 @@
 						StyleClass="Caption"
 						Text="{Binding WalkText}" />
 
-					<Border IsVisible="{Binding HasWait}" StyleClass="Chip">
+					<Border
+						Margin="0,2,0,0"
+						HorizontalOptions="Start"
+						IsVisible="{Binding HasWait}"
+						StyleClass="Chip">
 
 						<Label StyleClass="Caption" Text="{Binding WaitText}" />
 					</Border>

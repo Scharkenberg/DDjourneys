@@ -184,25 +184,34 @@ public static class TimelineBuilder
 		TimeSpan? walkTime =
 			GetWalkingDuration(transfers);
 
+		DateTimeOffset? nextDeparture =
+			nextLeg?.EffectiveDeparture;
+
 		TimeSpan wait =
 			DetermineWait(
 				transfers,
 				previousArrival,
-				nextLeg?.EffectiveDeparture,
+				nextDeparture,
 				walkTime);
+
+		// With realtime data the connection can already be lost: the next
+		// vehicle leaves before the passenger can get there.
+		bool missed =
+			showWait
+			&& previousArrival is { } arrives
+			&& nextDeparture is { } departs
+			&& departs < arrives + (walkTime ?? TimeSpan.Zero);
 
 		string[] notes =
 			transfers
-				.SelectMany(
-					transfer => transfer.Notices)
-				.Where(
-					n => !string.IsNullOrWhiteSpace(n))
+				.SelectMany(transfer => transfer.Notices)
+				.Where(n => !string.IsNullOrWhiteSpace(n))
 				.Distinct()
 				.ToArray();
 
 		bool endangered =
-			transfers.Any(
-				transfer => !transfer.IsGuaranteed);
+			missed
+			|| transfers.Any(transfer => !transfer.IsGuaranteed);
 
 		return new BoundaryItem(
 			location,
@@ -213,53 +222,41 @@ public static class TimelineBuilder
 			walkTime);
 	}
 
+	/// <summary>
+	/// Time left to change. The live window between the effective arrival
+	/// and departure wins, because the provider's own waiting time is based
+	/// on the timetable and goes stale as soon as a vehicle is late.
+	/// </summary>
 	private static TimeSpan DetermineWait(
 		IReadOnlyList<JourneyTransfer> transfers,
 		DateTimeOffset? previousArrival,
 		DateTimeOffset? nextDeparture,
 		TimeSpan? walkTime)
 	{
-		TimeSpan? explicitWaiting =
-			transfers
-				.Where(
-					transfer =>
-						transfer.WaitingTime is { } waiting
-						&& waiting >= TimeSpan.Zero)
-				.Select(
-					transfer =>
-						transfer.WaitingTime)
-				.Aggregate(
-					(TimeSpan?)null,
-					(total, value) =>
-						total is { } current
-							&& value is { } additional
-							? current + additional
-							: value);
-
-		if (explicitWaiting is { } knownWaiting)
+		if (previousArrival is { } arrives
+			&& nextDeparture is { } departs)
 		{
-			return knownWaiting;
+			TimeSpan window =
+				departs - arrives - (walkTime ?? TimeSpan.Zero);
+
+			return window > TimeSpan.Zero
+				? window
+				: TimeSpan.Zero;
 		}
 
-		if (previousArrival is not { } arrives
-			|| nextDeparture is not { } departs
-			|| departs < arrives)
+		// No usable times: fall back to what the provider reported.
+		TimeSpan explicitWaiting = TimeSpan.Zero;
+
+		foreach (JourneyTransfer transfer in transfers)
 		{
-			return TimeSpan.Zero;
+			if (transfer.WaitingTime is { } waiting
+				&& waiting > TimeSpan.Zero)
+			{
+				explicitWaiting += waiting;
+			}
 		}
 
-		TimeSpan connectionWindow =
-			departs - arrives;
-
-		if (walkTime is not { } walking
-			|| walking <= TimeSpan.Zero)
-		{
-			return connectionWindow;
-		}
-
-		return connectionWindow > walking
-			? connectionWindow - walking
-			: TimeSpan.Zero;
+		return explicitWaiting;
 	}
 
 	private static TimeSpan? GetWalkingDuration(

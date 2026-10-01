@@ -477,6 +477,14 @@ public sealed class ResultsViewModel :
 				}
 			}
 
+			// Nothing new in that direction: keep what is on screen instead of
+			// replacing the list with an empty one.
+			if (replacement.Count == 0
+				&& skipped == 0)
+			{
+				return;
+			}
+
 			Items.Clear();
 
 			foreach (JourneyCardModel item

@@ -45,6 +45,36 @@
 
 				<CollectionView ItemsSource="{Binding Items}" SelectionMode="None">
 
+					<!--  Earlier / later connections (VVO prevnext)  -->
+					<CollectionView.Header>
+						<Button
+							Margin="0,0,0,10"
+							Command="{Binding PreviousCommand}"
+							HorizontalOptions="Center"
+							IsVisible="{Binding CanGoPrevious}"
+							StyleClass="Tonal"
+							Text="{localization:Tr Results.Previous}" />
+					</CollectionView.Header>
+
+					<CollectionView.Footer>
+						<Grid Margin="0,10,0,0" RowDefinitions="Auto,Auto">
+							<Button
+								Command="{Binding NextCommand}"
+								HorizontalOptions="Center"
+								IsVisible="{Binding CanGoNext}"
+								StyleClass="Tonal"
+								Text="{localization:Tr Results.Next}" />
+
+							<ActivityIndicator
+								HeightRequest="28"
+								HorizontalOptions="Center"
+								IsRunning="{Binding IsPaging}"
+								IsVisible="{Binding IsPaging}"
+								WidthRequest="28"
+								Color="{DynamicResource Accent}" />
+						</Grid>
+					</CollectionView.Footer>
+
 					<CollectionView.ItemsLayout>
 						<LinearItemsLayout ItemSpacing="10" Orientation="Vertical" />
 					</CollectionView.ItemsLayout>

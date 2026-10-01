@@ -14,4 +14,5 @@ public static class Routes
 	public const string Results = "results";
 	public const string Journey = "journey";
 	public const string Settings = "settings";
+	public const string Themes = "themes";
 }

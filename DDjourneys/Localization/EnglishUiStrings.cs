@@ -160,6 +160,11 @@ public sealed class EnglishUiStrings : IUiStrings
 		ThemeAmoled = "Dark AMOLED",
 		ThemeAmoledDescription =
 			"Pure black, strong outlines",
+		ThemeOther = "Other theme",
+		ThemeOtherDescription = "Choose from all colour themes",
+		ThemesTitle = "Colour themes",
+		ThemesLightHeader = "Light",
+		ThemesDarkHeader = "Dark",
 		Animations = "Animations",
 		AnimationsDescription =
 			"Subtle transitions and effects",

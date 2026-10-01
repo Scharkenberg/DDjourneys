@@ -47,7 +47,7 @@ public sealed class Journey
 		get
 		{
 			if (Legs.Count == 0
-				|| Legs[^1].EffectiveArrival is not { } arrival)
+				|| FinalLegArrival() is not { } arrival)
 			{
 				return null;
 			}
@@ -62,14 +62,16 @@ public sealed class Journey
 	}
 
 	/// <summary>
-	/// Total journey duration.
-	/// Uses the provider's planned duration when available.
+	/// Total journey duration, consistent with the displayed departure and
+	/// arrival (realtime included). Falls back to the provider's planned
+	/// duration when a time is missing.
 	/// </summary>
 	public TimeSpan Duration =>
-		PlannedDuration
-		?? (Departure.HasValue && Arrival.HasValue
-			? Arrival.Value - Departure.Value
-			: TimeSpan.Zero);
+		Departure is { } start
+		&& Arrival is { } end
+		&& end >= start
+			? end - start
+			: PlannedDuration ?? TimeSpan.Zero;
 
 	public TimeSpan? PlannedDuration { get; init; }
 
@@ -92,6 +94,41 @@ public sealed class Journey
 
 	public IReadOnlyList<JourneyTransfer> Transfers { get; init; }
 		= Array.Empty<JourneyTransfer>();
+
+	/// <summary>
+	/// Arrival of the last leg. Walking legs carry no realtime data, so a
+	/// walk that follows a delayed ride is moved later by that delay (it keeps
+	/// its planned duration). Without this a final walk would show its
+	/// timetable arrival even when the ride before it is late.
+	/// </summary>
+	private DateTimeOffset? FinalLegArrival()
+	{
+		DateTimeOffset? previousArrival = null;
+		DateTimeOffset? arrival = null;
+
+		foreach (JourneyLeg leg in Legs)
+		{
+			arrival = leg.EffectiveArrival;
+
+			if (leg.Mode == TransitMode.Walk
+				&& previousArrival is { } prior
+				&& leg.ScheduledDeparture is { } plannedStart
+				&& leg.ScheduledArrival is { } plannedEnd
+				&& plannedEnd >= plannedStart)
+			{
+				DateTimeOffset start =
+					prior > plannedStart
+						? prior
+						: plannedStart;
+
+				arrival = start + (plannedEnd - plannedStart);
+			}
+
+			previousArrival = arrival;
+		}
+
+		return arrival;
+	}
 
 	private TimeSpan TerminalTransferDuration(
 		int? previousLegIndex,

@@ -5,7 +5,7 @@ using DDjourneys.Localization;
 namespace DDjourneys.Support;
 
 /// <summary>One non-interactive mode chip on a journey card.</summary>
-public sealed record LegChip(string Text, Color Color);
+public sealed record LegChip(string Text, ChipLook Look);
 
 /// <summary>Mode colours are theme-independent tokens defined in Tokens.xaml.</summary>
 public static class ModeColors
@@ -152,7 +152,7 @@ public sealed class JourneyCardModel : ObservableObject
 									leg.EffectiveArrival))
 							: leg.Line?.Name
 								?? Format.TransportMode(leg.Mode),
-						ModeColors.For(leg.Mode)))
+						ModeChips.For(leg.Mode)))
 			.ToList();
 
 		_transfersText = Journey.TransferCount switch

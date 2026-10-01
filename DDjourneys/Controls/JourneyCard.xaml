@@ -62,13 +62,19 @@
 					<DataTemplate x:DataType="support:LegChip">
 						<Border
 							Margin="0,0,6,6"
-							BackgroundColor="{Binding Color}"
-							StyleClass="Chip">
+							BackgroundColor="{Binding Look.Fill}"
+							FlexLayout.Shrink="0"
+							StrokeDashArray="{Binding Look.Dashes}"
+							StrokeShape="{Binding Look.Shape}"
+							StrokeThickness="{Binding Look.StrokeThickness}"
+							StyleClass="Chip"
+							Stroke="{Binding Look.Stroke}">
 							<Label
 								FontFamily="OpenSansSemibold"
 								FontSize="{StaticResource FontCaption}"
+								StyleClass="ChipLabel"
 								Text="{Binding Text}"
-								TextColor="White" />
+								TextColor="{Binding Look.Text}" />
 						</Border>
 					</DataTemplate>
 				</BindableLayout.ItemTemplate>

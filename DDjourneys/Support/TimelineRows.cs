@@ -101,6 +101,8 @@ public sealed class LegRow : TimelineRow
 
 	public required Color ModeColor { get; init; }
 
+	public required ChipLook Look { get; init; }
+
 	public string? Direction { get; init; }
 
 	public required string DurationText { get; init; }
@@ -143,7 +145,7 @@ public sealed class LegRow : TimelineRow
 					nameof(StopsText));
 
 				OnPropertyChanged(
-					nameof(Chevron));
+					nameof(ChevronRotation));
 			}
 		}
 	}
@@ -169,10 +171,11 @@ public sealed class LegRow : TimelineRow
 					Intermediates.Count);
 
 
-	public string Chevron =>
+	/// <summary>Filled triangle: pointing down when collapsed, up when expanded.</summary>
+	public double ChevronRotation =>
 		IsExpanded
-			? "\u2303"
-			: "\u2304";
+			? 180
+			: 0;
 }
 
 
@@ -516,6 +519,9 @@ public static class TimelineRowFactory
 
 				ModeColor =
 					color,
+
+				Look =
+					ModeChips.For(leg.Mode),
 
 				Direction =
 					string.IsNullOrWhiteSpace(

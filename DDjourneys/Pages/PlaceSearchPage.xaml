@@ -9,21 +9,26 @@
 
 	<ContentPage.Resources>
 		<DataTemplate x:Key="PlaceRow" x:DataType="local:PlaceRow">
-			<Grid
-				Padding="12,10"
-				RowDefinitions="Auto,Auto"
-				RowSpacing="2">
-				<Label
-					Grid.Row="0"
-					FontFamily="OpenSansSemibold"
-					LineBreakMode="TailTruncation"
-					Text="{Binding Name}" />
-				<Label
-					Grid.Row="1"
-					IsVisible="{Binding HasDetail}"
-					LineBreakMode="TailTruncation"
-					StyleClass="Caption"
-					Text="{Binding Detail}" />
+			<Grid RowDefinitions="Auto,Auto" RowSpacing="0">
+				<VerticalStackLayout
+					Padding="14,10"
+					MinimumHeightRequest="48"
+					Spacing="2"
+					VerticalOptions="Center">
+					<Label
+						FontFamily="OpenSansSemibold"
+						LineBreakMode="TailTruncation"
+						Text="{Binding Name}" />
+					<Label
+						IsVisible="{Binding HasDetail}"
+						LineBreakMode="TailTruncation"
+						StyleClass="Caption"
+						Text="{Binding Detail}" />
+				</VerticalStackLayout>
+
+				<!--  Hairline between rows (the last one sits on the card border)  -->
+				<BoxView Grid.Row="1" StyleClass="Divider" />
+
 				<Grid.GestureRecognizers>
 					<TapGestureRecognizer Tapped="PlaceTapped" />
 				</Grid.GestureRecognizers>
@@ -68,7 +73,7 @@
 					Text="{Binding Message}" />
 
 				<Border
-					Padding="4"
+					Padding="0"
 					IsVisible="{Binding HasResults}"
 					StyleClass="Card">
 					<VerticalStackLayout BindableLayout.ItemTemplate="{StaticResource PlaceRow}" BindableLayout.ItemsSource="{Binding Results}" />
@@ -76,7 +81,7 @@
 
 				<VerticalStackLayout IsVisible="{Binding ShowRecents}" Spacing="{StaticResource SpaceS}">
 					<Label StyleClass="Title" Text="{localization:Tr Plan.Recent}" />
-					<Border Padding="4" StyleClass="Card">
+					<Border Padding="0" StyleClass="Card">
 						<VerticalStackLayout BindableLayout.ItemTemplate="{StaticResource PlaceRow}" BindableLayout.ItemsSource="{Binding Recents}" />
 					</Border>
 				</VerticalStackLayout>

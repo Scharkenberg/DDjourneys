@@ -149,6 +149,24 @@ public sealed class JourneyViewModel :
 	}
 
 
+	private TimelineOptions? _builtOptions;
+
+	private TimelineOptions CurrentOptions() =>
+		new(
+			_settings.ShowWalkingLegs,
+			_settings.ExpandNotices,
+			_settings.ShowTechnicalDetails);
+
+	/// <summary>Rebuilds the timeline if a display setting changed since it was built.</summary>
+	public void RefreshFromSettings()
+	{
+		if (_journey is not null
+			&& _builtOptions != CurrentOptions())
+		{
+			RefreshLocalizedDisplay();
+		}
+	}
+
 	private void Load(
 		Journey journey)
 	{
@@ -221,11 +239,9 @@ public sealed class JourneyViewModel :
 				.ToHashSet();
 
 
-		var options =
-			new TimelineOptions(
-				_settings.ShowWalkingLegs,
-				_settings.ExpandNotices,
-				_settings.ShowTechnicalDetails);
+		var options = CurrentOptions();
+
+		_builtOptions = options;
 
 
 		Notices =

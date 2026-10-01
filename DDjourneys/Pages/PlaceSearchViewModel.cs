@@ -178,7 +178,8 @@ public sealed class PlaceSearchViewModel : ObservableObject, IQueryAttributable
 
 		var cts = _search = new CancellationTokenSource();
 
-		Results.Clear();
+		// Keep the previous results on screen until the new ones arrive,
+		// so the list does not flash empty on every keystroke.
 		SetMessage(MessageKind.None);
 		RefreshState();
 

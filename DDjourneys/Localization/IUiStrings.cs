@@ -154,6 +154,11 @@ public sealed class SettingsStrings
 	public required string ThemeDarkDescription { get; init; }
 	public required string ThemeAmoled { get; init; }
 	public required string ThemeAmoledDescription { get; init; }
+	public required string ThemeOther { get; init; }
+	public required string ThemeOtherDescription { get; init; }
+	public required string ThemesTitle { get; init; }
+	public required string ThemesLightHeader { get; init; }
+	public required string ThemesDarkHeader { get; init; }
 	public required string Animations { get; init; }
 	public required string AnimationsDescription { get; init; }
 	public required string TechnicalDetails { get; init; }

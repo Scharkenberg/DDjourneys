@@ -1,12 +1,12 @@
-using DDjourneys.Support;
+﻿using DDjourneys.Support;
 
 namespace DDjourneys.Pages;
 
-public partial class SettingsPage : ContentPage
+public partial class ThemesPage : ContentPage
 {
-	private readonly SettingsViewModel _vm;
+	private readonly ThemesViewModel _vm;
 
-	public SettingsPage(SettingsViewModel vm)
+	public ThemesPage(ThemesViewModel vm)
 	{
 		InitializeComponent();
 		_vm = vm;
@@ -16,7 +16,7 @@ public partial class SettingsPage : ContentPage
 	protected override void OnAppearing()
 	{
 		base.OnAppearing();
-		_vm.RefreshTheme();
+		_vm.Refresh();
 		Motion.EnterPage(this);
 	}
 }
