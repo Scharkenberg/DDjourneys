@@ -76,6 +76,8 @@ public sealed class SchutzengelTrackerContractTests
 				[
 					new JourneyLeg
 				{
+					Id = "0",
+
 					Mode =
 						TransitMode.Tram,
 
@@ -123,10 +125,15 @@ public sealed class SchutzengelTrackerContractTests
 				]
 			};
 
+		object rawData = new { };
+		string tripReference = journey.Id ?? string.Empty;
+
 		using var plan =
-			JsonDocument.Parse(
-				SchutzengelPlanTranslator.Serialize(
-					journey));
+	JsonDocument.Parse(
+		SchutzengelPlanTranslator.Serialize(
+			journey,
+			rawData,
+			tripReference));
 
 		JsonElement episode =
 			plan.RootElement

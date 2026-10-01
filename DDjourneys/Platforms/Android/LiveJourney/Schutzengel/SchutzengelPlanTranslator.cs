@@ -1,14 +1,18 @@
 using DDjourneys.Core.Models;
-using System.Globalization;
 using System.Text.Json;
 
 namespace DDjourneys.Platforms.Android.LiveJourney.Schutzengel;
 
 internal static class SchutzengelPlanTranslator
 {
-	public static object Translate(Journey journey)
+	public static object Translate(
+		Journey journey,
+		object rawData,
+		string tripReference)
 	{
 		ArgumentNullException.ThrowIfNull(journey);
+		ArgumentNullException.ThrowIfNull(rawData);
+		ArgumentNullException.ThrowIfNull(tripReference);
 
 		var episodes = new List<object>();
 
@@ -32,9 +36,8 @@ internal static class SchutzengelPlanTranslator
 			}
 
 			episodes.Add(
-				PublicEpisode(
-					journey.Legs[i],
-					i));
+	PublicEpisode(
+		journey.Legs[i]));
 		}
 
 		AddTerminalTransfer(
@@ -48,16 +51,37 @@ internal static class SchutzengelPlanTranslator
 			journey = new
 			{
 				episodes
-			}
+			},
+
+			rawData,
+
+			trip_reference = tripReference,
+
+			attentions = new
+			{
+				start = new
+				{
+					timeBeforeSeconds = 300,
+					active = true
+				},
+
+				change = true,
+				problem = true
+			},
+
+			type = "static"
 		};
 	}
 
-
 	public static string Serialize(
-		Journey journey) =>
+		Journey journey,
+		object rawData,
+		string tripReference) =>
 		JsonSerializer.Serialize(
-			Translate(journey));
-
+			Translate(
+				journey,
+				rawData,
+				tripReference));
 
 	private static void AddTransfer(
 		List<object> episodes,
@@ -124,8 +148,7 @@ internal static class SchutzengelPlanTranslator
 
 
 	private static object PublicEpisode(
-		JourneyLeg leg,
-		int id)
+		JourneyLeg leg)
 	{
 		StopTime[] stops =
 			BuildStops(leg);
@@ -169,9 +192,7 @@ internal static class SchutzengelPlanTranslator
 					?? string.Empty
 			},
 
-			id =
-				id.ToString(
-					CultureInfo.InvariantCulture),
+			id = leg.Id	?? string.Empty,
 
 			polyline =
 				BuildPolyline(

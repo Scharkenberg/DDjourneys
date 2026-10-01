@@ -43,6 +43,7 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker
 	public async Task StartAsync(Journey journey, CancellationToken cancellationToken = default)
 	{
 		ArgumentNullException.ThrowIfNull(journey);
+		System.Diagnostics.Debug.WriteLine($"[SCHUTZENGEL] Journey.Id = '{journey.Id}'");
 		await StopLoopAsync();
 		_journey = journey;
 		if (OperatingSystem.IsAndroidVersionAtLeast(33))
@@ -108,7 +109,10 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker
 			{
 				using var created =
 	await _api.CreatePlanAsync(
-		SchutzengelPlanTranslator.Serialize(journey),
+		SchutzengelPlanTranslator.Serialize(
+	journey,
+	SchutzengelRawDataTranslator.Translate(journey),
+	journey.Id ?? string.Empty),
 		ct);
 
 				_planId =

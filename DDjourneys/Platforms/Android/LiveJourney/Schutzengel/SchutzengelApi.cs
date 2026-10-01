@@ -274,6 +274,9 @@ internal sealed class SchutzengelApi(HttpClient http)
 					"application/json");
 		}
 
+		System.Diagnostics.Debug.WriteLine("[SCHUTZENGEL REQUEST BEGIN]");
+		LogLong(body);
+		System.Diagnostics.Debug.WriteLine("[SCHUTZENGEL REQUEST END]\n");
 
 		using var response =
 	await http.SendAsync(
@@ -306,6 +309,20 @@ internal sealed class SchutzengelApi(HttpClient http)
 		return JsonDocument.Parse("{}");
 	}
 
+	private static void LogLong(string? text)
+	{
+		const int ChunkSize = 2048;
+
+		if (text is null)
+		{
+			System.Diagnostics.Debug.WriteLine("null");
+			return;
+		}
+		for (int i = 0; i < text.Length; i += ChunkSize)
+		{
+			System.Diagnostics.Debug.WriteLine(text.Substring(i, Math.Min(ChunkSize, text.Length - i)));
+		}
+	}
 
 	private static HttpRequestMessage CreateRequest(
 		HttpMethod method,
