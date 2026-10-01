@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using DDjourneys.Core.Models;
 using DDjourneys.Core.Providers.Vvo.Models;
 using DDjourneys.Core.Providers.Vvo.Parsing;
@@ -11,6 +12,48 @@ namespace DDjourneys.Core.Providers.Vvo.Mapping;
 /// </summary>
 public static class VvoJourneyMapper
 {
+	private static readonly ICoordinateTransformation Gk4ToWgs84 =
+	CreateGk4ToWgs84Transformation();
+
+	private static ICoordinateTransformation CreateGk4ToWgs84Transformation()
+	{
+		CoordinateSystemFactory coordinateSystemFactory =
+			new();
+
+		CoordinateTransformationFactory transformationFactory =
+			new();
+
+		const string gk4Wkt =
+			"""
+		PROJCS["DHDN / 3-degree Gauss-Kruger zone 4",
+			GEOGCS["DHDN",
+				DATUM["Deutsches_Hauptdreiecksnetz",
+					SPHEROID["Bessel 1841",6377397.155,299.1528128],
+					TOWGS84[598.1,73.7,418.2,0.202,0.045,-2.455,6.7]],
+				PRIMEM["Greenwich",0],
+				UNIT["degree",0.0174532925199433]],
+			PROJECTION["Transverse_Mercator"],
+			PARAMETER["latitude_of_origin",0],
+			PARAMETER["central_meridian",12],
+			PARAMETER["scale_factor",1],
+			PARAMETER["false_easting",4500000],
+			PARAMETER["false_northing",0],
+			UNIT["metre",1]]
+		""";
+
+		CoordinateSystem source =
+			coordinateSystemFactory.CreateFromWkt(
+				gk4Wkt);
+
+		CoordinateSystem target =
+			GeographicCoordinateSystem.WGS84;
+
+		return transformationFactory
+			.CreateFromCoordinateSystems(
+				source,
+				target);
+	}
+
 	public static IReadOnlyList<Journey> Map(
 		VvoTripResponse response)
 	{
@@ -69,30 +112,35 @@ public static class VvoJourneyMapper
 				continue;
 			}
 
+			var path = MapPath(route, partialRoute);
+
 			JourneyLeg leg =
 				MapLeg(
 					partialRoute,
 					legs.LastOrDefault()?.To,
 					GetFirstStation(partialRoute),
-					route.RouteCancelled);
+					route.RouteCancelled,
+					path);
 
 			int legIndex =
 				legs.Count;
 
 			System.Diagnostics.Debug.WriteLine(
-				$"""
-				[VVO LEG]
-				Index: {legIndex}
-				Type: {partialRoute.Mot?.Type}
-				Name: {partialRoute.Mot?.Name}
-				Duration: {partialRoute.Duration} min
-				FirstStop:
-				  {partialRoute.RegularStops.FirstOrDefault()?.Name}
-				  {partialRoute.RegularStops.FirstOrDefault()?.DepartureTime}
-				LastStop:
-				  {partialRoute.RegularStops.LastOrDefault()?.Name}
-				  {partialRoute.RegularStops.LastOrDefault()?.ArrivalTime}
-				""");
+	$"""
+	[VVO LEG]
+	Index: {legIndex}
+	Type: {partialRoute.Mot?.Type}
+	Name: {partialRoute.Mot?.Name}
+	Duration: {partialRoute.Duration} min
+	Path points:
+	  {path.Count}
+	FirstStop:
+	  {partialRoute.RegularStops.FirstOrDefault()?.Name}
+	  {partialRoute.RegularStops.FirstOrDefault()?.DepartureTime}
+	LastStop:
+	  {partialRoute.RegularStops.LastOrDefault()?.Name}
+	  {partialRoute.RegularStops.LastOrDefault()?.ArrivalTime}
+	""");
 
 			legs.Add(leg);
 
@@ -154,12 +202,13 @@ public static class VvoJourneyMapper
 
 
 			transfers.Add(
-				MapTransfer(
-					part.Route,
-					previousLeg,
-					previousLegIndex,
-					nextLeg,
-					nextLegIndex));
+	MapTransfer(
+		part.Route,
+		previousLeg,
+		previousLegIndex,
+		nextLeg,
+		nextLegIndex,
+		MapPath(route, part.Route)));
 		}
 
 
@@ -169,6 +218,23 @@ public static class VvoJourneyMapper
 				"VVO route contains no movement legs.");
 		}
 
+		System.Diagnostics.Debug.WriteLine(
+	$"""
+	[VVO JOURNEY PATHS]
+	Legs:
+	{string.Join(
+		Environment.NewLine,
+		legs.Select(
+			(l, i) =>
+				$"  {i}: {l.Mode} {l.Line?.Name} Path={l.Path.Count}"))}
+
+	Transfers:
+	{string.Join(
+		Environment.NewLine,
+		transfers.Select(
+			(t, i) =>
+				$"  {i}: {t.Kind} Path={t.Path.Count}"))}
+	""");
 
 		return new Journey
 		{
@@ -231,8 +297,7 @@ public static class VvoJourneyMapper
 		if (string.Equals(
 			type,
 			"Footpath",
-			StringComparison.OrdinalIgnoreCase)
-			&& route.RegularStops.Count == 0)
+			StringComparison.OrdinalIgnoreCase))
 		{
 			return true;
 		}
@@ -248,11 +313,12 @@ public static class VvoJourneyMapper
 
 
 	private static JourneyTransfer MapTransfer(
-		VvoPartialRoute route,
-		JourneyLeg? previousLeg,
-		int? previousLegIndex,
-		JourneyLeg? nextLeg,
-		int? nextLegIndex)
+	VvoPartialRoute route,
+	JourneyLeg? previousLeg,
+	int? previousLegIndex,
+	JourneyLeg? nextLeg,
+	int? nextLegIndex,
+	IReadOnlyList<(double Latitude, double Longitude)> path)
 	{
 		StopTime? arrivalStop =
 			previousLeg?
@@ -277,7 +343,8 @@ public static class VvoJourneyMapper
 		DebugTransfer(
 			route,
 			departureStop,
-			arrivalStop);
+			arrivalStop,
+			path.Count);
 
 
 		Station location =
@@ -320,6 +387,9 @@ public static class VvoJourneyMapper
 
 			NextLegIndex =
 				nextLegIndex,
+
+			Path =
+				path,
 
 			Notices =
 				VvoNoticeParser.Parse(
@@ -415,10 +485,11 @@ public static class VvoJourneyMapper
 
 
 	private static JourneyLeg MapLeg(
-		VvoPartialRoute route,
-		Station? previousDestination,
-		Station? nextOrigin,
-		bool routeCancelled)
+	VvoPartialRoute route,
+	Station? previousDestination,
+	Station? nextOrigin,
+	bool routeCancelled,
+	IReadOnlyList<(double Latitude, double Longitude)> path)
 	{
 		StopTime[] stops =
 			route.RegularStops
@@ -505,6 +576,9 @@ public static class VvoJourneyMapper
 				route.TripCancelled
 				|| routeCancelled,
 
+			Path =
+				path,
+
 			Notices =
 				VvoNoticeParser.Parse(
 					route.Infos)
@@ -571,8 +645,8 @@ public static class VvoJourneyMapper
 	private static (
 	double? Latitude,
 	double? Longitude)
-	MapCoordinates(
-		VvoStop stop)
+MapCoordinates(
+	VvoStop stop)
 	{
 		if (stop.Latitude <= 0
 			|| stop.Longitude <= 0)
@@ -580,60 +654,14 @@ public static class VvoJourneyMapper
 			return (null, null);
 		}
 
-
-		CoordinateSystemFactory coordinateSystemFactory =
-			new();
-
-		CoordinateTransformationFactory transformationFactory =
-			new();
-
-
-		const string gk4Wkt =
-			"""
-		PROJCS["DHDN / 3-degree Gauss-Kruger zone 4",
-			GEOGCS["DHDN",
-				DATUM["Deutsches_Hauptdreiecksnetz",
-					SPHEROID["Bessel 1841",6377397.155,299.1528128],
-					TOWGS84[598.1,73.7,418.2,0.202,0.045,-2.455,6.7]],
-				PRIMEM["Greenwich",0],
-				UNIT["degree",0.0174532925199433]],
-			PROJECTION["Transverse_Mercator"],
-			PARAMETER["latitude_of_origin",0],
-			PARAMETER["central_meridian",12],
-			PARAMETER["scale_factor",1],
-			PARAMETER["false_easting",4500000],
-			PARAMETER["false_northing",0],
-			UNIT["metre",1]]
-		""";
-
-
-		CoordinateSystem source =
-			coordinateSystemFactory.CreateFromWkt(
-				gk4Wkt);
-
-		CoordinateSystem target =
-			GeographicCoordinateSystem.WGS84;
-
-
-		var transformation =
-			transformationFactory
-				.CreateFromCoordinateSystems(
-					source,
-					target);
-
-
-		double[] result =
-			transformation.MathTransform.Transform(
-				new[]
-				{
+		(double latitude, double longitude) =
+			ConvertGk4ToWgs84(
 				stop.Longitude,
-				stop.Latitude
-				});
-
+				stop.Latitude);
 
 		return (
-			Latitude: result[1],
-			Longitude: result[0]);
+			Latitude: latitude,
+			Longitude: longitude);
 	}
 
 	private static TransitLine? MapLine(
@@ -817,11 +845,94 @@ public static class VvoJourneyMapper
 		};
 	}
 
+	private static IReadOnlyList<(double Latitude, double Longitude)> MapPath(
+		VvoRoute route,
+		VvoPartialRoute partialRoute)
+	{
+		int index =
+			partialRoute.MapDataIndex;
+
+		if (index < 0
+			|| index >= route.MapData.Count)
+		{
+			return [];
+		}
+
+		string? mapData =
+			route.MapData[index];
+
+		if (string.IsNullOrWhiteSpace(mapData))
+		{
+			return [];
+		}
+
+		string[] values =
+			mapData.Split(
+				'|',
+				StringSplitOptions.RemoveEmptyEntries);
+
+		if (values.Length < 3)
+		{
+			return [];
+		}
+
+		var path =
+			new List<(double Latitude, double Longitude)>(
+				(values.Length - 1) / 2);
+
+		for (int i = 1;
+			i + 1 < values.Length;
+			i += 2)
+		{
+			if (!double.TryParse(
+				values[i],
+				System.Globalization.NumberStyles.Float,
+				System.Globalization.CultureInfo.InvariantCulture,
+				out double x))
+			{
+				continue;
+			}
+
+			if (!double.TryParse(
+				values[i + 1],
+				System.Globalization.NumberStyles.Float,
+				System.Globalization.CultureInfo.InvariantCulture,
+				out double y))
+			{
+				continue;
+			}
+
+			path.Add(
+				ConvertGk4ToWgs84(
+					x,
+					y));
+		}
+
+		return path;
+	}
+
+	private static (double Latitude, double Longitude) ConvertGk4ToWgs84(
+	double x,
+	double y)
+	{
+		double[] result =
+			Gk4ToWgs84.MathTransform.Transform(
+				new[]
+				{
+				x,
+				y
+				});
+
+		return (
+			Latitude: result[1],
+			Longitude: result[0]);
+	}
 
 	private static void DebugTransfer(
-		VvoPartialRoute route,
-		StopTime? departureStop,
-		StopTime? arrivalStop)
+	VvoPartialRoute route,
+	StopTime? departureStop,
+	StopTime? arrivalStop,
+	int pathCount)
 	{
 		System.Diagnostics.Debug.WriteLine(
 			$"""
@@ -830,6 +941,7 @@ public static class VvoJourneyMapper
 			Duration raw: {route.Duration} min
 			Kind: {route.Mot?.Type} / {route.Mot?.Name}
 			Stops: {route.RegularStops.Count}
+			Path points: {pathCount}
 
 			Previous:
 			  Station: {arrivalStop?.Station.Name}

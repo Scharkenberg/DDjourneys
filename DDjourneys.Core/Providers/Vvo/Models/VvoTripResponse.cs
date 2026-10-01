@@ -93,7 +93,7 @@ public sealed class VvoPartialRoute
 		= Array.Empty<VvoStop>();
 
 	[JsonPropertyName("MapDataIndex")]
-	public int MapDataIndex { get; init; }
+	public int MapDataIndex { get; init; } = -1;
 }
 
 

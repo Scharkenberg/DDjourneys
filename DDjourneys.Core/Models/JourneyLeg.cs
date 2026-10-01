@@ -36,6 +36,12 @@ public sealed class JourneyLeg
 		= Array.Empty<StopTime>();
 
 	/// <summary>
+	/// Geometry of this movement segment in WGS84 coordinates.
+	/// </summary>
+	public IReadOnlyList<(double Latitude, double Longitude)> Path { get; init; }
+		= [];
+
+	/// <summary>
 	/// Passenger-visible line information.
 	///
 	/// Null for walking.

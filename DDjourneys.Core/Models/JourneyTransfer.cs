@@ -54,6 +54,12 @@ public sealed class JourneyTransfer
 		= TransferKind.Unknown;
 
 
+	/// <summary>
+	/// Geometry of the transfer movement in WGS84 coordinates.
+	/// </summary>
+	public IReadOnlyList<(double Latitude, double Longitude)> Path { get; init; }
+		= [];
+
 	public bool IsGuaranteed { get; init; }
 
 
