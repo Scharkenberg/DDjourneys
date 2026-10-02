@@ -313,12 +313,13 @@ public static class VvoJourneyMapper
 
 
 	private static JourneyTransfer MapTransfer(
-	VvoPartialRoute route,
-	JourneyLeg? previousLeg,
-	int? previousLegIndex,
-	JourneyLeg? nextLeg,
-	int? nextLegIndex,
-	IReadOnlyList<(double Latitude, double Longitude)> path)
+		VvoPartialRoute route,
+		JourneyLeg? previousLeg,
+		int? previousLegIndex,
+		JourneyLeg? nextLeg,
+		int? nextLegIndex,
+		IReadOnlyList<
+			(double Latitude, double Longitude)> path)
 	{
 		StopTime? arrivalStop =
 			previousLeg?
@@ -332,8 +333,15 @@ public static class VvoJourneyMapper
 				.FirstOrDefault();
 
 
-		if (arrivalStop is null
-			&& departureStop is null)
+		// A transfer partial route normally has no RegularStops.
+		// Therefore its location must come from the surrounding
+		// movement legs.
+		Station? location =
+			previousLeg?.To
+			?? nextLeg?.From;
+
+
+		if (location is null)
 		{
 			throw new InvalidOperationException(
 				"VVO transfer has no identifiable location.");
@@ -342,42 +350,27 @@ public static class VvoJourneyMapper
 
 		DebugTransfer(
 			route,
-			departureStop,
-			arrivalStop,
+			departureStop
+				?? nextLeg?
+					.Stops
+					.FirstOrDefault(),
+			arrivalStop
+				?? previousLeg?
+					.Stops
+					.LastOrDefault(),
 			path.Count);
 
-
-		StopTime[] transferStops =
-	route.RegularStops
-		.Select(MapStop)
-		.ToArray();
-
-		Station? from =
-			transferStops.FirstOrDefault()?.Station;
-
-		Station? to =
-			transferStops.LastOrDefault()?.Station;
-
-		Station location =
-			from
-			?? to
-			?? throw new InvalidOperationException(
-				"VVO transfer has no identifiable location.");
 
 		return new JourneyTransfer
 		{
 			Location =
 				location,
 
-			From =
-				from,
-
-			To =
-				to,
-
 			Duration =
 				TimeSpan.FromMinutes(
-					route.Duration),
+					Math.Max(
+						0,
+						route.Duration)),
 
 			WaitingTime =
 				DetermineWaitingTime(
@@ -395,10 +388,12 @@ public static class VvoJourneyMapper
 				!route.ChangeoverEndangered,
 
 			ArrivalPlatform =
-				arrivalStop?.Platform,
+				arrivalStop?.Platform
+				?? previousLeg?.ArrivalPlatform,
 
 			DeparturePlatform =
-				departureStop?.Platform,
+				departureStop?.Platform
+				?? nextLeg?.DeparturePlatform,
 
 			PreviousLegIndex =
 				previousLegIndex,
@@ -414,7 +409,6 @@ public static class VvoJourneyMapper
 					route.Infos)
 		};
 	}
-
 
 	private static TimeSpan? DetermineWaitingTime(
 		VvoPartialRoute route,

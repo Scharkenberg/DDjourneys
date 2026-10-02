@@ -1,3 +1,4 @@
+using System.Net;
 using System.Text;
 using System.Text.Json;
 
@@ -278,7 +279,7 @@ internal sealed class SchutzengelApi(HttpClient http)
 					"application/json");
 		}
 
-		System.Diagnostics.Debug.WriteLine("[SCHUTZENGEL REQUEST BEGIN]");
+		System.Diagnostics.Debug.WriteLine($"[SCHUTZENGEL REQUEST BEGIN] {method.Method} {path}");
 		LogLong(body);
 		System.Diagnostics.Debug.WriteLine("[SCHUTZENGEL REQUEST END]\n");
 
