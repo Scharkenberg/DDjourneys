@@ -11,11 +11,17 @@ namespace DDjourneys.Core.Providers.Vvo;
 /// </summary>
 public sealed class VvoJourneyProvider :
 	IJourneyProvider,
-	IJourneyContinuationProvider
+	IJourneyContinuationProvider,
+	IProviderDescriptor
 {
 	private const int MaxContinuationResults = 10;
 
 	private readonly VvoApiClient _apiClient;
+
+
+	/// <inheritdoc />
+	public ProviderInfo Info =>
+		VvoProviderInfo.Value;
 
 
 	public VvoJourneyProvider(
@@ -67,10 +73,10 @@ public sealed class VvoJourneyProvider :
 				ShortTermChanges = true,
 
 				StandardSettings =
-					CreateStandardSettings(),
+					CreateStandardSettings(query.Routing),
 
 				MobilitySettings =
-					CreateMobilitySettings()
+					CreateMobilitySettings(query.Routing)
 			};
 
 
@@ -104,7 +110,9 @@ public sealed class VvoJourneyProvider :
 
 			IReadOnlyList<Journey> journeys =
 				VvoJourneyMapper.Map(
-					response);
+					response,
+					query.From,
+					query.To);
 
 
 			return JourneyResult.Success(
@@ -211,7 +219,9 @@ public sealed class VvoJourneyProvider :
 
 		IReadOnlyList<Journey> journeys =
 			VvoJourneyMapper.Map(
-				response);
+				response,
+				target.Origin is { } o ? ToLocation(o) : null,
+				target.Destination is { } d ? ToLocation(d) : null);
 
 
 		int count =
@@ -383,10 +393,10 @@ public sealed class VvoJourneyProvider :
 				ShortTermChanges = true,
 
 				StandardSettings =
-					CreateStandardSettings(),
+					CreateStandardSettings(query.Routing),
 
 				MobilitySettings =
-					CreateMobilitySettings(),
+					CreateMobilitySettings(query.Routing),
 
 				Previous =
 					previous,
@@ -433,7 +443,9 @@ public sealed class VvoJourneyProvider :
 
 			IReadOnlyList<Journey> journeys =
 				VvoJourneyMapper.Map(
-					response);
+					response,
+					query.From,
+					query.To);
 
 
 			return JourneyResult.Success(
@@ -607,26 +619,77 @@ public sealed class VvoJourneyProvider :
 	}
 
 
-	private static VvoStandardSettings CreateStandardSettings()
+	private static Location ToLocation(
+		Station station) =>
+		new()
+		{
+			Id =
+				string.IsNullOrWhiteSpace(station.Id)
+					? null
+					: station.Id,
+
+			Name =
+				station.Name,
+
+			Place =
+				station.Place,
+
+			Latitude =
+				station.Latitude,
+
+			Longitude =
+				station.Longitude
+		};
+
+
+	private static VvoStandardSettings CreateStandardSettings(
+		RoutingPreferences? routing = null)
 	{
+		routing ??= RoutingPreferences.Default;
+
+		ModeFilter modes =
+			routing.Modes == ModeFilter.None
+				? ModeFilter.All
+				: routing.Modes;
+
 		return new VvoStandardSettings
 		{
-			MaxChanges = "Unlimited",
-			WalkingSpeed = "Normal",
-			FootpathToStop = 5,
-			IncludeAlternativeStops = true
+			MaxChanges = routing.MaxTransfers.ToString(),
+			WalkingSpeed = routing.Pace.ToString(),
+			FootpathToStop = Math.Clamp(routing.FootpathMinutes, 0, 30),
+			IncludeAlternativeStops = routing.AlternativeStops,
+			ModesOfTransport =
+				[.. Enum.GetValues<ModeFilter>()
+					.Where(
+						mode => mode is not ModeFilter.None and not ModeFilter.All
+							&& modes.HasFlag(mode))
+					.Select(mode => mode.ToString())]
 		};
 	}
 
 
-	private static VvoMobilitySettings CreateMobilitySettings()
+	private static VvoMobilitySettings CreateMobilitySettings(
+		RoutingPreferences? routing = null)
 	{
+		routing ??= RoutingPreferences.Default;
+
+		// "Individual" is the provider's profile for single switches (no stairs, no escalators,
+		// fewest transfers); the preset profiles replace them.
+		bool individual =
+			routing.Accessibility == AccessibilityNeed.None
+			&& (routing.AvoidStairs
+				|| routing.AvoidEscalators
+				|| routing.FewestTransfers);
+
 		return new VvoMobilitySettings
 		{
-			MobilityRestriction = "None",
-			SolidStairs = true,
-			Escalators = true,
-			LeastChange = false,
+			MobilityRestriction =
+				individual
+					? "Individual"
+					: routing.Accessibility.ToString(),
+			SolidStairs = !routing.AvoidStairs,
+			Escalators = !routing.AvoidEscalators,
+			LeastChange = routing.FewestTransfers,
 			Entrance = "Any"
 		};
 	}

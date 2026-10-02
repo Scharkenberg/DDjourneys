@@ -8,9 +8,40 @@ public sealed class Journey
 
 	public required Station To { get; init; }
 
+	/// <summary>
+	/// The place the passenger starts from, when it differs from the first vehicle stop
+	/// (a walk leads to the first stop). Null when the provider did not say.
+	/// </summary>
+	public Station? Origin { get; init; }
+
+	/// <summary>The place the passenger is going to, when it differs from the last vehicle stop.</summary>
+	public Station? Destination { get; init; }
+
+	/// <summary>Walking (or other transfer) time before the first vehicle.</summary>
+	public TimeSpan AccessDuration =>
+		Legs.Count == 0
+			? TimeSpan.Zero
+			: TerminalTransferDuration(
+				previousLegIndex: null,
+				nextLegIndex: 0);
+
+	/// <summary>Walking (or other transfer) time after the last vehicle.</summary>
+	public TimeSpan EgressDuration =>
+		Legs.Count == 0
+			? TimeSpan.Zero
+			: TerminalTransferDuration(
+				previousLegIndex: Legs.Count - 1,
+				nextLegIndex: null);
+
 	public string? Id { get; init; }
 
 	public string? Context { get; init; }
+
+	/// <summary>
+	/// The provider's own object this journey was mapped from (for diagnostics such as the expert view);
+	/// never interpreted by the app logic.
+	/// </summary>
+	public object? ProviderData { get; init; }
 
 	public IReadOnlyList<string> Notices { get; init; }
 		= Array.Empty<string>();

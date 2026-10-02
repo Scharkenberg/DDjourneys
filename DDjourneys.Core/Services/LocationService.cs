@@ -1,4 +1,5 @@
 ﻿using DDjourneys.Core.Models;
+using DDjourneys.Core.Providers;
 using DDjourneys.Core.Providers.Abstractions;
 using Location = DDjourneys.Core.Models.Location;
 
@@ -9,15 +10,20 @@ namespace DDjourneys.Core.Services;
 /// </summary>
 public sealed class LocationService
 {
-	private readonly ILocationProvider _provider;
+	private readonly IEnumerable<ILocationProvider> _providers;
+	private readonly ProviderRegistry? _registry;
 
 
+	/// <param name="providers">All registered location providers.</param>
+	/// <param name="registry">When given, the provider the user selected answers.</param>
 	public LocationService(
-	ILocationProvider provider)
+		IEnumerable<ILocationProvider> providers,
+		ProviderRegistry? registry = null)
 	{
-		ArgumentNullException.ThrowIfNull(provider);
+		ArgumentNullException.ThrowIfNull(providers);
 
-		_provider = provider;
+		_providers = providers;
+		_registry = registry;
 	}
 
 
@@ -29,9 +35,16 @@ public sealed class LocationService
 	CancellationToken cancellationToken = default,
 	TimeSpan? timeout = null)
 	{
-		return _provider.SearchAsync(
-			query,
-			cancellationToken,
-			timeout);
+		ILocationProvider? provider =
+			_registry is null
+				? _providers.FirstOrDefault()
+				: _providers.FirstOrDefault(_registry.IsSelected);
+
+		return provider is null
+			? Task.FromResult<IReadOnlyList<Location>>([])
+			: provider.SearchAsync(
+				query,
+				cancellationToken,
+				timeout);
 	}
 }

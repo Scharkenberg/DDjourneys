@@ -9,6 +9,7 @@ public partial class SettingsPage : ContentPage
 	public SettingsPage(SettingsViewModel vm)
 	{
 		InitializeComponent();
+		Motion.Prepare(this);
 		_vm = vm;
 		BindingContext = vm;
 	}
@@ -17,6 +18,7 @@ public partial class SettingsPage : ContentPage
 	{
 		base.OnAppearing();
 		_vm.RefreshTheme();
+		_vm.RefreshProvider();
 		Motion.EnterPage(this);
 	}
 }

@@ -62,11 +62,20 @@ public sealed class JourneyTransfer
 
 	public bool IsGuaranteed { get; init; }
 
+	/// <summary>The provider's own object this transfer was mapped from (diagnostics only).</summary>
+	public object? ProviderData { get; init; }
+
 
 	public string? ArrivalPlatform { get; init; }
 
 
+	public PlatformKind ArrivalPlatformKind { get; init; }
+
+
 	public string? DeparturePlatform { get; init; }
+
+
+	public PlatformKind DeparturePlatformKind { get; init; }
 
 	public Station? From { get; init; }
 

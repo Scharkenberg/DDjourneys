@@ -43,37 +43,37 @@
 
 	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net11.0-android|AnyCPU'">
 	  <ApplicationId>dev.Scharkenberg.DDjourneys</ApplicationId>
-	  <ApplicationDisplayVersion>0.4.2</ApplicationDisplayVersion>
-	  <ApplicationVersion>35</ApplicationVersion>
+	  <ApplicationDisplayVersion>0.5.0</ApplicationDisplayVersion>
+	  <ApplicationVersion>12</ApplicationVersion>
 	  <EmbedAssembliesIntoApk>True</EmbedAssembliesIntoApk>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net11.0-windows10.0.26100.0|AnyCPU'">
 	  <ApplicationId>dev.Scharkenberg.DDjourneys</ApplicationId>
-	  <ApplicationDisplayVersion>0.4.2</ApplicationDisplayVersion>
-	  <ApplicationVersion>35</ApplicationVersion>
+	  <ApplicationDisplayVersion>0.5.0</ApplicationDisplayVersion>
+	  <ApplicationVersion>12</ApplicationVersion>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net11.0-android|AnyCPU'">
 	  <ApplicationId>dev.Scharkenberg.DDjourneys</ApplicationId>
-	  <ApplicationDisplayVersion>0.4.2</ApplicationDisplayVersion>
-	  <ApplicationVersion>35</ApplicationVersion>
+	  <ApplicationDisplayVersion>0.5.0</ApplicationDisplayVersion>
+	  <ApplicationVersion>12</ApplicationVersion>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net11.0-windows10.0.26100.0|AnyCPU'">
 	  <ApplicationId>dev.Scharkenberg.DDjourneys</ApplicationId>
-	  <ApplicationDisplayVersion>0.4.2</ApplicationDisplayVersion>
-	  <ApplicationVersion>35</ApplicationVersion>
+	  <ApplicationDisplayVersion>0.5.0</ApplicationDisplayVersion>
+	  <ApplicationVersion>12</ApplicationVersion>
 	</PropertyGroup>
 
   <ItemGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net11.0-android|AnyCPU'">
-	<MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#F2C43D">
+	<MauiIcon Include="Resources\AppIcon\appicon.svg" Color="#F2C43D">
 	  <CopyToOutputDirectory>Always</CopyToOutputDirectory>
 	</MauiIcon>
   </ItemGroup>
 
   <ItemGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net11.0-android|AnyCPU'">
-	<MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#F2C43D">
+	<MauiIcon Include="Resources\AppIcon\appicon.svg" Color="#F2C43D">
 	  <CopyToOutputDirectory>Always</CopyToOutputDirectory>
 	</MauiIcon>
   </ItemGroup>

@@ -15,6 +15,7 @@ public partial class PlanPage : ContentPage, IQueryAttributable
 		AppSettings settings)
 	{
 		InitializeComponent();
+		Motion.Prepare(this);
 
 		_settings = settings;
 		_localization = LocalizationService.Current;
@@ -101,6 +102,13 @@ public partial class PlanPage : ContentPage, IQueryAttributable
 		EventArgs e) =>
 		await NavigateAsync(
 			Routes.Settings,
+			[]);
+
+	private async void TrackedClicked(
+		object? sender,
+		EventArgs e) =>
+		await NavigateAsync(
+			Routes.Tracked,
 			[]);
 
 	private async void SwapClicked(

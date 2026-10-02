@@ -55,23 +55,93 @@ public static class VvoJourneyMapper
 	}
 
 	public static IReadOnlyList<Journey> Map(
-		VvoTripResponse response)
+		VvoTripResponse response,
+		Location? origin = null,
+		Location? destination = null)
 	{
 		ArgumentNullException.ThrowIfNull(response);
+
+		Station? originStation =
+			ToStation(origin);
+
+		Station? destinationStation =
+			ToStation(destination);
 
 		return response.Routes
 			.Select(
 				route =>
 					MapJourney(
 						route,
-						response.SessionId))
+						response.SessionId,
+						originStation,
+						destinationStation))
 			.ToArray();
+	}
+
+	private static Station? ToStation(
+		Location? location) =>
+		location is null
+			? null
+			: new Station
+			{
+				Id =
+					location.Id
+					?? string.Empty,
+
+				Name =
+					location.Name,
+
+				Place =
+					location.Place,
+
+				Latitude =
+					location.Latitude,
+
+				Longitude =
+					location.Longitude
+			};
+
+
+	/// <summary>
+	/// A searched location (suburb, address, point of interest) often comes without a city.
+	/// The stop it leads to is at most a short walk away, so that stop's city is used instead.
+	/// </summary>
+	private static Station? WithPlaceFrom(
+		Station? searched,
+		Station adjacentStop)
+	{
+		if (searched is null
+			|| !string.IsNullOrWhiteSpace(searched.Place)
+			|| string.IsNullOrWhiteSpace(adjacentStop.Place))
+		{
+			return searched;
+		}
+
+		return new Station
+		{
+			Id =
+				searched.Id,
+
+			Name =
+				searched.Name,
+
+			Place =
+				adjacentStop.Place,
+
+			Latitude =
+				searched.Latitude,
+
+			Longitude =
+				searched.Longitude
+		};
 	}
 
 
 	private static Journey MapJourney(
 		VvoRoute route,
-		string? sessionId)
+		string? sessionId,
+		Station? origin,
+		Station? destination)
 	{
 		VvoDebug.DumpRoute(route);
 
@@ -244,6 +314,16 @@ public static class VvoJourneyMapper
 			To =
 				legs[^1].To,
 
+			Origin =
+				WithPlaceFrom(
+					origin,
+					legs[0].From),
+
+			Destination =
+				WithPlaceFrom(
+					destination,
+					legs[^1].To),
+
 			Legs =
 				legs,
 
@@ -253,6 +333,9 @@ public static class VvoJourneyMapper
 			Id =
 				route.RouteId.ToString(
 					System.Globalization.CultureInfo.InvariantCulture),
+
+			ProviderData =
+				route,
 
 			Context =
 				string.IsNullOrWhiteSpace(sessionId)
@@ -387,13 +470,28 @@ public static class VvoJourneyMapper
 			IsGuaranteed =
 				!route.ChangeoverEndangered,
 
+			ProviderData =
+				route,
+
 			ArrivalPlatform =
 				arrivalStop?.Platform
 				?? previousLeg?.ArrivalPlatform,
 
+			ArrivalPlatformKind =
+				arrivalStop?.Platform is not null
+					? arrivalStop.PlatformKind
+					: previousLeg?.ArrivalPlatformKind
+						?? PlatformKind.Unknown,
+
 			DeparturePlatform =
 				departureStop?.Platform
 				?? nextLeg?.DeparturePlatform,
+
+			DeparturePlatformKind =
+				departureStop?.Platform is not null
+					? departureStop.PlatformKind
+					: nextLeg?.DeparturePlatformKind
+						?? PlatformKind.Unknown,
 
 			PreviousLegIndex =
 				previousLegIndex,
@@ -484,9 +582,13 @@ public static class VvoJourneyMapper
 
 
 		if (!string.Equals(
-			arrival?.Platform,
-			departure?.Platform,
-			StringComparison.OrdinalIgnoreCase))
+				arrival?.Platform,
+				departure?.Platform,
+				StringComparison.OrdinalIgnoreCase)
+			|| (arrival?.Platform is not null
+				&& arrival.PlatformKind != departure?.PlatformKind
+				&& arrival.PlatformKind != PlatformKind.Unknown
+				&& departure?.PlatformKind != PlatformKind.Unknown))
 		{
 			return TransferKind.PlatformChange;
 		}
@@ -578,11 +680,22 @@ public static class VvoJourneyMapper
 			RealtimeArrival =
 				lastStop?.RealtimeArrival,
 
+			ProviderData =
+				route,
+
 			DeparturePlatform =
 				firstStop?.Platform,
 
+			DeparturePlatformKind =
+				firstStop?.PlatformKind
+				?? PlatformKind.Unknown,
+
 			ArrivalPlatform =
 				lastStop?.Platform,
+
+			ArrivalPlatformKind =
+				lastStop?.PlatformKind
+				?? PlatformKind.Unknown,
 
 			IsCancelled =
 				route.TripCancelled
@@ -630,7 +743,11 @@ public static class VvoJourneyMapper
 			longitude,
 
 		Platform =
-			stop.Platform?.Name
+			stop.Platform?.Name,
+
+		PlatformKind =
+			StopLabel.KindOf(
+				stop.Platform?.Type)
 	},
 
 			ScheduledArrival =
@@ -647,6 +764,13 @@ public static class VvoJourneyMapper
 
 			Platform =
 				stop.Platform?.Name,
+
+			PlatformKind =
+				StopLabel.KindOf(
+					stop.Platform?.Type),
+
+			ProviderData =
+				stop,
 
 			IsCancelled =
 				stop.ArrivalState == "Cancelled"

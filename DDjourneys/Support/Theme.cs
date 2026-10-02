@@ -15,6 +15,9 @@ public static class Theme
 	private static AppSettings? _settings;
 	private static ResourceDictionary? _current;
 
+	/// <summary>Whether the palette currently in effect is a dark one.</summary>
+	public static bool IsDark { get; private set; }
+
 	/// <summary>Id of the chosen theme, or "system".</summary>
 	public static string Choice { get; private set; } = ThemeCatalog.SystemId;
 
@@ -152,16 +155,14 @@ public static class Theme
 
 			merged.Add(next);
 			_current = next;
+			IsDark = def.IsDark;
 
 #if ANDROID
-			// Status bar: same colour as the page background (so it reads as transparent
-			// and follows every theme) and icons that stay legible on it.
-			// Android 15+ draws edge-to-edge anyway; older versions honour this call.
-			CommunityToolkit.Maui.Core.Platform.StatusBar.SetColor(def.Bg);
-			CommunityToolkit.Maui.Core.Platform.StatusBar.SetStyle(
-				def.IsDark
-					? CommunityToolkit.Maui.Core.StatusBarStyle.LightContent
-					: CommunityToolkit.Maui.Core.StatusBarStyle.DarkContent);
+			// System bars: transparent, with icons that stay legible on this theme.
+			// The activity may not exist yet (first call during app start); MainActivity repeats this.
+			DDjourneys.Platforms.Android.SystemBars.Apply(
+				Microsoft.Maui.ApplicationModel.Platform.CurrentActivity,
+				def.IsDark);
 #endif
 		}
 		catch (Exception ex)

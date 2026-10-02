@@ -7,6 +7,10 @@ public interface IUiStrings
 	PlaceSearchStrings PlaceSearch { get; }
 	ResultsStrings Results { get; }
 	JourneyStrings Journey { get; }
+	TrackingStrings Tracking { get; }
+	ExpertStrings Expert { get; }
+	ProviderStrings Provider { get; }
+	RoutingStrings Routing { get; }
 	SettingsStrings Settings { get; }
 	TransportStrings Transport { get; }
 }
@@ -53,6 +57,11 @@ public sealed class PlanStrings
 	public required string LeaveNow { get; init; }
 	public required string Favourites { get; init; }
 	public required string Recent { get; init; }
+	public required string RecentSearches { get; init; }
+	public required string ShowAllSearches { get; init; }
+	public required string ShowFewer { get; init; }
+	public required string ForgetSearch { get; init; }
+	public required string SearchAgain { get; init; }
 	public required string PlacesYouSearchForWillAppearHere { get; init; }
 	public required string StartAndDestinationRequired { get; init; }
 }
@@ -118,6 +127,8 @@ public sealed class JourneyStrings
 	public required string ConnectionMayBeMissed { get; init; }
 	public required string ChangeAt { get; init; }
 	public required string Platform { get; init; }
+	public required string WithinStop { get; init; }
+	public required string Track { get; init; }
 	public required string LowFloor { get; init; }
 	public required string WheelchairAccessible { get; init; }
 	public required string BicycleAccessible { get; init; }
@@ -132,6 +143,7 @@ public sealed class JourneyStrings
 	public required string OnTime { get; init; }
 
 	// Occupancy strings
+	public required string Occupancy { get; init; }
 	public required string OccupancyVeryLow { get; init; }
 	public required string OccupancyLow { get; init; }
 	public required string OccupancyMedium { get; init; }
@@ -176,6 +188,22 @@ public sealed class SettingsStrings
 	public required string ExpandNotices { get; init; }
 	public required string ExpandNoticesDescription { get; init; }
 	public required string ResetJourneySettings { get; init; }
+	public required string JourneyDisplay { get; init; }
+	public required string Occupancy { get; init; }
+	public required string OccupancyDescription { get; init; }
+	public required string Platforms { get; init; }
+	public required string PlatformsDescription { get; init; }
+	public required string ExpandStops { get; init; }
+	public required string ExpandStopsDescription { get; init; }
+	public required string ExpertView { get; init; }
+	public required string ExpertViewDescription { get; init; }
+	public required string PlaceSearch { get; init; }
+	public required string SearchDelay { get; init; }
+	public required string SearchDelayDescription { get; init; }
+	public required string MinQueryLength { get; init; }
+	public required string MinQueryLengthDescription { get; init; }
+	public required string RoutingEntry { get; init; }
+	public required string RoutingEntryDescription { get; init; }
 	public required string VersionPrefix { get; init; }
 }
 
@@ -192,4 +220,135 @@ public sealed class TransportStrings
 	public required string CableCar { get; init; }
 	public required string Taxi { get; init; }
 	public required string OnDemand { get; init; }
+}
+
+public sealed class RoutingStrings
+{
+	public required string Title { get; init; }
+	public required string Hint { get; init; }
+	public required string SectionModes { get; init; }
+	public required string SectionTransfers { get; init; }
+	public required string SectionWalking { get; init; }
+	public required string SectionAccessibility { get; init; }
+	public required string SectionMore { get; init; }
+	public required string Reset { get; init; }
+	public required string Tram { get; init; }
+	public required string CityBus { get; init; }
+	public required string IntercityBus { get; init; }
+	public required string SuburbanRailway { get; init; }
+	public required string Train { get; init; }
+	public required string Cableway { get; init; }
+	public required string Ferry { get; init; }
+	public required string HailedSharedTaxi { get; init; }
+	public required string TransfersUnlimited { get; init; }
+	public required string TransfersTwo { get; init; }
+	public required string TransfersOne { get; init; }
+	public required string TransfersNone { get; init; }
+	public required string PaceVerySlow { get; init; }
+	public required string PaceSlow { get; init; }
+	public required string PaceNormal { get; init; }
+	public required string PaceFast { get; init; }
+	public required string PaceVeryFast { get; init; }
+	public required string Footpath { get; init; }
+	public required string FootpathDescription { get; init; }
+	public required string AlternativeStops { get; init; }
+	public required string AlternativeStopsDescription { get; init; }
+	public required string AccessNone { get; init; }
+	public required string AccessMedium { get; init; }
+	public required string AccessHigh { get; init; }
+	public required string AvoidStairs { get; init; }
+	public required string AvoidStairsDescription { get; init; }
+	public required string AvoidEscalators { get; init; }
+	public required string AvoidEscalatorsDescription { get; init; }
+	public required string FewestTransfers { get; init; }
+	public required string FewestTransfersDescription { get; init; }
+}
+
+public sealed class ProviderStrings
+{
+	public required string Title { get; init; }
+	public required string Intro { get; init; }
+	public required string InUse { get; init; }
+	public required string CapJourneys { get; init; }
+	public required string CapPlaces { get; init; }
+	public required string CapContinuation { get; init; }
+	public required string CapTracking { get; init; }
+	public required string CapOccupancy { get; init; }
+	public required string CapPlatforms { get; init; }
+	public required string CapRouting { get; init; }
+	public required string Footer { get; init; }
+}
+
+public sealed class ExpertStrings
+{
+	public required string Open { get; init; }
+	public required string Title { get; init; }
+	public required string Copy { get; init; }
+	public required string Copied { get; init; }
+	public required string Journey { get; init; }
+	public required string Leg { get; init; }
+	public required string Stops { get; init; }
+	public required string Transfers { get; init; }
+	public required string Hint { get; init; }
+}
+
+public sealed class TrackingStrings
+{
+	public required string Title { get; init; }
+	public required string Empty { get; init; }
+	public required string EmptyHint { get; init; }
+	public required string SectionActive { get; init; }
+	public required string SectionPlanned { get; init; }
+	public required string SectionRecent { get; init; }
+	public required string SectionPaused { get; init; }
+	public required string Pause { get; init; }
+	public required string Resume { get; init; }
+	public required string StopFollowing { get; init; }
+	public required string DeleteAll { get; init; }
+	public required string DeleteTitle { get; init; }
+	public required string DeleteMessage { get; init; }
+	public required string DeleteAllMessage { get; init; }
+	public required string Alerts { get; init; }
+	public required string AlertStart { get; init; }
+	public required string AlertChange { get; init; }
+	public required string AlertProblem { get; init; }
+	public required string LeadMinutes { get; init; }
+	public required string Periodic { get; init; }
+	public required string NextStop { get; init; }
+	public required string Departs { get; init; }
+	public required string ArrivedAt { get; init; }
+	public required string PhasePlanned { get; init; }
+	public required string PhaseInProgress { get; init; }
+	public required string PhaseAtInterchange { get; init; }
+	public required string PhaseAtRisk { get; init; }
+	public required string PhaseCancelled { get; init; }
+	public required string PhaseArrived { get; init; }
+	public required string PhasePaused { get; init; }
+	public required string FollowedJourneys { get; init; }
+	public required string Following { get; init; }
+	public required string FollowFailed { get; init; }
+	public required string NotificationsDenied { get; init; }
+	public required string ChannelLive { get; init; }
+	public required string ChannelAlerts { get; init; }
+	public required string NotifStartsAt { get; init; }
+	public required string NotifRoute { get; init; }
+	public required string NotifRiding { get; init; }
+	public required string NotifNext { get; init; }
+	public required string NotifChangeTitle { get; init; }
+	public required string NotifChangeText { get; init; }
+	public required string NotifRiskTitle { get; init; }
+	public required string NotifMissedText { get; init; }
+	public required string NotifTightText { get; init; }
+	public required string NotifCancelledTitle { get; init; }
+	public required string NotifArrivedTitle { get; init; }
+	public required string NotifDelay { get; init; }
+	public required string NotifMonitoring { get; init; }
+	public required string NotifActionPause { get; init; }
+	public required string NotifActionStop { get; init; }
+	public required string NotifStartAlertTitle { get; init; }
+	public required string NotifStartAlertText { get; init; }
+	public required string NotifChangeAlertTitle { get; init; }
+	public required string NotifProblemAlertTitle { get; init; }
+	public required string NotifMinutes { get; init; }
+	public required string NotifNow { get; init; }
 }

@@ -2,6 +2,7 @@
 	x:Class="DDjourneys.Pages.PlanPage"
 	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
 	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+	xmlns:controls="clr-namespace:DDjourneys.Controls"
 	xmlns:core="clr-namespace:DDjourneys.Core.Models;assembly=DDjourneys.Core"
 	xmlns:local="clr-namespace:DDjourneys.Pages"
 	xmlns:localization="clr-namespace:DDjourneys.Localization"
@@ -22,12 +23,18 @@
 					Text="{localization:Tr Plan.Title}"
 					VerticalOptions="Center" />
 
-				<Button
-					Grid.Column="1"
-					Clicked="SettingsClicked"
-					SemanticProperties.Description="{localization:Tr Settings.Title}"
-					StyleClass="IconButton"
-					Text="&#x2699;" />
+				<HorizontalStackLayout Grid.Column="1" Spacing="0">
+					<controls:IconButton
+						Clicked="TrackedClicked"
+						Glyph="Bell"
+						IsVisible="{Binding IsTrackingAvailable}"
+						SemanticProperties.Description="{localization:Tr Tracking.FollowedJourneys}" />
+
+					<controls:IconButton
+						Clicked="SettingsClicked"
+						Glyph="Tune"
+						SemanticProperties.Description="{localization:Tr Settings.Title}" />
+				</HorizontalStackLayout>
 			</Grid>
 
 			<!--  From / To  -->
@@ -45,33 +52,23 @@
 						<VerticalStackLayout Spacing="2" VerticalOptions="Center">
 							<Label StyleClass="Caption" Text="{localization:Tr Plan.FromPlaceholder}" />
 
-							<Label
-								FontFamily="OpenSansSemibold"
-								LineBreakMode="TailTruncation"
-								Text="{Binding FromText}">
-								<Label.Triggers>
-									<DataTrigger
-										Binding="{Binding HasFrom}"
-										TargetType="Label"
-										Value="False">
-										<Setter Property="TextColor" Value="{DynamicResource InkMuted}" />
-									</DataTrigger>
-								</Label.Triggers>
-							</Label>
+							<controls:StopNameView
+								Muted="{Binding NoFrom}"
+								Place="{Binding FromPlace}"
+								Stop="{Binding FromName}" />
 
 							<VerticalStackLayout.GestureRecognizers>
 								<TapGestureRecognizer Tapped="FromTapped" />
 							</VerticalStackLayout.GestureRecognizers>
 						</VerticalStackLayout>
 
-						<Button
+						<controls:IconButton
 							Grid.Column="1"
 							Command="{Binding ToggleFromFavouriteCommand}"
+							Glyph="{Binding FromStar}"
 							InputTransparent="{Binding NoFrom}"
 							Opacity="{Binding StarOpacityFrom}"
-							SemanticProperties.Description="{localization:Tr Plan.ToggleFavouriteFrom}"
-							StyleClass="IconButton"
-							Text="{Binding FromStar}" />
+							SemanticProperties.Description="{localization:Tr Plan.ToggleFavouriteFrom}" />
 					</Grid>
 
 					<BoxView
@@ -87,44 +84,33 @@
 						<VerticalStackLayout Spacing="2" VerticalOptions="Center">
 							<Label StyleClass="Caption" Text="{localization:Tr Plan.ToPlaceholder}" />
 
-							<Label
-								FontFamily="OpenSansSemibold"
-								LineBreakMode="TailTruncation"
-								Text="{Binding ToText}">
-								<Label.Triggers>
-									<DataTrigger
-										Binding="{Binding HasTo}"
-										TargetType="Label"
-										Value="False">
-										<Setter Property="TextColor" Value="{DynamicResource InkMuted}" />
-									</DataTrigger>
-								</Label.Triggers>
-							</Label>
+							<controls:StopNameView
+								Muted="{Binding NoTo}"
+								Place="{Binding ToPlace}"
+								Stop="{Binding ToName}" />
 
 							<VerticalStackLayout.GestureRecognizers>
 								<TapGestureRecognizer Tapped="ToTapped" />
 							</VerticalStackLayout.GestureRecognizers>
 						</VerticalStackLayout>
 
-						<Button
+						<controls:IconButton
 							Grid.Column="1"
 							Command="{Binding ToggleToFavouriteCommand}"
+							Glyph="{Binding ToStar}"
 							InputTransparent="{Binding NoTo}"
 							Opacity="{Binding StarOpacityTo}"
-							SemanticProperties.Description="{localization:Tr Plan.ToggleFavouriteTo}"
-							StyleClass="IconButton"
-							Text="{Binding ToStar}" />
+							SemanticProperties.Description="{localization:Tr Plan.ToggleFavouriteTo}" />
 					</Grid>
 
-					<Button
+					<controls:IconButton
 						Grid.RowSpan="3"
 						Grid.Column="1"
 						Clicked="SwapClicked"
 						Command="{Binding SwapCommand}"
-						FontSize="26"
+						Glyph="SwapVertical"
 						SemanticProperties.Description="{localization:Tr Plan.SwapDescription}"
-						StyleClass="IconButton"
-						Text="&#x21C5;"
+						Size="24"
 						VerticalOptions="Center" />
 
 				</Grid>
@@ -176,44 +162,35 @@
 
 					<BoxView StyleClass="Divider" />
 
+					<!--  Date and time share one row  -->
 					<Grid
-						Padding="12,4"
-						ColumnDefinitions="*,Auto"
-						MinimumHeightRequest="48">
+						Padding="12,6"
+						ColumnDefinitions="*,*"
+						ColumnSpacing="12"
+						MinimumHeightRequest="64">
 
-						<Label
-							StyleClass="Caption"
-							Text="{localization:Tr Plan.Date}"
-							VerticalOptions="Center" />
+						<VerticalStackLayout Spacing="0" VerticalOptions="Center">
+							<Label StyleClass="Caption" Text="{localization:Tr Plan.Date}" />
 
-						<DatePicker
+							<DatePicker
+								Date="{Binding Date}"
+								Format="ddd, d MMM"
+								HorizontalOptions="Start"
+								MaximumDate="{Binding MaxDate}"
+								MinimumDate="{Binding MinDate}" />
+						</VerticalStackLayout>
+
+						<VerticalStackLayout
 							Grid.Column="1"
-							Date="{Binding Date}"
-							Format="ddd, d MMM"
-							HorizontalOptions="End"
-							MaximumDate="{Binding MaxDate}"
-							MinimumDate="{Binding MinDate}"
-							VerticalOptions="Center" />
-					</Grid>
+							Spacing="0"
+							VerticalOptions="Center">
+							<Label StyleClass="Caption" Text="{localization:Tr Plan.Time}" />
 
-					<BoxView StyleClass="Divider" />
-
-					<Grid
-						Padding="12,4"
-						ColumnDefinitions="*,Auto"
-						MinimumHeightRequest="48">
-
-						<Label
-							StyleClass="Caption"
-							Text="{localization:Tr Plan.Time}"
-							VerticalOptions="Center" />
-
-						<TimePicker
-							Grid.Column="1"
-							Format="HH:mm"
-							HorizontalOptions="End"
-							Time="{Binding Time}"
-							VerticalOptions="Center" />
+							<TimePicker
+								Format="HH:mm"
+								HorizontalOptions="Start"
+								Time="{Binding Time}" />
+						</VerticalStackLayout>
 					</Grid>
 
 					<BoxView StyleClass="Divider" />
@@ -303,6 +280,95 @@
 
 			<Button Command="{Binding SearchCommand}" Text="{localization:Tr Plan.SearchJourneys}" />
 
+			<!--  Recent searches: tapping a row looks the same connection up again  -->
+			<VerticalStackLayout IsVisible="{Binding HasRecentRoutes}" Spacing="{StaticResource SpaceS}">
+
+				<Grid ColumnDefinitions="*,Auto">
+
+					<Label
+						StyleClass="Title"
+						Text="{localization:Tr Plan.RecentSearches}"
+						VerticalOptions="Center" />
+
+					<controls:IconButton
+						Grid.Column="1"
+						Command="{Binding ClearRoutesCommand}"
+						Glyph="Trash"
+						SemanticProperties.Description="{localization:Tr Common.Clear}"
+						Size="20" />
+				</Grid>
+
+				<Border Padding="0" StyleClass="Card">
+					<VerticalStackLayout BindableLayout.ItemsSource="{Binding RecentRoutes}">
+
+						<BindableLayout.ItemTemplate>
+							<DataTemplate x:DataType="local:RouteRow">
+
+								<Grid RowDefinitions="Auto,Auto" RowSpacing="0">
+
+									<Grid
+										Padding="14,10"
+										ColumnDefinitions="Auto,*,Auto"
+										ColumnSpacing="10"
+										MinimumHeightRequest="56"
+										SemanticProperties.Description="{Binding Description}">
+
+										<controls:Icon
+											Margin="0,2,0,0"
+											Glyph="History"
+											Size="18"
+											VerticalOptions="Start"
+											Color="{DynamicResource InkMuted}" />
+
+										<VerticalStackLayout Grid.Column="1" Spacing="3">
+
+											<controls:StopNameView
+												Compact="True"
+												Place="{Binding FromPlace}"
+												Stop="{Binding FromName}" />
+
+											<controls:StopNameView
+												Compact="True"
+												Place="{Binding ToPlace}"
+												Prefix="&#x2192;"
+												Stop="{Binding ToName}" />
+										</VerticalStackLayout>
+
+										<controls:IconButton
+											Grid.Column="2"
+											Command="{Binding Source={RelativeSource AncestorType={x:Type local:PlanViewModel}}, Path=ForgetRouteCommand}"
+											CommandParameter="{Binding .}"
+											Glyph="Close"
+											SemanticProperties.Description="{localization:Tr Plan.ForgetSearch}"
+											Size="16"
+											VerticalOptions="Center" />
+
+										<Grid.GestureRecognizers>
+											<TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type local:PlanViewModel}}, Path=UseRouteCommand}" CommandParameter="{Binding .}" />
+										</Grid.GestureRecognizers>
+									</Grid>
+
+									<!--  Hairline between rows (the last one sits on the card border)  -->
+									<BoxView Grid.Row="1" StyleClass="Divider" />
+								</Grid>
+
+							</DataTemplate>
+						</BindableLayout.ItemTemplate>
+
+					</VerticalStackLayout>
+				</Border>
+
+				<Button
+					Command="{Binding ToggleRoutesCommand}"
+					FontSize="{StaticResource FontCaption}"
+					HorizontalOptions="Start"
+					IsVisible="{Binding CanExpandRoutes}"
+					MinimumHeightRequest="40"
+					Padding="14,0"
+					StyleClass="Tonal"
+					Text="{Binding RoutesToggleText}" />
+			</VerticalStackLayout>
+
 			<!--  Favourites  -->
 			<VerticalStackLayout IsVisible="{Binding HasFavourites}" Spacing="{StaticResource SpaceS}">
 
@@ -314,7 +380,7 @@
 						<DataTemplate x:DataType="core:Location">
 							<Border Margin="0,0,8,8" StyleClass="ChipButton">
 
-								<Label Text="{Binding Name}" />
+								<controls:StopNameView Place="{Binding Place}" Stop="{Binding Name}" />
 
 								<Border.GestureRecognizers>
 									<TapGestureRecognizer Tapped="PlaceTapped" />
@@ -336,12 +402,12 @@
 						Text="{localization:Tr Plan.Recent}"
 						VerticalOptions="Center" />
 
-					<Button
+					<controls:IconButton
 						Grid.Column="1"
 						Command="{Binding ClearRecentsCommand}"
-						FontSize="{StaticResource FontBody}"
-						StyleClass="IconButton"
-						Text="{localization:Tr Common.Clear}" />
+						Glyph="Trash"
+						SemanticProperties.Description="{localization:Tr Common.Clear}"
+						Size="20" />
 				</Grid>
 
 				<Border Padding="0" StyleClass="Card">
@@ -356,12 +422,7 @@
 									Spacing="1"
 									VerticalOptions="Center">
 
-									<Label FontFamily="OpenSansSemibold" Text="{Binding Name}" />
-
-									<Label
-										IsVisible="{Binding Place, Converter={StaticResource HasText}}"
-										StyleClass="Faint"
-										Text="{Binding Place}" />
+									<controls:StopNameView Place="{Binding Place}" Stop="{Binding Name}" />
 
 									<VerticalStackLayout.GestureRecognizers>
 										<TapGestureRecognizer Tapped="PlaceTapped" />

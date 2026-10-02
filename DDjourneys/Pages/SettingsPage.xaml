@@ -2,6 +2,7 @@
 	x:Class="DDjourneys.Pages.SettingsPage"
 	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
 	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+	xmlns:controls="clr-namespace:DDjourneys.Controls"
 	xmlns:local="clr-namespace:DDjourneys.Pages"
 	xmlns:localization="clr-namespace:DDjourneys.Localization"
 	xmlns:support="clr-namespace:DDjourneys.Support"
@@ -26,13 +27,13 @@
 							<Label StyleClass="Caption" Text="{localization:Tr Settings.ThemeSystemDescription}" />
 						</VerticalStackLayout>
 
-						<Label
+						<controls:Icon
 							Grid.Column="1"
-							FontSize="20"
+							Glyph="Check"
 							IsVisible="{Binding IsSystemTheme}"
-							Text="&#x2713;"
-							TextColor="{DynamicResource Accent}"
-							VerticalOptions="Center" />
+							Size="20"
+							VerticalOptions="Center"
+							Color="{DynamicResource Accent}" />
 
 						<Grid.GestureRecognizers>
 							<TapGestureRecognizer Command="{Binding SelectSystemThemeCommand}" />
@@ -55,20 +56,20 @@
 								Text="{Binding OtherThemeText}" />
 						</VerticalStackLayout>
 
-						<Label
+						<controls:Icon
 							Grid.Column="1"
-							FontSize="20"
+							Glyph="Check"
 							IsVisible="{Binding IsOtherTheme}"
-							Text="&#x2713;"
-							TextColor="{DynamicResource Accent}"
-							VerticalOptions="Center" />
+							Size="20"
+							VerticalOptions="Center"
+							Color="{DynamicResource Accent}" />
 
-						<Label
+						<controls:Icon
 							Grid.Column="2"
-							FontSize="22"
-							Text="&#x203A;"
-							TextColor="{DynamicResource InkMuted}"
-							VerticalOptions="Center" />
+							Glyph="ChevronRight"
+							Size="20"
+							VerticalOptions="Center"
+							Color="{DynamicResource InkMuted}" />
 
 						<Grid.GestureRecognizers>
 							<TapGestureRecognizer Command="{Binding OpenThemesCommand}" />
@@ -95,13 +96,13 @@
 									Text="{Binding DisplayName}"
 									VerticalOptions="Center" />
 
-								<Label
+								<controls:Icon
 									Grid.Column="1"
-									FontSize="20"
+									Glyph="Check"
 									IsVisible="{Binding IsSelected}"
-									Text="&#x2713;"
-									TextColor="{DynamicResource Accent}"
-									VerticalOptions="Center" />
+									Size="20"
+									VerticalOptions="Center"
+									Color="{DynamicResource Accent}" />
 
 								<Grid.GestureRecognizers>
 									<TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type local:SettingsViewModel}}, Path=SelectLanguageCommand}" CommandParameter="{Binding Code}" />
@@ -163,6 +164,34 @@
 
 			<Border Padding="0" StyleClass="Card">
 				<VerticalStackLayout>
+
+					<!--  Provider: opens the list of data providers  -->
+					<Grid
+						Padding="12,10"
+						ColumnDefinitions="*,Auto"
+						ColumnSpacing="10"
+						MinimumHeightRequest="52">
+						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
+							<Label FontFamily="OpenSansSemibold" Text="{localization:Tr Provider.Title}" />
+							<Label
+								LineBreakMode="TailTruncation"
+								StyleClass="Caption"
+								Text="{Binding ProviderText}" />
+						</VerticalStackLayout>
+
+						<controls:Icon
+							Grid.Column="1"
+							Glyph="ChevronRight"
+							Size="20"
+							VerticalOptions="Center"
+							Color="{DynamicResource InkMuted}" />
+
+						<Grid.GestureRecognizers>
+							<TapGestureRecognizer Command="{Binding OpenProvidersCommand}" />
+						</Grid.GestureRecognizers>
+					</Grid>
+
+					<BoxView StyleClass="Divider" />
 
 					<VerticalStackLayout Padding="12,10" Spacing="4">
 						<Label FontFamily="OpenSansSemibold" Text="{localization:Tr Settings.Results}" />
@@ -249,6 +278,152 @@
 							SemanticProperties.Description="{localization:Tr Settings.ExpandNotices}"
 							VerticalOptions="Center" />
 					</Grid>
+
+					<BoxView StyleClass="Divider" />
+
+					<Grid
+						Padding="12,10"
+						ColumnDefinitions="*,Auto"
+						ColumnSpacing="10"
+						MinimumHeightRequest="52">
+						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
+							<Label FontFamily="OpenSansSemibold" Text="{localization:Tr Settings.RoutingEntry}" />
+							<Label StyleClass="Caption" Text="{localization:Tr Settings.RoutingEntryDescription}" />
+						</VerticalStackLayout>
+
+						<controls:Icon
+							Grid.Column="1"
+							Glyph="ChevronRight"
+							Size="20"
+							VerticalOptions="Center"
+							Color="{DynamicResource InkMuted}" />
+
+						<Grid.GestureRecognizers>
+							<TapGestureRecognizer Command="{Binding OpenRoutingCommand}" />
+						</Grid.GestureRecognizers>
+					</Grid>
+
+				</VerticalStackLayout>
+			</Border>
+
+			<Label StyleClass="Section" Text="{localization:Tr Settings.JourneyDisplay}" />
+
+			<Border Padding="0" StyleClass="Card">
+				<VerticalStackLayout>
+
+					<BoxView StyleClass="Divider" />
+
+					<Grid
+						Padding="12,8"
+						ColumnDefinitions="*,Auto"
+						ColumnSpacing="12"
+						MinimumHeightRequest="52">
+
+						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
+							<Label FontFamily="OpenSansSemibold" Text="{localization:Tr Settings.Occupancy}" />
+							<Label StyleClass="Caption" Text="{localization:Tr Settings.OccupancyDescription}" />
+						</VerticalStackLayout>
+
+						<Switch
+							Grid.Column="1"
+							IsToggled="{Binding ShowOccupancy}"
+							SemanticProperties.Description="{localization:Tr Settings.Occupancy}"
+							VerticalOptions="Center" />
+					</Grid>
+
+					<BoxView StyleClass="Divider" />
+
+					<Grid
+						Padding="12,8"
+						ColumnDefinitions="*,Auto"
+						ColumnSpacing="12"
+						MinimumHeightRequest="52">
+
+						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
+							<Label FontFamily="OpenSansSemibold" Text="{localization:Tr Settings.Platforms}" />
+							<Label StyleClass="Caption" Text="{localization:Tr Settings.PlatformsDescription}" />
+						</VerticalStackLayout>
+
+						<Switch
+							Grid.Column="1"
+							IsToggled="{Binding ShowPlatforms}"
+							SemanticProperties.Description="{localization:Tr Settings.Platforms}"
+							VerticalOptions="Center" />
+					</Grid>
+
+					<BoxView StyleClass="Divider" />
+
+					<Grid
+						Padding="12,8"
+						ColumnDefinitions="*,Auto"
+						ColumnSpacing="12"
+						MinimumHeightRequest="52">
+
+						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
+							<Label FontFamily="OpenSansSemibold" Text="{localization:Tr Settings.ExpandStops}" />
+							<Label StyleClass="Caption" Text="{localization:Tr Settings.ExpandStopsDescription}" />
+						</VerticalStackLayout>
+
+						<Switch
+							Grid.Column="1"
+							IsToggled="{Binding ExpandStops}"
+							SemanticProperties.Description="{localization:Tr Settings.ExpandStops}"
+							VerticalOptions="Center" />
+					</Grid>
+
+					<BoxView StyleClass="Divider" />
+
+					<Grid
+						Padding="12,8"
+						ColumnDefinitions="*,Auto"
+						ColumnSpacing="12"
+						MinimumHeightRequest="52">
+
+						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
+							<Label FontFamily="OpenSansSemibold" Text="{localization:Tr Settings.ExpertView}" />
+							<Label StyleClass="Caption" Text="{localization:Tr Settings.ExpertViewDescription}" />
+						</VerticalStackLayout>
+
+						<Switch
+							Grid.Column="1"
+							IsToggled="{Binding ExpertView}"
+							SemanticProperties.Description="{localization:Tr Settings.ExpertView}"
+							VerticalOptions="Center" />
+					</Grid>
+
+				</VerticalStackLayout>
+			</Border>
+
+			<Label StyleClass="Section" Text="{localization:Tr Settings.PlaceSearch}" />
+
+			<Border Padding="0" StyleClass="Card">
+				<VerticalStackLayout>
+
+					<VerticalStackLayout Padding="12,10" Spacing="4">
+						<Label FontFamily="OpenSansSemibold" Text="{localization:Tr Settings.SearchDelay}" />
+
+						<Label StyleClass="Caption" Text="{Binding SearchDelayText}" />
+
+						<Slider
+							Maximum="{Binding MaxSearchDelay}"
+							Minimum="{Binding MinSearchDelay}"
+							SemanticProperties.Description="{localization:Tr Settings.SearchDelay}"
+							Value="{Binding SearchDelayMs}" />
+					</VerticalStackLayout>
+
+					<BoxView StyleClass="Divider" />
+
+					<VerticalStackLayout Padding="12,10" Spacing="4">
+						<Label FontFamily="OpenSansSemibold" Text="{localization:Tr Settings.MinQueryLength}" />
+
+						<Label StyleClass="Caption" Text="{Binding MinQueryLengthText}" />
+
+						<Slider
+							Maximum="4"
+							Minimum="1"
+							SemanticProperties.Description="{localization:Tr Settings.MinQueryLength}"
+							Value="{Binding MinQueryLength}" />
+					</VerticalStackLayout>
 
 				</VerticalStackLayout>
 			</Border>

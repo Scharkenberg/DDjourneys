@@ -11,9 +11,10 @@
 
 	<ContentPage.ToolbarItems>
 		<ToolbarItem
-			Command="{Binding ShareCommand}"
-			SemanticProperties.Description="{localization:Tr Common.Share}"
-			Text="&#x2934;" />
+			x:Name="ExpertItem"
+			Command="{Binding OpenExpertCommand}"
+			Order="Secondary"
+			Text="{localization:Tr Expert.Open}" />
 	</ContentPage.ToolbarItems>
 
 	<ContentPage.Resources>
@@ -34,6 +35,8 @@
 
 					<Label FontFamily="OpenSansSemibold" Text="{Binding Time}" />
 
+					<controls:OccupancyIndicator IsVisible="{Binding HasOccupancy}" Level="{Binding Occupancy}" />
+
 					<Label
 						IsVisible="{Binding HasDelay}"
 						StyleClass="Caption"
@@ -43,12 +46,16 @@
 					<Label
 						IsVisible="{Binding HasDelay}"
 						StyleClass="Delay"
-						Text="{Binding DelayText}" />
-
-					<Label
-						IsVisible="{Binding HasOccupancy}"
-						StyleClass="Caption"
-						Text="{Binding OccupancyText}" />
+						Text="{Binding DelayText}">
+						<Label.Triggers>
+							<DataTrigger
+								Binding="{Binding IsEarly}"
+								TargetType="Label"
+								Value="True">
+								<Setter Property="TextColor" Value="{DynamicResource OnTime}" />
+							</DataTrigger>
+						</Label.Triggers>
+					</Label>
 				</VerticalStackLayout>
 
 				<Grid Grid.Column="1" RowDefinitions="16,*">
@@ -89,12 +96,7 @@
 					Padding="0,4,0,10"
 					Spacing="4">
 
-					<Label FontFamily="OpenSansSemibold" Text="{Binding Name}" />
-
-					<Label
-						IsVisible="{Binding HasPlace}"
-						StyleClass="Faint"
-						Text="{Binding PlaceText}" />
+					<controls:StopNameView Place="{Binding Place}" Stop="{Binding Name}" />
 
 					<Label
 						IsVisible="{Binding HasPlatform}"
@@ -115,13 +117,15 @@
 				Loaded="RowLoaded"
 				SemanticProperties.Description="{Binding Description}">
 
-				<HorizontalStackLayout
+				<VerticalStackLayout
 					Grid.Column="0"
 					Padding="0,4,0,0"
-					Spacing="4">
+					Spacing="2">
 
 					<Label StyleClass="Caption" Text="{Binding Time}" />
-				</HorizontalStackLayout>
+
+					<controls:OccupancyIndicator IsVisible="{Binding HasOccupancy}" Level="{Binding Occupancy}" />
+				</VerticalStackLayout>
 
 				<Grid Grid.Column="1">
 
@@ -140,34 +144,38 @@
 						Color="{Binding RailBottom}" />
 				</Grid>
 
-				<HorizontalStackLayout
+				<VerticalStackLayout
 					Grid.Column="2"
 					Padding="0,4,0,6"
-					Spacing="6">
+					Spacing="2">
 
-					<Label StyleClass="Caption" Text="{Binding Name}" />
+					<controls:StopNameView
+						Compact="True"
+						Place="{Binding Place}"
+						Stop="{Binding Name}" />
 
-					<Label
-						IsVisible="{Binding HasPlace}"
-						StyleClass="Faint"
-						Text="{Binding PlaceText}"
-						VerticalOptions="Center" />
+					<HorizontalStackLayout Spacing="8">
 
-					<Label
-						IsVisible="{Binding HasDelay}"
-						StyleClass="Delay"
-						Text="{Binding DelayText}" />
+						<Label
+							IsVisible="{Binding HasDelay}"
+							StyleClass="Delay"
+							Text="{Binding DelayText}">
+							<Label.Triggers>
+								<DataTrigger
+									Binding="{Binding IsEarly}"
+									TargetType="Label"
+									Value="True">
+									<Setter Property="TextColor" Value="{DynamicResource OnTime}" />
+								</DataTrigger>
+							</Label.Triggers>
+						</Label>
 
-					<Label
-						IsVisible="{Binding IsNotServed}"
-						StyleClass="Cancelled"
-						Text="{localization:Tr Journey.NotServed}" />
-
-					<Label
-						IsVisible="{Binding HasOccupancy}"
-						StyleClass="Caption"
-						Text="{Binding OccupancyText}" />
-				</HorizontalStackLayout>
+						<Label
+							IsVisible="{Binding IsNotServed}"
+							StyleClass="Cancelled"
+							Text="{localization:Tr Journey.NotServed}" />
+					</HorizontalStackLayout>
+				</VerticalStackLayout>
 			</Grid>
 		</DataTemplate>
 
@@ -233,10 +241,15 @@
 						StyleClass="Caption"
 						Text="{Binding FeaturesText}" />
 
-					<Label
-						IsVisible="{Binding HasOccupancy}"
-						StyleClass="Caption"
-						Text="{Binding OccupancyText}" />
+					<HorizontalStackLayout IsVisible="{Binding HasOccupancy}" Spacing="8">
+
+						<controls:OccupancyIndicator Level="{Binding Occupancy}" />
+
+						<Label
+							StyleClass="Caption"
+							Text="{Binding OccupancyText}"
+							VerticalOptions="Center" />
+					</HorizontalStackLayout>
 
 					<Label
 						IsVisible="{Binding IsCancelled}"
@@ -264,20 +277,12 @@
 							TextColor="{DynamicResource Accent}"
 							VerticalOptions="Center" />
 
-						<Grid
-							HeightRequest="24"
+						<controls:Icon
+							Glyph="ChevronDown"
+							Rotation="{Binding ChevronRotation}"
+							Size="18"
 							VerticalOptions="Center"
-							WidthRequest="24">
-
-							<Polygon
-								Fill="{DynamicResource Accent}"
-								HeightRequest="8"
-								HorizontalOptions="Center"
-								Points="0,0 12,0 6,8"
-								Rotation="{Binding ChevronRotation}"
-								VerticalOptions="Center"
-								WidthRequest="12" />
-						</Grid>
+							Color="{DynamicResource Accent}" />
 
 						<HorizontalStackLayout.GestureRecognizers>
 							<TapGestureRecognizer Tapped="StopsToggled" />
@@ -313,10 +318,12 @@
 
 					<Label FontFamily="OpenSansSemibold" Text="{Binding Text}" />
 
-					<Label
+					<controls:StopNameView
+						Compact="True"
 						IsVisible="{Binding HasCaption}"
-						StyleClass="Caption"
-						Text="{Binding Caption}" />
+						Place="{Binding CaptionPlace}"
+						Prefix="{Binding CaptionPrefix}"
+						Stop="{Binding CaptionName}" />
 				</VerticalStackLayout>
 			</Grid>
 		</DataTemplate>
@@ -324,7 +331,8 @@
 
 		<!--  Change from one ride to the next.
 		     Left: arrival time above the node, departure time below it, symmetric.
-		     Middle: rail fills the full row height (top 34 / node 18 / rest).
+		     Middle: rail fills the full row height (top 48 / node 18 / rest).
+     Occupancy dots sit outside the times: above the arrival, below the departure.
 		     Right: the name sits on the node's line; details follow below.  -->
 		<DataTemplate x:Key="InterchangeTemplate" x:DataType="support:InterchangeRow">
 
@@ -336,7 +344,7 @@
 
 				<Grid
 					Grid.Column="0"
-					RowDefinitions="34,18,*"
+					RowDefinitions="48,18,*"
 					RowSpacing="0">
 
 					<VerticalStackLayout
@@ -345,12 +353,23 @@
 						Spacing="1"
 						VerticalOptions="End">
 
+						<controls:OccupancyIndicator IsVisible="{Binding HasArrivalOccupancy}" Level="{Binding ArrivalOccupancy}" />
+
 						<Label FontFamily="OpenSansSemibold" Text="{Binding ArrivalTime}" />
 
 						<Label
 							IsVisible="{Binding HasArrivalDelay}"
 							StyleClass="Delay"
-							Text="{Binding ArrivalDelay}" />
+							Text="{Binding ArrivalDelay}">
+							<Label.Triggers>
+								<DataTrigger
+									Binding="{Binding ArrivalIsEarly}"
+									TargetType="Label"
+									Value="True">
+									<Setter Property="TextColor" Value="{DynamicResource OnTime}" />
+								</DataTrigger>
+							</Label.Triggers>
+						</Label>
 					</VerticalStackLayout>
 
 					<VerticalStackLayout
@@ -364,13 +383,24 @@
 						<Label
 							IsVisible="{Binding HasDepartureDelay}"
 							StyleClass="Delay"
-							Text="{Binding DepartureDelay}" />
+							Text="{Binding DepartureDelay}">
+							<Label.Triggers>
+								<DataTrigger
+									Binding="{Binding DepartureIsEarly}"
+									TargetType="Label"
+									Value="True">
+									<Setter Property="TextColor" Value="{DynamicResource OnTime}" />
+								</DataTrigger>
+							</Label.Triggers>
+						</Label>
+
+						<controls:OccupancyIndicator IsVisible="{Binding HasDepartureOccupancy}" Level="{Binding DepartureOccupancy}" />
 					</VerticalStackLayout>
 				</Grid>
 
 				<Grid
 					Grid.Column="1"
-					RowDefinitions="34,18,*"
+					RowDefinitions="48,18,*"
 					RowSpacing="0">
 
 					<BoxView
@@ -405,15 +435,10 @@
 
 				<VerticalStackLayout
 					Grid.Column="2"
-					Padding="0,32,0,10"
+					Padding="0,46,0,10"
 					Spacing="3">
 
-					<Label FontFamily="OpenSansSemibold" Text="{Binding Name}" />
-
-					<Label
-						IsVisible="{Binding HasPlace}"
-						StyleClass="Faint"
-						Text="{Binding PlaceText}" />
+					<controls:StopNameView Place="{Binding Place}" Stop="{Binding Name}" />
 
 					<Label
 						IsVisible="{Binding HasConnection}"
@@ -488,19 +513,56 @@
 
 			<VerticalStackLayout x:Name="HeaderBlock" Spacing="{StaticResource SpaceM}">
 
-				<VerticalStackLayout Spacing="2">
-
-					<Label StyleClass="Title" Text="{Binding RouteText}" />
-
-					<Label StyleClass="Caption" Text="{Binding DayText}" />
-				</VerticalStackLayout>
+				<controls:SearchHeader
+					ActionCommand="{Binding ShareCommand}"
+					ActionDescription="{localization:Tr Common.Share}"
+					ActionGlyph="Share"
+					From="{Binding FromName}"
+					FromPlace="{Binding FromPlace}"
+					Subtitle="{Binding DayText}"
+					To="{Binding ToName}"
+					ToPlace="{Binding ToPlace}" />
 
 				<controls:JourneyCard BindingContext="{Binding Summary}" />
 
 				<VerticalStackLayout IsVisible="{Binding IsTrackingAvailable}" Spacing="8">
-					<Button Command="{Binding FollowJourneyCommand}" IsVisible="{Binding CanFollow}" Text="{localization:Tr Journey.FollowJourney}" />
-					<Button Command="{Binding DeactivateTrackingCommand}" IsVisible="{Binding IsTracking}" Text="{localization:Tr Journey.DeactivateTracking}" />
+
+					<Button
+						Command="{Binding FollowJourneyCommand}"
+						IsVisible="{Binding CanFollow}"
+						Text="{localization:Tr Journey.FollowJourney}" />
+
+					<Grid
+						ColumnDefinitions="*,*"
+						ColumnSpacing="8"
+						IsVisible="{Binding IsFollowed}">
+
+						<Button
+							Command="{Binding PauseCommand}"
+							IsVisible="{Binding CanPause}"
+							StyleClass="Tonal"
+							Text="{localization:Tr Journey.DeactivateTracking}" />
+
+						<Button
+							Command="{Binding ResumeCommand}"
+							IsVisible="{Binding IsPaused}"
+							StyleClass="Tonal"
+							Text="{localization:Tr Tracking.Resume}" />
+
+						<Button
+							Grid.Column="1"
+							Command="{Binding StopFollowingCommand}"
+							StyleClass="Tonal"
+							Text="{localization:Tr Tracking.StopFollowing}" />
+					</Grid>
+
 					<Label StyleClass="Caption" Text="{Binding TrackingStatus}" />
+
+					<Button
+						Command="{Binding OpenFollowedCommand}"
+						IsVisible="{Binding IsFollowed}"
+						StyleClass="Tonal"
+						Text="{localization:Tr Tracking.FollowedJourneys}" />
 				</VerticalStackLayout>
 
 				<VerticalStackLayout

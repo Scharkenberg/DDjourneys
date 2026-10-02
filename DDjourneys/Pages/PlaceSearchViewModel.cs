@@ -27,8 +27,17 @@ public sealed class PlaceSearchViewModel : ObservableObject, IQueryAttributable
 		ServiceUnavailable
 	}
 
-	private const int MinQueryLength = 2;
-	private static readonly TimeSpan Debounce = TimeSpan.FromMilliseconds(300);
+
+	/// <summary>Quiet time after the last keystroke before the endpoint is asked (a setting).</summary>
+	private TimeSpan Debounce => TimeSpan.FromMilliseconds(_settings.SearchDelayMs);
+
+	private int MinQueryLength => _settings.MinQueryLength;
+
+	private const int CacheSize = 24;
+
+	// Answers of this session by normalised query: backspacing or retyping costs no request.
+	private readonly Dictionary<string, IReadOnlyList<Location>> _cache = new(StringComparer.CurrentCultureIgnoreCase);
+	private readonly Queue<string> _cacheOrder = new();
 
 	private readonly LocationService _locations;
 	private readonly PlaceStore _store;
@@ -198,15 +207,27 @@ public sealed class PlaceSearchViewModel : ObservableObject, IQueryAttributable
 
 		try
 		{
-			await Task.Delay(Debounce, token);
+			IReadOnlyList<Location> found;
 
-			IsSearching = true;
+			if (_cache.TryGetValue(text, out IReadOnlyList<Location>? cached))
+			{
+				found = cached;
+			}
+			else
+			{
+				// Cancelled by the next keystroke; only the last text of a burst reaches the endpoint.
+				await Task.Delay(Debounce, token);
 
-			IReadOnlyList<Location> found =
-				await _locations.SearchAsync(
-					text,
-					token,
-					TimeSpan.FromSeconds(_settings.TimeoutSeconds));
+				IsSearching = true;
+
+				found =
+					await _locations.SearchAsync(
+						text,
+						token,
+						TimeSpan.FromSeconds(_settings.TimeoutSeconds));
+
+				Remember(text, found);
+			}
 
 			if (token.IsCancellationRequested
 				|| !ReferenceEquals(_search, cts))
@@ -266,6 +287,19 @@ public sealed class PlaceSearchViewModel : ObservableObject, IQueryAttributable
 			}
 
 			cts.Dispose();
+		}
+	}
+
+	private void Remember(string text, IReadOnlyList<Location> found)
+	{
+		if (_cache.TryAdd(text, found))
+		{
+			_cacheOrder.Enqueue(text);
+
+			while (_cacheOrder.Count > CacheSize)
+			{
+				_cache.Remove(_cacheOrder.Dequeue());
+			}
 		}
 	}
 

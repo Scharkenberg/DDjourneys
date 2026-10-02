@@ -1,0 +1,231 @@
+<ContentPage
+	x:Class="DDjourneys.Pages.TrackedJourneysPage"
+	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+	xmlns:controls="clr-namespace:DDjourneys.Controls"
+	xmlns:local="clr-namespace:DDjourneys.Pages"
+	xmlns:localization="clr-namespace:DDjourneys.Localization"
+	Title="{localization:Tr Tracking.Title}"
+	x:DataType="local:TrackedJourneysViewModel">
+
+	<ContentPage.ToolbarItems>
+		<ToolbarItem
+			Command="{Binding DeleteAllCommand}"
+			Order="Secondary"
+			Text="{localization:Tr Tracking.DeleteAll}" />
+	</ContentPage.ToolbarItems>
+
+	<RefreshView Command="{Binding RefreshCommand}" IsRefreshing="{Binding IsRefreshing}">
+		<ScrollView>
+			<VerticalStackLayout Padding="{StaticResource PadPage}" Spacing="{StaticResource SpaceM}">
+
+				<Border IsVisible="{Binding NotificationsBlocked}" StyleClass="Card">
+					<Label StyleClass="Caption" Text="{localization:Tr Tracking.NotificationsDenied}" />
+				</Border>
+
+				<Label
+					IsVisible="{Binding HasError}"
+					StyleClass="Cancelled"
+					Text="{Binding ErrorText}" />
+
+				<VerticalStackLayout
+					Padding="0,32"
+					IsVisible="{Binding IsEmpty}"
+					Spacing="4">
+
+					<Label
+						HorizontalTextAlignment="Center"
+						StyleClass="Subtitle"
+						Text="{localization:Tr Tracking.Empty}" />
+
+					<Label
+						HorizontalTextAlignment="Center"
+						StyleClass="Caption"
+						Text="{localization:Tr Tracking.EmptyHint}" />
+				</VerticalStackLayout>
+
+				<VerticalStackLayout BindableLayout.ItemsSource="{Binding Sections}" Spacing="{StaticResource SpaceM}">
+
+					<BindableLayout.ItemTemplate>
+						<DataTemplate x:DataType="local:TrackedSection">
+
+							<VerticalStackLayout Spacing="{StaticResource SpaceS}">
+
+								<Label StyleClass="Section" Text="{Binding Title}" />
+
+								<VerticalStackLayout BindableLayout.ItemsSource="{Binding Items}" Spacing="{StaticResource SpaceS}">
+
+									<BindableLayout.ItemTemplate>
+										<DataTemplate x:DataType="local:TrackedRow">
+
+											<Border SemanticProperties.Description="{Binding AccessibilityText}" StyleClass="Card">
+
+												<VerticalStackLayout Spacing="8">
+
+													<Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+
+														<VerticalStackLayout Spacing="2">
+
+															<Label
+																FontFamily="OpenSansSemibold"
+																LineBreakMode="TailTruncation"
+																Text="{Binding Title}" />
+
+															<Label StyleClass="Caption" Text="{Binding Subtitle}" />
+
+															<Label
+																IsVisible="{Binding HasLines}"
+																StyleClass="Faint"
+																Text="{Binding LinesText}" />
+														</VerticalStackLayout>
+
+														<controls:Icon
+															Grid.Column="1"
+															Glyph="{Binding ExpandIcon}"
+															Size="18"
+															VerticalOptions="Start"
+															Color="{DynamicResource InkMuted}" />
+
+														<Grid.GestureRecognizers>
+															<TapGestureRecognizer Command="{Binding ToggleExpandedCommand}" />
+														</Grid.GestureRecognizers>
+													</Grid>
+
+													<Label
+														FontFamily="OpenSansSemibold"
+														FontSize="{StaticResource FontCaption}"
+														IsVisible="{Binding IsNormalStatus}"
+														Text="{Binding StatusText}"
+														TextColor="{DynamicResource Accent}" />
+
+													<Label
+														IsVisible="{Binding IsProblem}"
+														StyleClass="Delay"
+														Text="{Binding StatusText}" />
+
+													<Label
+														IsVisible="{Binding IsCancelled}"
+														StyleClass="Cancelled"
+														Text="{Binding StatusText}" />
+
+													<ProgressBar
+														IsVisible="{Binding HasProgress}"
+														Progress="{Binding Progress}"
+														ProgressColor="{DynamicResource Accent}" />
+
+													<Label
+														IsVisible="{Binding HasNext}"
+														StyleClass="Caption"
+														Text="{Binding NextText}" />
+
+													<Label
+														IsVisible="{Binding HasNotice}"
+														LineBreakMode="WordWrap"
+														StyleClass="Caption"
+														Text="{Binding NoticeText}" />
+
+													<VerticalStackLayout IsVisible="{Binding IsExpanded}" Spacing="8">
+
+														<BoxView StyleClass="Divider" />
+
+														<Label StyleClass="Section" Text="{localization:Tr Tracking.Alerts}" />
+
+														<FlexLayout Wrap="Wrap">
+
+															<Border Margin="0,0,8,8" StyleClass="ChipButton">
+																<HorizontalStackLayout Spacing="6">
+																	<controls:Icon
+																		Glyph="Check"
+																		IsVisible="{Binding StartAlertOn}"
+																		Size="15"
+																		VerticalOptions="Center"
+																		Color="{DynamicResource Accent}" />
+
+																	<Label
+																		StyleClass="Caption"
+																		Text="{Binding StartAlertText}"
+																		VerticalOptions="Center" />
+																</HorizontalStackLayout>
+																<Border.GestureRecognizers>
+																	<TapGestureRecognizer Command="{Binding ToggleStartAlertCommand}" />
+																</Border.GestureRecognizers>
+															</Border>
+
+															<Border Margin="0,0,8,8" StyleClass="ChipButton">
+																<Label StyleClass="Caption" Text="{Binding LeadText}" />
+																<Border.GestureRecognizers>
+																	<TapGestureRecognizer Command="{Binding CycleLeadCommand}" />
+																</Border.GestureRecognizers>
+															</Border>
+
+															<Border Margin="0,0,8,8" StyleClass="ChipButton">
+																<HorizontalStackLayout Spacing="6">
+																	<controls:Icon
+																		Glyph="Check"
+																		IsVisible="{Binding ChangeAlertOn}"
+																		Size="15"
+																		VerticalOptions="Center"
+																		Color="{DynamicResource Accent}" />
+
+																	<Label
+																		StyleClass="Caption"
+																		Text="{Binding ChangeAlertText}"
+																		VerticalOptions="Center" />
+																</HorizontalStackLayout>
+																<Border.GestureRecognizers>
+																	<TapGestureRecognizer Command="{Binding ToggleChangeAlertCommand}" />
+																</Border.GestureRecognizers>
+															</Border>
+
+															<Border Margin="0,0,8,8" StyleClass="ChipButton">
+																<HorizontalStackLayout Spacing="6">
+																	<controls:Icon
+																		Glyph="Check"
+																		IsVisible="{Binding ProblemAlertOn}"
+																		Size="15"
+																		VerticalOptions="Center"
+																		Color="{DynamicResource Accent}" />
+
+																	<Label
+																		StyleClass="Caption"
+																		Text="{Binding ProblemAlertText}"
+																		VerticalOptions="Center" />
+																</HorizontalStackLayout>
+																<Border.GestureRecognizers>
+																	<TapGestureRecognizer Command="{Binding ToggleProblemAlertCommand}" />
+																</Border.GestureRecognizers>
+															</Border>
+														</FlexLayout>
+
+														<Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+
+															<Button
+																Command="{Binding PauseResumeCommand}"
+																IsVisible="{Binding CanPause}"
+																StyleClass="Tonal"
+																Text="{Binding PauseText}" />
+
+															<Button
+																Grid.Column="1"
+																Command="{Binding StopCommand}"
+																StyleClass="Tonal"
+																Text="{Binding StopText}" />
+														</Grid>
+													</VerticalStackLayout>
+
+												</VerticalStackLayout>
+											</Border>
+
+										</DataTemplate>
+									</BindableLayout.ItemTemplate>
+								</VerticalStackLayout>
+
+							</VerticalStackLayout>
+						</DataTemplate>
+					</BindableLayout.ItemTemplate>
+				</VerticalStackLayout>
+
+			</VerticalStackLayout>
+		</ScrollView>
+	</RefreshView>
+</ContentPage>

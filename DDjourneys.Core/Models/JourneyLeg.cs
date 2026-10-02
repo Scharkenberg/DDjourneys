@@ -83,9 +83,19 @@ public sealed class JourneyLeg
 	public string? DeparturePlatform { get; init; }
 
 	/// <summary>
+	/// Platform (Steig) or track (Gleis) at departure.
+	/// </summary>
+	public PlatformKind DeparturePlatformKind { get; init; }
+
+	/// <summary>
 	/// Platform information at arrival.
 	/// </summary>
 	public string? ArrivalPlatform { get; init; }
+
+	/// <summary>
+	/// Platform (Steig) or track (Gleis) at arrival.
+	/// </summary>
+	public PlatformKind ArrivalPlatformKind { get; init; }
 
 	/// <summary>
 	/// Whether this leg has been cancelled.
@@ -122,6 +132,9 @@ public sealed class JourneyLeg
 	/// Provider-independent identifier of this movement segment.
 	/// </summary>
 	public string? Id { get; init; }
+
+	/// <summary>The provider's own object this leg was mapped from (diagnostics only).</summary>
+	public object? ProviderData { get; init; }
 
 	/// <summary>
 	/// Effective arrival time using realtime data when available.

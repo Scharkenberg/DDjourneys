@@ -1,7 +1,7 @@
-﻿using Android.App;
+using Android.App;
 using Android.Content.PM;
-using Android.OS;
 using DDjourneys.Core.Tracking;
+using DDjourneys.Platforms.Android;
 using DDjourneys.Platforms.Android.LiveJourney.Schutzengel;
 
 namespace DDjourneys
@@ -9,23 +9,39 @@ namespace DDjourneys
 	[Activity(Theme = "@style/Maui.SplashTheme", MainLauncher = true, LaunchMode = LaunchMode.SingleTop, ConfigurationChanges = ConfigChanges.ScreenSize | ConfigChanges.Orientation | ConfigChanges.UiMode | ConfigChanges.ScreenLayout | ConfigChanges.SmallestScreenSize | ConfigChanges.Density)]
 	public class MainActivity : MauiAppCompatActivity
 	{
-		protected override void OnCreate(Bundle? savedInstanceState)
+		protected override void OnCreate(global::Android.OS.Bundle? savedInstanceState)
 		{
 			base.OnCreate(savedInstanceState);
+
+			SystemBars.Apply(this, Support.Theme.IsDark);
+		}
+
+		protected override void OnResume()
+		{
+			base.OnResume();
+
+			SystemBars.Apply(this, Support.Theme.IsDark);
+
 			_ = ResumeTrackingAsync();
 		}
 
-		private async Task ResumeTrackingAsync()
+		/// <summary>
+		/// Reloads the followed journeys and restarts monitoring (the foreground service may have
+		/// been stopped by the system while the app was away).
+		/// </summary>
+		private static async Task ResumeTrackingAsync()
 		{
 			try
 			{
-				var services = Microsoft.Maui.Controls.Application.Current?.Handler?.MauiContext?.Services;
-				if (services?.GetService<IJourneyTracker>() is SchutzengelJourneyTracker tracker)
-					await tracker.ResumeStoredAsync();
+				if (IPlatformApplication.Current?.Services.GetService<IJourneyTracker>()
+					is SchutzengelJourneyTracker tracker)
+				{
+					await tracker.ResumeAsync().ConfigureAwait(false);
+				}
 			}
 			catch (Exception ex)
 			{
-				System.Diagnostics.Debug.WriteLine($"Journey tracking recovery failed: {ex.Message}");
+				System.Diagnostics.Debug.WriteLine($"Journey tracking resume failed: {ex.Message}");
 			}
 		}
 	}

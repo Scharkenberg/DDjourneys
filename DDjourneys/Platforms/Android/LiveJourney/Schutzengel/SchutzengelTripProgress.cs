@@ -1,1521 +1,717 @@
-﻿using System.Text.Json;
-using DDjourneys.Core.Models;
+using System.Globalization;
+using System.Text.Json;
 using DDjourneys.Core.Tracking;
 
 namespace DDjourneys.Platforms.Android.LiveJourney.Schutzengel;
 
-internal sealed class SchutzengelTripTimeline
+internal sealed record TripStop(
+	string Name,
+	DateTimeOffset? Scheduled,
+	DateTimeOffset? Realtime,
+	double? Latitude,
+	double? Longitude)
 {
-	public int? DataVersion { get; }
+	public DateTimeOffset? Effective => Realtime ?? Scheduled;
 
-	public IReadOnlyList<SchutzengelTripEpisode> Episodes { get; }
+	public bool HasCoordinates =>
+		Latitude.HasValue
+		&& Longitude.HasValue
+		&& (Latitude != 0 || Longitude != 0);
+}
 
+internal sealed record TripPoint(double Latitude, double Longitude);
 
-	private SchutzengelTripTimeline(
-		int? dataVersion,
-		IReadOnlyList<SchutzengelTripEpisode> episodes)
+internal sealed record TripEpisode(
+	bool IsIndividual,
+	string? Id,
+	string? MotName,
+	string? Direction,
+	TripStop From,
+	TripStop To,
+	IReadOnlyList<TripStop> Stops,
+	IReadOnlyList<TripPoint> Polyline,
+	TimeSpan? RequiredTime)
+{
+	/// <summary>
+	/// The walking time a change really needs. A change without a footpath carries its whole
+	/// planned wait as "duration"; that is no minimum, so it counts as zero.
+	/// </summary>
+	public TimeSpan MinimumTransfer
+	{
+		get
+		{
+			if (!IsIndividual || RequiredTime is not { } required)
+			{
+				return TimeSpan.Zero;
+			}
+
+			if (From.Scheduled is { } start
+				&& To.Scheduled is { } end
+				&& Math.Abs((end - start - required).TotalSeconds) <= 5)
+			{
+				return TimeSpan.Zero;
+			}
+
+			return required;
+		}
+	}
+}
+
+/// <summary>A change that is endangered (<see cref="Missed"/> false) or already lost.</summary>
+internal sealed record ConnectionRisk(
+	int EpisodeIndex,
+	bool Missed,
+	TimeSpan Slack,
+	string Station,
+	string? NextLine);
+
+internal enum TripStage
+{
+	NotStarted,
+	Riding,
+	Changing,
+	Arrived
+}
+
+internal sealed record TripSnapshot(
+	TripStage Stage,
+	TrackingPhase Phase,
+	int EpisodeIndex,
+	int LegIndex,
+	int LegCount,
+	IReadOnlyList<int> SegmentLengths,
+	IReadOnlyList<bool> SegmentIndividual,
+	int Position,
+	double Progress,
+	string? MotName,
+	string? Direction,
+	string? CurrentStop,
+	string? NextStop,
+	DateTimeOffset? NextStopTime,
+	string? Origin,
+	string? Destination,
+	DateTimeOffset? Start,
+	DateTimeOffset? Arrival,
+	DateTimeOffset? PlannedArrival,
+	TimeSpan Delay,
+	ConnectionRisk? Risk,
+	TripPoint? Location)
+{
+	public int Length => SegmentLengths.Sum();
+
+	public static TripSnapshot Empty { get; } =
+		new(
+			TripStage.NotStarted, TrackingPhase.Planned, -1, 0, 0,
+			[], [], 0, 0,
+			null, null, null, null, null,
+			null, null, null, null, null,
+			TimeSpan.Zero, null, null);
+}
+
+/// <summary>
+/// The service's view of a trip: ordered episodes (rides and footpaths) with planned and
+/// real-time stop times. Progress is derived from the clock like the reference client does:
+/// the current episode is the last one that has started, the stop before the first future stop
+/// is the most recent one.
+/// </summary>
+internal sealed class TripTimeline
+{
+	private TripTimeline(int? dataVersion, IReadOnlyList<TripEpisode> episodes)
 	{
 		DataVersion = dataVersion;
 		Episodes = episodes;
 	}
 
+	public int? DataVersion { get; }
 
-	public static SchutzengelTripTimeline FromJourney(
-		Journey journey)
+	public IReadOnlyList<TripEpisode> Episodes { get; }
+
+	public DateTimeOffset? Start =>
+		Episodes.Count == 0 ? null : Episodes[0].From.Effective;
+
+	public DateTimeOffset? End =>
+		Episodes.Count == 0 ? null : Episodes[^1].To.Effective;
+
+	/// <summary>
+	/// Reads a <c>planRealtime</c> response, or the <c>journey</c> part of a plan that was posted.
+	/// Polylines the service omits in updates are taken over from <paramref name="previous"/>.
+	/// </summary>
+	public static bool TryParse(JsonElement root, TripTimeline? previous, out TripTimeline timeline)
 	{
-		ArgumentNullException.ThrowIfNull(
-			journey);
+		timeline = null!;
 
-
-		var episodes =
-			new List<SchutzengelTripEpisode>();
-
-
-		for (int i = 0;
-			i < journey.Legs.Count;
-			i++)
+		if (root.ValueKind == JsonValueKind.Object
+			&& !root.TryGetProperty("episodes", out _)
+			&& root.TryGetProperty("journey", out JsonElement journey))
 		{
-			JourneyLeg leg =
-				journey.Legs[i];
-
-
-			episodes.Add(
-				CreateJourneyLegEpisode(
-					leg,
-					i));
-
-
-			if (i >= journey.Legs.Count - 1)
-			{
-				continue;
-			}
-
-
-			JourneyLeg nextLeg =
-				journey.Legs[i + 1];
-
-
-			JourneyTransfer? transfer =
-				journey.Transfers.FirstOrDefault(
-					item =>
-						item.PreviousLegIndex == i
-						&& item.NextLegIndex == i + 1);
-
-
-			if (transfer is not null)
-			{
-				episodes.Add(
-					CreateTransferEpisode(
-						transfer,
-						leg,
-						nextLeg,
-						i));
-
-				continue;
-			}
-
-
-			DateTimeOffset? previousArrival =
-				leg.EffectiveArrival;
-
-			DateTimeOffset? nextDeparture =
-				nextLeg.EffectiveDeparture;
-
-
-			if (previousArrival is null
-				|| nextDeparture is null
-				|| nextDeparture <= previousArrival
-				|| leg.To.Id != nextLeg.From.Id)
-			{
-				continue;
-			}
-
-
-			var syntheticTransfer =
-				new JourneyTransfer
-				{
-					Location =
-						leg.To,
-
-					PreviousLegIndex =
-						i,
-
-					NextLegIndex =
-						i + 1,
-
-					Duration =
-						nextDeparture.Value - previousArrival.Value,
-
-					WaitingTime =
-						nextDeparture.Value - previousArrival.Value,
-
-					Kind =
-						TransferKind.Walk,
-
-					IsGuaranteed =
-						true,
-
-					From =
-						leg.To,
-
-					To =
-						nextLeg.From,
-
-					Path =
-						[]
-				};
-
-
-			episodes.Add(
-				CreateTransferEpisode(
-					syntheticTransfer,
-					leg,
-					nextLeg,
-					i));
+			root = journey;
 		}
 
-
-		return new SchutzengelTripTimeline(
-			null,
-			episodes);
-	}
-
-
-	public static bool TryParseRealtime(
-		JsonElement root,
-		Journey journey,
-		out SchutzengelTripTimeline timeline)
-	{
-		timeline =
-			null!;
-
-
-		if (root.ValueKind !=
-			JsonValueKind.Object
-			|| !root.TryGetProperty(
-				"episodes",
-				out JsonElement episodesElement)
-			|| episodesElement.ValueKind !=
-				JsonValueKind.Array)
+		if (root.ValueKind != JsonValueKind.Object
+			|| !root.TryGetProperty("episodes", out JsonElement episodesElement)
+			|| episodesElement.ValueKind != JsonValueKind.Array)
 		{
 			return false;
 		}
 
+		var episodes = new List<TripEpisode>();
+		int index = 0;
 
-		var episodes =
-			new List<SchutzengelTripEpisode>();
-
-
-		Dictionary<string, int> legIds =
-			journey.Legs
-				.Select(
-					(leg, index) =>
-						(
-							leg.Id,
-							index))
-				.Where(
-					item =>
-						!string.IsNullOrWhiteSpace(
-							item.Id))
-				.GroupBy(
-					item =>
-						item.Id!,
-					StringComparer.Ordinal)
-				.ToDictionary(
-					group =>
-						group.Key,
-					group =>
-						group.First().index,
-					StringComparer.Ordinal);
-
-
-		int inferredMovementIndex =
-			0;
-
-
-		foreach (JsonElement episodeElement in
-			episodesElement.EnumerateArray())
+		foreach (JsonElement element in episodesElement.EnumerateArray())
 		{
-			if (!TryParseEpisode(
-				episodeElement,
-				out SchutzengelTripEpisode episode))
+			IReadOnlyList<TripPoint>? fallback =
+				previous is not null && index < previous.Episodes.Count
+					? previous.Episodes[index].Polyline
+					: null;
+
+			if (TryParseEpisode(element, fallback, out TripEpisode episode))
 			{
-				continue;
+				episodes.Add(episode);
 			}
 
-
-			int legIndex;
-
-
-			if (!string.IsNullOrWhiteSpace(
-				episode.Id)
-				&& legIds.TryGetValue(
-					episode.Id,
-					out int mappedIndex))
-			{
-				legIndex =
-					mappedIndex;
-			}
-			else if (
-				episode.IsIndividual
-				&& string.IsNullOrWhiteSpace(
-					episode.Id))
-			{
-				legIndex =
-					Math.Max(
-						0,
-						inferredMovementIndex - 1);
-			}
-			else
-			{
-				legIndex =
-					Math.Min(
-						inferredMovementIndex,
-						Math.Max(
-							0,
-							journey.Legs.Count - 1));
-
-				inferredMovementIndex++;
-			}
-
-
-			episodes.Add(
-				episode with
-				{
-					LegIndex =
-						legIndex
-				});
+			index++;
 		}
-
 
 		if (episodes.Count == 0)
 		{
 			return false;
 		}
 
-
-		episodes =
-			episodes
-				.OrderBy(
-					episode =>
-						episode.From?.EffectiveTime
-						?? DateTimeOffset.MaxValue)
-				.ToList();
-
-
-		int? dataVersion =
-			ReadInt(
-				root,
-				"data_version");
-
-
-		timeline =
-			new SchutzengelTripTimeline(
-				dataVersion,
-				episodes);
-
-
+		timeline = new TripTimeline(ReadInt(root, "data_version"), Normalize(episodes));
 		return true;
 	}
 
-
-	public SchutzengelProgressSnapshot Calculate(
-		DateTimeOffset now)
+	public TripSnapshot Calculate(DateTimeOffset now)
 	{
 		if (Episodes.Count == 0)
 		{
-			return new SchutzengelProgressSnapshot(
-				CurrentEpisodeIndex: -1,
-				CurrentLegIndex: 0,
-				LegCount: 0,
-				TimeProgress: 0,
-				CurrentEpisodeProgress: -1,
-				Phase: TrackingPhase.Planned,
-				MotName: null,
-				CurrentStopName: null,
-				NextStopName: null,
-				EstimatedArrival: null,
-				Message: "Waiting for journey data",
-				EstimatedLocation: null);
+			return TripSnapshot.Empty;
 		}
 
+		int[] lengths = [.. Episodes.Select(SegmentLength)];
+		bool[] individual = [.. Episodes.Select(episode => episode.IsIndividual)];
+		int totalLength = lengths.Sum();
+		int legCount = Math.Max(1, Episodes.Count(episode => !episode.IsIndividual));
 
-		DateTimeOffset? firstStart =
-			Episodes
-				.First()
-				.From?
-				.EffectiveTime;
+		DateTimeOffset? start = Start;
+		DateTimeOffset? end = End;
+		DateTimeOffset? plannedEnd = Episodes[^1].To.Scheduled ?? end;
 
+		TimeSpan delay =
+			end is { } actual && plannedEnd is { } planned
+				? actual - planned
+				: TimeSpan.Zero;
 
-		DateTimeOffset? finalEnd =
-			Episodes
-				.Last()
-				.To?
-				.EffectiveTime;
+		string origin = Episodes[0].From.Name;
+		string destination = Episodes[^1].To.Name;
 
+		TripSnapshot Build(
+			TripStage stage,
+			TrackingPhase phase,
+			int episodeIndex,
+			int legIndex,
+			int position,
+			string? mot,
+			string? direction,
+			TripStop? recent,
+			TripStop? next,
+			ConnectionRisk? risk,
+			TripPoint? location) =>
+			new(
+				stage, phase, episodeIndex, legIndex, legCount,
+				lengths, individual, position,
+				totalLength == 0 ? 0 : Math.Clamp((double)position / totalLength, 0, 1),
+				mot, direction, recent?.Name, next?.Name, next?.Effective,
+				origin, destination, start, end, plannedEnd,
+				delay, risk, location);
 
-		int currentEpisodeIndex =
-			-1;
-
-
-		for (int i = 0;
-			i < Episodes.Count;
-			i++)
+		if (end is { } finish && finish < now)
 		{
-			DateTimeOffset? start =
-				Episodes[i]
-					.From?
-					.EffectiveTime;
+			TripStop last = Episodes[^1].To;
 
+			return Build(
+				TripStage.Arrived, TrackingPhase.Arrived,
+				Episodes.Count - 1, legCount - 1, totalLength,
+				Episodes[^1].MotName, Episodes[^1].Direction,
+				last, null, null,
+				last.HasCoordinates
+					? new TripPoint(last.Latitude!.Value, last.Longitude!.Value)
+					: null);
+		}
 
-			if (start is { } value
-				&& value < now)
+		int current = -1;
+
+		for (int i = 0; i < Episodes.Count; i++)
+		{
+			if (Episodes[i].From.Effective is { } episodeStart && episodeStart < now)
 			{
-				currentEpisodeIndex =
-					i;
+				current = i;
 			}
 		}
 
-
-		bool finished =
-			finalEnd is { } end
-			&& end < now;
-
-
-		double timeProgress =
-			CalculateRatio(
-				now,
-				firstStart,
-				finalEnd);
-
-
-		if (finished)
+		if (current < 0)
 		{
-			SchutzengelTripEpisode finalEpisode =
-				Episodes[^1];
-
-
-			string finalMessage =
-				finalEpisode.To?.Name is { Length: > 0 } destination
-					? $"Arrived at {destination}"
-					: "Arrived";
-
-
-			return new SchutzengelProgressSnapshot(
-				CurrentEpisodeIndex:
-					Episodes.Count - 1,
-
-				CurrentLegIndex:
-					Math.Clamp(
-						finalEpisode.LegIndex,
-						0,
-						Math.Max(
-							0,
-							Episodes
-								.Max(
-									episode =>
-										episode.LegIndex))),
-
-				LegCount:
-					Math.Max(
-						1,
-						Episodes.Max(
-							episode =>
-								episode.LegIndex + 1)),
-
-				TimeProgress:
-					1,
-
-				CurrentEpisodeProgress:
-					1,
-
-				Phase:
-					TrackingPhase.Arrived,
-
-				MotName:
-					finalEpisode.MotName,
-
-				CurrentStopName:
-					finalEpisode.To?.Name,
-
-				NextStopName:
-					null,
-
-				EstimatedArrival:
-					finalEnd,
-
-				Message:
-					finalMessage,
-
-				EstimatedLocation:
-					finalEpisode.To?.HasCoordinates == true
-						? new SchutzengelGeoPoint(
-							finalEpisode.To.Latitude!.Value,
-							finalEpisode.To.Longitude!.Value)
-						: null);
+			return Build(
+				TripStage.NotStarted, TrackingPhase.Planned,
+				-1, 0, 0,
+				Episodes[0].MotName, Episodes[0].Direction,
+				null, Episodes[0].From, FindRisk(now), null);
 		}
 
+		TripEpisode episode = Episodes[current];
 
-		if (currentEpisodeIndex < 0)
+		int position = 0;
+
+		for (int i = 0; i < current; i++)
 		{
-			SchutzengelTripEpisode firstEpisode =
-				Episodes[0];
-
-
-			string startMessage =
-				firstEpisode.From?.Name is { Length: > 0 } origin
-					&& firstStart is { } start
-						? $"Starts {start.ToLocalTime():t} · {origin}"
-						: "Journey planned";
-
-
-			return new SchutzengelProgressSnapshot(
-				CurrentEpisodeIndex:
-					-1,
-
-				CurrentLegIndex:
-					0,
-
-				LegCount:
-					Math.Max(
-						1,
-						Episodes.Max(
-							episode =>
-								episode.LegIndex + 1)),
-
-				TimeProgress:
-					0,
-
-				CurrentEpisodeProgress:
-					-1,
-
-				Phase:
-					TrackingPhase.Planned,
-
-				MotName:
-					firstEpisode.MotName,
-
-				CurrentStopName:
-					null,
-
-				NextStopName:
-					firstEpisode.From?.Name,
-
-				EstimatedArrival:
-					finalEnd,
-
-				Message:
-					startMessage,
-
-				EstimatedLocation:
-					null);
+			position += lengths[i];
 		}
 
-
-		SchutzengelTripEpisode currentEpisode =
-			Episodes[currentEpisodeIndex];
-
-
-		List<SchutzengelTripStop> timedStops =
-			currentEpisode
-				.AllStations
-				.Where(
-					stop =>
-						stop.EffectiveTime.HasValue)
-				.OrderBy(
-					stop =>
-						stop.EffectiveTime)
-				.ToList();
-
-
-		SchutzengelTripStop? recentStop =
-			null;
-
-		SchutzengelTripStop? nextStop =
-			null;
-
-
-		for (int i = 0;
-			i < timedStops.Count;
-			i++)
+		if (episode.From.Effective is { } currentStart)
 		{
-			if (timedStops[i]
-					.EffectiveTime!.Value > now)
-			{
-				nextStop =
-					timedStops[i];
-
-				recentStop =
-					i > 0
-						? timedStops[i - 1]
-						: currentEpisode.From;
-
-				break;
-			}
+			position += (int)Math.Clamp((now - currentStart).TotalSeconds, 0, lengths[current]);
 		}
 
+		TripStop recent;
+		TripStop? next;
 
-		recentStop ??=
-			currentEpisode.To
-			?? currentEpisode.From;
-
-
-		double episodeProgress =
-			CalculateRatio(
-				now,
-				currentEpisode.From?.EffectiveTime,
-				currentEpisode.To?.EffectiveTime);
-
-
-		TrackingPhase phase =
-			currentEpisode.IsIndividual
-				? TrackingPhase.AtInterchange
-				: TrackingPhase.InProgress;
-
-
-		string message;
-
-
-		if (currentEpisode.IsIndividual)
+		if (episode.IsIndividual)
 		{
-			string transferName =
-				nextStop?.Name
-				?? currentEpisode.To?.Name
-				?? recentStop?.Name
-				?? "transfer";
-
-
-			message =
-				$"Changing · {transferName}";
-		}
-		else if (nextStop?.Name is { Length: > 0 } next)
-		{
-			message =
-				string.IsNullOrWhiteSpace(
-					currentEpisode.MotName)
-					? $"Next: {next}"
-					: $"{currentEpisode.MotName} · Next: {next}";
-		}
-		else if (recentStop?.Name is { Length: > 0 } recent)
-		{
-			message =
-				string.IsNullOrWhiteSpace(
-					currentEpisode.MotName)
-					? recent
-					: $"{currentEpisode.MotName} · {recent}";
+			recent = episode.From;
+			next = episode.To;
 		}
 		else
 		{
-			message =
-				currentEpisode.MotName
-				?? "Journey in progress";
+			List<TripStop> timed =
+				episode.Stops
+					.Where(stop => stop.Effective.HasValue)
+					.OrderBy(stop => stop.Effective)
+					.ToList();
+
+			int upcoming = timed.FindIndex(stop => stop.Effective > now);
+
+			next = upcoming >= 0 ? timed[upcoming] : null;
+			recent =
+				upcoming > 0
+					? timed[upcoming - 1]
+					: upcoming == 0
+						? episode.From
+						: timed.Count > 0
+							? timed[^1]
+							: episode.To;
 		}
 
+		ConnectionRisk? risk = FindRisk(now);
 
-		SchutzengelGeoPoint? estimatedLocation =
-			CalculateLocation(
-				now,
-				currentEpisode.Polyline,
-				recentStop,
-				nextStop);
+		TripStage stage = episode.IsIndividual ? TripStage.Changing : TripStage.Riding;
 
+		TrackingPhase phase =
+			risk is not null
+				? TrackingPhase.AtRisk
+				: episode.IsIndividual
+					? TrackingPhase.AtInterchange
+					: TrackingPhase.InProgress;
 
-		return new SchutzengelProgressSnapshot(
-			CurrentEpisodeIndex:
-				currentEpisodeIndex,
+		int legIndex =
+			Math.Clamp(
+				Episodes.Take(current).Count(item => !item.IsIndividual),
+				0,
+				legCount - 1);
 
-			CurrentLegIndex:
-				Math.Max(
-					0,
-					currentEpisode.LegIndex),
-
-			LegCount:
-				Math.Max(
-					1,
-					Episodes.Max(
-						episode =>
-							episode.LegIndex + 1)),
-
-			TimeProgress:
-				timeProgress,
-
-			CurrentEpisodeProgress:
-				episodeProgress,
-
-			Phase:
-				phase,
-
-			MotName:
-				currentEpisode.MotName,
-
-			CurrentStopName:
-				recentStop?.Name,
-
-			NextStopName:
-				nextStop?.Name,
-
-			EstimatedArrival:
-				finalEnd,
-
-			Message:
-				message,
-
-			EstimatedLocation:
-				estimatedLocation);
+		return Build(
+			stage, phase, current, legIndex, position,
+			episode.MotName, episode.Direction,
+			recent, next, risk,
+			episode.IsIndividual
+				? null
+				: EstimateLocation(now, episode.Polyline, recent, next));
 	}
 
-
-	private static SchutzengelTripEpisode CreateJourneyLegEpisode(
-		JourneyLeg leg,
-		int legIndex)
+	/// <summary>
+	/// The earliest change between two rides that has not been left yet and cannot be made:
+	/// the next vehicle leaves before the previous one arrives (missed), or earlier than the
+	/// footpath allows (at risk).
+	/// </summary>
+	private ConnectionRisk? FindRisk(DateTimeOffset now)
 	{
-		List<SchutzengelTripStop> stops =
-			leg.Stops
-				.Select(
-					ToProgressStop)
-				.ToList();
-
-
-		if (stops.Count == 0)
+		for (int i = 1; i < Episodes.Count - 1; i++)
 		{
-			stops.Add(
-				new SchutzengelTripStop(
-					leg.From.Name,
-					leg.ScheduledDeparture,
-					leg.RealtimeDeparture,
-					leg.From.Latitude,
-					leg.From.Longitude));
-
-			stops.Add(
-				new SchutzengelTripStop(
-					leg.To.Name,
-					leg.ScheduledArrival,
-					leg.RealtimeArrival,
-					leg.To.Latitude,
-					leg.To.Longitude));
-		}
-
-
-		string type =
-			leg.Mode == TransitMode.Walk
-				? "individual"
-				: "public";
-
-
-		string? motName =
-			leg.Mode == TransitMode.Walk
-				? "Walking"
-				: leg.Line?.Name
-					?? leg.Mode.ToString();
-
-
-		return new SchutzengelTripEpisode(
-			Type:
-				type,
-
-			LegIndex:
-				legIndex,
-
-			Id:
-				leg.Id,
-
-			MotName:
-				motName,
-
-			From:
-				stops.FirstOrDefault(),
-
-			To:
-				stops.LastOrDefault(),
-
-			AllStations:
-				stops,
-
-			Polyline:
-				leg.Path
-					.Select(
-						point =>
-							new SchutzengelGeoPoint(
-								point.Latitude,
-								point.Longitude))
-					.ToList());
-	}
-
-
-	private static SchutzengelTripEpisode CreateTransferEpisode(
-		JourneyTransfer transfer,
-		JourneyLeg previousLeg,
-		JourneyLeg nextLeg,
-		int previousLegIndex)
-	{
-		SchutzengelTripStop from =
-			new(
-				transfer.From?.Name
-					?? previousLeg.To.Name,
-
-				previousLeg.EffectiveArrival,
-
-				previousLeg.EffectiveArrival,
-
-				(transfer.From ?? previousLeg.To).Latitude,
-
-				(transfer.From ?? previousLeg.To).Longitude);
-
-
-		SchutzengelTripStop to =
-			new(
-				transfer.To?.Name
-					?? nextLeg.From.Name,
-
-				nextLeg.EffectiveDeparture,
-
-				nextLeg.EffectiveDeparture,
-
-				(transfer.To ?? nextLeg.From).Latitude,
-
-				(transfer.To ?? nextLeg.From).Longitude);
-
-
-		if (from.EffectiveTime is { } fromTime
-			&& to.EffectiveTime is { } toTime
-			&& toTime < fromTime
-			&& transfer.Duration > TimeSpan.Zero)
-		{
-			to =
-				to with
-				{
-					ScheduledTime =
-						fromTime + transfer.Duration
-				};
-		}
-
-
-		return new SchutzengelTripEpisode(
-			Type:
-				"individual",
-
-			LegIndex:
-				previousLegIndex,
-
-			Id:
-				string.Empty,
-
-			MotName:
-				"Walking",
-
-			From:
-				from,
-
-			To:
-				to,
-
-			AllStations:
-			[
-				from,
-				to
-			],
-
-			Polyline:
-				transfer.Path
-					.Select(
-						point =>
-							new SchutzengelGeoPoint(
-								point.Latitude,
-								point.Longitude))
-					.ToList());
-	}
-
-
-	private static SchutzengelTripStop ToProgressStop(
-		StopTime stop)
-	{
-		return new SchutzengelTripStop(
-			stop.Station.Name,
-
-			stop.ScheduledDeparture
-				?? stop.ScheduledArrival,
-
-			stop.RealtimeDeparture
-				?? stop.RealtimeArrival,
-
-			stop.Station.Latitude,
-			stop.Station.Longitude);
-	}
-
-
-	private static bool TryParseEpisode(
-		JsonElement element,
-		out SchutzengelTripEpisode episode)
-	{
-		episode =
-			null!;
-
-
-		if (element.ValueKind !=
-			JsonValueKind.Object)
-		{
-			return false;
-		}
-
-
-		string type =
-			ReadString(
-				element,
-				"type")
-			?? "public";
-
-
-		string? id =
-			ReadString(
-				element,
-				"id");
-
-
-		string? motName =
-			element.TryGetProperty(
-				"mot",
-				out JsonElement mot)
-				&& mot.ValueKind ==
-					JsonValueKind.Object
-					? ReadString(
-						mot,
-						"name")
-					: null;
-
-
-		var stations =
-			new List<SchutzengelTripStop>();
-
-
-		if (element.TryGetProperty(
-			"allStations",
-			out JsonElement allStations)
-			&& allStations.ValueKind ==
-				JsonValueKind.Array)
-		{
-			foreach (JsonElement stationElement in
-				allStations.EnumerateArray())
-			{
-				if (TryParseStop(
-					stationElement,
-					out SchutzengelTripStop stop))
-				{
-					stations.Add(
-						stop);
-				}
-			}
-		}
-
-
-		SchutzengelTripStop? from =
-			element.TryGetProperty(
-				"from",
-				out JsonElement fromElement)
-				&& TryParseStop(
-					fromElement,
-					out SchutzengelTripStop parsedFrom)
-						? parsedFrom
-						: null;
-
-
-		SchutzengelTripStop? to =
-			element.TryGetProperty(
-				"to",
-				out JsonElement toElement)
-				&& TryParseStop(
-					toElement,
-					out SchutzengelTripStop parsedTo)
-						? parsedTo
-						: null;
-
-
-		if (stations.Count == 0)
-		{
-			if (from is not null)
-			{
-				stations.Add(
-					from);
-			}
-
-			if (to is not null
-				&& (
-					stations.Count == 0
-					|| to != stations[^1]))
-			{
-				stations.Add(
-					to);
-			}
-		}
-
-
-		from ??=
-			stations.FirstOrDefault();
-
-
-		to ??=
-			stations.LastOrDefault();
-
-
-		if (from is null
-			|| to is null)
-		{
-			return false;
-		}
-
-
-		List<SchutzengelGeoPoint> polyline =
-			ParsePolyline(
-				element);
-
-
-		episode =
-			new SchutzengelTripEpisode(
-				Type:
-					type,
-
-				LegIndex:
-					0,
-
-				Id:
-					id,
-
-				MotName:
-					motName,
-
-				From:
-					from,
-
-				To:
-					to,
-
-				AllStations:
-					stations,
-
-				Polyline:
-					polyline);
-
-
-		return true;
-	}
-
-
-	private static bool TryParseStop(
-		JsonElement element,
-		out SchutzengelTripStop stop)
-	{
-		stop =
-			null!;
-
-
-		if (element.ValueKind !=
-			JsonValueKind.Object)
-		{
-			return false;
-		}
-
-
-		string name =
-			ReadString(
-				element,
-				"name")
-			?? string.Empty;
-
-
-		DateTimeOffset? scheduled =
-			ReadTimestamp(
-				element,
-				"scheduledTime");
-
-
-		DateTimeOffset? realtime =
-			ReadTimestamp(
-				element,
-				"realtime");
-
-
-		double? latitude = null;
-		double? longitude = null;
-
-
-		if (element.TryGetProperty(
-			"coords",
-			out JsonElement coords)
-			&& coords.ValueKind ==
-				JsonValueKind.Object)
-		{
-			latitude =
-				ReadDouble(
-					coords,
-					"lat");
-
-			longitude =
-				ReadDouble(
-					coords,
-					"lon");
-		}
-
-
-		if (latitude is null)
-		{
-			latitude =
-				ReadDouble(
-					element,
-					"lat");
-		}
-
-
-		if (longitude is null)
-		{
-			longitude =
-				ReadDouble(
-					element,
-					"lon");
-		}
-
-
-		stop =
-			new SchutzengelTripStop(
-				name,
-				scheduled,
-				realtime,
-				latitude,
-				longitude);
-
-
-		return true;
-	}
-
-
-	private static List<SchutzengelGeoPoint> ParsePolyline(
-		JsonElement element)
-	{
-		var result =
-			new List<SchutzengelGeoPoint>();
-
-
-		if (!element.TryGetProperty(
-			"polyline",
-			out JsonElement polyline)
-			|| polyline.ValueKind !=
-				JsonValueKind.Array)
-		{
-			return result;
-		}
-
-
-		foreach (JsonElement point in
-			polyline.EnumerateArray())
-		{
-			if (point.ValueKind !=
-				JsonValueKind.Object)
+			TripEpisode change = Episodes[i];
+			TripEpisode before = Episodes[i - 1];
+			TripEpisode after = Episodes[i + 1];
+
+			if (!change.IsIndividual
+				|| before.IsIndividual
+				|| after.IsIndividual
+				|| before.To.Effective is not { } arrival
+				|| after.From.Effective is not { } departure
+				|| departure <= now)
 			{
 				continue;
 			}
 
+			TimeSpan slack = departure - arrival - change.MinimumTransfer;
 
-			double? latitude =
-				ReadDouble(
-					point,
-					"lat");
-
-
-			double? longitude =
-				ReadDouble(
-					point,
-					"lon");
-
-
-			if (latitude is not null
-				&& longitude is not null)
+			if (slack >= TimeSpan.Zero)
 			{
-				result.Add(
-					new SchutzengelGeoPoint(
-						latitude.Value,
-						longitude.Value));
+				continue;
+			}
+
+			return new ConnectionRisk(i, departure < arrival, slack, change.To.Name, after.MotName);
+		}
+
+		return null;
+	}
+
+	// ----- Parsing -----
+
+	private static List<TripEpisode> Normalize(List<TripEpisode> episodes)
+	{
+		for (int i = 0; i < episodes.Count; i++)
+		{
+			TripEpisode episode = episodes[i];
+
+			if (!episode.IsIndividual)
+			{
+				continue;
+			}
+
+			TripEpisode? previous = i > 0 ? episodes[i - 1] : null;
+			TripEpisode? next = i < episodes.Count - 1 ? episodes[i + 1] : null;
+
+			TripStop fromStop = episode.From;
+			TripStop toStop = episode.To;
+
+			if (previous is { IsIndividual: false } && next is { IsIndividual: false })
+			{
+				// A change between two rides: the vehicles carry the real-time values,
+				// the footpath only knows planned ones.
+				fromStop = fromStop with
+				{
+					Scheduled = previous.To.Scheduled ?? fromStop.Scheduled,
+					Realtime = previous.To.Realtime
+				};
+
+				toStop = toStop with
+				{
+					Scheduled = next.From.Scheduled ?? toStop.Scheduled,
+					Realtime = next.From.Realtime
+				};
+			}
+			else
+			{
+				if (fromStop.Effective is null && previous?.To.Effective is { } arrival)
+				{
+					fromStop = fromStop with { Scheduled = arrival };
+				}
+
+				if (toStop.Effective is null)
+				{
+					if (next?.From.Effective is { } departure)
+					{
+						toStop = toStop with { Scheduled = departure };
+					}
+					else if (fromStop.Effective is { } begin)
+					{
+						toStop = toStop with { Scheduled = begin + (episode.RequiredTime ?? TimeSpan.Zero) };
+					}
+				}
+			}
+
+			episodes[i] = episode with
+			{
+				From = fromStop,
+				To = toStop,
+				Stops = [fromStop, toStop]
+			};
+		}
+
+		return episodes;
+	}
+
+	private static int SegmentLength(TripEpisode episode)
+	{
+		TimeSpan duration =
+			episode.From.Effective is { } start && episode.To.Effective is { } end && end > start
+				? end - start
+				: episode.RequiredTime ?? TimeSpan.FromMinutes(1);
+
+		return Math.Max(30, (int)Math.Round(duration.TotalSeconds));
+	}
+
+	private static bool TryParseEpisode(
+		JsonElement element,
+		IReadOnlyList<TripPoint>? fallbackPolyline,
+		out TripEpisode episode)
+	{
+		episode = null!;
+
+		if (element.ValueKind != JsonValueKind.Object)
+		{
+			return false;
+		}
+
+		bool individual =
+			string.Equals(
+				SchutzengelPlanList.ReadString(element, "type"),
+				"individual",
+				StringComparison.OrdinalIgnoreCase);
+
+		string? motName = null;
+		string? direction = null;
+
+		if (element.TryGetProperty("mot", out JsonElement mot) && mot.ValueKind == JsonValueKind.Object)
+		{
+			motName = SchutzengelPlanList.ReadString(mot, "name");
+			direction = SchutzengelPlanList.ReadString(mot, "direction");
+		}
+
+		var stops = new List<TripStop>();
+
+		if (element.TryGetProperty("allStations", out JsonElement all) && all.ValueKind == JsonValueKind.Array)
+		{
+			foreach (JsonElement item in all.EnumerateArray())
+			{
+				if (TryParseStop(item, out TripStop stop))
+				{
+					stops.Add(stop);
+				}
 			}
 		}
 
+		TripStop? fromStop = TryParseStop(element, "from");
+		TripStop? toStop = TryParseStop(element, "to");
+
+		if (stops.Count == 0)
+		{
+			if (fromStop is not null)
+			{
+				stops.Add(fromStop);
+			}
+
+			if (toStop is not null && (stops.Count == 0 || toStop != stops[^1]))
+			{
+				stops.Add(toStop);
+			}
+		}
+
+		fromStop ??= stops.FirstOrDefault();
+		toStop ??= stops.LastOrDefault();
+
+		if (fromStop is null || toStop is null)
+		{
+			return false;
+		}
+
+		List<TripPoint> polyline = ParsePolyline(element);
+
+		if (polyline.Count == 0 && fallbackPolyline is not null)
+		{
+			polyline = [.. fallbackPolyline];
+		}
+
+		TimeSpan? required = null;
+
+		if (ReadDouble(element, "durationSeconds") is { } seconds && seconds >= 0)
+		{
+			required = TimeSpan.FromSeconds(seconds);
+		}
+		else if (ReadDouble(element, "requiredTimeMS") is { } milliseconds && milliseconds >= 0)
+		{
+			required = TimeSpan.FromMilliseconds(milliseconds);
+		}
+
+		episode = new TripEpisode(
+			individual,
+			SchutzengelPlanList.ReadString(element, "id"),
+			motName,
+			direction,
+			fromStop,
+			toStop,
+			stops,
+			polyline,
+			required);
+
+		return true;
+	}
+
+	private static TripStop? TryParseStop(JsonElement parent, string name) =>
+		parent.TryGetProperty(name, out JsonElement stop) && TryParseStop(stop, out TripStop parsed)
+			? parsed
+			: null;
+
+	private static bool TryParseStop(JsonElement element, out TripStop stop)
+	{
+		stop = null!;
+
+		if (element.ValueKind != JsonValueKind.Object)
+		{
+			return false;
+		}
+
+		element.TryGetProperty("scheduledTime", out JsonElement scheduled);
+		element.TryGetProperty("realtime", out JsonElement realtime);
+
+		double? latitude = null;
+		double? longitude = null;
+
+		if (element.TryGetProperty("coords", out JsonElement coords) && coords.ValueKind == JsonValueKind.Object)
+		{
+			latitude = ReadDouble(coords, "lat");
+			longitude = ReadDouble(coords, "lon");
+		}
+
+		stop = new TripStop(
+			SchutzengelPlanList.ReadString(element, "name") ?? string.Empty,
+			SchutzengelTime.Read(scheduled),
+			SchutzengelTime.Read(realtime),
+			latitude ?? ReadDouble(element, "lat"),
+			longitude ?? ReadDouble(element, "lon"));
+
+		return true;
+	}
+
+	private static List<TripPoint> ParsePolyline(JsonElement element)
+	{
+		var result = new List<TripPoint>();
+
+		if (!element.TryGetProperty("polyline", out JsonElement polyline)
+			|| polyline.ValueKind != JsonValueKind.Array)
+		{
+			return result;
+		}
+
+		foreach (JsonElement point in polyline.EnumerateArray())
+		{
+			if (point.ValueKind == JsonValueKind.Object
+				&& ReadDouble(point, "lat") is { } latitude
+				&& ReadDouble(point, "lon") is { } longitude)
+			{
+				result.Add(new TripPoint(latitude, longitude));
+			}
+		}
 
 		return result;
 	}
 
+	// ----- Position -----
 
-	private static SchutzengelGeoPoint? CalculateLocation(
+	/// <summary>
+	/// Linear between the last and the next stop, then snapped to the nearest point of the
+	/// route line (the reference client does the same).
+	/// </summary>
+	private static TripPoint? EstimateLocation(
 		DateTimeOffset now,
-		IReadOnlyList<SchutzengelGeoPoint> polyline,
-		SchutzengelTripStop? recentStop,
-		SchutzengelTripStop? nextStop)
+		IReadOnlyList<TripPoint> polyline,
+		TripStop? recent,
+		TripStop? next)
 	{
-		if (recentStop is null
-			|| nextStop is null
-			|| !recentStop.HasCoordinates
-			|| !nextStop.HasCoordinates
-			|| recentStop.EffectiveTime is not { } recentTime
-			|| nextStop.EffectiveTime is not { } nextTime
+		if (recent is not { HasCoordinates: true }
+			|| next is not { HasCoordinates: true }
+			|| recent.Effective is not { } recentTime
+			|| next.Effective is not { } nextTime
 			|| nextTime <= recentTime)
 		{
 			return null;
 		}
 
-
 		double ratio =
-			(now - recentTime).TotalMilliseconds
-			/
-			(nextTime - recentTime).TotalMilliseconds;
-
-
-		ratio =
 			Math.Clamp(
-				ratio,
+				(now - recentTime).TotalMilliseconds / (nextTime - recentTime).TotalMilliseconds,
 				0,
 				1);
 
-
-		double latitude =
-			recentStop.Latitude!.Value
-			* (1 - ratio)
-			+
-			nextStop.Latitude!.Value
-			* ratio;
-
-
-		double longitude =
-			recentStop.Longitude!.Value
-			* (1 - ratio)
-			+
-			nextStop.Longitude!.Value
-			* ratio;
-
-
-		var interpolated =
-			new SchutzengelGeoPoint(
-				latitude,
-				longitude);
-
+		var linear = new TripPoint(
+			recent.Latitude!.Value * (1 - ratio) + next.Latitude!.Value * ratio,
+			recent.Longitude!.Value * (1 - ratio) + next.Longitude!.Value * ratio);
 
 		if (polyline.Count < 2)
 		{
-			return interpolated;
+			return linear;
 		}
 
+		TripPoint best = linear;
+		double bestDistance = double.MaxValue;
 
-		double bestDistance =
-			double.MaxValue;
-
-
-		SchutzengelGeoPoint bestPoint =
-			interpolated;
-
-
-		for (int i = 1;
-			i < polyline.Count;
-			i++)
+		for (int i = 1; i < polyline.Count; i++)
 		{
-			SchutzengelGeoPoint a =
-				polyline[i - 1];
+			TripPoint a = polyline[i - 1];
+			TripPoint b = polyline[i];
 
-			SchutzengelGeoPoint b =
-				polyline[i];
-
-
-			double dx =
-				b.Latitude - a.Latitude;
-
-			double dy =
-				b.Longitude - a.Longitude;
-
-
-			double denominator =
-				dx * dx
-				+
-				dy * dy;
-
+			double dx = b.Latitude - a.Latitude;
+			double dy = b.Longitude - a.Longitude;
+			double squared = dx * dx + dy * dy;
 
 			double t =
-				denominator <=
-					double.Epsilon
+				squared <= double.Epsilon
 					? 0
-					: (
-						(interpolated.Latitude - a.Latitude)
-							* dx
-						+
-						(interpolated.Longitude - a.Longitude)
-							* dy)
-						/ denominator;
+					: Math.Clamp(
+						((linear.Latitude - a.Latitude) * dx + (linear.Longitude - a.Longitude) * dy) / squared,
+						0,
+						1);
 
-
-			t =
-				Math.Clamp(
-					t,
-					0,
-					1);
-
-
-			double projectedLatitude =
-				a.Latitude
-				+
-				t * dx;
-
-			double projectedLongitude =
-				a.Longitude
-				+
-				t * dy;
-
+			double latitude = a.Latitude + t * dx;
+			double longitude = a.Longitude + t * dy;
 
 			double distance =
-				DistanceSquared(
-					interpolated.Latitude,
-					interpolated.Longitude,
-					projectedLatitude,
-					projectedLongitude);
+				Math.Pow(linear.Latitude - latitude, 2)
+				+ Math.Pow(linear.Longitude - longitude, 2);
 
-
-			if (distance <
-				bestDistance)
+			if (distance < bestDistance)
 			{
-				bestDistance =
-					distance;
-
-				bestPoint =
-					new SchutzengelGeoPoint(
-						projectedLatitude,
-						projectedLongitude);
+				bestDistance = distance;
+				best = new TripPoint(latitude, longitude);
 			}
 		}
 
-
-		return bestPoint;
+		return best;
 	}
 
+	// ----- JSON helpers -----
 
-	private static double CalculateRatio(
-		DateTimeOffset now,
-		DateTimeOffset? start,
-		DateTimeOffset? end)
+	private static double? ReadDouble(JsonElement element, string name)
 	{
-		if (start is null
-			|| end is null)
-		{
-			return 0;
-		}
-
-
-		if (end <= start)
-		{
-			return now >= end
-				? 1
-				: 0;
-		}
-
-
-		if (now <= start)
-		{
-			return 0;
-		}
-
-
-		if (now >= end)
-		{
-			return 1;
-		}
-
-
-		return
-			(now - start.Value).TotalMilliseconds
-			/
-			(end.Value - start.Value).TotalMilliseconds;
-	}
-
-
-	private static double DistanceSquared(
-		double latitude1,
-		double longitude1,
-		double latitude2,
-		double longitude2)
-	{
-		double dLatitude =
-			latitude1 - latitude2;
-
-		double dLongitude =
-			longitude1 - longitude2;
-
-
-		return
-			dLatitude * dLatitude
-			+
-			dLongitude * dLongitude;
-	}
-
-
-	private static string? ReadString(
-		JsonElement objectElement,
-		string propertyName)
-	{
-		return objectElement.TryGetProperty(
-			propertyName,
-			out JsonElement value)
-			&& value.ValueKind ==
-				JsonValueKind.String
-			? value.GetString()
-			: null;
-	}
-
-
-	private static double? ReadDouble(
-		JsonElement objectElement,
-		string propertyName)
-	{
-		if (!objectElement.TryGetProperty(
-			propertyName,
-			out JsonElement value))
+		if (!element.TryGetProperty(name, out JsonElement value))
 		{
 			return null;
 		}
 
-
-		if (value.ValueKind ==
-			JsonValueKind.Number
-			&& value.TryGetDouble(
-				out double number))
+		if (value.ValueKind == JsonValueKind.Number && value.TryGetDouble(out double number))
 		{
 			return number;
 		}
 
-
-		if (value.ValueKind ==
-			JsonValueKind.String
+		if (value.ValueKind == JsonValueKind.String
 			&& double.TryParse(
 				value.GetString(),
-				System.Globalization.NumberStyles.Float,
-				System.Globalization.CultureInfo.InvariantCulture,
+				NumberStyles.Float,
+				CultureInfo.InvariantCulture,
 				out double parsed))
 		{
 			return parsed;
 		}
 
-
 		return null;
 	}
 
-
-	private static int? ReadInt(
-		JsonElement objectElement,
-		string propertyName)
+	private static int? ReadInt(JsonElement element, string name)
 	{
-		if (!objectElement.TryGetProperty(
-			propertyName,
-			out JsonElement value))
+		if (!element.TryGetProperty(name, out JsonElement value))
 		{
 			return null;
 		}
 
-
-		if (value.ValueKind ==
-			JsonValueKind.Number
-			&& value.TryGetInt32(
-				out int number))
+		if (value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out int number))
 		{
 			return number;
 		}
 
-
-		if (value.ValueKind ==
-			JsonValueKind.String
-			&& int.TryParse(
-				value.GetString(),
-				out int parsed))
+		if (value.ValueKind == JsonValueKind.String
+			&& int.TryParse(value.GetString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out int parsed))
 		{
 			return parsed;
 		}
 
-
-		return null;
-	}
-
-
-	private static DateTimeOffset? ReadTimestamp(
-		JsonElement objectElement,
-		string propertyName)
-	{
-		if (!objectElement.TryGetProperty(
-			propertyName,
-			out JsonElement value))
-		{
-			return null;
-		}
-
-
-		if (value.ValueKind ==
-			JsonValueKind.Number)
-		{
-			if (value.TryGetInt64(
-				out long epoch))
-			{
-				return DateTimeOffset.FromUnixTimeMilliseconds(
-					Math.Abs(epoch) > 100_000_000_000
-						? epoch
-						: epoch * 1000);
-			}
-
-
-			if (value.TryGetDouble(
-				out double epochDouble))
-			{
-				long milliseconds =
-					(long)epochDouble;
-
-
-				return DateTimeOffset.FromUnixTimeMilliseconds(
-					Math.Abs(milliseconds) > 100_000_000_000
-						? milliseconds
-						: milliseconds * 1000);
-			}
-		}
-
-
-		if (value.ValueKind ==
-			JsonValueKind.String)
-		{
-			string? text =
-				value.GetString();
-
-
-			if (long.TryParse(
-				text,
-				out long epoch))
-			{
-				return DateTimeOffset.FromUnixTimeMilliseconds(
-					Math.Abs(epoch) > 100_000_000_000
-						? epoch
-						: epoch * 1000);
-			}
-
-
-			if (DateTimeOffset.TryParse(
-				text,
-				out DateTimeOffset parsed))
-			{
-				return parsed;
-			}
-		}
-
-
 		return null;
 	}
 }
-
-
-internal sealed record SchutzengelTripEpisode(
-	string Type,
-	int LegIndex,
-	string? Id,
-	string? MotName,
-	SchutzengelTripStop? From,
-	SchutzengelTripStop? To,
-	IReadOnlyList<SchutzengelTripStop> AllStations,
-	IReadOnlyList<SchutzengelGeoPoint> Polyline)
-{
-	public bool IsIndividual =>
-		string.Equals(
-			Type,
-			"individual",
-			StringComparison.OrdinalIgnoreCase);
-}
-
-
-internal sealed record SchutzengelTripStop(
-	string Name,
-	DateTimeOffset? ScheduledTime,
-	DateTimeOffset? RealtimeTime,
-	double? Latitude,
-	double? Longitude)
-{
-	public DateTimeOffset? EffectiveTime =>
-		RealtimeTime
-		?? ScheduledTime;
-
-
-	public bool HasCoordinates =>
-		Latitude.HasValue
-		&& Longitude.HasValue;
-}
-
-
-internal sealed record SchutzengelGeoPoint(
-	double Latitude,
-	double Longitude);
-
-
-internal sealed record SchutzengelProgressSnapshot(
-	int CurrentEpisodeIndex,
-	int CurrentLegIndex,
-	int LegCount,
-	double TimeProgress,
-	double CurrentEpisodeProgress,
-	TrackingPhase Phase,
-	string? MotName,
-	string? CurrentStopName,
-	string? NextStopName,
-	DateTimeOffset? EstimatedArrival,
-	string? Message,
-	SchutzengelGeoPoint? EstimatedLocation);

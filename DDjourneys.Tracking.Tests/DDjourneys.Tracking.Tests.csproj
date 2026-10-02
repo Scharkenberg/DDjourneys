@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net11.0</TargetFramework>
@@ -22,8 +22,8 @@
     <ProjectReference Include="..\DDjourneys.Core\DDjourneys.Core.csproj" />
     <Compile Include="..\DDjourneys\Platforms\Android\LiveJourney\Schutzengel\SchutzengelApi.cs" Link="Schutzengel\SchutzengelApi.cs" />
     <Compile Include="..\DDjourneys\Platforms\Android\LiveJourney\Schutzengel\SchutzengelPlanTranslator.cs" Link="Schutzengel\SchutzengelPlanTranslator.cs" />
-    <Compile Include="..\DDjourneys\Platforms\Android\LiveJourney\Schutzengel\SchutzengelRealtimeTranslator.cs" Link="Schutzengel\SchutzengelRealtimeTranslator.cs" />
-    <Compile Include="..\DDjourneys\Platforms\Android\LiveJourney\Schutzengel\SchutzengelPlanRecovery.cs" Link="Schutzengel\SchutzengelPlanRecovery.cs" />
+    <Compile Include="..\DDjourneys\Platforms\Android\LiveJourney\Schutzengel\SchutzengelPlans.cs" Link="Schutzengel\SchutzengelPlans.cs" />
+    <Compile Include="..\DDjourneys\Platforms\Android\LiveJourney\Schutzengel\SchutzengelTripProgress.cs" Link="Schutzengel\SchutzengelTripProgress.cs" />
     <Compile Include="..\DDjourneys\Platforms\Windows\NoOpJourneyTracker.cs" Link="Platforms\Windows\NoOpJourneyTracker.cs" />
 	<Compile Include="..\DDjourneys\Platforms\Android\LiveJourney\Schutzengel\SchutzengelRawDataTranslator.cs" Link="Schutzengel\SchutzengelRawDataTranslator.cs" />
   </ItemGroup>

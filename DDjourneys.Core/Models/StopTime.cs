@@ -53,6 +53,12 @@ public sealed class StopTime
 
 
 	/// <summary>
+	/// Whether <see cref="Platform"/> is a platform (Steig) or a track (Gleis).
+	/// </summary>
+	public PlatformKind PlatformKind { get; init; }
+
+
+	/// <summary>
 	/// Whether this stop has been cancelled.
 	/// </summary>
 	public bool IsCancelled { get; init; }
@@ -62,6 +68,10 @@ public sealed class StopTime
 	/// Current occupancy level at this stop.
 	/// </summary>
 	public OccupancyLevel Occupancy { get; init; } = OccupancyLevel.Unknown;
+
+
+	/// <summary>The provider's own object this stop was mapped from (diagnostics only).</summary>
+	public object? ProviderData { get; init; }
 
 
 	/// <summary>

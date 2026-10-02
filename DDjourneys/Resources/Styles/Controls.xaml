@@ -1,80 +1,78 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<ResourceDictionary
-	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
-	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
+<ResourceDictionary xmlns="http://schemas.microsoft.com/dotnet/2021/maui" xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
 
-	<Style TargetType="Page" ApplyToDerivedTypes="True">
+	<Style ApplyToDerivedTypes="True" TargetType="Page">
 		<Setter Property="BackgroundColor" Value="{DynamicResource Bg}" />
 	</Style>
 
-	<Style TargetType="Shell" ApplyToDerivedTypes="True">
+	<Style ApplyToDerivedTypes="True" TargetType="Shell">
 		<Setter Property="Shell.BackgroundColor" Value="{DynamicResource Bg}" />
 		<Setter Property="Shell.ForegroundColor" Value="{DynamicResource Accent}" />
 		<Setter Property="Shell.TitleColor" Value="{DynamicResource Ink}" />
 		<Setter Property="Shell.NavBarHasShadow" Value="False" />
 	</Style>
 
-	<!-- Text. Classes: Headline, Title, Time, Caption, OnTime, Delay, Cancelled -->
+	<!--  Text. Classes: Headline, Title, Time, Caption, OnTime, Delay, Cancelled  -->
 	<Style TargetType="Label">
 		<Setter Property="TextColor" Value="{DynamicResource Ink}" />
 		<Setter Property="FontFamily" Value="OpenSansRegular" />
 		<Setter Property="FontSize" Value="{StaticResource FontBody}" />
 	</Style>
-	<Style TargetType="Label" Class="Headline">
+	<Style Class="Headline" TargetType="Label">
 		<Setter Property="FontFamily" Value="OpenSansSemibold" />
 		<Setter Property="FontSize" Value="{StaticResource FontHeadline}" />
 	</Style>
-	<Style TargetType="Label" Class="Title">
+	<Style Class="Title" TargetType="Label">
 		<Setter Property="FontFamily" Value="OpenSansSemibold" />
 		<Setter Property="FontSize" Value="{StaticResource FontTitle}" />
 	</Style>
-	<Style TargetType="Label" Class="Time">
+	<Style Class="Time" TargetType="Label">
 		<Setter Property="FontFamily" Value="OpenSansSemibold" />
 		<Setter Property="FontSize" Value="{StaticResource FontTime}" />
 	</Style>
-	<Style TargetType="Label" Class="Caption">
+	<Style Class="Caption" TargetType="Label">
 		<Setter Property="FontSize" Value="{StaticResource FontCaption}" />
 		<Setter Property="TextColor" Value="{DynamicResource InkMuted}" />
 	</Style>
-	<!-- Secondary detail under a name (city, region): smaller than Caption, same accessible colour -->
-	<Style TargetType="Label" Class="Faint">
+	<!--  Secondary detail under a name (city, region): smaller than Caption, same accessible colour  -->
+	<Style Class="Faint" TargetType="Label">
 		<Setter Property="FontSize" Value="{StaticResource FontMicro}" />
 		<Setter Property="TextColor" Value="{DynamicResource InkMuted}" />
 	</Style>
-	<Style TargetType="Label" Class="OnTime">
+	<Style Class="OnTime" TargetType="Label">
 		<Setter Property="FontFamily" Value="OpenSansSemibold" />
 		<Setter Property="FontSize" Value="{StaticResource FontCaption}" />
 		<Setter Property="TextColor" Value="{DynamicResource OnTime}" />
 	</Style>
-	<Style TargetType="Label" Class="Delay">
+	<Style Class="Delay" TargetType="Label">
 		<Setter Property="FontFamily" Value="OpenSansSemibold" />
 		<Setter Property="FontSize" Value="{StaticResource FontCaption}" />
 		<Setter Property="TextColor" Value="{DynamicResource Delay}" />
 	</Style>
-	<Style TargetType="Label" Class="Cancelled">
+	<Style Class="Cancelled" TargetType="Label">
 		<Setter Property="FontFamily" Value="OpenSansSemibold" />
 		<Setter Property="FontSize" Value="{StaticResource FontCaption}" />
 		<Setter Property="TextColor" Value="{DynamicResource Cancelled}" />
 	</Style>
 
-	<!-- Surfaces. Classes: Card (16), Chip (pill). Tone and outline, no shadows. -->
-	<Style TargetType="Border" Class="Card">
+	<!--  Surfaces. Classes: Card (16), Chip (pill). Tone and outline, no shadows.  -->
+	<Style Class="Card" TargetType="Border">
 		<Setter Property="BackgroundColor" Value="{DynamicResource Surface}" />
 		<Setter Property="Stroke" Value="{DynamicResource OutlineBrush}" />
 		<Setter Property="StrokeThickness" Value="1" />
 		<Setter Property="StrokeShape" Value="RoundRectangle 6" />
 		<Setter Property="Padding" Value="{StaticResource PadCard}" />
 	</Style>
-	<Style TargetType="Border" Class="Chip">
+	<Style Class="Chip" TargetType="Border">
 		<Setter Property="BackgroundColor" Value="{DynamicResource Raised}" />
 		<Setter Property="StrokeThickness" Value="0" />
 		<Setter Property="StrokeShape" Value="RoundRectangle 100" />
-		<!-- Generous horizontal padding: Android measures the semibold font a hair too narrow -->
+		<!--  Generous horizontal padding: Android measures the semibold font a hair too narrow  -->
 		<Setter Property="Padding" Value="12,4" />
 		<Setter Property="MinimumHeightRequest" Value="28" />
 	</Style>
-	<!-- Pill text must never wrap or truncate ("Walk 20 min" -> "Walk 20") -->
-	<Style TargetType="Label" Class="ChipLabel">
+	<!--  Pill text must never wrap or truncate ("Walk 20 min" -> "Walk 20")  -->
+	<Style Class="ChipLabel" TargetType="Label">
 		<Setter Property="LineBreakMode" Value="NoWrap" />
 		<Setter Property="MaxLines" Value="1" />
 		<Setter Property="HorizontalOptions" Value="Center" />
@@ -82,7 +80,7 @@
 		<Setter Property="HorizontalTextAlignment" Value="Center" />
 	</Style>
 
-	<!-- Buttons. Default filled; class Tonal for secondary actions. -->
+	<!--  Buttons. Default filled; class Tonal for secondary actions.  -->
 	<Style TargetType="Button">
 		<Setter Property="BackgroundColor" Value="{DynamicResource Accent}" />
 		<Setter Property="TextColor" Value="{DynamicResource OnAccent}" />
@@ -102,7 +100,7 @@
 							<Setter Property="Scale" Value="0.97" />
 						</VisualState.Setters>
 					</VisualState>
-					<!-- Explicit colours: opacity would wash the label out to unreadable -->
+					<!--  Explicit colours: opacity would wash the label out to unreadable  -->
 					<VisualState x:Name="Disabled">
 						<VisualState.Setters>
 							<Setter Property="BackgroundColor" Value="{DynamicResource Raised}" />
@@ -113,7 +111,7 @@
 			</VisualStateGroupList>
 		</Setter>
 	</Style>
-	<Style TargetType="Button" Class="IconButton">
+	<Style Class="IconButton" TargetType="Button">
 		<Setter Property="BackgroundColor" Value="Transparent" />
 		<Setter Property="TextColor" Value="{DynamicResource Accent}" />
 		<Setter Property="FontSize" Value="22" />
@@ -139,25 +137,25 @@
 			</VisualStateGroupList>
 		</Setter>
 	</Style>
-	<Style TargetType="Button" Class="Tonal">
+	<Style Class="Tonal" TargetType="Button">
 		<Setter Property="BackgroundColor" Value="{DynamicResource AccentSoft}" />
 		<Setter Property="TextColor" Value="{DynamicResource Accent}" />
 	</Style>
 
 
-	<!-- Tappable chip: NOT a pill (interactive) -->
-	<Style TargetType="Border" Class="ChipButton">
+	<!--  Tappable chip: NOT a pill (interactive)  -->
+	<Style Class="ChipButton" TargetType="Border">
 		<Setter Property="BackgroundColor" Value="{DynamicResource Raised}" />
 		<Setter Property="StrokeThickness" Value="0" />
 		<Setter Property="StrokeShape" Value="RoundRectangle 4" />
 		<Setter Property="Padding" Value="12,8" />
 	</Style>
-	<!-- Row container: no border; hairline divider is a separate BoxView -->
-	<Style TargetType="BoxView" Class="Divider">
+	<!--  Row container: no border; hairline divider is a separate BoxView  -->
+	<Style Class="Divider" TargetType="BoxView">
 		<Setter Property="HeightRequest" Value="1" />
 		<Setter Property="Color" Value="{DynamicResource Outline}" />
 	</Style>
-	<Style TargetType="Label" Class="Section">
+	<Style Class="Section" TargetType="Label">
 		<Setter Property="FontFamily" Value="OpenSansSemibold" />
 		<Setter Property="FontSize" Value="{StaticResource FontCaption}" />
 		<Setter Property="TextColor" Value="{DynamicResource Accent}" />
@@ -165,12 +163,12 @@
 		<Setter Property="TextTransform" Value="Uppercase" />
 		<Setter Property="Margin" Value="4,8,0,0" />
 	</Style>
-	<Style TargetType="Label" Class="Subtitle">
+	<Style Class="Subtitle" TargetType="Label">
 		<Setter Property="FontFamily" Value="OpenSansSemibold" />
 		<Setter Property="FontSize" Value="{StaticResource FontSubtitle}" />
 	</Style>
 
-	<!-- Native controls: themed, never wrapped in tight borders -->
+	<!--  Native controls: themed, never wrapped in tight borders  -->
 	<Style TargetType="DatePicker">
 		<Setter Property="TextColor" Value="{DynamicResource Ink}" />
 		<Setter Property="FontFamily" Value="OpenSansSemibold" />
@@ -187,7 +185,7 @@
 		<Setter Property="FontFamily" Value="OpenSansRegular" />
 		<Setter Property="FontSize" Value="{StaticResource FontBody}" />
 	</Style>
-	<!-- Thumb contrasts with the track in both states (a dark thumb on the accent track was hard to see) -->
+	<!--  Thumb contrasts with the track in both states (a dark thumb on the accent track was hard to see)  -->
 	<Style TargetType="Switch">
 		<Setter Property="OnColor" Value="{DynamicResource Accent}" />
 		<Setter Property="VisualStateManager.VisualStateGroups">

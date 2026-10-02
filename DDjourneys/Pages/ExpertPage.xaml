@@ -1,0 +1,64 @@
+<ContentPage
+	x:Class="DDjourneys.Pages.ExpertPage"
+	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+	xmlns:local="clr-namespace:DDjourneys.Pages"
+	xmlns:localization="clr-namespace:DDjourneys.Localization"
+	xmlns:support="clr-namespace:DDjourneys.Support"
+	Title="{localization:Tr Expert.Title}"
+	x:DataType="local:ExpertViewModel">
+
+	<ScrollView>
+		<VerticalStackLayout Padding="{StaticResource PadPage}" Spacing="{StaticResource SpaceM}">
+
+			<Label StyleClass="Caption" Text="{localization:Tr Expert.Hint}" />
+
+			<Button
+				Command="{Binding CopyCommand}"
+				StyleClass="Tonal"
+				Text="{localization:Tr Expert.Copy}" />
+
+			<VerticalStackLayout BindableLayout.ItemsSource="{Binding Sections}" Spacing="{StaticResource SpaceM}">
+
+				<BindableLayout.ItemTemplate>
+					<DataTemplate x:DataType="support:ExpertSection">
+
+						<Border StyleClass="Card">
+
+							<VerticalStackLayout Spacing="8">
+
+								<Label
+									SemanticProperties.HeadingLevel="Level2"
+									StyleClass="Title"
+									Text="{Binding Title}" />
+
+								<VerticalStackLayout BindableLayout.ItemsSource="{Binding Entries}" Spacing="6">
+
+									<BindableLayout.ItemTemplate>
+										<DataTemplate x:DataType="support:ExpertEntry">
+
+											<Grid
+												ColumnDefinitions="*,2*"
+												ColumnSpacing="10">
+
+												<Label
+													FontSize="{StaticResource FontCaption}"
+													StyleClass="Caption"
+													Text="{Binding Key}" />
+
+												<Label
+													Grid.Column="1"
+													FontSize="{StaticResource FontCaption}"
+													Text="{Binding Value}" />
+											</Grid>
+										</DataTemplate>
+									</BindableLayout.ItemTemplate>
+								</VerticalStackLayout>
+							</VerticalStackLayout>
+						</Border>
+					</DataTemplate>
+				</BindableLayout.ItemTemplate>
+			</VerticalStackLayout>
+		</VerticalStackLayout>
+	</ScrollView>
+</ContentPage>

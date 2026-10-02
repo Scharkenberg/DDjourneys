@@ -3,6 +3,7 @@
 	x:Class="DDjourneys.Pages.ThemesPage"
 	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
 	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+	xmlns:controls="clr-namespace:DDjourneys.Controls"
 	xmlns:local="clr-namespace:DDjourneys.Pages"
 	xmlns:localization="clr-namespace:DDjourneys.Localization"
 	Title="{localization:Tr Settings.ThemesTitle}"
@@ -61,13 +62,13 @@
 										<Label StyleClass="Caption" Text="{Binding Description}" />
 									</VerticalStackLayout>
 
-									<Label
+									<controls:Icon
 										Grid.Column="2"
-										FontSize="20"
+										Glyph="Check"
 										IsVisible="{Binding IsSelected}"
-										Text="&#x2713;"
-										TextColor="{DynamicResource Accent}"
-										VerticalOptions="Center" />
+										Size="20"
+										VerticalOptions="Center"
+										Color="{DynamicResource Accent}" />
 
 									<Grid.GestureRecognizers>
 										<TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type local:ThemesViewModel}}, Path=SelectThemeCommand}" CommandParameter="{Binding Id}" />
@@ -134,13 +135,13 @@
 										<Label StyleClass="Caption" Text="{Binding Description}" />
 									</VerticalStackLayout>
 
-									<Label
+									<controls:Icon
 										Grid.Column="2"
-										FontSize="20"
+										Glyph="Check"
 										IsVisible="{Binding IsSelected}"
-										Text="&#x2713;"
-										TextColor="{DynamicResource Accent}"
-										VerticalOptions="Center" />
+										Size="20"
+										VerticalOptions="Center"
+										Color="{DynamicResource Accent}" />
 
 									<Grid.GestureRecognizers>
 										<TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type local:ThemesViewModel}}, Path=SelectThemeCommand}" CommandParameter="{Binding Id}" />

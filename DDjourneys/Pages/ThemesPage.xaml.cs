@@ -9,6 +9,7 @@ public partial class ThemesPage : ContentPage
 	public ThemesPage(ThemesViewModel vm)
 	{
 		InitializeComponent();
+		Motion.Prepare(this);
 		_vm = vm;
 		BindingContext = vm;
 	}

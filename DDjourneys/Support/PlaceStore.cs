@@ -5,7 +5,16 @@ using Location = DDjourneys.Core.Models.Location;
 namespace DDjourneys.Support;
 
 /// <summary>
-/// Remembers recent and favourite places between app runs.
+/// One searched connection: where the passenger wanted to go, and from where.
+/// </summary>
+public sealed record RoutePair(
+	Location From,
+	Location To);
+
+
+/// <summary>
+/// Remembers recent and favourite places, and the connections that were searched,
+/// between app runs.
 ///
 /// Small lists only: stored as JSON in MAUI Preferences. If this ever grows,
 /// this class is the only thing to replace.
@@ -14,11 +23,16 @@ public sealed class PlaceStore
 {
 	private const string RecentsKey = "places.recents";
 	private const string FavouritesKey = "places.favourites";
+	private const string RoutesKey = "places.routes";
 	private const int MaxRecents = 8;
+
+	/// <summary>How many searched connections are kept. Older ones drop off the end.</summary>
+	public const int MaxRoutes = 50;
 
 	private readonly object _gate = new();
 	private readonly List<Location> _recents;
 	private readonly List<Location> _favourites;
+	private readonly List<RoutePair> _routes;
 	private readonly WeakEventManager _weakEventManager = new();
 
 	/// <summary>
@@ -45,6 +59,9 @@ public sealed class PlaceStore
 
 		_favourites =
 			Load(FavouritesKey);
+
+		_routes =
+			LoadRoutes();
 	}
 
 
@@ -75,6 +92,96 @@ public sealed class PlaceStore
 				return _favourites.ToArray();
 			}
 		}
+	}
+
+
+	/// <summary>Most recently searched first.</summary>
+	public IReadOnlyList<RoutePair> RecentRoutes
+	{
+		get
+		{
+			lock (_gate)
+			{
+				return _routes.ToArray();
+			}
+		}
+	}
+
+
+	/// <summary>
+	/// Remembers a searched connection. Searching the same connection again moves it back to the
+	/// top instead of adding a second entry.
+	/// </summary>
+	public void AddRecentRoute(
+		Location from,
+		Location to)
+	{
+		ArgumentNullException.ThrowIfNull(from);
+		ArgumentNullException.ThrowIfNull(to);
+
+		lock (_gate)
+		{
+			string key =
+				RouteKeyOf(from, to);
+
+			_routes.RemoveAll(
+				route => RouteKeyOf(route.From, route.To) == key);
+
+			_routes.Insert(
+				0,
+				new RoutePair(from, to));
+
+			if (_routes.Count > MaxRoutes)
+			{
+				_routes.RemoveRange(
+					MaxRoutes,
+					_routes.Count - MaxRoutes);
+			}
+
+			SaveRoutes();
+		}
+
+		RaiseChanged();
+	}
+
+
+	public void RemoveRecentRoute(
+		RoutePair route)
+	{
+		ArgumentNullException.ThrowIfNull(route);
+
+		lock (_gate)
+		{
+			string key =
+				RouteKeyOf(route.From, route.To);
+
+			if (_routes.RemoveAll(
+					item => RouteKeyOf(item.From, item.To) == key) == 0)
+			{
+				return;
+			}
+
+			SaveRoutes();
+		}
+
+		RaiseChanged();
+	}
+
+
+	public void ClearRecentRoutes()
+	{
+		lock (_gate)
+		{
+			if (_routes.Count == 0)
+			{
+				return;
+			}
+
+			_routes.Clear();
+			SaveRoutes();
+		}
+
+		RaiseChanged();
 	}
 
 
@@ -209,6 +316,12 @@ public sealed class PlaceStore
 
 	// Stations are identified by provider ID;
 	// free-form places by name and position.
+	private static string RouteKeyOf(
+		Location from,
+		Location to) =>
+		$"{KeyOf(from)}>{KeyOf(to)}";
+
+
 	private static string KeyOf(
 		Location place) =>
 		place.IsStation
@@ -225,6 +338,105 @@ public sealed class PlaceStore
 		string? Place,
 		double? Latitude,
 		double? Longitude);
+
+
+	private static readonly System.Text.Json.JsonSerializerOptions JsonOptions =
+		new()
+		{
+			WriteIndented = false
+		};
+
+
+	/// <summary>Stored shape of a connection: the two endpoints, nothing else.</summary>
+	private sealed record RouteEntry(
+		Entry? From,
+		Entry? To);
+
+
+	private List<RoutePair> LoadRoutes()
+	{
+		try
+		{
+			string json =
+				Preferences.Get(
+					RoutesKey,
+					string.Empty);
+
+			if (string.IsNullOrWhiteSpace(json))
+			{
+				return [];
+			}
+
+			return
+				(JsonSerializer.Deserialize<List<RouteEntry>>(json, JsonOptions)
+					?? [])
+				.Where(
+					entry =>
+						entry.From is not null
+						&& entry.To is not null
+						&& !string.IsNullOrWhiteSpace(entry.From.Name)
+						&& !string.IsNullOrWhiteSpace(entry.To.Name))
+				.Select(
+					entry =>
+						new RoutePair(
+							ToLocation(entry.From!),
+							ToLocation(entry.To!)))
+				.Take(MaxRoutes)
+				.ToList();
+		}
+		catch (Exception ex)
+		{
+			System.Diagnostics.Debug.WriteLine(
+				$"PlaceStore load '{RoutesKey}' failed: {ex.Message}");
+
+			return [];
+		}
+	}
+
+
+	private void SaveRoutes()
+	{
+		try
+		{
+			var entries =
+				_routes.Select(
+					route =>
+						new RouteEntry(
+							ToEntry(route.From),
+							ToEntry(route.To)));
+
+			Preferences.Set(
+				RoutesKey,
+				JsonSerializer.Serialize(entries, JsonOptions));
+		}
+		catch (Exception ex)
+		{
+			System.Diagnostics.Debug.WriteLine(
+				$"PlaceStore save '{RoutesKey}' failed: {ex.Message}");
+		}
+	}
+
+
+	private static Entry ToEntry(
+		Location place) =>
+		new(
+			place.Id,
+			place.Name,
+			place.Place,
+			place.Latitude,
+			place.Longitude);
+
+
+	private static Location ToLocation(
+		Entry entry) =>
+		new()
+		{
+			Id = entry.Id,
+			Name = entry.Name,
+			Place = entry.Place,
+			Latitude = entry.Latitude,
+			Longitude = entry.Longitude
+		};
 
 
 	private static List<Location> Load(
@@ -249,16 +461,7 @@ public sealed class PlaceStore
 					e =>
 						!string.IsNullOrWhiteSpace(
 							e.Name))
-				.Select(
-					e =>
-						new Location
-						{
-							Id = e.Id,
-							Name = e.Name,
-							Place = e.Place,
-							Latitude = e.Latitude,
-							Longitude = e.Longitude
-						})
+				.Select(ToLocation)
 				.ToList();
 		}
 		catch (Exception ex)
@@ -278,14 +481,7 @@ public sealed class PlaceStore
 		try
 		{
 			var entries =
-				places.Select(
-					p =>
-						new Entry(
-							p.Id,
-							p.Name,
-							p.Place,
-							p.Latitude,
-							p.Longitude));
+				places.Select(ToEntry);
 
 			Preferences.Set(
 				key,

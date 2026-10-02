@@ -2,6 +2,7 @@
 	x:Class="DDjourneys.Controls.JourneyCard"
 	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
 	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+	xmlns:controls="clr-namespace:DDjourneys.Controls"
 	xmlns:localization="clr-namespace:DDjourneys.Localization"
 	xmlns:support="clr-namespace:DDjourneys.Support"
 	x:DataType="support:JourneyCardModel">
@@ -54,6 +55,23 @@
 						Text="{Binding ArrivalDelay}" />
 				</VerticalStackLayout>
 
+			</Grid>
+
+			<!--  Where from / where to  -->
+			<Grid
+				ColumnDefinitions="*,*"
+				ColumnSpacing="{StaticResource SpaceM}"
+				IsVisible="{Binding ShowEndpoints}">
+				<controls:StopNameView
+					Compact="True"
+					Place="{Binding FromPlace}"
+					Stop="{Binding FromName}" />
+				<controls:StopNameView
+					Grid.Column="1"
+					Alignment="End"
+					Compact="True"
+					Place="{Binding ToPlace}"
+					Stop="{Binding ToName}" />
 			</Grid>
 
 			<!--  Legs  -->

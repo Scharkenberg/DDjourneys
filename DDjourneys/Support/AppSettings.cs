@@ -1,4 +1,5 @@
 using System.Globalization;
+using DDjourneys.Core.Models;
 
 namespace DDjourneys.Support;
 
@@ -67,6 +68,13 @@ public sealed class AppSettings
 
 	// ----- Journey / provider -----
 
+	/// <summary>Id of the selected data provider (empty = the first registered one).</summary>
+	public string ProviderId
+	{
+		get => Read("providerId", string.Empty);
+		set => Write("providerId", value);
+	}
+
 	/// <summary>How many journeys to request (clamped to 3..10).</summary>
 	public int MaxResults
 	{
@@ -102,6 +110,150 @@ public sealed class AppSettings
 		set => Write("timeout", Math.Clamp(value, 5, 60));
 	}
 
+	// ----- Journey display -----
+
+	/// <summary>Occupancy dots on stops and rides.</summary>
+	public bool ShowOccupancy
+	{
+		get => Read("showOccupancy", true);
+		set => Write("showOccupancy", value);
+	}
+
+	/// <summary>Steig/Gleis lines on stops and interchanges.</summary>
+	public bool ShowPlatforms
+	{
+		get => Read("showPlatforms", true);
+		set => Write("showPlatforms", value);
+	}
+
+	/// <summary>Open the intermediate stops of every ride when a journey is shown.</summary>
+	public bool ExpandStops
+	{
+		get => Read("expandStops", false);
+		set => Write("expandStops", value);
+	}
+
+	/// <summary>Offer the expert view (raw provider data) in the journey menu.</summary>
+	public bool ExpertView
+	{
+		get => Read("expertView", true);
+		set => Write("expertView", value);
+	}
+
+	// ----- Place search -----
+
+	public const int MinSearchDelayMs = 200;
+	public const int MaxSearchDelayMs = 1500;
+
+	/// <summary>Quiet time after the last keystroke before places are searched, milliseconds.</summary>
+	public int SearchDelayMs
+	{
+		get => Math.Clamp(Read("searchDelayMs", 500), MinSearchDelayMs, MaxSearchDelayMs);
+		set => Write("searchDelayMs", Math.Clamp(value, MinSearchDelayMs, MaxSearchDelayMs));
+	}
+
+	/// <summary>Characters needed before a place search starts (1..4).</summary>
+	public int MinQueryLength
+	{
+		get => Math.Clamp(Read("minQueryLength", 2), 1, 4);
+		set => Write("minQueryLength", Math.Clamp(value, 1, 4));
+	}
+
+	// ----- Routing preferences -----
+
+	public const int MaxFootpathMinutes = 15;
+
+	public MaxTransfers MaxTransfers
+	{
+		get => Read("maxTransfers", MaxTransfers.Unlimited);
+		set => Write("maxTransfers", value);
+	}
+
+	public WalkingPace WalkingPace
+	{
+		get => Read("walkingPace", WalkingPace.Normal);
+		set => Write("walkingPace", value);
+	}
+
+	/// <summary>Longest walk to an alternative stop, minutes (0..15).</summary>
+	public int FootpathMinutes
+	{
+		get => Math.Clamp(Read("footpathMinutes", 5), 0, MaxFootpathMinutes);
+		set => Write("footpathMinutes", Math.Clamp(value, 0, MaxFootpathMinutes));
+	}
+
+	public bool AlternativeStops
+	{
+		get => Read("alternativeStops", true);
+		set => Write("alternativeStops", value);
+	}
+
+	/// <summary>Allowed modes of transport (never empty: an empty selection means all).</summary>
+	public ModeFilter Modes
+	{
+		get
+		{
+			var modes = (ModeFilter)Read("modes", (int)ModeFilter.All) & ModeFilter.All;
+
+			return modes == ModeFilter.None
+				? ModeFilter.All
+				: modes;
+		}
+		set => Write("modes", (int)(value & ModeFilter.All));
+	}
+
+	public AccessibilityNeed Accessibility
+	{
+		get => Read("accessibility", AccessibilityNeed.None);
+		set => Write("accessibility", value);
+	}
+
+	public bool AvoidStairs
+	{
+		get => Read("avoidStairs", false);
+		set => Write("avoidStairs", value);
+	}
+
+	public bool AvoidEscalators
+	{
+		get => Read("avoidEscalators", false);
+		set => Write("avoidEscalators", value);
+	}
+
+	public bool FewestTransfers
+	{
+		get => Read("fewestTransfers", false);
+		set => Write("fewestTransfers", value);
+	}
+
+	/// <summary>The routing options as sent with every journey search.</summary>
+	public RoutingPreferences Routing =>
+		new()
+		{
+			MaxTransfers = MaxTransfers,
+			Pace = WalkingPace,
+			FootpathMinutes = FootpathMinutes,
+			AlternativeStops = AlternativeStops,
+			Modes = Modes,
+			Accessibility = Accessibility,
+			AvoidStairs = AvoidStairs,
+			AvoidEscalators = AvoidEscalators,
+			FewestTransfers = FewestTransfers
+		};
+
+	public void ResetRoutingDefaults()
+	{
+		MaxTransfers = MaxTransfers.Unlimited;
+		WalkingPace = WalkingPace.Normal;
+		FootpathMinutes = 5;
+		AlternativeStops = true;
+		Modes = ModeFilter.All;
+		Accessibility = AccessibilityNeed.None;
+		AvoidStairs = false;
+		AvoidEscalators = false;
+		FewestTransfers = false;
+	}
+
 	public void ResetJourneyDefaults()
 	{
 		MaxResults = 5;
@@ -109,6 +261,13 @@ public sealed class AppSettings
 		ShowWalkingLegs = true;
 		ExpandNotices = false;
 		TimeoutSeconds = 15;
+		ShowOccupancy = true;
+		ShowPlatforms = true;
+		ExpandStops = false;
+		ExpertView = true;
+		SearchDelayMs = 500;
+		MinQueryLength = 2;
+		ResetRoutingDefaults();
 	}
 
 	// ----- plumbing -----

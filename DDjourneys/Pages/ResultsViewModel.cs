@@ -102,6 +102,44 @@ public sealed class ResultsViewModel :
 	} = string.Empty;
 
 
+
+	/// <summary>Start and destination, split so the header can put the city under the name.</summary>
+	public string FromName
+	{
+		get => field;
+		private set => SetProperty(
+			ref field,
+			value);
+	} = string.Empty;
+
+
+	public string? FromPlace
+	{
+		get => field;
+		private set => SetProperty(
+			ref field,
+			value);
+	}
+
+
+	public string ToName
+	{
+		get => field;
+		private set => SetProperty(
+			ref field,
+			value);
+	} = string.Empty;
+
+
+	public string? ToPlace
+	{
+		get => field;
+		private set => SetProperty(
+			ref field,
+			value);
+	}
+
+
 	public string WhenText
 	{
 		get => field;
@@ -207,8 +245,24 @@ public sealed class ResultsViewModel :
 			_query = journeyQuery;
 
 			RouteText =
-				$"{journeyQuery.From.Name} \u2192 " +
-				$"{journeyQuery.To.Name}";
+				$"{StopLabel.Compose(journeyQuery.From)} \u2192 " +
+				$"{StopLabel.Compose(journeyQuery.To)}";
+
+			FromName =
+				journeyQuery.From.Name;
+
+			FromPlace =
+				StopLabel.PlaceFor(
+					journeyQuery.From.Name,
+					journeyQuery.From.Place);
+
+			ToName =
+				journeyQuery.To.Name;
+
+			ToPlace =
+				StopLabel.PlaceFor(
+					journeyQuery.To.Name,
+					journeyQuery.To.Place);
 
 			WhenText =
 				DescribeWhen(
@@ -311,6 +365,20 @@ public sealed class ResultsViewModel :
 			}
 
 			int skipped = 0;
+
+			// The searched place may come without a city; the journeys know which one it is in.
+			if (result.Journeys.Count > 0)
+			{
+				FromPlace ??=
+					StopLabel.PlaceFor(
+						FromName,
+						result.Journeys[0].Origin?.Place);
+
+				ToPlace ??=
+					StopLabel.PlaceFor(
+						ToName,
+						result.Journeys[0].Destination?.Place);
+			}
 
 			foreach (Journey journey
 				in result.Journeys)

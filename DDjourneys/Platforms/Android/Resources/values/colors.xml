@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Native chrome defaults (light). Nothing here may look like MAUI's template indigo:
+     the status bar is transparent, the accents match the app's own accent colour.
+     values-night/colors.xml holds the dark variant; the app switches between them with its theme. -->
 <resources>
-    <color name="colorPrimary">#512BD4</color>
-    <color name="colorPrimaryDark">#2B0B98</color>
-    <color name="colorAccent">#2B0B98</color>
+    <color name="colorPrimary">#0B6E8A</color>
+    <color name="colorPrimaryDark">@android:color/transparent</color>
+    <color name="colorAccent">#0B6E8A</color>
 </resources>
