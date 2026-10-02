@@ -58,15 +58,18 @@
 			</Grid>
 
 			<!--  Where from / where to  -->
-			<Grid ColumnDefinitions="*,*" ColumnSpacing="{StaticResource SpaceM}">
+			<Grid
+				ColumnDefinitions="*,*"
+				ColumnSpacing="{StaticResource SpaceM}"
+				IsVisible="{Binding ShowEndpoints}">
 				<controls:StopNameView
 					Compact="True"
 					Place="{Binding FromPlace}"
 					Stop="{Binding FromName}" />
 				<controls:StopNameView
 					Grid.Column="1"
+					Alignment="End"
 					Compact="True"
-					HorizontalOptions="End"
 					Place="{Binding ToPlace}"
 					Stop="{Binding ToName}" />
 			</Grid>

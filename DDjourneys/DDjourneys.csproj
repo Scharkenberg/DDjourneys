@@ -67,13 +67,13 @@
 	</PropertyGroup>
 
   <ItemGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net11.0-android|AnyCPU'">
-	<MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#F2C43D">
+	<MauiIcon Include="Resources\AppIcon\appicon.svg" Color="#F2C43D">
 	  <CopyToOutputDirectory>Always</CopyToOutputDirectory>
 	</MauiIcon>
   </ItemGroup>
 
   <ItemGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net11.0-android|AnyCPU'">
-	<MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#F2C43D">
+	<MauiIcon Include="Resources\AppIcon\appicon.svg" Color="#F2C43D">
 	  <CopyToOutputDirectory>Always</CopyToOutputDirectory>
 	</MauiIcon>
   </ItemGroup>

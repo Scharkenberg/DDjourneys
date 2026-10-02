@@ -59,6 +59,14 @@ public sealed class StopNameView : ContentView
 			0d,
 			propertyChanged: OnLookChanged);
 
+	public static readonly BindableProperty AlignmentProperty =
+		BindableProperty.Create(
+			nameof(Alignment),
+			typeof(TextAlignment),
+			typeof(StopNameView),
+			TextAlignment.Start,
+			propertyChanged: OnLookChanged);
+
 	private readonly Label _name =
 		new()
 		{
@@ -120,6 +128,13 @@ public sealed class StopNameView : ContentView
 		set => SetValue(MutedProperty, value);
 	}
 
+	/// <summary>Horizontal alignment of both lines.</summary>
+	public TextAlignment Alignment
+	{
+		get => (TextAlignment)GetValue(AlignmentProperty);
+		set => SetValue(AlignmentProperty, value);
+	}
+
 	/// <summary>Explicit size for the name line; 0 keeps the style's size.</summary>
 	public double NameFontSize
 	{
@@ -135,6 +150,9 @@ public sealed class StopNameView : ContentView
 
 	private void ApplyLook()
 	{
+		_name.HorizontalTextAlignment = Alignment;
+		_place.HorizontalTextAlignment = Alignment;
+
 		if (Compact)
 		{
 			_name.StyleClass = ["Caption"];

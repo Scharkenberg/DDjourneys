@@ -15,29 +15,16 @@
 		RowSpacing="{StaticResource SpaceM}">
 
 		<!--  Result header  -->
-		<Grid Grid.Row="0" ColumnDefinitions="*,Auto">
-
-			<VerticalStackLayout Spacing="4" VerticalOptions="Center">
-
-				<controls:RouteView
-					From="{Binding FromName}"
-					FromPlace="{Binding FromPlace}"
-					NameFontSize="{StaticResource FontSubtitle}"
-					To="{Binding ToName}"
-					ToPlace="{Binding ToPlace}" />
-
-				<Label StyleClass="Caption" Text="{Binding WhenText}" />
-
-			</VerticalStackLayout>
-
-			<controls:IconButton
-				Grid.Column="1"
-				Command="{Binding ReloadCommand}"
-				Glyph="Refresh"
-				SemanticProperties.Description="{localization:Tr Common.SearchAgain}"
-				VerticalOptions="Start" />
-
-		</Grid>
+		<controls:SearchHeader
+			Grid.Row="0"
+			ActionCommand="{Binding ReloadCommand}"
+			ActionDescription="{localization:Tr Common.SearchAgain}"
+			ActionGlyph="Refresh"
+			From="{Binding FromName}"
+			FromPlace="{Binding FromPlace}"
+			Subtitle="{Binding WhenText}"
+			To="{Binding ToName}"
+			ToPlace="{Binding ToPlace}" />
 
 
 

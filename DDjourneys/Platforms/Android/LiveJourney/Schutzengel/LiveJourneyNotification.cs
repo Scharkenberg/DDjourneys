@@ -2,6 +2,7 @@ using System.Globalization;
 using Android.App;
 using Android.Content;
 using Android.Graphics.Drawables;
+using Android.Service.Notification;
 using DDjourneys.Core.Tracking;
 using DDjourneys.Localization;
 using DDjourneys.Support;
@@ -22,7 +23,8 @@ internal sealed record LiveJourneyContent(
 	IReadOnlyList<bool> Individual,
 	int Position,
 	TrackingPhase Phase,
-	bool Ongoing)
+	bool Ongoing,
+	DateTimeOffset? When = null)
 {
 	/// <summary>Records compare lists by reference; this key compares what is displayed.</summary>
 	public string Key =>
@@ -36,6 +38,7 @@ internal sealed record LiveJourneyContent(
 			Position.ToString(CultureInfo.InvariantCulture),
 			Phase,
 			Ongoing,
+			When?.ToUnixTimeSeconds(),
 			string.Join(',', Segments));
 
 	public static LiveJourneyContent Create(
@@ -65,6 +68,7 @@ internal sealed record LiveJourneyContent(
 		string text;
 		string? shortText = null;
 		bool ongoing = true;
+		DateTimeOffset? when = null;
 
 		switch (phase)
 		{
@@ -106,6 +110,7 @@ internal sealed record LiveJourneyContent(
 						strings.NotifChangeText,
 						Format.TimeOrDash(snapshot.NextStopTime));
 				shortText = Countdown(snapshot.NextStopTime, now, strings);
+				when = snapshot.NextStopTime;
 				break;
 
 			case TrackingPhase.InProgress:
@@ -123,6 +128,7 @@ internal sealed record LiveJourneyContent(
 							Format.TimeOrDash(snapshot.NextStopTime))
 						: route;
 				shortText = Countdown(snapshot.NextStopTime, now, strings);
+				when = snapshot.NextStopTime;
 				break;
 
 			default:
@@ -133,6 +139,7 @@ internal sealed record LiveJourneyContent(
 						Format.TimeOrDash(snapshot.Start));
 				text = route;
 				shortText = Countdown(snapshot.Start, now, strings);
+				when = snapshot.Start;
 				break;
 		}
 
@@ -149,7 +156,8 @@ internal sealed record LiveJourneyContent(
 			snapshot.SegmentIndividual,
 			Math.Clamp(snapshot.Position, 0, total),
 			phase,
-			ongoing);
+			ongoing,
+			when);
 	}
 
 	/// <summary>Content for the service notification while journeys wait for their start.</summary>
@@ -175,7 +183,8 @@ internal sealed record LiveJourneyContent(
 			[],
 			0,
 			TrackingPhase.Planned,
-			true);
+			true,
+			journey.Departure);
 	}
 
 	public static LiveJourneyContent Monitoring(TrackingStrings strings) =>
@@ -236,11 +245,29 @@ internal static class LiveJourneyNotification
 	internal const string ActionDismissed = "dd.journey.dismissed";
 	internal const string ExtraPlanId = "plan_id";
 
-	private static readonly global::Android.Graphics.Color RideColor =
-		global::Android.Graphics.Color.Rgb(234, 182, 44);
+	/// <summary>Group shared by every notification of the app, so the system folds them into one stack.</summary>
+	private const string GroupKey = "dd.journey.group";
+
+	/// <summary>Id of the group summary; only posted while two or more notifications are visible.</summary>
+	private const int SummaryNotificationId = 7315;
+
+	private const string StatusIconName = "ic_stat_journey";
+	private const string StopIconName = "ic_live_stop";
+
+	// The app's accent (colors.xml), so the notification reads as part of the app.
+	private static readonly global::Android.Graphics.Color AccentColor =
+		global::Android.Graphics.Color.Rgb(11, 110, 138);
+
+	private static readonly global::Android.Graphics.Color RideColor = AccentColor;
+
+	private static readonly global::Android.Graphics.Color ChangeColor =
+		global::Android.Graphics.Color.Rgb(217, 119, 6);
+
+	private static readonly global::Android.Graphics.Color ArrivedColor =
+		global::Android.Graphics.Color.Rgb(22, 163, 74);
 
 	private static readonly global::Android.Graphics.Color RiskColor =
-		global::Android.Graphics.Color.Rgb(221, 68, 59);
+		global::Android.Graphics.Color.Rgb(220, 38, 38);
 
 	private static readonly global::Android.Graphics.Color WalkColor =
 		global::Android.Graphics.Color.Rgb(150, 156, 168);
@@ -283,6 +310,8 @@ internal static class LiveJourneyNotification
 			Remember(notification);
 
 			Manager?.Notify(LiveNotificationId, notification);
+
+			RefreshSummary();
 		}
 		catch (Java.Lang.SecurityException)
 		{
@@ -309,6 +338,8 @@ internal static class LiveJourneyNotification
 		}
 
 		Manager?.Cancel(LiveNotificationId);
+
+		RefreshSummary();
 	}
 
 	public static Notification Build(LiveJourneyContent content)
@@ -325,13 +356,19 @@ internal static class LiveJourneyNotification
 				: new Notification.Builder(context);
 
 		builder
-			.SetSmallIcon(global::Android.Resource.Drawable.IcMenuDirections)!
+			.SetSmallIcon(ResourceId(StatusIconName, global::Android.Resource.Drawable.IcMenuDirections))!
+			.SetColor(PhaseColor(content.Phase))!
 			.SetContentTitle(content.Title)!
 			.SetContentText(content.Text)!
 			.SetOngoing(content.Ongoing)!
 			.SetOnlyAlertOnce(true)!
 			.SetAutoCancel(!content.Ongoing)!
+			.SetCategory(Notification.CategoryProgress)!
+			.SetVisibility(NotificationVisibility.Public)!
+			.SetSortKey("0")!
 			.SetShowWhen(false);
+
+		ApplyGroup(builder);
 
 		if (content.SubText is { Length: > 0 } sub)
 		{
@@ -362,15 +399,71 @@ internal static class LiveJourneyNotification
 		{
 			ApplyLiveUpdate(builder, context, content);
 		}
-		else if (content.Segments.Count > 0)
+		else
 		{
-			builder.SetStyle(
-				new Notification.BigTextStyle()
-					.BigText(
-						$"{content.Text} · {Math.Round(100.0 * content.Position / Math.Max(1, content.Segments.Sum())):0} %"));
+			ApplyClassicProgress(builder, content);
 		}
 
 		return builder.Build()!;
+	}
+
+	/// <summary>Before Android 16: a real progress bar and a system-driven countdown to the next event.</summary>
+	private static void ApplyClassicProgress(Notification.Builder builder, LiveJourneyContent content)
+	{
+		builder.SetStyle(new Notification.BigTextStyle().BigText(content.Text));
+
+		int total = content.Segments.Sum();
+
+		if (total > 0)
+		{
+			builder.SetProgress(total, Math.Clamp(content.Position, 0, total), false);
+		}
+
+		if (content.When is { } when
+			&& when > DateTimeOffset.Now)
+		{
+			builder
+				.SetWhen(when.ToUnixTimeMilliseconds())!
+				.SetShowWhen(true)!
+				.SetUsesChronometer(true)!
+				.SetChronometerCountDown(true);
+		}
+	}
+
+	/// <summary>Puts a notification into the app's group; the summary itself stays silent.</summary>
+	private static void ApplyGroup(Notification.Builder builder, bool summary = false)
+	{
+		builder.SetGroup(GroupKey);
+
+		if (summary)
+		{
+			builder.SetGroupSummary(true);
+		}
+
+		if (OperatingSystem.IsAndroidVersionAtLeast(26))
+		{
+			builder.SetGroupAlertBehavior(NotificationGroupAlertBehavior.Children);
+		}
+	}
+
+	private static global::Android.Graphics.Color PhaseColor(TrackingPhase phase) =>
+		phase switch
+		{
+			TrackingPhase.AtRisk or TrackingPhase.Cancelled => RiskColor,
+			TrackingPhase.AtInterchange => ChangeColor,
+			TrackingPhase.Arrived => ArrivedColor,
+			_ => AccentColor
+		};
+
+	/// <summary>Drawable by name, so the code builds without the generated resource class.</summary>
+	private static int ResourceId(string name, int fallback)
+	{
+		Context context = Context;
+
+		int id =
+			context.Resources?.GetIdentifier(name, "drawable", context.PackageName) ?? 0;
+
+		return id != 0 ? id : fallback;
 	}
 
 	[System.Runtime.Versioning.SupportedOSPlatform("android36.0")]
@@ -426,11 +519,19 @@ internal static class LiveJourneyNotification
 
 		style.SetProgress(Math.Clamp(content.Position, 0, total));
 
-		Icon icon = Icon.CreateWithResource(context, global::Android.Resource.Drawable.IcMenuDirections);
+		Icon vehicle =
+			Icon.CreateWithResource(
+				context,
+				ResourceId(StatusIconName, global::Android.Resource.Drawable.IcMenuDirections));
 
-		style.SetProgressTrackerIcon(icon);
-		style.SetProgressStartIcon(icon);
-		style.SetProgressEndIcon(icon);
+		Icon stop =
+			Icon.CreateWithResource(
+				context,
+				ResourceId(StopIconName, global::Android.Resource.Drawable.IcMenuDirections));
+
+		style.SetProgressTrackerIcon(vehicle);
+		style.SetProgressStartIcon(stop);
+		style.SetProgressEndIcon(stop);
 
 		return style;
 	}
@@ -453,13 +554,29 @@ internal static class LiveJourneyNotification
 					? new Notification.Builder(context, silent ? LiveChannelId : AlertChannelId)
 					: new Notification.Builder(context);
 
+			global::Android.Graphics.Color color =
+				kind switch
+				{
+					JourneyAlertKind.Problem => RiskColor,
+					JourneyAlertKind.Change => ChangeColor,
+					JourneyAlertKind.Arrived => ArrivedColor,
+					_ => AccentColor
+				};
+
 			builder
-				.SetSmallIcon(global::Android.Resource.Drawable.IcMenuDirections)!
+				.SetSmallIcon(ResourceId(StatusIconName, global::Android.Resource.Drawable.IcMenuDirections))!
+				.SetColor(color)!
 				.SetContentTitle(title)!
 				.SetContentText(text)!
 				.SetStyle(new Notification.BigTextStyle().BigText(text))!
 				.SetAutoCancel(true)!
+				.SetShowWhen(true)!
+				.SetWhen(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())!
+				.SetVisibility(NotificationVisibility.Public)!
+				.SetSortKey(kind is JourneyAlertKind.Problem ? "1" : "2")!
 				.SetCategory(silent ? Notification.CategoryStatus : Notification.CategoryEvent);
+
+			ApplyGroup(builder);
 
 			if (OpenAppIntent(context) is { } open)
 			{
@@ -467,6 +584,8 @@ internal static class LiveJourneyNotification
 			}
 
 			Manager?.Notify(AlertId(planId, kind), builder.Build());
+
+			RefreshSummary();
 		}
 		catch (Java.Lang.SecurityException)
 		{
@@ -485,6 +604,75 @@ internal static class LiveJourneyNotification
 		foreach (JourneyAlertKind kind in Enum.GetValues<JourneyAlertKind>())
 		{
 			manager.Cancel(AlertId(planId, kind));
+		}
+
+		RefreshSummary();
+	}
+
+	/// <summary>
+	/// Keeps the group summary in step with the notifications of the app: with two or more the
+	/// system shows one expandable stack, with fewer the summary is removed again.
+	/// </summary>
+	private static void RefreshSummary()
+	{
+		try
+		{
+			if (Manager is not { } manager)
+			{
+				return;
+			}
+
+			int children = 0;
+
+			StatusBarNotification[]? active = manager.GetActiveNotifications();
+
+			foreach (StatusBarNotification item in active ?? [])
+			{
+				if (item.Id != SummaryNotificationId
+					&& item.Notification?.Group == GroupKey)
+				{
+					children++;
+				}
+			}
+
+			if (children < 2)
+			{
+				manager.Cancel(SummaryNotificationId);
+
+				return;
+			}
+
+			Context context = Context;
+
+			string appName =
+				context.PackageManager?.GetApplicationLabel(context.ApplicationInfo!)?.ToString() ?? "DDjourneys";
+
+			Notification.Builder builder =
+				OperatingSystem.IsAndroidVersionAtLeast(26)
+					? new Notification.Builder(context, LiveChannelId)
+					: new Notification.Builder(context);
+
+			builder
+				.SetSmallIcon(ResourceId(StatusIconName, global::Android.Resource.Drawable.IcMenuDirections))!
+				.SetColor(AccentColor)!
+				.SetContentTitle(appName)!
+				.SetContentText(Strings.ChannelLive)!
+				.SetOnlyAlertOnce(true)!
+				.SetAutoCancel(true)!
+				.SetShowWhen(false);
+
+			ApplyGroup(builder, summary: true);
+
+			if (OpenAppIntent(context) is { } open)
+			{
+				builder.SetContentIntent(open);
+			}
+
+			manager.Notify(SummaryNotificationId, builder.Build());
+		}
+		catch (Exception ex)
+		{
+			System.Diagnostics.Debug.WriteLine($"[SCHUTZENGEL] Notification summary not updated: {ex.Message}");
 		}
 	}
 

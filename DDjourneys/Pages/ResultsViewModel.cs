@@ -366,6 +366,20 @@ public sealed class ResultsViewModel :
 
 			int skipped = 0;
 
+			// The searched place may come without a city; the journeys know which one it is in.
+			if (result.Journeys.Count > 0)
+			{
+				FromPlace ??=
+					StopLabel.PlaceFor(
+						FromName,
+						result.Journeys[0].Origin?.Place);
+
+				ToPlace ??=
+					StopLabel.PlaceFor(
+						ToName,
+						result.Journeys[0].Destination?.Place);
+			}
+
 			foreach (Journey journey
 				in result.Journeys)
 			{

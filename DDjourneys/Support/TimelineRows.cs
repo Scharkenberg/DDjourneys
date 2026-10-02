@@ -325,23 +325,22 @@ public static class TimelineRowFactory
 
 
 		if (items.Count > 0
-			&& items[0] is BoundaryItem
-			{
-				WalkTime: not null
-			} accessWalk)
+			&& items[0] is BoundaryItem accessWalk)
 		{
-			Station start =
-				accessWalk.Origin
-				?? journey.Origin
-				?? journey.From;
-
-			rows.Add(
-				EndpointStop(
-					start.Name,
-					PlaceOf(start),
-					journey.Departure,
-					Colors.Transparent,
-					WalkColor()));
+			// The walk starts where the passenger searched from. Without that place (or when it is
+			// the very stop the vehicle leaves from) there is no separate starting point to show.
+			if (ShowsWalk(accessWalk, options)
+				&& accessWalk.Origin is { } start
+				&& !WalkStaysInStop(items, 0, accessWalk))
+			{
+				rows.Add(
+					EndpointStop(
+						start.Name,
+						PlaceOf(start),
+						journey.Departure,
+						Colors.Transparent,
+						WalkColor()));
+			}
 		}
 		else if (items.Count > 0
 			&& items[0] is WalkItem firstWalk)
@@ -477,11 +476,10 @@ public static class TimelineRowFactory
 							lastWalk.Leg.ArrivalPlatformKind)
 						: null));
 		}
-		else if (items.Count > 0
-			&& items[^1] is BoundaryItem
-			{
-				WalkTime: not null
-			} egressWalk)
+		else if (items.Count > 1
+			&& items[^1] is BoundaryItem egressWalk
+			&& ShowsWalk(egressWalk, options)
+			&& !WalkStaysInStop(items, items.Count - 1, egressWalk))
 		{
 			rows.Add(
 				EndpointStop(
@@ -597,10 +595,15 @@ public static class TimelineRowFactory
 						stopOccupancy,
 
 					RailTop =
-						RailAt(
-							items,
-							i - 1,
-							-1),
+						i == 1
+						&& items[0] is BoundaryItem accessWalk
+						&& ShowsWalk(accessWalk, options)
+						&& !WalkStaysInStop(items, 0, accessWalk)
+							? WalkColor()
+							: RailAt(
+								items,
+								i - 1,
+								-1),
 
 					RailBottom =
 						color,
@@ -831,10 +834,15 @@ public static class TimelineRowFactory
 						color,
 
 					RailBottom =
-						RailAt(
-							items,
-							i + 1,
-							+1),
+						i + 2 == items.Count
+						&& items[i + 1] is BoundaryItem egressWalk
+						&& ShowsWalk(egressWalk, options)
+						&& !WalkStaysInStop(items, i + 1, egressWalk)
+							? WalkColor()
+							: RailAt(
+								items,
+								i + 1,
+								+1),
 
 					Description =
 						$"{Format.TimeOrDash(leg.EffectiveArrival)}, " +
@@ -1004,10 +1012,16 @@ public static class TimelineRowFactory
 							null)
 				});
 		}
-		else if (options.ShowWalking
-			&& boundary.WalkTime is { } walkTime
-			&& walkTime > TimeSpan.Zero)
+		else if (ShowsWalk(boundary, options)
+			&& boundary.WalkTime is { } walkTime)
 		{
+			// A walk between two points of the same stop must not read as "walk to where you are".
+			bool insideStop =
+				WalkStaysInStop(
+					items,
+					i,
+					boundary);
+
 			rows.Add(
 				new WalkRow
 				{
@@ -1016,29 +1030,40 @@ public static class TimelineRowFactory
 						Format.Duration(walkTime),
 
 					CaptionPrefix =
-						strings.To,
+						insideStop
+							? strings.WithinStop
+							: strings.To,
 
 					CaptionName =
-						boundary.At.Name,
+						insideStop
+							? string.Empty
+							: boundary.At.Name,
 
 					CaptionPlace =
-						PlaceOf(boundary.At),
+						insideStop
+							? null
+							: PlaceOf(boundary.At),
 
+					// Without a starting/ending point to connect to, an in-stop walk draws no rail.
 					RailTop =
 						i == 0
-							? WalkColor()
+							? Colors.Transparent
 							: RailAt(
 								items,
 								i - 1,
 								-1),
 
 					RailBottom =
-						WalkColor(),
+						insideStop
+							? Colors.Transparent
+							: WalkColor(),
 
 					Description =
 						$"{strings.Walk} " +
 						Format.Duration(walkTime) +
-						$" {strings.To} {StopLabel.Compose(boundary.At)}"
+						(insideStop
+							? $" {strings.WithinStop}"
+							: $" {strings.To} {StopLabel.Compose(boundary.At)}")
 				});
 		}
 
@@ -1065,6 +1090,31 @@ public static class TimelineRowFactory
 				});
 		}
 	}
+
+
+	/// <summary>
+	/// A walk before the first / after the last vehicle that begins or ends at the very stop the
+	/// vehicle uses (only the platform changes), so there is no separate point to draw.
+	/// </summary>
+	private static bool WalkStaysInStop(
+		IReadOnlyList<TimelineItem> items,
+		int index,
+		BoundaryItem boundary) =>
+		index == 0
+			? boundary.Origin is { } origin
+				&& SameStation(origin, boundary.At)
+			: index == items.Count - 1
+				&& items[index - 1] is RideItem ride
+				&& SameStation(ride.Leg.To, boundary.At);
+
+
+	/// <summary>A walk before the first or after the last vehicle that the timeline shows.</summary>
+	private static bool ShowsWalk(
+		BoundaryItem boundary,
+		TimelineOptions options) =>
+		options.ShowWalking
+		&& boundary.WalkTime is { } walk
+		&& walk > TimeSpan.Zero;
 
 
 	private static StopRow EndpointStop(

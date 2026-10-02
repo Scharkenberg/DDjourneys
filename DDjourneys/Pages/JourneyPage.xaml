@@ -513,27 +513,15 @@
 
 			<VerticalStackLayout x:Name="HeaderBlock" Spacing="{StaticResource SpaceM}">
 
-				<Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource SpaceS}">
-
-					<VerticalStackLayout Spacing="4">
-
-						<controls:RouteView
-							From="{Binding FromName}"
-							FromPlace="{Binding FromPlace}"
-							NameFontSize="{StaticResource FontTitle}"
-							To="{Binding ToName}"
-							ToPlace="{Binding ToPlace}" />
-
-						<Label StyleClass="Caption" Text="{Binding DayText}" />
-					</VerticalStackLayout>
-
-					<controls:IconButton
-						Grid.Column="1"
-						Command="{Binding ShareCommand}"
-						Glyph="Share"
-						SemanticProperties.Description="{localization:Tr Common.Share}"
-						VerticalOptions="Start" />
-				</Grid>
+				<controls:SearchHeader
+					ActionCommand="{Binding ShareCommand}"
+					ActionDescription="{localization:Tr Common.Share}"
+					ActionGlyph="Share"
+					From="{Binding FromName}"
+					FromPlace="{Binding FromPlace}"
+					Subtitle="{Binding DayText}"
+					To="{Binding ToName}"
+					ToPlace="{Binding ToPlace}" />
 
 				<controls:JourneyCard BindingContext="{Binding Summary}" />
 

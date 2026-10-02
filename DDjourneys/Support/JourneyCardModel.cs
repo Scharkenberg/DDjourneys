@@ -63,11 +63,19 @@ public sealed class JourneyCardModel : ObservableObject
 			journey.Legs.LastOrDefault(
 				l => l.Mode != TransitMode.Walk);
 
+		// The place shown under each time is where the passenger is at that moment: the searched
+		// origin/destination when a walk leads to/from the first/last vehicle, else the stop itself.
 		Station start =
-			journey.Origin ?? journey.From;
+			journey.AccessDuration > TimeSpan.Zero
+			&& journey.Origin is { } origin
+				? origin
+				: journey.From;
 
 		Station end =
-			journey.Destination ?? journey.To;
+			journey.EgressDuration > TimeSpan.Zero
+			&& journey.Destination is { } destination
+				? destination
+				: journey.To;
 
 		FromName = start.Name;
 		FromPlace = StopLabel.PlaceFor(start.Name, start.Place);
@@ -102,6 +110,9 @@ public sealed class JourneyCardModel : ObservableObject
 	}
 
 	public Journey Journey { get; }
+
+	/// <summary>Whether the card names where the journey starts and ends (the detail page already does).</summary>
+	public bool ShowEndpoints { get; init; } = true;
 
 	public string FromName { get; }
 	public string? FromPlace { get; }

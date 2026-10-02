@@ -102,6 +102,41 @@ public static class VvoJourneyMapper
 			};
 
 
+	/// <summary>
+	/// A searched location (suburb, address, point of interest) often comes without a city.
+	/// The stop it leads to is at most a short walk away, so that stop's city is used instead.
+	/// </summary>
+	private static Station? WithPlaceFrom(
+		Station? searched,
+		Station adjacentStop)
+	{
+		if (searched is null
+			|| !string.IsNullOrWhiteSpace(searched.Place)
+			|| string.IsNullOrWhiteSpace(adjacentStop.Place))
+		{
+			return searched;
+		}
+
+		return new Station
+		{
+			Id =
+				searched.Id,
+
+			Name =
+				searched.Name,
+
+			Place =
+				adjacentStop.Place,
+
+			Latitude =
+				searched.Latitude,
+
+			Longitude =
+				searched.Longitude
+		};
+	}
+
+
 	private static Journey MapJourney(
 		VvoRoute route,
 		string? sessionId,
@@ -280,10 +315,14 @@ public static class VvoJourneyMapper
 				legs[^1].To,
 
 			Origin =
-				origin,
+				WithPlaceFrom(
+					origin,
+					legs[0].From),
 
 			Destination =
-				destination,
+				WithPlaceFrom(
+					destination,
+					legs[^1].To),
 
 			Legs =
 				legs,

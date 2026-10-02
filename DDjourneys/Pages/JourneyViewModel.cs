@@ -438,7 +438,10 @@ public sealed class JourneyViewModel :
 	{
 		Summary =
 			new JourneyCardModel(
-				journey);
+				journey)
+			{
+				ShowEndpoints = false
+			};
 
 
 		Station start =
