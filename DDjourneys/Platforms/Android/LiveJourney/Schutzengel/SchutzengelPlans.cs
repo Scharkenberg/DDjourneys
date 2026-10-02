@@ -523,8 +523,12 @@ internal static class SchutzengelRawSummaryParser
 		}
 
 		return new SchutzengelRawSummary(
-			SchutzengelPlanList.ReadString(firstNode, "name") ?? string.Empty,
-			SchutzengelPlanList.ReadString(lastNode, "name") ?? string.Empty,
+			DDjourneys.Core.Models.StopLabel.Compose(
+				SchutzengelPlanList.ReadString(firstNode, "name"),
+				SchutzengelPlanList.ReadString(firstNode, "city")),
+			DDjourneys.Core.Models.StopLabel.Compose(
+				SchutzengelPlanList.ReadString(lastNode, "name"),
+				SchutzengelPlanList.ReadString(lastNode, "city")),
 			ReadTime(firstNode, "departureDateTime") ?? ReadTime(firstNode, "arrivalDateTime"),
 			ReadTime(lastNode, "arrivalDateTime") ?? ReadTime(lastNode, "departureDateTime"),
 			lines,

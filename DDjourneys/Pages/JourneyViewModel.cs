@@ -376,8 +376,8 @@ public sealed class JourneyViewModel :
 
 
 		RouteText =
-			$"{journey.From.Name} " +
-			$"\u2192 {journey.To.Name}";
+			$"{StopLabel.Compose(journey.From)} " +
+			$"\u2192 {StopLabel.Compose(journey.To)}";
 
 
 		DayText =
@@ -627,8 +627,8 @@ public sealed class JourneyViewModel :
 						lines.Add(
 							$"{Format.TimeOrDash(ride.Leg.EffectiveDeparture)} " +
 							$"{line}: " +
-							$"{ride.Leg.From.Name} " +
-							$"\u2192 {ride.Leg.To.Name} " +
+							$"{StopLabel.Compose(ride.Leg.From)} " +
+							$"\u2192 {StopLabel.Compose(ride.Leg.To)} " +
 							$"({Format.TimeOrDash(ride.Leg.EffectiveArrival)})");
 
 
@@ -643,7 +643,7 @@ public sealed class JourneyViewModel :
 							walk.Leg.EffectiveDeparture,
 							walk.Leg.EffectiveArrival)} " +
 						$"{strings.To} " +
-						walk.Leg.To.Name);
+						StopLabel.Compose(walk.Leg.To));
 
 					break;
 			}

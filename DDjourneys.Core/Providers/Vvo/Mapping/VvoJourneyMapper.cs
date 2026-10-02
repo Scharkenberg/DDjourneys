@@ -391,9 +391,21 @@ public static class VvoJourneyMapper
 				arrivalStop?.Platform
 				?? previousLeg?.ArrivalPlatform,
 
+			ArrivalPlatformKind =
+				arrivalStop?.Platform is not null
+					? arrivalStop.PlatformKind
+					: previousLeg?.ArrivalPlatformKind
+						?? PlatformKind.Unknown,
+
 			DeparturePlatform =
 				departureStop?.Platform
 				?? nextLeg?.DeparturePlatform,
+
+			DeparturePlatformKind =
+				departureStop?.Platform is not null
+					? departureStop.PlatformKind
+					: nextLeg?.DeparturePlatformKind
+						?? PlatformKind.Unknown,
 
 			PreviousLegIndex =
 				previousLegIndex,
@@ -484,9 +496,13 @@ public static class VvoJourneyMapper
 
 
 		if (!string.Equals(
-			arrival?.Platform,
-			departure?.Platform,
-			StringComparison.OrdinalIgnoreCase))
+				arrival?.Platform,
+				departure?.Platform,
+				StringComparison.OrdinalIgnoreCase)
+			|| (arrival?.Platform is not null
+				&& arrival.PlatformKind != departure?.PlatformKind
+				&& arrival.PlatformKind != PlatformKind.Unknown
+				&& departure?.PlatformKind != PlatformKind.Unknown))
 		{
 			return TransferKind.PlatformChange;
 		}
@@ -581,8 +597,16 @@ public static class VvoJourneyMapper
 			DeparturePlatform =
 				firstStop?.Platform,
 
+			DeparturePlatformKind =
+				firstStop?.PlatformKind
+				?? PlatformKind.Unknown,
+
 			ArrivalPlatform =
 				lastStop?.Platform,
+
+			ArrivalPlatformKind =
+				lastStop?.PlatformKind
+				?? PlatformKind.Unknown,
 
 			IsCancelled =
 				route.TripCancelled
@@ -630,7 +654,11 @@ public static class VvoJourneyMapper
 			longitude,
 
 		Platform =
-			stop.Platform?.Name
+			stop.Platform?.Name,
+
+		PlatformKind =
+			StopLabel.KindOf(
+				stop.Platform?.Type)
 	},
 
 			ScheduledArrival =
@@ -647,6 +675,10 @@ public static class VvoJourneyMapper
 
 			Platform =
 				stop.Platform?.Name,
+
+			PlatformKind =
+				StopLabel.KindOf(
+					stop.Platform?.Type),
 
 			IsCancelled =
 				stop.ArrivalState == "Cancelled"

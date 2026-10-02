@@ -34,6 +34,8 @@
 
 					<Label FontFamily="OpenSansSemibold" Text="{Binding Time}" />
 
+					<controls:OccupancyIndicator IsVisible="{Binding HasOccupancy}" Level="{Binding Occupancy}" />
+
 					<Label
 						IsVisible="{Binding HasDelay}"
 						StyleClass="Caption"
@@ -44,11 +46,6 @@
 						IsVisible="{Binding HasDelay}"
 						StyleClass="Delay"
 						Text="{Binding DelayText}" />
-
-					<Label
-						IsVisible="{Binding HasOccupancy}"
-						StyleClass="Caption"
-						Text="{Binding OccupancyText}" />
 				</VerticalStackLayout>
 
 				<Grid Grid.Column="1" RowDefinitions="16,*">
@@ -89,12 +86,7 @@
 					Padding="0,4,0,10"
 					Spacing="4">
 
-					<Label FontFamily="OpenSansSemibold" Text="{Binding Name}" />
-
-					<Label
-						IsVisible="{Binding HasPlace}"
-						StyleClass="Faint"
-						Text="{Binding PlaceText}" />
+					<controls:StopNameView Place="{Binding Place}" Stop="{Binding Name}" />
 
 					<Label
 						IsVisible="{Binding HasPlatform}"
@@ -115,13 +107,15 @@
 				Loaded="RowLoaded"
 				SemanticProperties.Description="{Binding Description}">
 
-				<HorizontalStackLayout
+				<VerticalStackLayout
 					Grid.Column="0"
 					Padding="0,4,0,0"
-					Spacing="4">
+					Spacing="2">
 
 					<Label StyleClass="Caption" Text="{Binding Time}" />
-				</HorizontalStackLayout>
+
+					<controls:OccupancyIndicator IsVisible="{Binding HasOccupancy}" Level="{Binding Occupancy}" />
+				</VerticalStackLayout>
 
 				<Grid Grid.Column="1">
 
@@ -140,34 +134,29 @@
 						Color="{Binding RailBottom}" />
 				</Grid>
 
-				<HorizontalStackLayout
+				<VerticalStackLayout
 					Grid.Column="2"
 					Padding="0,4,0,6"
-					Spacing="6">
+					Spacing="2">
 
-					<Label StyleClass="Caption" Text="{Binding Name}" />
+					<controls:StopNameView
+						Compact="True"
+						Place="{Binding Place}"
+						Stop="{Binding Name}" />
 
-					<Label
-						IsVisible="{Binding HasPlace}"
-						StyleClass="Faint"
-						Text="{Binding PlaceText}"
-						VerticalOptions="Center" />
+					<HorizontalStackLayout Spacing="8">
 
-					<Label
-						IsVisible="{Binding HasDelay}"
-						StyleClass="Delay"
-						Text="{Binding DelayText}" />
+						<Label
+							IsVisible="{Binding HasDelay}"
+							StyleClass="Delay"
+							Text="{Binding DelayText}" />
 
-					<Label
-						IsVisible="{Binding IsNotServed}"
-						StyleClass="Cancelled"
-						Text="{localization:Tr Journey.NotServed}" />
-
-					<Label
-						IsVisible="{Binding HasOccupancy}"
-						StyleClass="Caption"
-						Text="{Binding OccupancyText}" />
-				</HorizontalStackLayout>
+						<Label
+							IsVisible="{Binding IsNotServed}"
+							StyleClass="Cancelled"
+							Text="{localization:Tr Journey.NotServed}" />
+					</HorizontalStackLayout>
+				</VerticalStackLayout>
 			</Grid>
 		</DataTemplate>
 
@@ -233,10 +222,15 @@
 						StyleClass="Caption"
 						Text="{Binding FeaturesText}" />
 
-					<Label
-						IsVisible="{Binding HasOccupancy}"
-						StyleClass="Caption"
-						Text="{Binding OccupancyText}" />
+					<HorizontalStackLayout IsVisible="{Binding HasOccupancy}" Spacing="8">
+
+						<controls:OccupancyIndicator Level="{Binding Occupancy}" />
+
+						<Label
+							StyleClass="Caption"
+							Text="{Binding OccupancyText}"
+							VerticalOptions="Center" />
+					</HorizontalStackLayout>
 
 					<Label
 						IsVisible="{Binding IsCancelled}"
@@ -324,7 +318,8 @@
 
 		<!--  Change from one ride to the next.
 		     Left: arrival time above the node, departure time below it, symmetric.
-		     Middle: rail fills the full row height (top 34 / node 18 / rest).
+		     Middle: rail fills the full row height (top 48 / node 18 / rest).
+     Occupancy dots sit outside the times: above the arrival, below the departure.
 		     Right: the name sits on the node's line; details follow below.  -->
 		<DataTemplate x:Key="InterchangeTemplate" x:DataType="support:InterchangeRow">
 
@@ -336,7 +331,7 @@
 
 				<Grid
 					Grid.Column="0"
-					RowDefinitions="34,18,*"
+					RowDefinitions="48,18,*"
 					RowSpacing="0">
 
 					<VerticalStackLayout
@@ -344,6 +339,8 @@
 						Padding="0,0,0,2"
 						Spacing="1"
 						VerticalOptions="End">
+
+						<controls:OccupancyIndicator IsVisible="{Binding HasArrivalOccupancy}" Level="{Binding ArrivalOccupancy}" />
 
 						<Label FontFamily="OpenSansSemibold" Text="{Binding ArrivalTime}" />
 
@@ -365,12 +362,14 @@
 							IsVisible="{Binding HasDepartureDelay}"
 							StyleClass="Delay"
 							Text="{Binding DepartureDelay}" />
+
+						<controls:OccupancyIndicator IsVisible="{Binding HasDepartureOccupancy}" Level="{Binding DepartureOccupancy}" />
 					</VerticalStackLayout>
 				</Grid>
 
 				<Grid
 					Grid.Column="1"
-					RowDefinitions="34,18,*"
+					RowDefinitions="48,18,*"
 					RowSpacing="0">
 
 					<BoxView
@@ -405,15 +404,10 @@
 
 				<VerticalStackLayout
 					Grid.Column="2"
-					Padding="0,32,0,10"
+					Padding="0,46,0,10"
 					Spacing="3">
 
-					<Label FontFamily="OpenSansSemibold" Text="{Binding Name}" />
-
-					<Label
-						IsVisible="{Binding HasPlace}"
-						StyleClass="Faint"
-						Text="{Binding PlaceText}" />
+					<controls:StopNameView Place="{Binding Place}" Stop="{Binding Name}" />
 
 					<Label
 						IsVisible="{Binding HasConnection}"

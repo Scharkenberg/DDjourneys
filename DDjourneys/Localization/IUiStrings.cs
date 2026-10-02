@@ -119,6 +119,7 @@ public sealed class JourneyStrings
 	public required string ConnectionMayBeMissed { get; init; }
 	public required string ChangeAt { get; init; }
 	public required string Platform { get; init; }
+	public required string Track { get; init; }
 	public required string LowFloor { get; init; }
 	public required string WheelchairAccessible { get; init; }
 	public required string BicycleAccessible { get; init; }
@@ -133,6 +134,7 @@ public sealed class JourneyStrings
 	public required string OnTime { get; init; }
 
 	// Occupancy strings
+	public required string Occupancy { get; init; }
 	public required string OccupancyVeryLow { get; init; }
 	public required string OccupancyLow { get; init; }
 	public required string OccupancyMedium { get; init; }

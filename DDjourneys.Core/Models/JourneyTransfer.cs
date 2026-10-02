@@ -66,7 +66,13 @@ public sealed class JourneyTransfer
 	public string? ArrivalPlatform { get; init; }
 
 
+	public PlatformKind ArrivalPlatformKind { get; init; }
+
+
 	public string? DeparturePlatform { get; init; }
+
+
+	public PlatformKind DeparturePlatformKind { get; init; }
 
 	public Station? From { get; init; }
 

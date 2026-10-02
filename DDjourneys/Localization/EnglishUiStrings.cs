@@ -122,6 +122,7 @@ public sealed class EnglishUiStrings : IUiStrings
 		ConnectionMayBeMissed = "Connection may be missed",
 		ChangeAt = "Change at",
 		Platform = "Platform",
+		Track = "Track",
 		LowFloor = "Low floor",
 		WheelchairAccessible = "Wheelchair accessible",
 		BicycleAccessible = "Bicycle accessible",
@@ -136,6 +137,7 @@ public sealed class EnglishUiStrings : IUiStrings
 		OnTime = "On time",
 
 		// Occupancy strings
+		Occupancy = "Occupancy",
 		OccupancyVeryLow = "Very few passengers",
 		OccupancyLow = "Few passengers",
 		OccupancyMedium = "Moderate",

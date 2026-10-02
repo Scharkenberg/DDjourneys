@@ -2,6 +2,7 @@
 	x:Class="DDjourneys.Pages.PlanPage"
 	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
 	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+	xmlns:controls="clr-namespace:DDjourneys.Controls"
 	xmlns:core="clr-namespace:DDjourneys.Core.Models;assembly=DDjourneys.Core"
 	xmlns:local="clr-namespace:DDjourneys.Pages"
 	xmlns:localization="clr-namespace:DDjourneys.Localization"
@@ -184,44 +185,35 @@
 
 					<BoxView StyleClass="Divider" />
 
+					<!--  Date and time share one row  -->
 					<Grid
-						Padding="12,4"
-						ColumnDefinitions="*,Auto"
-						MinimumHeightRequest="48">
+						Padding="12,6"
+						ColumnDefinitions="*,*"
+						ColumnSpacing="12"
+						MinimumHeightRequest="64">
 
-						<Label
-							StyleClass="Caption"
-							Text="{localization:Tr Plan.Date}"
-							VerticalOptions="Center" />
+						<VerticalStackLayout Spacing="0" VerticalOptions="Center">
+							<Label StyleClass="Caption" Text="{localization:Tr Plan.Date}" />
 
-						<DatePicker
+							<DatePicker
+								Date="{Binding Date}"
+								Format="ddd, d MMM"
+								HorizontalOptions="Start"
+								MaximumDate="{Binding MaxDate}"
+								MinimumDate="{Binding MinDate}" />
+						</VerticalStackLayout>
+
+						<VerticalStackLayout
 							Grid.Column="1"
-							Date="{Binding Date}"
-							Format="ddd, d MMM"
-							HorizontalOptions="End"
-							MaximumDate="{Binding MaxDate}"
-							MinimumDate="{Binding MinDate}"
-							VerticalOptions="Center" />
-					</Grid>
+							Spacing="0"
+							VerticalOptions="Center">
+							<Label StyleClass="Caption" Text="{localization:Tr Plan.Time}" />
 
-					<BoxView StyleClass="Divider" />
-
-					<Grid
-						Padding="12,4"
-						ColumnDefinitions="*,Auto"
-						MinimumHeightRequest="48">
-
-						<Label
-							StyleClass="Caption"
-							Text="{localization:Tr Plan.Time}"
-							VerticalOptions="Center" />
-
-						<TimePicker
-							Grid.Column="1"
-							Format="HH:mm"
-							HorizontalOptions="End"
-							Time="{Binding Time}"
-							VerticalOptions="Center" />
+							<TimePicker
+								Format="HH:mm"
+								HorizontalOptions="Start"
+								Time="{Binding Time}" />
+						</VerticalStackLayout>
 					</Grid>
 
 					<BoxView StyleClass="Divider" />
@@ -322,7 +314,7 @@
 						<DataTemplate x:DataType="core:Location">
 							<Border Margin="0,0,8,8" StyleClass="ChipButton">
 
-								<Label Text="{Binding Name}" />
+								<controls:StopNameView Place="{Binding Place}" Stop="{Binding Name}" />
 
 								<Border.GestureRecognizers>
 									<TapGestureRecognizer Tapped="PlaceTapped" />
@@ -364,12 +356,7 @@
 									Spacing="1"
 									VerticalOptions="Center">
 
-									<Label FontFamily="OpenSansSemibold" Text="{Binding Name}" />
-
-									<Label
-										IsVisible="{Binding Place, Converter={StaticResource HasText}}"
-										StyleClass="Faint"
-										Text="{Binding Place}" />
+									<controls:StopNameView Place="{Binding Place}" Stop="{Binding Name}" />
 
 									<VerticalStackLayout.GestureRecognizers>
 										<TapGestureRecognizer Tapped="PlaceTapped" />

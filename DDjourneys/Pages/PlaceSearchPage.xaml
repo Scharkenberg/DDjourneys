@@ -2,6 +2,7 @@
 	x:Class="DDjourneys.Pages.PlaceSearchPage"
 	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
 	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+	xmlns:controls="clr-namespace:DDjourneys.Controls"
 	xmlns:local="clr-namespace:DDjourneys.Pages"
 	xmlns:localization="clr-namespace:DDjourneys.Localization"
 	Title="{localization:Tr PlaceSearch.Title}"
@@ -15,15 +16,7 @@
 					MinimumHeightRequest="48"
 					Spacing="2"
 					VerticalOptions="Center">
-					<Label
-						FontFamily="OpenSansSemibold"
-						LineBreakMode="TailTruncation"
-						Text="{Binding Name}" />
-					<Label
-						IsVisible="{Binding HasDetail}"
-						LineBreakMode="TailTruncation"
-						StyleClass="Caption"
-						Text="{Binding Detail}" />
+					<controls:StopNameView Place="{Binding Detail}" Stop="{Binding Name}" />
 				</VerticalStackLayout>
 
 				<!--  Hairline between rows (the last one sits on the card border)  -->

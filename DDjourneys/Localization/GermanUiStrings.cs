@@ -127,7 +127,8 @@ public sealed class GermanUiStrings : IUiStrings
 		ConnectionMayBeMissed =
 			"Anschluss kann verpasst werden",
 		ChangeAt = "Umstieg bei",
-		Platform = "Gleis",
+		Platform = "Steig",
+		Track = "Gleis",
 		LowFloor = "Niederflur",
 		WheelchairAccessible =
 			"Rollstuhlgerecht",
@@ -144,6 +145,7 @@ public sealed class GermanUiStrings : IUiStrings
 		OnTime = "P\u00fcnktlich",
 
 		// Occupancy strings
+		Occupancy = "Auslastung",
 		OccupancyVeryLow = "Sehr wenige Fahrgäste",
 		OccupancyLow = "Wenige Fahrgäste",
 		OccupancyMedium = "Mittel",

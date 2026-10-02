@@ -207,8 +207,8 @@ public sealed class ResultsViewModel :
 			_query = journeyQuery;
 
 			RouteText =
-				$"{journeyQuery.From.Name} \u2192 " +
-				$"{journeyQuery.To.Name}";
+				$"{StopLabel.Compose(journeyQuery.From)} \u2192 " +
+				$"{StopLabel.Compose(journeyQuery.To)}";
 
 			WhenText =
 				DescribeWhen(

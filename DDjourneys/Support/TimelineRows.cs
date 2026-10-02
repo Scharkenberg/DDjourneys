@@ -42,25 +42,25 @@ public sealed class StopRow : TimelineRow
 
 	public required string Name { get; init; }
 
-	public string? PlaceText { get; init; }
+	/// <summary>City/region shown right behind the name; null when none applies.</summary>
+	public string? Place { get; init; }
 
 	public string? PlatformText { get; init; }
 
 	public required Color NodeColor { get; init; }
 
-	public string? OccupancyText { get; init; }
+	/// <summary>Occupancy at this stop; Unknown hides the indicator.</summary>
+	public OccupancyLevel Occupancy { get; init; } =
+		OccupancyLevel.Unknown;
 
 	public bool HasDelay =>
 		DelayText is not null;
-
-	public bool HasPlace =>
-		PlaceText is not null;
 
 	public bool HasPlatform =>
 		PlatformText is not null;
 
 	public bool HasOccupancy =>
-		OccupancyText is not null;
+		Occupancy != OccupancyLevel.Unknown;
 }
 
 
@@ -73,22 +73,20 @@ public sealed class IntermediateRow : TimelineRow
 
 	public required string Name { get; init; }
 
-	public string? PlaceText { get; init; }
+	public string? Place { get; init; }
 
 	public string? DelayText { get; init; }
 
 	public bool IsNotServed { get; init; }
 
-	public string? OccupancyText { get; init; }
+	public OccupancyLevel Occupancy { get; init; } =
+		OccupancyLevel.Unknown;
 
 	public bool HasDelay =>
 		DelayText is not null;
 
-	public bool HasPlace =>
-		PlaceText is not null;
-
 	public bool HasOccupancy =>
-		OccupancyText is not null;
+		Occupancy != OccupancyLevel.Unknown;
 }
 
 
@@ -109,6 +107,10 @@ public sealed class LegRow : TimelineRow
 
 	public string? FeaturesText { get; init; }
 
+	/// <summary>Occupancy of the vehicle on this ride.</summary>
+	public OccupancyLevel Occupancy { get; init; } =
+		OccupancyLevel.Unknown;
+
 	public string? OccupancyText { get; init; }
 
 	public bool IsCancelled { get; init; }
@@ -126,7 +128,7 @@ public sealed class LegRow : TimelineRow
 		FeaturesText is not null;
 
 	public bool HasOccupancy =>
-		OccupancyText is not null;
+		Occupancy != OccupancyLevel.Unknown;
 
 	public bool HasIntermediates =>
 		Intermediates.Count > 0;
@@ -205,7 +207,15 @@ public sealed class InterchangeRow : TimelineRow
 
 	public required string Name { get; init; }
 
-	public string? PlaceText { get; init; }
+	public string? Place { get; init; }
+
+	/// <summary>Occupancy on arrival (end of the incoming ride).</summary>
+	public OccupancyLevel ArrivalOccupancy { get; init; } =
+		OccupancyLevel.Unknown;
+
+	/// <summary>Occupancy on departure (start of the outgoing ride).</summary>
+	public OccupancyLevel DepartureOccupancy { get; init; } =
+		OccupancyLevel.Unknown;
 
 	public string? ConnectionText { get; init; }
 
@@ -215,8 +225,11 @@ public sealed class InterchangeRow : TimelineRow
 
 	public string? RiskText { get; init; }
 
-	public bool HasPlace =>
-		PlaceText is not null;
+	public bool HasArrivalOccupancy =>
+		ArrivalOccupancy != OccupancyLevel.Unknown;
+
+	public bool HasDepartureOccupancy =>
+		DepartureOccupancy != OccupancyLevel.Unknown;
 
 	public bool HasConnection =>
 		ConnectionText is not null;
@@ -259,7 +272,8 @@ public sealed class NoticeRow : TimelineRow
 public sealed record TimelineOptions(
 	bool ShowWalking = true,
 	bool ExpandNotices = false,
-	bool Technical = false);
+	bool Technical = false,
+	bool ShowOccupancy = true);
 
 
 /// <summary>
@@ -342,14 +356,14 @@ public static class TimelineRowFactory
 									$"{strings.Walk} {walkTime}",
 
 								Caption =
-									$"{strings.To} {walk.Leg.To.Name}",
+									$"{strings.To} {StopLabel.Compose(walk.Leg.To)}",
 
 								RailBottom =
 									WalkColor(),
 
 								Description =
 									$"{strings.Walk} {walkTime} " +
-									$"{strings.To} {walk.Leg.To.Name}"
+									$"{strings.To} {StopLabel.Compose(walk.Leg.To)}"
 							});
 					}
 
@@ -436,9 +450,16 @@ public static class TimelineRowFactory
 			&& items[i + 2] is RideItem;
 
 
+		OccupancyLevel legOccupancy =
+			options.ShowOccupancy
+				? leg.Vehicle?.Occupancy
+					?? OccupancyLevel.Unknown
+				: OccupancyLevel.Unknown;
+
+
 		string? occupancyText =
 			FormatOccupancy(
-				leg.Vehicle?.Occupancy);
+				legOccupancy);
 
 
 		if (!departureMerged)
@@ -448,12 +469,10 @@ public static class TimelineRowFactory
 					leg.DepartureDelay);
 
 
-			string? stopOccupancy =
-				leg.Stops.FirstOrDefault()?.Occupancy
-					is not OccupancyLevel.Unknown
-						? FormatOccupancy(
-							leg.Stops.FirstOrDefault()?.Occupancy)
-						: null;
+			OccupancyLevel stopOccupancy =
+				OccupancyAt(
+					leg.Stops.FirstOrDefault(),
+					options);
 
 
 			rows.Add(
@@ -475,19 +494,19 @@ public static class TimelineRowFactory
 					Name =
 						leg.From.Name,
 
-					PlaceText =
+					Place =
 						PlaceOf(leg.From),
 
 					PlatformText =
 						PlatformText(
-							leg.DeparturePlatform),
+							leg.DeparturePlatform,
+							leg.DeparturePlatformKind),
 
 					NodeColor =
 						color,
 
-					OccupancyText =
-						stopOccupancy
-						?? occupancyText,
+					Occupancy =
+						stopOccupancy,
 
 					RailTop =
 						RailAt(
@@ -500,7 +519,12 @@ public static class TimelineRowFactory
 
 					Description =
 						$"{Format.TimeOrDash(leg.EffectiveDeparture)}, " +
-						$"{strings.Depart} {leg.From.Name}"
+						$"{strings.Depart} {StopLabel.Compose(leg.From)}" +
+						Spoken(
+							stopOccupancy,
+							PlatformText(
+								leg.DeparturePlatform,
+								leg.DeparturePlatformKind))
 				});
 		}
 
@@ -539,6 +563,9 @@ public static class TimelineRowFactory
 					Features(
 						leg.Vehicle?.Accessibility),
 
+				Occupancy =
+					legOccupancy,
+
 				OccupancyText =
 					occupancyText,
 
@@ -571,7 +598,7 @@ public static class TimelineRowFactory
 									Name =
 										stop.Station.Name,
 
-									PlaceText =
+									Place =
 										PlaceOf(
 											stop.Station),
 
@@ -583,16 +610,26 @@ public static class TimelineRowFactory
 									IsNotServed =
 										stop.IsCancelled,
 
-									OccupancyText =
-										FormatOccupancy(
-											stop.Occupancy),
+									Occupancy =
+										stop.IsCancelled
+											? OccupancyLevel.Unknown
+											: OccupancyAt(
+												stop,
+												options),
 
 									RailBottom =
 										color,
 
 									Description =
 										$"{TimeOf(stop.EffectiveDeparture ?? stop.EffectiveArrival)}, " +
-										$"{stop.Station.Name}"
+										StopLabel.Compose(stop.Station) +
+										Spoken(
+											stop.IsCancelled
+												? OccupancyLevel.Unknown
+												: OccupancyAt(
+													stop,
+													options),
+											null)
 								})
 						.ToList(),
 
@@ -637,12 +674,10 @@ public static class TimelineRowFactory
 					leg.ArrivalDelay);
 
 
-			string? lastStopOccupancy =
-				leg.Stops.LastOrDefault()?.Occupancy
-					is not OccupancyLevel.Unknown
-						? FormatOccupancy(
-							leg.Stops.LastOrDefault()?.Occupancy)
-						: null;
+			OccupancyLevel lastStopOccupancy =
+				OccupancyAt(
+					leg.Stops.LastOrDefault(),
+					options);
 
 
 			rows.Add(
@@ -664,19 +699,19 @@ public static class TimelineRowFactory
 					Name =
 						leg.To.Name,
 
-					PlaceText =
+					Place =
 						PlaceOf(leg.To),
 
 					PlatformText =
 						PlatformText(
-							leg.ArrivalPlatform),
+							leg.ArrivalPlatform,
+							leg.ArrivalPlatformKind),
 
 					NodeColor =
 						color,
 
-					OccupancyText =
-						lastStopOccupancy
-						?? occupancyText,
+					Occupancy =
+						lastStopOccupancy,
 
 					RailTop =
 						color,
@@ -689,7 +724,12 @@ public static class TimelineRowFactory
 
 					Description =
 						$"{Format.TimeOrDash(leg.EffectiveArrival)}, " +
-						$"{strings.Arrive} {leg.To.Name}"
+						$"{strings.Arrive} {StopLabel.Compose(leg.To)}" +
+						Spoken(
+							lastStopOccupancy,
+							PlatformText(
+								leg.ArrivalPlatform,
+								leg.ArrivalPlatformKind))
 				});
 		}
 	}
@@ -736,10 +776,24 @@ public static class TimelineRowFactory
 				JoinText(
 					from.To.Name == to.From.Name
 						? null
-						: $"{strings.ContinueFrom} {to.From.Name}",
+						: $"{strings.ContinueFrom} {StopLabel.Compose(to.From)}",
 					PlatformPair(
 						from.ArrivalPlatform,
-						to.DeparturePlatform));
+						from.ArrivalPlatformKind,
+						to.DeparturePlatform,
+						to.DeparturePlatformKind));
+
+
+			OccupancyLevel arrivalOccupancy =
+				OccupancyAt(
+					from.Stops.LastOrDefault(),
+					options);
+
+
+			OccupancyLevel departureOccupancy =
+				OccupancyAt(
+					to.Stops.FirstOrDefault(),
+					options);
 
 
 			rows.Add(
@@ -764,8 +818,14 @@ public static class TimelineRowFactory
 					Name =
 						from.To.Name,
 
-					PlaceText =
+					Place =
 						PlaceOf(from.To),
+
+					ArrivalOccupancy =
+						arrivalOccupancy,
+
+					DepartureOccupancy =
+						departureOccupancy,
 
 					ConnectionText =
 						connectionText,
@@ -801,8 +861,14 @@ public static class TimelineRowFactory
 						ModeColors.For(to.Mode),
 
 					Description =
-						$"{strings.ChangeAt} {from.To.Name}, " +
-						Format.Duration(boundary.Wait)
+						$"{strings.ChangeAt} {StopLabel.Compose(from.To)}, " +
+						Format.Duration(boundary.Wait) +
+						Spoken(
+							arrivalOccupancy,
+							null) +
+						Spoken(
+							departureOccupancy,
+							null)
 				});
 		}
 		else if (options.ShowWalking
@@ -817,7 +883,7 @@ public static class TimelineRowFactory
 						Format.Duration(walkTime),
 
 					Caption =
-						$"{strings.To} {boundary.At.Name}",
+						$"{strings.To} {StopLabel.Compose(boundary.At)}",
 
 					RailTop =
 						RailAt(
@@ -831,7 +897,7 @@ public static class TimelineRowFactory
 					Description =
 						$"{strings.Walk} " +
 						Format.Duration(walkTime) +
-						$" {strings.To} {boundary.At.Name}"
+						$" {strings.To} {StopLabel.Compose(boundary.At)}"
 				});
 		}
 
@@ -868,7 +934,7 @@ public static class TimelineRowFactory
 		Color bottom) =>
 		new()
 		{
-			PlaceText =
+			Place =
 				place,
 
 			Time =
@@ -941,18 +1007,50 @@ public static class TimelineRowFactory
 
 
 	/// <summary>
-	/// The city/village/region the provider delivers with a stop;
-	/// null when absent or already in the name.
+	/// The city/village/region delivered with a stop (shown behind the name);
+	/// null when absent or when the name already ends with it.
 	/// </summary>
 	private static string? PlaceOf(
 		Station station) =>
-		string.IsNullOrWhiteSpace(
-			station.Place)
-			|| station.Name.Contains(
-				station.Place,
-				StringComparison.OrdinalIgnoreCase)
-			? null
-			: station.Place.Trim();
+		StopLabel.PlaceFor(
+			station.Name,
+			station.Place);
+
+
+	private static OccupancyLevel OccupancyAt(
+		StopTime? stop,
+		TimelineOptions options) =>
+		options.ShowOccupancy
+			&& stop is { IsCancelled: false }
+				? stop.Occupancy
+				: OccupancyLevel.Unknown;
+
+
+	/// <summary>
+	/// Appends occupancy and platform to a spoken description, so screen-reader users
+	/// get what sighted users read off the dots.
+	/// </summary>
+	private static string Spoken(
+		OccupancyLevel occupancy,
+		string? platform)
+	{
+		string result =
+			string.Empty;
+
+		if (platform is not null)
+		{
+			result +=
+				$", {platform}";
+		}
+
+		if (FormatOccupancy(occupancy) is { } text)
+		{
+			result +=
+				$", {LocalizationService.Current.CurrentStrings.Journey.Occupancy}: {text}";
+		}
+
+		return result;
+	}
 
 
 	private static Color WalkColor() =>
@@ -968,13 +1066,22 @@ public static class TimelineRowFactory
 			: Dash;
 
 
+	/// <summary>
+	/// "Steig 3" for a platform, "Gleis 3" for a railway track. When the provider did not say
+	/// which, a short name is shown as "Steig/Gleis 3" rather than guessing; a longer one is shown as given.
+	/// </summary>
 	private static string? PlatformText(
-		string? platform)
+		string? platform,
+		PlatformKind kind)
 	{
 		if (string.IsNullOrWhiteSpace(platform))
 		{
 			return null;
 		}
+
+
+		platform =
+			platform.Trim();
 
 
 		JourneyStrings strings =
@@ -983,17 +1090,36 @@ public static class TimelineRowFactory
 				.Journey;
 
 
-		// Short values ("3", "A") read as a platform number;
-		// longer ones are shown as given.
-		return platform.Length <= 3
-			? $"{strings.Platform} {platform}"
-			: platform;
+		string? label =
+			kind switch
+			{
+				PlatformKind.Platform =>
+					strings.Platform,
+
+				PlatformKind.Railtrack =>
+					strings.Track,
+
+				_ =>
+					platform.Length <= 3
+						? $"{strings.Platform}/{strings.Track}"
+						: null
+			};
+
+
+		return label is null
+			|| platform.StartsWith(
+				label,
+				StringComparison.OrdinalIgnoreCase)
+			? platform
+			: $"{label} {platform}";
 	}
 
 
 	private static string? PlatformPair(
 		string? arrival,
-		string? departure)
+		PlatformKind arrivalKind,
+		string? departure,
+		PlatformKind departureKind)
 	{
 		if (string.IsNullOrWhiteSpace(arrival)
 			&& string.IsNullOrWhiteSpace(departure))
@@ -1004,27 +1130,43 @@ public static class TimelineRowFactory
 
 		if (string.IsNullOrWhiteSpace(arrival))
 		{
-			return PlatformText(departure);
+			return PlatformText(
+				departure,
+				departureKind);
 		}
 
 
 		if (string.IsNullOrWhiteSpace(departure))
 		{
-			return PlatformText(arrival);
+			return PlatformText(
+				arrival,
+				arrivalKind);
 		}
 
 
-		if (string.Equals(
+		bool sameKind =
+			arrivalKind == departureKind
+			|| arrivalKind == PlatformKind.Unknown
+			|| departureKind == PlatformKind.Unknown;
+
+
+		if (sameKind
+			&& string.Equals(
 				arrival,
 				departure,
 				StringComparison.OrdinalIgnoreCase))
 		{
-			return PlatformText(arrival);
+			return PlatformText(
+				arrival,
+				arrivalKind != PlatformKind.Unknown
+					? arrivalKind
+					: departureKind);
 		}
 
 
 		return
-			$"{PlatformText(arrival)} \u2192 {PlatformText(departure)}";
+			$"{PlatformText(arrival, arrivalKind)} \u2192 " +
+			$"{PlatformText(departure, departureKind)}";
 	}
 
 

@@ -53,6 +53,12 @@ public sealed class StopTime
 
 
 	/// <summary>
+	/// Whether <see cref="Platform"/> is a platform (Steig) or a track (Gleis).
+	/// </summary>
+	public PlatformKind PlatformKind { get; init; }
+
+
+	/// <summary>
 	/// Whether this stop has been cancelled.
 	/// </summary>
 	public bool IsCancelled { get; init; }

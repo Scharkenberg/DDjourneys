@@ -39,6 +39,9 @@ public sealed class Station
 	/// </summary>
 	public string? Platform { get; init; }
 
+	/// <summary>Whether <see cref="Platform"/> is a platform (Steig) or a track (Gleis).</summary>
+	public PlatformKind PlatformKind { get; init; }
+
 	public override string ToString()
 	{
 		return string.IsNullOrWhiteSpace(Place)
