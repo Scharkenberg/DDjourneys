@@ -44,6 +44,9 @@ public sealed class JourneyQuery
 	/// <summary>Maximum duration of a provider request, in seconds.</summary>
 	public int TimeoutSeconds { get; init; } = 15;
 
+	/// <summary>Routing wishes (transfers, walking pace, modes, accessibility).</summary>
+	public RoutingPreferences Routing { get; init; } = RoutingPreferences.Default;
+
 }
 
 

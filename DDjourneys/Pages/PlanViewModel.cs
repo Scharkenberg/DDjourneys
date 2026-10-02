@@ -477,7 +477,9 @@ public sealed partial class PlanViewModel : ObservableObject
 			MaxResults =
 				_settings.MaxResults,
 			TimeoutSeconds =
-				_settings.TimeoutSeconds
+				_settings.TimeoutSeconds,
+			Routing =
+				_settings.Routing
 		};
 	}
 

@@ -198,7 +198,78 @@ public sealed class GermanUiStrings : IUiStrings
 			"Verbindungshinweise standardm\u00e4\u00dfig \u00f6ffnen",
 		ResetJourneySettings =
 			"Verbindungseinstellungen zur\u00fccksetzen",
+		JourneyDisplay = "Verbindungsanzeige",
+		Occupancy = "Auslastung",
+		OccupancyDescription = "Punkte zeigen, wie voll ein Fahrzeug ist",
+		Platforms = "Steige und Gleise",
+		PlatformsDescription = "Steig und Gleis an Halten und Umstiegen anzeigen",
+		ExpandStops = "Alle Halte zeigen",
+		ExpandStopsDescription = "Zwischenhalte jeder Fahrt aufgeklappt anzeigen",
+		ExpertView = "Expertenansicht",
+		ExpertViewDescription = "Rohdaten des Anbieters im Verbindungsmenü anbieten",
+		PlaceSearch = "Ortssuche",
+		SearchDelay = "Tipppause",
+		SearchDelayDescription = "Nach der letzten Eingabe {0} ms warten, dann suchen",
+		MinQueryLength = "Mindestzeichen",
+		MinQueryLengthDescription = "Suche ab {0} Zeichen",
+		RoutingEntry = "Routenpräferenzen",
+		RoutingEntryDescription = "Verkehrsmittel, Umstiege, Gehen, Barrierefreiheit",
 		VersionPrefix = "DDjourneys {0} ({1})"
+	};
+
+	public RoutingStrings Routing { get; } = new()
+	{
+		Title = "Routenpräferenzen",
+		Hint = "Gilt für die nächste Suche.",
+		SectionModes = "Verkehrsmittel",
+		SectionTransfers = "Umstiege",
+		SectionWalking = "Gehen",
+		SectionAccessibility = "Barrierefreiheit",
+		SectionMore = "Weiteres",
+		Reset = "Routenpräferenzen zurücksetzen",
+		Tram = "Straßenbahn",
+		CityBus = "Stadtbus",
+		IntercityBus = "Regionalbus",
+		SuburbanRailway = "S-Bahn",
+		Train = "Zug",
+		Cableway = "Seilbahn",
+		Ferry = "Fähre",
+		HailedSharedTaxi = "Anrufsammeltaxi",
+		TransfersUnlimited = "Beliebig viele",
+		TransfersTwo = "Bis zu 2",
+		TransfersOne = "Bis zu 1",
+		TransfersNone = "Nur direkt",
+		PaceVerySlow = "Sehr langsam",
+		PaceSlow = "Langsam",
+		PaceNormal = "Normal",
+		PaceFast = "Schnell",
+		PaceVeryFast = "Sehr schnell",
+		Footpath = "Weg zu Ausweichhalten",
+		FootpathDescription = "Bis zu {0} Min.",
+		AlternativeStops = "Nahe Haltestellen",
+		AlternativeStopsDescription = "Auch von und zu Haltestellen in der Nähe planen",
+		AccessNone = "Keine Einschränkung",
+		AccessMedium = "Etwas Unterstützung",
+		AccessHigh = "Stufenfrei",
+		AvoidStairs = "Treppen meiden",
+		AvoidStairsDescription = "Gilt, wenn keine Barrierefreiheitsstufe gewählt ist",
+		AvoidEscalators = "Rolltreppen meiden",
+		AvoidEscalatorsDescription = "Gilt, wenn keine Barrierefreiheitsstufe gewählt ist",
+		FewestTransfers = "Wenigste Umstiege",
+		FewestTransfersDescription = "Weniger Umstiege vor schnellerer Fahrt"
+	};
+
+	public ExpertStrings Expert { get; } = new()
+	{
+		Open = "Technische Details",
+		Title = "Expertenansicht",
+		Copy = "Alles kopieren",
+		Copied = "In die Zwischenablage kopiert",
+		Journey = "Verbindung",
+		Leg = "Fahrt",
+		Stops = "Halt",
+		Transfers = "Umstieg",
+		Hint = "Alles, was der Anbieter zu dieser Verbindung geliefert hat, einschließlich Rohwerten."
 	};
 
 	public TrackingStrings Tracking { get; } = new()

@@ -52,6 +52,7 @@ public sealed class JourneyViewModel :
 		ResumeCommand = new AsyncCommand(() => SetPausedAsync(false), () => IsPaused, ShowTrackingError);
 		StopFollowingCommand = new AsyncCommand(StopFollowingAsync, () => IsFollowed, ShowTrackingError);
 		OpenFollowedCommand = new AsyncCommand(OpenFollowedAsync, null, ShowTrackingError);
+		OpenExpertCommand = new AsyncCommand(OpenExpertAsync);
 	}
 
 
@@ -93,6 +94,10 @@ public sealed class JourneyViewModel :
 	public AsyncCommand StopFollowingCommand { get; }
 
 	public AsyncCommand OpenFollowedCommand { get; }
+
+	public AsyncCommand OpenExpertCommand { get; }
+
+	public bool ExpertViewEnabled => _settings.ExpertView;
 
 	public bool IsTrackingAvailable => _tracker.IsAvailable;
 
@@ -226,6 +231,16 @@ public sealed class JourneyViewModel :
 		UpdateFollowState();
 	}
 
+	private Task OpenExpertAsync() =>
+		_journey is null
+			? Task.CompletedTask
+			: Shell.Current.GoToAsync(
+				Routes.Expert,
+				new Dictionary<string, object>
+				{
+					[Routes.JourneyData] = _journey
+				});
+
 	private static Task OpenFollowedAsync() =>
 		Shell.Current.GoToAsync(Routes.Tracked);
 
@@ -317,7 +332,10 @@ public sealed class JourneyViewModel :
 		new(
 			_settings.ShowWalkingLegs,
 			_settings.ExpandNotices,
-			_settings.ShowTechnicalDetails);
+			_settings.ShowTechnicalDetails,
+			_settings.ShowOccupancy,
+			_settings.ShowPlatforms,
+			_settings.ExpandStops);
 
 	/// <summary>Rebuilds the timeline if a display setting changed since it was built.</summary>
 	public void RefreshFromSettings()

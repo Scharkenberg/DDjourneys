@@ -70,6 +70,10 @@ public sealed class StopTime
 	public OccupancyLevel Occupancy { get; init; } = OccupancyLevel.Unknown;
 
 
+	/// <summary>The provider's own object this stop was mapped from (diagnostics only).</summary>
+	public object? ProviderData { get; init; }
+
+
 	/// <summary>
 	/// Effective arrival time using realtime data if available.
 	/// </summary>

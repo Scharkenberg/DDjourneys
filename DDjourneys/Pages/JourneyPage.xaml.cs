@@ -17,6 +17,16 @@ public partial class JourneyPage : ContentPage
 	{
 		base.OnAppearing();
 		_vm.RefreshFromSettings();
+
+		if (!_vm.ExpertViewEnabled)
+		{
+			ToolbarItems.Remove(ExpertItem);
+		}
+		else if (!ToolbarItems.Contains(ExpertItem))
+		{
+			ToolbarItems.Insert(0, ExpertItem);
+		}
+
 		_vm.StartObservingTracking();
 
 		if (_headerShown)

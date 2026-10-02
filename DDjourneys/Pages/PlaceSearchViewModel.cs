@@ -27,10 +27,11 @@ public sealed class PlaceSearchViewModel : ObservableObject, IQueryAttributable
 		ServiceUnavailable
 	}
 
-	private const int MinQueryLength = 2;
 
-	/// <summary>Quiet time after the last keystroke before the endpoint is asked.</summary>
-	private static readonly TimeSpan Debounce = TimeSpan.FromMilliseconds(500);
+	/// <summary>Quiet time after the last keystroke before the endpoint is asked (a setting).</summary>
+	private TimeSpan Debounce => TimeSpan.FromMilliseconds(_settings.SearchDelayMs);
+
+	private int MinQueryLength => _settings.MinQueryLength;
 
 	private const int CacheSize = 24;
 

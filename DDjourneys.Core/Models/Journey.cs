@@ -12,6 +12,12 @@ public sealed class Journey
 
 	public string? Context { get; init; }
 
+	/// <summary>
+	/// The provider's own object this journey was mapped from (for diagnostics such as the expert view);
+	/// never interpreted by the app logic.
+	/// </summary>
+	public object? ProviderData { get; init; }
+
 	public IReadOnlyList<string> Notices { get; init; }
 		= Array.Empty<string>();
 

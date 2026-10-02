@@ -8,6 +8,8 @@ public interface IUiStrings
 	ResultsStrings Results { get; }
 	JourneyStrings Journey { get; }
 	TrackingStrings Tracking { get; }
+	ExpertStrings Expert { get; }
+	RoutingStrings Routing { get; }
 	SettingsStrings Settings { get; }
 	TransportStrings Transport { get; }
 }
@@ -179,6 +181,22 @@ public sealed class SettingsStrings
 	public required string ExpandNotices { get; init; }
 	public required string ExpandNoticesDescription { get; init; }
 	public required string ResetJourneySettings { get; init; }
+	public required string JourneyDisplay { get; init; }
+	public required string Occupancy { get; init; }
+	public required string OccupancyDescription { get; init; }
+	public required string Platforms { get; init; }
+	public required string PlatformsDescription { get; init; }
+	public required string ExpandStops { get; init; }
+	public required string ExpandStopsDescription { get; init; }
+	public required string ExpertView { get; init; }
+	public required string ExpertViewDescription { get; init; }
+	public required string PlaceSearch { get; init; }
+	public required string SearchDelay { get; init; }
+	public required string SearchDelayDescription { get; init; }
+	public required string MinQueryLength { get; init; }
+	public required string MinQueryLengthDescription { get; init; }
+	public required string RoutingEntry { get; init; }
+	public required string RoutingEntryDescription { get; init; }
 	public required string VersionPrefix { get; init; }
 }
 
@@ -195,6 +213,61 @@ public sealed class TransportStrings
 	public required string CableCar { get; init; }
 	public required string Taxi { get; init; }
 	public required string OnDemand { get; init; }
+}
+
+public sealed class RoutingStrings
+{
+	public required string Title { get; init; }
+	public required string Hint { get; init; }
+	public required string SectionModes { get; init; }
+	public required string SectionTransfers { get; init; }
+	public required string SectionWalking { get; init; }
+	public required string SectionAccessibility { get; init; }
+	public required string SectionMore { get; init; }
+	public required string Reset { get; init; }
+	public required string Tram { get; init; }
+	public required string CityBus { get; init; }
+	public required string IntercityBus { get; init; }
+	public required string SuburbanRailway { get; init; }
+	public required string Train { get; init; }
+	public required string Cableway { get; init; }
+	public required string Ferry { get; init; }
+	public required string HailedSharedTaxi { get; init; }
+	public required string TransfersUnlimited { get; init; }
+	public required string TransfersTwo { get; init; }
+	public required string TransfersOne { get; init; }
+	public required string TransfersNone { get; init; }
+	public required string PaceVerySlow { get; init; }
+	public required string PaceSlow { get; init; }
+	public required string PaceNormal { get; init; }
+	public required string PaceFast { get; init; }
+	public required string PaceVeryFast { get; init; }
+	public required string Footpath { get; init; }
+	public required string FootpathDescription { get; init; }
+	public required string AlternativeStops { get; init; }
+	public required string AlternativeStopsDescription { get; init; }
+	public required string AccessNone { get; init; }
+	public required string AccessMedium { get; init; }
+	public required string AccessHigh { get; init; }
+	public required string AvoidStairs { get; init; }
+	public required string AvoidStairsDescription { get; init; }
+	public required string AvoidEscalators { get; init; }
+	public required string AvoidEscalatorsDescription { get; init; }
+	public required string FewestTransfers { get; init; }
+	public required string FewestTransfersDescription { get; init; }
+}
+
+public sealed class ExpertStrings
+{
+	public required string Open { get; init; }
+	public required string Title { get; init; }
+	public required string Copy { get; init; }
+	public required string Copied { get; init; }
+	public required string Journey { get; init; }
+	public required string Leg { get; init; }
+	public required string Stops { get; init; }
+	public required string Transfers { get; init; }
+	public required string Hint { get; init; }
 }
 
 public sealed class TrackingStrings

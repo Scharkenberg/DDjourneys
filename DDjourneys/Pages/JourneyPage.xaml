@@ -11,6 +11,11 @@
 
 	<ContentPage.ToolbarItems>
 		<ToolbarItem
+			x:Name="ExpertItem"
+			Command="{Binding OpenExpertCommand}"
+			Order="Secondary"
+			Text="{localization:Tr Expert.Open}" />
+		<ToolbarItem
 			Command="{Binding ShareCommand}"
 			SemanticProperties.Description="{localization:Tr Common.Share}"
 			Text="&#x2934;" />

@@ -67,10 +67,10 @@ public sealed class VvoJourneyProvider :
 				ShortTermChanges = true,
 
 				StandardSettings =
-					CreateStandardSettings(),
+					CreateStandardSettings(query.Routing),
 
 				MobilitySettings =
-					CreateMobilitySettings()
+					CreateMobilitySettings(query.Routing)
 			};
 
 
@@ -383,10 +383,10 @@ public sealed class VvoJourneyProvider :
 				ShortTermChanges = true,
 
 				StandardSettings =
-					CreateStandardSettings(),
+					CreateStandardSettings(query.Routing),
 
 				MobilitySettings =
-					CreateMobilitySettings(),
+					CreateMobilitySettings(query.Routing),
 
 				Previous =
 					previous,
@@ -607,26 +607,54 @@ public sealed class VvoJourneyProvider :
 	}
 
 
-	private static VvoStandardSettings CreateStandardSettings()
+	private static VvoStandardSettings CreateStandardSettings(
+		RoutingPreferences? routing = null)
 	{
+		routing ??= RoutingPreferences.Default;
+
+		ModeFilter modes =
+			routing.Modes == ModeFilter.None
+				? ModeFilter.All
+				: routing.Modes;
+
 		return new VvoStandardSettings
 		{
-			MaxChanges = "Unlimited",
-			WalkingSpeed = "Normal",
-			FootpathToStop = 5,
-			IncludeAlternativeStops = true
+			MaxChanges = routing.MaxTransfers.ToString(),
+			WalkingSpeed = routing.Pace.ToString(),
+			FootpathToStop = Math.Clamp(routing.FootpathMinutes, 0, 30),
+			IncludeAlternativeStops = routing.AlternativeStops,
+			ModesOfTransport =
+				[.. Enum.GetValues<ModeFilter>()
+					.Where(
+						mode => mode is not ModeFilter.None and not ModeFilter.All
+							&& modes.HasFlag(mode))
+					.Select(mode => mode.ToString())]
 		};
 	}
 
 
-	private static VvoMobilitySettings CreateMobilitySettings()
+	private static VvoMobilitySettings CreateMobilitySettings(
+		RoutingPreferences? routing = null)
 	{
+		routing ??= RoutingPreferences.Default;
+
+		// "Individual" is the provider's profile for single switches (no stairs, no escalators,
+		// fewest transfers); the preset profiles replace them.
+		bool individual =
+			routing.Accessibility == AccessibilityNeed.None
+			&& (routing.AvoidStairs
+				|| routing.AvoidEscalators
+				|| routing.FewestTransfers);
+
 		return new VvoMobilitySettings
 		{
-			MobilityRestriction = "None",
-			SolidStairs = true,
-			Escalators = true,
-			LeastChange = false,
+			MobilityRestriction =
+				individual
+					? "Individual"
+					: routing.Accessibility.ToString(),
+			SolidStairs = !routing.AvoidStairs,
+			Escalators = !routing.AvoidEscalators,
+			LeastChange = routing.FewestTransfers,
 			Entrance = "Any"
 		};
 	}

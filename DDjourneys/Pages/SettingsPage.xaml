@@ -250,6 +250,152 @@
 							VerticalOptions="Center" />
 					</Grid>
 
+					<BoxView StyleClass="Divider" />
+
+					<Grid
+						Padding="12,10"
+						ColumnDefinitions="*,Auto"
+						ColumnSpacing="10"
+						MinimumHeightRequest="52">
+						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
+							<Label FontFamily="OpenSansSemibold" Text="{localization:Tr Settings.RoutingEntry}" />
+							<Label StyleClass="Caption" Text="{localization:Tr Settings.RoutingEntryDescription}" />
+						</VerticalStackLayout>
+
+						<Label
+							Grid.Column="1"
+							FontSize="22"
+							Text="&#x203A;"
+							TextColor="{DynamicResource InkMuted}"
+							VerticalOptions="Center" />
+
+						<Grid.GestureRecognizers>
+							<TapGestureRecognizer Command="{Binding OpenRoutingCommand}" />
+						</Grid.GestureRecognizers>
+					</Grid>
+
+				</VerticalStackLayout>
+			</Border>
+
+			<Label StyleClass="Section" Text="{localization:Tr Settings.JourneyDisplay}" />
+
+			<Border Padding="0" StyleClass="Card">
+				<VerticalStackLayout>
+
+					<BoxView StyleClass="Divider" />
+
+					<Grid
+						Padding="12,8"
+						ColumnDefinitions="*,Auto"
+						ColumnSpacing="12"
+						MinimumHeightRequest="52">
+
+						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
+							<Label FontFamily="OpenSansSemibold" Text="{localization:Tr Settings.Occupancy}" />
+							<Label StyleClass="Caption" Text="{localization:Tr Settings.OccupancyDescription}" />
+						</VerticalStackLayout>
+
+						<Switch
+							Grid.Column="1"
+							IsToggled="{Binding ShowOccupancy}"
+							SemanticProperties.Description="{localization:Tr Settings.Occupancy}"
+							VerticalOptions="Center" />
+					</Grid>
+
+					<BoxView StyleClass="Divider" />
+
+					<Grid
+						Padding="12,8"
+						ColumnDefinitions="*,Auto"
+						ColumnSpacing="12"
+						MinimumHeightRequest="52">
+
+						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
+							<Label FontFamily="OpenSansSemibold" Text="{localization:Tr Settings.Platforms}" />
+							<Label StyleClass="Caption" Text="{localization:Tr Settings.PlatformsDescription}" />
+						</VerticalStackLayout>
+
+						<Switch
+							Grid.Column="1"
+							IsToggled="{Binding ShowPlatforms}"
+							SemanticProperties.Description="{localization:Tr Settings.Platforms}"
+							VerticalOptions="Center" />
+					</Grid>
+
+					<BoxView StyleClass="Divider" />
+
+					<Grid
+						Padding="12,8"
+						ColumnDefinitions="*,Auto"
+						ColumnSpacing="12"
+						MinimumHeightRequest="52">
+
+						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
+							<Label FontFamily="OpenSansSemibold" Text="{localization:Tr Settings.ExpandStops}" />
+							<Label StyleClass="Caption" Text="{localization:Tr Settings.ExpandStopsDescription}" />
+						</VerticalStackLayout>
+
+						<Switch
+							Grid.Column="1"
+							IsToggled="{Binding ExpandStops}"
+							SemanticProperties.Description="{localization:Tr Settings.ExpandStops}"
+							VerticalOptions="Center" />
+					</Grid>
+
+					<BoxView StyleClass="Divider" />
+
+					<Grid
+						Padding="12,8"
+						ColumnDefinitions="*,Auto"
+						ColumnSpacing="12"
+						MinimumHeightRequest="52">
+
+						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
+							<Label FontFamily="OpenSansSemibold" Text="{localization:Tr Settings.ExpertView}" />
+							<Label StyleClass="Caption" Text="{localization:Tr Settings.ExpertViewDescription}" />
+						</VerticalStackLayout>
+
+						<Switch
+							Grid.Column="1"
+							IsToggled="{Binding ExpertView}"
+							SemanticProperties.Description="{localization:Tr Settings.ExpertView}"
+							VerticalOptions="Center" />
+					</Grid>
+
+				</VerticalStackLayout>
+			</Border>
+
+			<Label StyleClass="Section" Text="{localization:Tr Settings.PlaceSearch}" />
+
+			<Border Padding="0" StyleClass="Card">
+				<VerticalStackLayout>
+
+					<VerticalStackLayout Padding="12,10" Spacing="4">
+						<Label FontFamily="OpenSansSemibold" Text="{localization:Tr Settings.SearchDelay}" />
+
+						<Label StyleClass="Caption" Text="{Binding SearchDelayText}" />
+
+						<Slider
+							Maximum="{Binding MaxSearchDelay}"
+							Minimum="{Binding MinSearchDelay}"
+							SemanticProperties.Description="{localization:Tr Settings.SearchDelay}"
+							Value="{Binding SearchDelayMs}" />
+					</VerticalStackLayout>
+
+					<BoxView StyleClass="Divider" />
+
+					<VerticalStackLayout Padding="12,10" Spacing="4">
+						<Label FontFamily="OpenSansSemibold" Text="{localization:Tr Settings.MinQueryLength}" />
+
+						<Label StyleClass="Caption" Text="{Binding MinQueryLengthText}" />
+
+						<Slider
+							Maximum="4"
+							Minimum="1"
+							SemanticProperties.Description="{localization:Tr Settings.MinQueryLength}"
+							Value="{Binding MinQueryLength}" />
+					</VerticalStackLayout>
+
 				</VerticalStackLayout>
 			</Border>
 

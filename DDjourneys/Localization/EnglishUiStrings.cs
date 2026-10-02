@@ -189,7 +189,78 @@ public sealed class EnglishUiStrings : IUiStrings
 		ExpandNoticesDescription =
 			"Open journey notices by default",
 		ResetJourneySettings = "Reset journey settings",
+		JourneyDisplay = "Journey display",
+		Occupancy = "Occupancy",
+		OccupancyDescription = "Dots showing how full a vehicle is",
+		Platforms = "Platforms and tracks",
+		PlatformsDescription = "Show Steig and Gleis at stops and interchanges",
+		ExpandStops = "Show all stops",
+		ExpandStopsDescription = "Open the intermediate stops of every ride",
+		ExpertView = "Expert view",
+		ExpertViewDescription = "Offer the raw provider data in the journey menu",
+		PlaceSearch = "Place search",
+		SearchDelay = "Typing pause",
+		SearchDelayDescription = "Wait {0} ms after the last keystroke before searching",
+		MinQueryLength = "Minimum characters",
+		MinQueryLengthDescription = "Search from {0} characters",
+		RoutingEntry = "Route preferences",
+		RoutingEntryDescription = "Modes, transfers, walking, accessibility",
 		VersionPrefix = "DDjourneys {0} ({1})"
+	};
+
+	public RoutingStrings Routing { get; } = new()
+	{
+		Title = "Route preferences",
+		Hint = "Applies to the next search.",
+		SectionModes = "Modes of transport",
+		SectionTransfers = "Transfers",
+		SectionWalking = "Walking",
+		SectionAccessibility = "Accessibility",
+		SectionMore = "More",
+		Reset = "Reset route preferences",
+		Tram = "Tram",
+		CityBus = "City bus",
+		IntercityBus = "Regional bus",
+		SuburbanRailway = "S-Bahn",
+		Train = "Train",
+		Cableway = "Cable car",
+		Ferry = "Ferry",
+		HailedSharedTaxi = "On-demand taxi",
+		TransfersUnlimited = "Any number",
+		TransfersTwo = "Up to 2",
+		TransfersOne = "Up to 1",
+		TransfersNone = "Direct only",
+		PaceVerySlow = "Very slow",
+		PaceSlow = "Slow",
+		PaceNormal = "Normal",
+		PaceFast = "Fast",
+		PaceVeryFast = "Very fast",
+		Footpath = "Walk to alternative stops",
+		FootpathDescription = "Up to {0} min",
+		AlternativeStops = "Nearby stops",
+		AlternativeStopsDescription = "Also plan from and to stops close by",
+		AccessNone = "No restriction",
+		AccessMedium = "Some assistance",
+		AccessHigh = "Step-free",
+		AvoidStairs = "Avoid stairs",
+		AvoidStairsDescription = "Used when no accessibility level is set",
+		AvoidEscalators = "Avoid escalators",
+		AvoidEscalatorsDescription = "Used when no accessibility level is set",
+		FewestTransfers = "Fewest transfers",
+		FewestTransfersDescription = "Prefer fewer changes over a faster trip"
+	};
+
+	public ExpertStrings Expert { get; } = new()
+	{
+		Open = "Technical details",
+		Title = "Expert view",
+		Copy = "Copy all",
+		Copied = "Copied to clipboard",
+		Journey = "Journey",
+		Leg = "Ride",
+		Stops = "Stop",
+		Transfers = "Transfer",
+		Hint = "Everything the provider delivered for this journey, including raw codes."
 	};
 
 	public TrackingStrings Tracking { get; } = new()

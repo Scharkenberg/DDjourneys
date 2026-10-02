@@ -133,6 +133,9 @@ public sealed class JourneyLeg
 	/// </summary>
 	public string? Id { get; init; }
 
+	/// <summary>The provider's own object this leg was mapped from (diagnostics only).</summary>
+	public object? ProviderData { get; init; }
+
 	/// <summary>
 	/// Effective arrival time using realtime data when available.
 	/// </summary>

@@ -273,7 +273,9 @@ public sealed record TimelineOptions(
 	bool ShowWalking = true,
 	bool ExpandNotices = false,
 	bool Technical = false,
-	bool ShowOccupancy = true);
+	bool ShowOccupancy = true,
+	bool ShowPlatforms = true,
+	bool ExpandStops = false);
 
 
 /// <summary>
@@ -498,9 +500,11 @@ public static class TimelineRowFactory
 						PlaceOf(leg.From),
 
 					PlatformText =
-						PlatformText(
-							leg.DeparturePlatform,
-							leg.DeparturePlatformKind),
+						options.ShowPlatforms
+							? PlatformText(
+								leg.DeparturePlatform,
+								leg.DeparturePlatformKind)
+							: null,
 
 					NodeColor =
 						color,
@@ -533,7 +537,7 @@ public static class TimelineRowFactory
 			DateTime.Now;
 
 
-		rows.Add(
+		var legRow =
 			new LegRow
 			{
 				LineText =
@@ -641,7 +645,23 @@ public static class TimelineRowFactory
 					Format.Duration(
 						leg.EffectiveDeparture,
 						leg.EffectiveArrival)
-			});
+			};
+
+
+		rows.Add(
+			legRow);
+
+
+		// "Show intermediate stops by default": the rows are inserted exactly as a tap would.
+		if (options.ExpandStops
+			&& legRow.HasIntermediates)
+		{
+			legRow.IsExpanded =
+				true;
+
+			rows.AddRange(
+				legRow.Intermediates);
+		}
 
 
 		foreach (string notice in leg.Notices.Distinct())
@@ -703,9 +723,11 @@ public static class TimelineRowFactory
 						PlaceOf(leg.To),
 
 					PlatformText =
-						PlatformText(
-							leg.ArrivalPlatform,
-							leg.ArrivalPlatformKind),
+						options.ShowPlatforms
+							? PlatformText(
+								leg.ArrivalPlatform,
+								leg.ArrivalPlatformKind)
+							: null,
 
 					NodeColor =
 						color,
@@ -777,11 +799,13 @@ public static class TimelineRowFactory
 					from.To.Name == to.From.Name
 						? null
 						: $"{strings.ContinueFrom} {StopLabel.Compose(to.From)}",
-					PlatformPair(
-						from.ArrivalPlatform,
-						from.ArrivalPlatformKind,
-						to.DeparturePlatform,
-						to.DeparturePlatformKind));
+					options.ShowPlatforms
+						? PlatformPair(
+							from.ArrivalPlatform,
+							from.ArrivalPlatformKind,
+							to.DeparturePlatform,
+							to.DeparturePlatformKind)
+						: null);
 
 
 			OccupancyLevel arrivalOccupancy =

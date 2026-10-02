@@ -254,6 +254,9 @@ public static class VvoJourneyMapper
 				route.RouteId.ToString(
 					System.Globalization.CultureInfo.InvariantCulture),
 
+			ProviderData =
+				route,
+
 			Context =
 				string.IsNullOrWhiteSpace(sessionId)
 					? null
@@ -386,6 +389,9 @@ public static class VvoJourneyMapper
 
 			IsGuaranteed =
 				!route.ChangeoverEndangered,
+
+			ProviderData =
+				route,
 
 			ArrivalPlatform =
 				arrivalStop?.Platform
@@ -594,6 +600,9 @@ public static class VvoJourneyMapper
 			RealtimeArrival =
 				lastStop?.RealtimeArrival,
 
+			ProviderData =
+				route,
+
 			DeparturePlatform =
 				firstStop?.Platform,
 
@@ -679,6 +688,9 @@ public static class VvoJourneyMapper
 			PlatformKind =
 				StopLabel.KindOf(
 					stop.Platform?.Type),
+
+			ProviderData =
+				stop,
 
 			IsCancelled =
 				stop.ArrivalState == "Cancelled"

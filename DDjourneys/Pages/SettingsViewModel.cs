@@ -22,12 +22,14 @@ public sealed class SettingsViewModel : ObservableObject
 		OpenThemesCommand = new AsyncCommand(OpenThemesAsync);
 		SelectLanguageCommand = new Command<string>(SelectLanguage);
 		ResetCommand = new Command(Reset);
+		OpenRoutingCommand = new AsyncCommand(OpenRoutingAsync);
 	}
 
 	public AsyncCommand SelectSystemThemeCommand { get; }
 	public AsyncCommand OpenThemesCommand { get; }
 	public Command<string> SelectLanguageCommand { get; }
 	public Command ResetCommand { get; }
+	public AsyncCommand OpenRoutingCommand { get; }
 
 	// ----- Localization -----
 
@@ -140,6 +142,101 @@ public sealed class SettingsViewModel : ObservableObject
 		}
 	}
 
+	// ----- Journey display -----
+
+	public bool ShowOccupancy
+	{
+		get => _settings.ShowOccupancy;
+		set
+		{
+			_settings.ShowOccupancy = value;
+			OnPropertyChanged();
+		}
+	}
+
+	public bool ShowPlatforms
+	{
+		get => _settings.ShowPlatforms;
+		set
+		{
+			_settings.ShowPlatforms = value;
+			OnPropertyChanged();
+		}
+	}
+
+	public bool ExpandStops
+	{
+		get => _settings.ExpandStops;
+		set
+		{
+			_settings.ExpandStops = value;
+			OnPropertyChanged();
+		}
+	}
+
+	public bool ExpertView
+	{
+		get => _settings.ExpertView;
+		set
+		{
+			_settings.ExpertView = value;
+			OnPropertyChanged();
+		}
+	}
+
+	// ----- Place search -----
+
+	public double SearchDelayMs
+	{
+		get => _settings.SearchDelayMs;
+		set
+		{
+			int stepped = (int)Math.Round(value / 100.0) * 100;
+
+			if (stepped != _settings.SearchDelayMs)
+			{
+				_settings.SearchDelayMs = stepped;
+			}
+
+			OnPropertyChanged();
+			OnPropertyChanged(nameof(SearchDelayText));
+		}
+	}
+
+	public string SearchDelayText =>
+		string.Format(
+			_localization.CurrentStrings.Settings.SearchDelayDescription,
+			_settings.SearchDelayMs);
+
+	public double MinQueryLength
+	{
+		get => _settings.MinQueryLength;
+		set
+		{
+			int rounded = (int)Math.Round(value);
+
+			if (rounded != _settings.MinQueryLength)
+			{
+				_settings.MinQueryLength = rounded;
+			}
+
+			OnPropertyChanged();
+			OnPropertyChanged(nameof(MinQueryLengthText));
+		}
+	}
+
+	public string MinQueryLengthText =>
+		string.Format(
+			_localization.CurrentStrings.Settings.MinQueryLengthDescription,
+			_settings.MinQueryLength);
+
+	public double MinSearchDelay => AppSettings.MinSearchDelayMs;
+
+	public double MaxSearchDelay => AppSettings.MaxSearchDelayMs;
+
+	private static Task OpenRoutingAsync() =>
+		Shell.Current.GoToAsync(Routes.Routing);
+
 	public string Version
 	{
 		get
@@ -248,6 +345,8 @@ public sealed class SettingsViewModel : ObservableObject
 		OnPropertyChanged(nameof(LanguageCode));
 		OnPropertyChanged(nameof(MaxResultsText));
 		OnPropertyChanged(nameof(TimeoutText));
+		OnPropertyChanged(nameof(SearchDelayText));
+		OnPropertyChanged(nameof(MinQueryLengthText));
 		OnPropertyChanged(nameof(Version));
 	}
 
@@ -262,5 +361,13 @@ public sealed class SettingsViewModel : ObservableObject
 		OnPropertyChanged(nameof(ExpandNotices));
 		OnPropertyChanged(nameof(TimeoutSeconds));
 		OnPropertyChanged(nameof(TimeoutText));
+		OnPropertyChanged(nameof(ShowOccupancy));
+		OnPropertyChanged(nameof(ShowPlatforms));
+		OnPropertyChanged(nameof(ExpandStops));
+		OnPropertyChanged(nameof(ExpertView));
+		OnPropertyChanged(nameof(SearchDelayMs));
+		OnPropertyChanged(nameof(SearchDelayText));
+		OnPropertyChanged(nameof(MinQueryLength));
+		OnPropertyChanged(nameof(MinQueryLengthText));
 	}
 }

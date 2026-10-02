@@ -82,6 +82,12 @@ public static class MauiProgram
 		builder.Services.AddTransient<TrackedJourneysPage>();
 		builder.Services.AddTransient<TrackedJourneysViewModel>();
 
+		builder.Services.AddTransient<ExpertPage>();
+		builder.Services.AddTransient<ExpertViewModel>();
+
+		builder.Services.AddTransient<RoutingSettingsPage>();
+		builder.Services.AddTransient<RoutingSettingsViewModel>();
+
 		return builder.Build();
 	}
 
