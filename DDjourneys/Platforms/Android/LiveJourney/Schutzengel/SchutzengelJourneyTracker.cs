@@ -14,8 +14,13 @@ internal sealed class SchutzengelJourneyTracker :
 	internal static Func<Task>? DeactivateHandler { get; set; }
 	internal static Func<Task>? DeleteHandler { get; set; }
 
-	private static readonly TimeSpan PollInterval =
+
+	private static readonly TimeSpan NetworkSyncInterval =
 		TimeSpan.FromSeconds(60);
+
+	private static readonly TimeSpan ProgressUpdateInterval =
+		TimeSpan.FromSeconds(1);
+
 
 	private readonly SchutzengelApi _api;
 	private readonly IJourneyProvider _journeyProvider;
@@ -24,13 +29,26 @@ internal sealed class SchutzengelJourneyTracker :
 	private readonly Channel<JourneyTrackingEvent> _events =
 		Channel.CreateUnbounded<JourneyTrackingEvent>();
 
+
 	private CancellationTokenSource? _loopCancellation;
-	private Task? _loopTask;
+
+	private Task? _networkLoopTask;
+	private Task? _progressLoopTask;
+
 
 	private Journey? _journey;
 	private string? _planId;
 	private string? _tripId;
+
 	private LiveJourneyState? _state;
+
+	private SchutzengelTripTimeline? _tripTimeline;
+
+	private string? _realtimeDataVersion;
+	private int? _notificationCount;
+
+	private TrackingPhase? _remotePhase;
+	private string? _remoteMessage;
 
 	private TimeSpan _serverTimeOffset;
 
@@ -44,12 +62,18 @@ internal sealed class SchutzengelJourneyTracker :
 			?? throw new ArgumentNullException(
 				nameof(journeyProvider));
 
+
 		_api =
 			new SchutzengelApi(
-				http ?? new HttpClient());
+				http ?? new HttpClient(),
+				_tokens.GetAsync,
+				_tokens.SetAsync,
+				_tokens.RemoveToken);
+
 
 		DeactivateHandler =
 			() => StopAsync();
+
 
 		DeleteHandler =
 			EndAsync;
@@ -107,6 +131,19 @@ internal sealed class SchutzengelJourneyTracker :
 		_journey =
 			journey;
 
+		_planId = null;
+		_tripId = null;
+
+		_tripTimeline =
+			SchutzengelTripTimeline.FromJourney(
+				journey);
+
+		_realtimeDataVersion = null;
+		_notificationCount = null;
+
+		_remotePhase = null;
+		_remoteMessage = null;
+
 
 		if (OperatingSystem.IsAndroidVersionAtLeast(
 			33))
@@ -159,35 +196,8 @@ internal sealed class SchutzengelJourneyTracker :
 
 		try
 		{
-			string? token =
-				await _tokens.GetAsync(
-					ct);
-
-
-			if (string.IsNullOrWhiteSpace(
-				token))
-			{
-				token =
-					await _api.CreateAccountAsync(
-						ct);
-
-
-				if (string.IsNullOrWhiteSpace(
-					token))
-				{
-					throw new InvalidOperationException(
-						"Schutzengel returned an empty account token.");
-				}
-
-
-				await _tokens.SetAsync(
-					token,
-					ct);
-			}
-
-
-			_api.Authenticate(
-				token);
+			await _api.EnsureAuthenticatedAsync(
+				ct);
 
 
 			using (
@@ -198,10 +208,6 @@ internal sealed class SchutzengelJourneyTracker :
 				SynchronizeServerTime(
 					server.RootElement);
 			}
-
-
-			_planId = null;
-			_tripId = null;
 
 
 			string storedPlan =
@@ -240,9 +246,15 @@ internal sealed class SchutzengelJourneyTracker :
 				}
 
 
-				await _api.DeletePlanAsync(
-					storedPlan,
-					ct);
+				try
+				{
+					await _api.DeletePlanAsync(
+						storedPlan,
+						ct);
+				}
+				catch
+				{
+				}
 
 
 				ClearSavedPlan();
@@ -272,6 +284,10 @@ internal sealed class SchutzengelJourneyTracker :
 
 					_tripId =
 						storedTrip;
+
+
+					System.Diagnostics.Debug.WriteLine(
+						$"[SCHUTZENGEL] Recovered plan {_planId} / trip {_tripId}");
 				}
 			}
 
@@ -407,11 +423,29 @@ internal sealed class SchutzengelJourneyTracker :
 			}
 
 
+			LiveJourneyState initialState =
+				BuildState();
+
+
 			_state =
-				LocalState(
-					journey,
-					TrackingPhase.Planned,
-					"Monitoring with Schutzengel");
+				initialState;
+
+
+			Publish(
+				JourneyTrackingEventKind.Started,
+				initialState);
+
+
+			_networkLoopTask =
+				_tripId is null
+					? null
+					: NetworkLoopAsync(
+						ct);
+
+
+			_progressLoopTask =
+				ProgressLoopAsync(
+					ct);
 		}
 		catch (
 			OperationCanceledException)
@@ -468,23 +502,513 @@ internal sealed class SchutzengelJourneyTracker :
 			}
 
 
-			_state =
-				LocalState(
-					journey,
-					InferLocalPhase(journey),
+			_tripTimeline =
+				SchutzengelTripTimeline.FromJourney(
+					journey);
+
+
+			_remotePhase = null;
+			_remoteMessage = null;
+
+
+			LiveJourneyState fallbackState =
+				BuildState(
 					$"Local tracking: Schutzengel unavailable ({ex.Message})");
+
+
+			_state =
+				fallbackState;
+
+
+			Publish(
+				JourneyTrackingEventKind.Started,
+				fallbackState);
+
+
+			_progressLoopTask =
+				ProgressLoopAsync(
+					ct);
+
+
+			_networkLoopTask =
+				null;
+		}
+	}
+
+
+	private async Task NetworkLoopAsync(
+		CancellationToken ct)
+	{
+		try
+		{
+			await SynchronizeSchutzengelAsync(
+				ct);
+		}
+		catch (
+			OperationCanceledException)
+		when (ct.IsCancellationRequested)
+		{
+			return;
+		}
+		catch (Exception ex)
+		{
+			System.Diagnostics.Debug.WriteLine(
+				$"[SCHUTZENGEL] Initial realtime sync failed: {ex}");
 		}
 
 
-		Publish(
-			JourneyTrackingEventKind.Started,
-			_state!);
+		using var timer =
+			new PeriodicTimer(
+				NetworkSyncInterval);
 
 
-		_loopTask =
-			_tripId is null
-				? LocalLoopAsync(ct)
-				: PollLoopAsync(ct);
+		while (
+			!ct.IsCancellationRequested
+			&& _tripId is not null
+			&& _journey is not null)
+		{
+			try
+			{
+				if (!await timer.WaitForNextTickAsync(
+					ct))
+				{
+					return;
+				}
+
+
+				await SynchronizeSchutzengelAsync(
+					ct);
+			}
+			catch (
+				OperationCanceledException)
+			when (ct.IsCancellationRequested)
+			{
+				return;
+			}
+			catch (Exception ex)
+			{
+				System.Diagnostics.Debug.WriteLine(
+					$"[SCHUTZENGEL] Realtime sync failed: {ex.Message}");
+			}
+		}
+	}
+
+
+	private async Task SynchronizeSchutzengelAsync(
+		CancellationToken ct)
+	{
+		Journey? journey =
+			_journey;
+
+
+		string? tripId =
+			_tripId;
+
+
+		if (journey is null
+			|| string.IsNullOrWhiteSpace(tripId))
+		{
+			return;
+		}
+
+
+		string? requestDataVersion =
+			_realtimeDataVersion;
+
+
+		int? requestNotificationCount =
+			_notificationCount;
+
+
+		using JsonDocument server =
+			await _api.GetServerTimeAsync(
+				ct);
+
+
+		SynchronizeServerTime(
+			server.RootElement);
+
+
+		using JsonDocument plans =
+			await _api.GetAllPlansAsync(
+				ct);
+
+
+		if (TryReadPlanInfo(
+			plans.RootElement,
+			_planId,
+			out string? activeTripId,
+			out bool deactivated))
+		{
+			if (!string.IsNullOrWhiteSpace(
+				activeTripId)
+				&& !string.Equals(
+					activeTripId,
+					_tripId,
+					StringComparison.Ordinal))
+			{
+				System.Diagnostics.Debug.WriteLine(
+					$"[SCHUTZENGEL] Active trip changed: {_tripId} -> {activeTripId}");
+
+
+				_tripId =
+					activeTripId;
+
+
+				Preferences.Default.Set(
+					"schutzengel_active_trip",
+					activeTripId);
+
+
+				_realtimeDataVersion = null;
+				_notificationCount = null;
+
+
+				_tripTimeline =
+					SchutzengelTripTimeline.FromJourney(
+						journey);
+
+
+				requestDataVersion = null;
+				requestNotificationCount = null;
+
+
+				tripId =
+					activeTripId;
+			}
+
+
+			if (deactivated)
+			{
+				_remotePhase =
+					TrackingPhase.Paused;
+
+				_remoteMessage =
+					"Schutzengel monitoring is paused.";
+
+
+				RenderProgress();
+
+
+				return;
+			}
+
+
+			if (_remotePhase ==
+				TrackingPhase.Paused)
+			{
+				_remotePhase = null;
+				_remoteMessage = null;
+			}
+		}
+		else
+		{
+			System.Diagnostics.Debug.WriteLine(
+				"[SCHUTZENGEL] Stored plan was not returned by plansMinimal; retaining cached trip data.");
+
+			return;
+		}
+
+
+		using JsonDocument realtime =
+			await _api.GetRealtimeAsync(
+				tripId,
+				requestDataVersion,
+				requestNotificationCount,
+				ct);
+
+
+		using JsonDocument notifications =
+			await _api.GetNotificationsAsync(
+				tripId,
+				requestDataVersion,
+				requestNotificationCount,
+				ct);
+
+
+		if (SchutzengelTripTimeline.TryParseRealtime(
+			realtime.RootElement,
+			journey,
+			out SchutzengelTripTimeline? updatedTimeline))
+		{
+			_tripTimeline =
+				updatedTimeline;
+
+
+			if (updatedTimeline.DataVersion is { } version)
+			{
+				_realtimeDataVersion =
+					version.ToString(
+						System.Globalization.CultureInfo.InvariantCulture);
+			}
+
+
+			System.Diagnostics.Debug.WriteLine(
+				$"[SCHUTZENGEL] Realtime snapshot updated: " +
+				$"episodes={updatedTimeline.Episodes.Count}, " +
+				$"data_version={updatedTimeline.DataVersion?.ToString() ?? "none"}");
+		}
+
+
+		if (notifications.RootElement.ValueKind ==
+			JsonValueKind.Array)
+		{
+			_notificationCount =
+				notifications.RootElement.GetArrayLength();
+		}
+
+
+		string realtimeText =
+			realtime.RootElement.GetRawText();
+
+
+		string notificationText =
+			notifications.RootElement.GetRawText();
+
+
+		string combinedText =
+			realtimeText
+			+ "\n"
+			+ notificationText;
+
+
+		TrackingPhase phase =
+			SchutzengelRealtimeTranslator.Translate(
+				combinedText,
+				out JourneyTrackingEventKind kind,
+				out string? message);
+
+
+		if (kind is
+			JourneyTrackingEventKind.Cancelled
+			or JourneyTrackingEventKind.Arrived
+			or JourneyTrackingEventKind.RiskChanged)
+		{
+			_remotePhase =
+				phase;
+
+			_remoteMessage =
+				message;
+		}
+
+
+		RenderProgress();
+
+
+		if (kind is
+			JourneyTrackingEventKind.Cancelled
+			or JourneyTrackingEventKind.Arrived)
+		{
+			LiveJourneyState state =
+				BuildState();
+
+
+			Publish(
+				kind,
+				state);
+
+
+			await CleanupPlanAsync(
+				ct);
+		}
+	}
+
+
+	private async Task ProgressLoopAsync(
+		CancellationToken ct)
+	{
+		RenderProgress();
+
+
+		using var timer =
+			new PeriodicTimer(
+				ProgressUpdateInterval);
+
+
+		while (!ct.IsCancellationRequested)
+		{
+			try
+			{
+				if (!await timer.WaitForNextTickAsync(
+					ct))
+				{
+					return;
+				}
+
+
+				if (_journey is null
+					|| _tripTimeline is null)
+				{
+					return;
+				}
+
+
+				RenderProgress();
+			}
+			catch (
+				OperationCanceledException)
+			when (ct.IsCancellationRequested)
+			{
+				return;
+			}
+		}
+	}
+
+
+	private void RenderProgress(
+		string? overrideMessage = null)
+	{
+		Journey? journey =
+			_journey;
+
+
+		SchutzengelTripTimeline? timeline =
+			_tripTimeline;
+
+
+		if (journey is null
+			|| timeline is null)
+		{
+			return;
+		}
+
+
+		SchutzengelProgressSnapshot progress =
+			timeline.Calculate(
+				CurrentTime);
+
+
+		LiveJourneyState newState =
+			BuildState(
+				progress,
+				overrideMessage);
+
+
+		LiveJourneyState? previousState =
+			_state;
+
+
+		_state =
+			newState;
+
+
+		LiveJourneyNotification.Show(
+			newState,
+			progress);
+
+
+		bool meaningfulChange =
+			previousState is null
+			|| previousState.Phase != newState.Phase
+			|| previousState.CurrentLegIndex !=
+				newState.CurrentLegIndex
+			|| previousState.EstimatedArrival !=
+				newState.EstimatedArrival
+			|| previousState.Message !=
+				newState.Message;
+
+
+		if (!meaningfulChange)
+		{
+			return;
+		}
+
+
+		System.Diagnostics.Debug.WriteLine(
+			$"[SCHUTZENGEL PROGRESS] " +
+			$"phase={newState.Phase}, " +
+			$"leg={newState.CurrentLegIndex + 1}/{newState.LegCount}, " +
+			$"progress={progress.TimeProgress:P0}, " +
+			$"current={progress.CurrentStopName ?? "-"}, " +
+			$"next={progress.NextStopName ?? "-"}");
+
+
+		if (previousState is null)
+		{
+			return;
+		}
+
+
+		JourneyTrackingEventKind kind =
+			EventKindFor(
+				newState.Phase);
+
+
+		_events.Writer.TryWrite(
+			new JourneyTrackingEvent(
+				kind,
+				newState));
+	}
+
+
+	private LiveJourneyState BuildState(
+		string? overrideMessage = null)
+	{
+		SchutzengelProgressSnapshot progress =
+			_tripTimeline?.Calculate(
+				CurrentTime)
+			?? new SchutzengelProgressSnapshot(
+				-1,
+				0,
+				Math.Max(
+					1,
+					_journey?.Legs.Count ?? 0),
+				0,
+				-1,
+				TrackingPhase.Planned,
+				null,
+				null,
+				null,
+				_journey?.Arrival,
+				"Preparing journey monitoring",
+				null);
+
+
+		return BuildState(
+			progress,
+			overrideMessage);
+	}
+
+
+	private LiveJourneyState BuildState(
+		SchutzengelProgressSnapshot progress,
+		string? overrideMessage = null)
+	{
+		TrackingPhase phase =
+			_remotePhase
+			?? progress.Phase;
+
+
+		string? message =
+			overrideMessage
+			?? _remoteMessage
+			?? progress.Message;
+
+
+		return new LiveJourneyState(
+			JourneyIdentity(
+				_journey!),
+
+			phase,
+
+			Math.Clamp(
+				progress.CurrentLegIndex,
+				0,
+				Math.Max(
+					0,
+					progress.LegCount - 1)),
+
+			Math.Max(
+				1,
+				_journey!.Legs.Count),
+
+			_journey.Arrival,
+
+			progress.EstimatedArrival,
+
+			message,
+
+			CurrentTime);
 	}
 
 
@@ -543,17 +1067,108 @@ internal sealed class SchutzengelJourneyTracker :
 	}
 
 
+	private static bool TryReadPlanInfo(
+		JsonElement plans,
+		string? planId,
+		out string? activeTripId,
+		out bool deactivated)
+	{
+		activeTripId = null;
+		deactivated = false;
+
+
+		if (string.IsNullOrWhiteSpace(
+			planId))
+		{
+			return false;
+		}
+
+
+		if (plans.ValueKind ==
+			JsonValueKind.Object
+			&& plans.TryGetProperty(
+				"plans",
+				out JsonElement nestedPlans))
+		{
+			return TryReadPlanInfo(
+				nestedPlans,
+				planId,
+				out activeTripId,
+				out deactivated);
+		}
+
+
+		if (plans.ValueKind !=
+			JsonValueKind.Array)
+		{
+			return false;
+		}
+
+
+		foreach (JsonElement plan in
+			plans.EnumerateArray())
+		{
+			if (!plan.TryGetProperty(
+				"plan_id",
+				out JsonElement idElement)
+				|| idElement.ValueKind !=
+					JsonValueKind.String
+				|| !string.Equals(
+					idElement.GetString(),
+					planId,
+					StringComparison.Ordinal))
+			{
+				continue;
+			}
+
+
+			if (plan.TryGetProperty(
+				"active_trip_id",
+				out JsonElement tripElement)
+				&& tripElement.ValueKind ==
+					JsonValueKind.String)
+			{
+				activeTripId =
+					tripElement.GetString();
+			}
+
+
+			if (plan.TryGetProperty(
+				"deactivated",
+				out JsonElement deactivatedElement)
+				&& deactivatedElement.ValueKind ==
+					JsonValueKind.True)
+			{
+				deactivated = true;
+			}
+
+
+			return true;
+		}
+
+
+		return false;
+	}
+
+
 	private async Task LocalLoopAsync(
 		CancellationToken ct)
 	{
+		using var timer =
+			new PeriodicTimer(
+				NetworkSyncInterval);
+
+
 		while (!ct.IsCancellationRequested
 			&& _journey is { } journey)
 		{
 			try
 			{
-				await Task.Delay(
-					PollInterval,
-					ct);
+				if (!await timer.WaitForNextTickAsync(
+					ct))
+				{
+					return;
+				}
 			}
 			catch (OperationCanceledException)
 			{
@@ -584,6 +1199,15 @@ internal sealed class SchutzengelJourneyTracker :
 			}
 
 
+			_journey =
+				current;
+
+
+			_tripTimeline =
+				SchutzengelTripTimeline.FromJourney(
+					current);
+
+
 			TrackingPhase phase =
 				InferLocalPhase(
 					current);
@@ -594,12 +1218,17 @@ internal sealed class SchutzengelJourneyTracker :
 					phase);
 
 
+			LiveJourneyState state =
+				BuildState();
+
+
+			_state =
+				state;
+
+
 			Publish(
 				kind,
-				LocalState(
-					current,
-					phase,
-					"Using DDjourneys realtime monitoring"));
+				state);
 
 
 			if (kind is
@@ -609,7 +1238,9 @@ internal sealed class SchutzengelJourneyTracker :
 				await CleanupPlanAsync(
 					ct);
 
+
 				LiveJourneyNotification.Dismiss();
+
 
 				return;
 			}
@@ -625,18 +1256,20 @@ internal sealed class SchutzengelJourneyTracker :
 
 		if (_planId is not null)
 		{
-			using CancellationTokenSource cts =
-				CancellationTokenSource.CreateLinkedTokenSource(
-					cancellationToken);
-
-
 			await _api.DeactivateAsync(
 				_planId,
-				cts.Token);
+				cancellationToken);
 		}
 
 
 		_journey = null;
+		_tripTimeline = null;
+
+		_planId = null;
+		_tripId = null;
+
+		_remotePhase = null;
+		_remoteMessage = null;
 
 
 		Preferences.Default.Set(
@@ -667,9 +1300,15 @@ internal sealed class SchutzengelJourneyTracker :
 			}
 
 
-			await _api.DeletePlanAsync(
-				_planId,
-				CancellationToken.None);
+			try
+			{
+				await _api.DeletePlanAsync(
+					_planId,
+					CancellationToken.None);
+			}
+			catch
+			{
+			}
 		}
 
 
@@ -679,6 +1318,10 @@ internal sealed class SchutzengelJourneyTracker :
 		_planId = null;
 		_tripId = null;
 		_journey = null;
+		_tripTimeline = null;
+
+		_remotePhase = null;
+		_remoteMessage = null;
 
 
 		Preferences.Default.Set(
@@ -690,156 +1333,6 @@ internal sealed class SchutzengelJourneyTracker :
 
 		LiveJourneyNotification.Dismiss();
 		JourneyTrackingForegroundService.Stop();
-	}
-
-
-	private async Task PollLoopAsync(
-		CancellationToken ct)
-	{
-		while (!ct.IsCancellationRequested
-			&& _tripId is not null
-			&& _journey is not null)
-		{
-			try
-			{
-				await Task.Delay(
-					PollInterval,
-					ct);
-
-
-				using JsonDocument server =
-					await _api.GetServerTimeAsync(
-						ct);
-
-
-				SynchronizeServerTime(
-					server.RootElement);
-
-
-				using JsonDocument realtime =
-					await _api.GetRealtimeAsync(
-						_tripId,
-						ct);
-
-
-				using JsonDocument notices =
-					await _api.GetNotificationsAsync(
-						_tripId,
-						ct);
-
-
-				string raw =
-					realtime.RootElement.ToString()
-					+ notices.RootElement;
-
-
-				TrackingPhase phase =
-					DetectTerminalOrRisk(
-						raw,
-						out JourneyTrackingEventKind kind,
-						out string? message);
-
-
-				if (kind ==
-					JourneyTrackingEventKind.RiskChanged
-					&& _state?.Phase ==
-						TrackingPhase.AtRisk)
-				{
-					kind =
-						JourneyTrackingEventKind.Updated;
-				}
-
-
-				LiveJourneyState state =
-					LocalState(
-						_journey,
-						phase,
-						message);
-
-
-				Publish(
-					kind,
-					state);
-
-
-				if (kind is
-					JourneyTrackingEventKind.Cancelled
-					or JourneyTrackingEventKind.Arrived)
-				{
-					await CleanupPlanAsync(
-						ct);
-
-					LiveJourneyNotification.Dismiss();
-
-					return;
-				}
-			}
-			catch (
-				OperationCanceledException)
-				when (ct.IsCancellationRequested)
-			{
-				return;
-			}
-			catch (Exception ex)
-			{
-				Journey current;
-
-
-				try
-				{
-					current =
-						await RefreshFromPlannerAsync(
-							_journey!,
-							ct);
-				}
-				catch (
-					OperationCanceledException)
-					when (ct.IsCancellationRequested)
-				{
-					return;
-				}
-				catch
-				{
-					current =
-						_journey!;
-				}
-
-
-				TrackingPhase phase =
-					InferLocalPhase(
-						current);
-
-
-				JourneyTrackingEventKind kind =
-					EventKindFor(
-						phase);
-
-
-				LiveJourneyState state =
-					LocalState(
-						current,
-						phase,
-						$"Using DDjourneys realtime monitoring: {ex.Message}");
-
-
-				Publish(
-					kind,
-					state);
-
-
-				if (kind is
-					JourneyTrackingEventKind.Cancelled
-					or JourneyTrackingEventKind.Arrived)
-				{
-					await CleanupPlanAsync(
-						ct);
-
-					LiveJourneyNotification.Dismiss();
-
-					return;
-				}
-			}
-		}
 	}
 
 
@@ -908,8 +1401,13 @@ internal sealed class SchutzengelJourneyTracker :
 		_planId = null;
 		_tripId = null;
 		_journey = null;
+		_tripTimeline = null;
+
+		_remotePhase = null;
+		_remoteMessage = null;
 
 
+		LiveJourneyNotification.Dismiss();
 		JourneyTrackingForegroundService.Stop();
 	}
 
@@ -932,18 +1430,38 @@ internal sealed class SchutzengelJourneyTracker :
 		await cancellation.CancelAsync();
 
 
-		if (_loopTask is not null)
+		List<Task> tasks =
+			[];
+
+
+		if (_networkLoopTask is not null)
+		{
+			tasks.Add(
+				_networkLoopTask);
+		}
+
+
+		if (_progressLoopTask is not null)
+		{
+			tasks.Add(
+				_progressLoopTask);
+		}
+
+
+		_networkLoopTask = null;
+		_progressLoopTask = null;
+
+
+		if (tasks.Count > 0)
 		{
 			try
 			{
-				await _loopTask;
+				await Task.WhenAll(
+					tasks);
 			}
 			catch (OperationCanceledException)
 			{
 			}
-
-
-			_loopTask = null;
 		}
 
 
@@ -966,7 +1484,9 @@ internal sealed class SchutzengelJourneyTracker :
 
 
 		LiveJourneyNotification.Show(
-			state);
+			state,
+			_tripTimeline?.Calculate(
+				CurrentTime));
 	}
 
 
@@ -1062,7 +1582,8 @@ internal sealed class SchutzengelJourneyTracker :
 		}
 
 
-		int score = 1;
+		int score =
+			1;
 
 
 		for (int i = 0;
@@ -1071,6 +1592,7 @@ internal sealed class SchutzengelJourneyTracker :
 		{
 			JourneyLeg expected =
 				original.Legs[i];
+
 
 			JourneyLeg actual =
 				candidate.Legs[i];
@@ -1088,38 +1610,12 @@ internal sealed class SchutzengelJourneyTracker :
 			}
 
 
-			score += 1;
+			score++;
 		}
 
 
 		return score;
 	}
-
-
-	private LiveJourneyState LocalState(
-		Journey journey,
-		TrackingPhase phase,
-		string? message) =>
-		new(
-			JourneyIdentity(journey),
-			phase,
-			Math.Clamp(
-				journey.Legs
-					.ToList()
-					.FindIndex(
-						leg =>
-							leg.EffectiveArrival is { }
-							arrival
-							&& arrival >= CurrentTime),
-				0,
-				Math.Max(
-					0,
-					journey.Legs.Count - 1)),
-			journey.Legs.Count,
-			journey.Arrival,
-			journey.Legs.LastOrDefault()?.EffectiveArrival,
-			message,
-			CurrentTime);
 
 
 	private DateTimeOffset CurrentTime =>

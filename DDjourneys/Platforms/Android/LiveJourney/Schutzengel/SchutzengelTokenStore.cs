@@ -6,15 +6,82 @@ namespace DDjourneys.Platforms.Android.LiveJourney.Schutzengel;
 
 internal sealed class SchutzengelTokenStore
 {
-	private const string Key = "schutzengel_auth_token";
-	public Task<string?> GetAsync(CancellationToken token) { token.ThrowIfCancellationRequested(); return SecureStorage.Default.GetAsync(Key); }
-	public Task SetAsync(string value, CancellationToken token) { token.ThrowIfCancellationRequested(); return SecureStorage.Default.SetAsync(Key, value); }
-	public Task SaveJourneyAsync(Journey journey, CancellationToken token) { token.ThrowIfCancellationRequested(); return SecureStorage.Default.SetAsync("schutzengel_active_journey_snapshot", JsonSerializer.Serialize(journey)); }
-	public async Task<Journey?> GetJourneyAsync(CancellationToken token)
+	private const string TokenKey =
+		"schutzengel_auth_token";
+
+	private const string JourneyKey =
+		"schutzengel_active_journey_snapshot";
+
+
+	public Task<string?> GetAsync(
+		CancellationToken cancellationToken)
 	{
-		token.ThrowIfCancellationRequested();
-		var json = await SecureStorage.Default.GetAsync("schutzengel_active_journey_snapshot");
-		return string.IsNullOrWhiteSpace(json) ? null : JsonSerializer.Deserialize<Journey>(json);
+		cancellationToken.ThrowIfCancellationRequested();
+
+		return SecureStorage.Default.GetAsync(
+			TokenKey);
 	}
-	public void RemoveJourney() => SecureStorage.Default.Remove("schutzengel_active_journey_snapshot");
+
+
+	public Task SetAsync(
+		string value,
+		CancellationToken cancellationToken)
+	{
+		cancellationToken.ThrowIfCancellationRequested();
+
+		ArgumentException.ThrowIfNullOrWhiteSpace(
+			value);
+
+		return SecureStorage.Default.SetAsync(
+			TokenKey,
+			value);
+	}
+
+
+	public void RemoveToken()
+	{
+		SecureStorage.Default.Remove(
+			TokenKey);
+	}
+
+
+	public Task SaveJourneyAsync(
+		Journey journey,
+		CancellationToken cancellationToken)
+	{
+		cancellationToken.ThrowIfCancellationRequested();
+
+		ArgumentNullException.ThrowIfNull(
+			journey);
+
+		return SecureStorage.Default.SetAsync(
+			JourneyKey,
+			JsonSerializer.Serialize(journey));
+	}
+
+
+	public async Task<Journey?> GetJourneyAsync(
+		CancellationToken cancellationToken)
+	{
+		cancellationToken.ThrowIfCancellationRequested();
+
+		string? json =
+			await SecureStorage.Default.GetAsync(
+				JourneyKey);
+
+		if (string.IsNullOrWhiteSpace(json))
+		{
+			return null;
+		}
+
+		return JsonSerializer.Deserialize<Journey>(
+			json);
+	}
+
+
+	public void RemoveJourney()
+	{
+		SecureStorage.Default.Remove(
+			JourneyKey);
+	}
 }
