@@ -63,6 +63,17 @@ public sealed class JourneyCardModel : ObservableObject
 			journey.Legs.LastOrDefault(
 				l => l.Mode != TransitMode.Walk);
 
+		Station start =
+			journey.Origin ?? journey.From;
+
+		Station end =
+			journey.Destination ?? journey.To;
+
+		FromName = start.Name;
+		FromPlace = StopLabel.PlaceFor(start.Name, start.Place);
+		ToName = end.Name;
+		ToPlace = StopLabel.PlaceFor(end.Name, end.Place);
+
 		DepartureTime = Format.TimeOrDash(journey.Departure);
 		ArrivalTime = Format.TimeOrDash(journey.Arrival);
 		DurationText = Format.Duration(journey.Duration);
@@ -91,6 +102,11 @@ public sealed class JourneyCardModel : ObservableObject
 	}
 
 	public Journey Journey { get; }
+
+	public string FromName { get; }
+	public string? FromPlace { get; }
+	public string ToName { get; }
+	public string? ToPlace { get; }
 
 	public string DepartureTime { get; }
 	public string ArrivalTime { get; }
@@ -133,12 +149,31 @@ public sealed class JourneyCardModel : ObservableObject
 		RebuildLocalizedValues(notices);
 	}
 
+	private static LegChip WalkChip(
+		JourneyStrings strings,
+		TimeSpan duration) =>
+		new(
+			string.Format(
+				CultureInfo.CurrentCulture,
+				"{0} {1}",
+				strings.Walk,
+				Format.Duration(duration)),
+			ModeChips.For(TransitMode.Walk));
+
 	private void RebuildLocalizedValues(int notices)
 	{
 		JourneyStrings strings =
 			_localization.CurrentStrings.Journey;
 
-		_chips = Journey.Legs
+		var chips = new List<LegChip>();
+
+		// A walk to the first stop (or from the last one) is not a leg of its own.
+		if (Journey.AccessDuration > TimeSpan.Zero)
+		{
+			chips.Add(WalkChip(strings, Journey.AccessDuration));
+		}
+
+		chips.AddRange(Journey.Legs
 			.Select(
 				leg =>
 					new LegChip(
@@ -152,8 +187,14 @@ public sealed class JourneyCardModel : ObservableObject
 									leg.EffectiveArrival))
 							: leg.Line?.Name
 								?? Format.TransportMode(leg.Mode),
-						ModeChips.For(leg.Mode)))
-			.ToList();
+						ModeChips.For(leg.Mode))));
+
+		if (Journey.EgressDuration > TimeSpan.Zero)
+		{
+			chips.Add(WalkChip(strings, Journey.EgressDuration));
+		}
+
+		_chips = chips;
 
 		_transfersText = Journey.TransferCount switch
 		{

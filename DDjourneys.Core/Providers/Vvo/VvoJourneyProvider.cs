@@ -110,7 +110,9 @@ public sealed class VvoJourneyProvider :
 
 			IReadOnlyList<Journey> journeys =
 				VvoJourneyMapper.Map(
-					response);
+					response,
+					query.From,
+					query.To);
 
 
 			return JourneyResult.Success(
@@ -217,7 +219,9 @@ public sealed class VvoJourneyProvider :
 
 		IReadOnlyList<Journey> journeys =
 			VvoJourneyMapper.Map(
-				response);
+				response,
+				target.Origin is { } o ? ToLocation(o) : null,
+				target.Destination is { } d ? ToLocation(d) : null);
 
 
 		int count =
@@ -439,7 +443,9 @@ public sealed class VvoJourneyProvider :
 
 			IReadOnlyList<Journey> journeys =
 				VvoJourneyMapper.Map(
-					response);
+					response,
+					query.From,
+					query.To);
 
 
 			return JourneyResult.Success(
@@ -611,6 +617,29 @@ public sealed class VvoJourneyProvider :
 
 		return totalSeconds;
 	}
+
+
+	private static Location ToLocation(
+		Station station) =>
+		new()
+		{
+			Id =
+				string.IsNullOrWhiteSpace(station.Id)
+					? null
+					: station.Id,
+
+			Name =
+				station.Name,
+
+			Place =
+				station.Place,
+
+			Latitude =
+				station.Latitude,
+
+			Longitude =
+				station.Longitude
+		};
 
 
 	private static VvoStandardSettings CreateStandardSettings(

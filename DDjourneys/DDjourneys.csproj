@@ -44,26 +44,26 @@
 	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net11.0-android|AnyCPU'">
 	  <ApplicationId>dev.Scharkenberg.DDjourneys</ApplicationId>
 	  <ApplicationDisplayVersion>0.5.0</ApplicationDisplayVersion>
-	  <ApplicationVersion>00500012</ApplicationVersion>
+	  <ApplicationVersion>12</ApplicationVersion>
 	  <EmbedAssembliesIntoApk>True</EmbedAssembliesIntoApk>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net11.0-windows10.0.26100.0|AnyCPU'">
 	  <ApplicationId>dev.Scharkenberg.DDjourneys</ApplicationId>
 	  <ApplicationDisplayVersion>0.5.0</ApplicationDisplayVersion>
-	  <ApplicationVersion>00500012</ApplicationVersion>
+	  <ApplicationVersion>12</ApplicationVersion>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net11.0-android|AnyCPU'">
 	  <ApplicationId>dev.Scharkenberg.DDjourneys</ApplicationId>
 	  <ApplicationDisplayVersion>0.5.0</ApplicationDisplayVersion>
-	  <ApplicationVersion>00500012</ApplicationVersion>
+	  <ApplicationVersion>12</ApplicationVersion>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net11.0-windows10.0.26100.0|AnyCPU'">
 	  <ApplicationId>dev.Scharkenberg.DDjourneys</ApplicationId>
 	  <ApplicationDisplayVersion>0.5.0</ApplicationDisplayVersion>
-	  <ApplicationVersion>00500012</ApplicationVersion>
+	  <ApplicationVersion>12</ApplicationVersion>
 	</PropertyGroup>
 
   <ItemGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net11.0-android|AnyCPU'">

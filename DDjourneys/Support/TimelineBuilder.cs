@@ -22,7 +22,8 @@ public sealed record BoundaryItem(
 	IReadOnlyList<string> Notes,
 	bool ShowWait,
 	bool Endangered = false,
-	TimeSpan? WalkTime = null) : TimelineItem;
+	TimeSpan? WalkTime = null,
+	Station? Origin = null) : TimelineItem;
 
 /// <summary>
 /// Converts the provider-neutral journey model into a flat, display-ready
@@ -53,11 +54,16 @@ public static class TimelineBuilder
 
 		if (initialTransfers.Length > 0)
 		{
+			// The walk leads TO the first vehicle stop; where it starts is the requested origin.
 			items.Add(
 				CreateBoundary(
 					journey.From,
 					initialTransfers,
-					showWait: false));
+					showWait: false)
+				with
+				{
+					Origin = journey.Origin
+				});
 		}
 
 		DateTimeOffset? previousEffectiveArrival = null;
@@ -101,7 +107,7 @@ public static class TimelineBuilder
 				{
 					items.Add(
 						CreateBoundary(
-							journey.To,
+							journey.Destination ?? journey.To,
 							finalTransfers,
 							showWait: false));
 				}

@@ -55,23 +55,58 @@ public static class VvoJourneyMapper
 	}
 
 	public static IReadOnlyList<Journey> Map(
-		VvoTripResponse response)
+		VvoTripResponse response,
+		Location? origin = null,
+		Location? destination = null)
 	{
 		ArgumentNullException.ThrowIfNull(response);
+
+		Station? originStation =
+			ToStation(origin);
+
+		Station? destinationStation =
+			ToStation(destination);
 
 		return response.Routes
 			.Select(
 				route =>
 					MapJourney(
 						route,
-						response.SessionId))
+						response.SessionId,
+						originStation,
+						destinationStation))
 			.ToArray();
 	}
+
+	private static Station? ToStation(
+		Location? location) =>
+		location is null
+			? null
+			: new Station
+			{
+				Id =
+					location.Id
+					?? string.Empty,
+
+				Name =
+					location.Name,
+
+				Place =
+					location.Place,
+
+				Latitude =
+					location.Latitude,
+
+				Longitude =
+					location.Longitude
+			};
 
 
 	private static Journey MapJourney(
 		VvoRoute route,
-		string? sessionId)
+		string? sessionId,
+		Station? origin,
+		Station? destination)
 	{
 		VvoDebug.DumpRoute(route);
 
@@ -243,6 +278,12 @@ public static class VvoJourneyMapper
 
 			To =
 				legs[^1].To,
+
+			Origin =
+				origin,
+
+			Destination =
+				destination,
 
 			Legs =
 				legs,

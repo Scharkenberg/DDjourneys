@@ -7,7 +7,7 @@ namespace DDjourneys.Controls;
 /// top-left corner, so an icon is identical at every size (stroke included) on every platform, and
 /// its colour is an ordinary bindable value that follows the theme.
 /// </summary>
-public sealed class Icon : ContentView
+public sealed partial class Icon : ContentView
 {
 	private const double GridSize = 24;
 	private const double Thickness = 2;
@@ -39,7 +39,7 @@ public sealed class Icon : ContentView
 	private readonly Shapes.Path _path =
 		new()
 		{
-			Aspect = Shapes.Stretch.None,
+			Aspect = Stretch.None,
 			StrokeThickness = Thickness,
 			StrokeLineCap = Shapes.PenLineCap.Round,
 			StrokeLineJoin = Shapes.PenLineJoin.Round,
@@ -149,11 +149,11 @@ public sealed class Icon : ContentView
 		if (Color is { } color)
 		{
 			_path.Stroke = new SolidColorBrush(color);
-			_path.Fill = def.Filled ? new SolidColorBrush(color) : null;
+			_path.Fill = def.Filled ? new SolidColorBrush(color) : Brush.Transparent;
 		}
 		else
 		{
-			_path.Fill = null;
+			_path.Fill = Brush.Transparent;
 			_path.SetDynamicResource(Shapes.Shape.StrokeProperty, "InkBrush");
 
 			if (def.Filled)

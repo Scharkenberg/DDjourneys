@@ -325,6 +325,25 @@ public static class TimelineRowFactory
 
 
 		if (items.Count > 0
+			&& items[0] is BoundaryItem
+			{
+				WalkTime: not null
+			} accessWalk)
+		{
+			Station start =
+				accessWalk.Origin
+				?? journey.Origin
+				?? journey.From;
+
+			rows.Add(
+				EndpointStop(
+					start.Name,
+					PlaceOf(start),
+					journey.Departure,
+					Colors.Transparent,
+					WalkColor()));
+		}
+		else if (items.Count > 0
 			&& items[0] is WalkItem firstWalk)
 		{
 			rows.Add(
@@ -459,15 +478,15 @@ public static class TimelineRowFactory
 						: null));
 		}
 		else if (items.Count > 0
-	&& items[^1] is BoundaryItem
-	{
-		WalkTime: not null
-	})
+			&& items[^1] is BoundaryItem
+			{
+				WalkTime: not null
+			} egressWalk)
 		{
 			rows.Add(
 				EndpointStop(
-					journey.To.Name,
-					PlaceOf(journey.To),
+					egressWalk.At.Name,
+					PlaceOf(egressWalk.At),
 					journey.Arrival,
 					WalkColor(),
 					Colors.Transparent));
@@ -1006,10 +1025,12 @@ public static class TimelineRowFactory
 						PlaceOf(boundary.At),
 
 					RailTop =
-						RailAt(
-							items,
-							i - 1,
-							-1),
+						i == 0
+							? WalkColor()
+							: RailAt(
+								items,
+								i - 1,
+								-1),
 
 					RailBottom =
 						WalkColor(),

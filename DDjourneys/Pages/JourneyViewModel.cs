@@ -441,25 +441,31 @@ public sealed class JourneyViewModel :
 				journey);
 
 
+		Station start =
+			journey.Origin ?? journey.From;
+
+		Station end =
+			journey.Destination ?? journey.To;
+
 		RouteText =
-			$"{StopLabel.Compose(journey.From)} " +
-			$"\u2192 {StopLabel.Compose(journey.To)}";
+			$"{StopLabel.Compose(start)} " +
+			$"\u2192 {StopLabel.Compose(end)}";
 
 		FromName =
-			journey.From.Name;
+			start.Name;
 
 		FromPlace =
 			StopLabel.PlaceFor(
-				journey.From.Name,
-				journey.From.Place);
+				start.Name,
+				start.Place);
 
 		ToName =
-			journey.To.Name;
+			end.Name;
 
 		ToPlace =
 			StopLabel.PlaceFor(
-				journey.To.Name,
-				journey.To.Place);
+				end.Name,
+				end.Place);
 
 
 		DayText =
@@ -726,6 +732,19 @@ public sealed class JourneyViewModel :
 							walk.Leg.EffectiveArrival)} " +
 						$"{strings.To} " +
 						StopLabel.Compose(walk.Leg.To));
+
+					break;
+
+
+				case BoundaryItem
+				{
+					WalkTime: { } boundaryWalk
+				} boundary:
+					lines.Add(
+						$"{strings.Walk} " +
+						$"{Format.Duration(boundaryWalk)} " +
+						$"{strings.To} " +
+						StopLabel.Compose(boundary.At));
 
 					break;
 			}
