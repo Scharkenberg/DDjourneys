@@ -1,6 +1,7 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.Windows.Input;
 using DDjourneys.Core.Tracking;
+using DDjourneys.Controls;
 using DDjourneys.Localization;
 using DDjourneys.Support;
 
@@ -25,13 +26,16 @@ public sealed class TrackedRow
 	public required string NextText { get; init; }
 	public required string NoticeText { get; init; }
 	public required bool IsExpanded { get; init; }
-	public required string ExpandGlyph { get; init; }
+	public required IconGlyph ExpandIcon { get; init; }
 	public required bool CanPause { get; init; }
 	public required string PauseText { get; init; }
 	public required string StartAlertText { get; init; }
+	public required bool StartAlertOn { get; init; }
 	public required string LeadText { get; init; }
 	public required string ChangeAlertText { get; init; }
+	public required bool ChangeAlertOn { get; init; }
 	public required string ProblemAlertText { get; init; }
+	public required bool ProblemAlertOn { get; init; }
 	public required string StopText { get; init; }
 	public required string AccessibilityText { get; init; }
 
@@ -337,8 +341,6 @@ public sealed class TrackedJourneysViewModel : ObservableObject
 
 		string route = $"{journey.Origin} → {journey.Destination}";
 
-		static string Mark(bool on, string text) => on ? $"✓ {text}" : text;
-
 		return new TrackedRow
 		{
 			PlanId = journey.PlanId,
@@ -355,13 +357,16 @@ public sealed class TrackedJourneysViewModel : ObservableObject
 			NextText = next,
 			NoticeText = journey.LatestNotice ?? string.Empty,
 			IsExpanded = expanded,
-			ExpandGlyph = expanded ? "▴" : "▾",
+			ExpandIcon = expanded ? IconGlyph.ChevronUp : IconGlyph.ChevronDown,
 			CanPause = journey.Status != WatchStatus.Recent,
 			PauseText = journey.Status == WatchStatus.Deactivated ? strings.Resume : strings.Pause,
-			StartAlertText = Mark(options.StartAlert, strings.AlertStart),
+			StartAlertText = strings.AlertStart,
+			StartAlertOn = options.StartAlert,
 			LeadText = string.Format(culture, strings.LeadMinutes, options.StartLeadMinutes),
-			ChangeAlertText = Mark(options.ChangeAlert, strings.AlertChange),
-			ProblemAlertText = Mark(options.ProblemAlert, strings.AlertProblem),
+			ChangeAlertText = strings.AlertChange,
+			ChangeAlertOn = options.ChangeAlert,
+			ProblemAlertText = strings.AlertProblem,
+			ProblemAlertOn = options.ProblemAlert,
 			StopText = strings.StopFollowing,
 			AccessibilityText = $"{route}, {subtitle}, {status}",
 			ToggleExpandedCommand = new Command(() => ToggleExpanded(journey)),

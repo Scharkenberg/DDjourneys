@@ -2,6 +2,7 @@
 	x:Class="DDjourneys.Pages.TrackedJourneysPage"
 	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
 	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+	xmlns:controls="clr-namespace:DDjourneys.Controls"
 	xmlns:local="clr-namespace:DDjourneys.Pages"
 	xmlns:localization="clr-namespace:DDjourneys.Localization"
 	Title="{localization:Tr Tracking.Title}"
@@ -78,12 +79,12 @@
 																Text="{Binding LinesText}" />
 														</VerticalStackLayout>
 
-														<Label
+														<controls:Icon
 															Grid.Column="1"
-															FontSize="18"
-															Text="{Binding ExpandGlyph}"
-															TextColor="{DynamicResource InkMuted}"
-															VerticalOptions="Start" />
+															Glyph="{Binding ExpandIcon}"
+															Size="18"
+															VerticalOptions="Start"
+															Color="{DynamicResource InkMuted}" />
 
 														<Grid.GestureRecognizers>
 															<TapGestureRecognizer Command="{Binding ToggleExpandedCommand}" />
@@ -132,7 +133,19 @@
 														<FlexLayout Wrap="Wrap">
 
 															<Border Margin="0,0,8,8" StyleClass="ChipButton">
-																<Label StyleClass="Caption" Text="{Binding StartAlertText}" />
+																<HorizontalStackLayout Spacing="6">
+																	<controls:Icon
+																		Glyph="Check"
+																		IsVisible="{Binding StartAlertOn}"
+																		Size="15"
+																		VerticalOptions="Center"
+																		Color="{DynamicResource Accent}" />
+
+																	<Label
+																		StyleClass="Caption"
+																		Text="{Binding StartAlertText}"
+																		VerticalOptions="Center" />
+																</HorizontalStackLayout>
 																<Border.GestureRecognizers>
 																	<TapGestureRecognizer Command="{Binding ToggleStartAlertCommand}" />
 																</Border.GestureRecognizers>
@@ -146,14 +159,38 @@
 															</Border>
 
 															<Border Margin="0,0,8,8" StyleClass="ChipButton">
-																<Label StyleClass="Caption" Text="{Binding ChangeAlertText}" />
+																<HorizontalStackLayout Spacing="6">
+																	<controls:Icon
+																		Glyph="Check"
+																		IsVisible="{Binding ChangeAlertOn}"
+																		Size="15"
+																		VerticalOptions="Center"
+																		Color="{DynamicResource Accent}" />
+
+																	<Label
+																		StyleClass="Caption"
+																		Text="{Binding ChangeAlertText}"
+																		VerticalOptions="Center" />
+																</HorizontalStackLayout>
 																<Border.GestureRecognizers>
 																	<TapGestureRecognizer Command="{Binding ToggleChangeAlertCommand}" />
 																</Border.GestureRecognizers>
 															</Border>
 
 															<Border Margin="0,0,8,8" StyleClass="ChipButton">
-																<Label StyleClass="Caption" Text="{Binding ProblemAlertText}" />
+																<HorizontalStackLayout Spacing="6">
+																	<controls:Icon
+																		Glyph="Check"
+																		IsVisible="{Binding ProblemAlertOn}"
+																		Size="15"
+																		VerticalOptions="Center"
+																		Color="{DynamicResource Accent}" />
+
+																	<Label
+																		StyleClass="Caption"
+																		Text="{Binding ProblemAlertText}"
+																		VerticalOptions="Center" />
+																</HorizontalStackLayout>
 																<Border.GestureRecognizers>
 																	<TapGestureRecognizer Command="{Binding ToggleProblemAlertCommand}" />
 																</Border.GestureRecognizers>

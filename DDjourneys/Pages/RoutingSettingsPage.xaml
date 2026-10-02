@@ -2,6 +2,7 @@
 	x:Class="DDjourneys.Pages.RoutingSettingsPage"
 	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
 	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+	xmlns:controls="clr-namespace:DDjourneys.Controls"
 	xmlns:local="clr-namespace:DDjourneys.Pages"
 	xmlns:localization="clr-namespace:DDjourneys.Localization"
 	xmlns:support="clr-namespace:DDjourneys.Support"
@@ -63,13 +64,13 @@
 										Text="{Binding Title}"
 										VerticalOptions="Center" />
 
-									<Label
+									<controls:Icon
 										Grid.Column="1"
-										FontSize="20"
+										Glyph="Check"
 										IsVisible="{Binding IsSelected}"
-										Text="&#x2713;"
-										TextColor="{DynamicResource Accent}"
-										VerticalOptions="Center" />
+										Size="20"
+										VerticalOptions="Center"
+										Color="{DynamicResource Accent}" />
 
 									<Grid.GestureRecognizers>
 										<TapGestureRecognizer Command="{Binding SelectCommand}" />
@@ -98,13 +99,13 @@
 										Text="{Binding Title}"
 										VerticalOptions="Center" />
 
-									<Label
+									<controls:Icon
 										Grid.Column="1"
-										FontSize="20"
+										Glyph="Check"
 										IsVisible="{Binding IsSelected}"
-										Text="&#x2713;"
-										TextColor="{DynamicResource Accent}"
-										VerticalOptions="Center" />
+										Size="20"
+										VerticalOptions="Center"
+										Color="{DynamicResource Accent}" />
 
 									<Grid.GestureRecognizers>
 										<TapGestureRecognizer Command="{Binding SelectCommand}" />
@@ -172,13 +173,13 @@
 										Text="{Binding Title}"
 										VerticalOptions="Center" />
 
-									<Label
+									<controls:Icon
 										Grid.Column="1"
-										FontSize="20"
+										Glyph="Check"
 										IsVisible="{Binding IsSelected}"
-										Text="&#x2713;"
-										TextColor="{DynamicResource Accent}"
-										VerticalOptions="Center" />
+										Size="20"
+										VerticalOptions="Center"
+										Color="{DynamicResource Accent}" />
 
 									<Grid.GestureRecognizers>
 										<TapGestureRecognizer Command="{Binding SelectCommand}" />

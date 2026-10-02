@@ -53,6 +53,9 @@ public sealed class StopRow : TimelineRow
 	public OccupancyLevel Occupancy { get; init; } =
 		OccupancyLevel.Unknown;
 
+	/// <summary>The vehicle is ahead of the timetable: the difference is good news, not a delay.</summary>
+	public bool IsEarly { get; init; }
+
 	public bool HasDelay =>
 		DelayText is not null;
 
@@ -76,6 +79,8 @@ public sealed class IntermediateRow : TimelineRow
 	public string? Place { get; init; }
 
 	public string? DelayText { get; init; }
+
+	public bool IsEarly { get; init; }
 
 	public bool IsNotServed { get; init; }
 
@@ -185,10 +190,19 @@ public sealed class WalkRow : TimelineRow
 {
 	public required string Text { get; init; }
 
-	public string? Caption { get; init; }
+	/// <summary>Muted lead-in of the caption ("to", or "within the stop").</summary>
+	public string? CaptionPrefix { get; init; }
+
+	/// <summary>Stop the walk leads to; empty when the walk stays inside one stop.</summary>
+	public string CaptionName { get; init; } =
+		string.Empty;
+
+	/// <summary>City of that stop, shown under the name.</summary>
+	public string? CaptionPlace { get; init; }
 
 	public bool HasCaption =>
-		Caption is not null;
+		CaptionPrefix is not null
+		|| CaptionName.Length > 0;
 }
 
 
@@ -244,6 +258,10 @@ public sealed class InterchangeRow : TimelineRow
 		RiskText is not null;
 
 	public required Color NodeColor { get; init; }
+
+	public bool ArrivalIsEarly { get; init; }
+
+	public bool DepartureIsEarly { get; init; }
 
 	public bool HasArrivalDelay =>
 		ArrivalDelay is not null;
@@ -316,7 +334,12 @@ public static class TimelineRowFactory
 					firstWalk.EffectiveDeparture
 						?? firstWalk.Leg.EffectiveDeparture,
 					Colors.Transparent,
-					WalkColor()));
+					WalkColor(),
+					options.ShowPlatforms
+						? PlatformText(
+							firstWalk.Leg.DeparturePlatform,
+							firstWalk.Leg.DeparturePlatformKind)
+						: null));
 		}
 
 
@@ -351,21 +374,55 @@ public static class TimelineRowFactory
 								.Journey;
 
 
+						// A footpath between two stops of the same name (another platform of the
+						// same stop, or the provider's own access path) must not read as
+						// "walk to the place you are already at".
+						bool insideStop =
+							SameStation(
+								walk.Leg.From,
+								walk.Leg.To);
+
+
+						string? platforms =
+							insideStop
+								&& options.ShowPlatforms
+								? PlatformPair(
+									walk.Leg.DeparturePlatform,
+									walk.Leg.DeparturePlatformKind,
+									walk.Leg.ArrivalPlatform,
+									walk.Leg.ArrivalPlatformKind)
+								: null;
+
+
 						rows.Add(
 							new WalkRow
 							{
 								Text =
 									$"{strings.Walk} {walkTime}",
 
-								Caption =
-									$"{strings.To} {StopLabel.Compose(walk.Leg.To)}",
+								CaptionPrefix =
+									insideStop
+										? strings.WithinStop
+										: strings.To,
+
+								CaptionName =
+									insideStop
+										? platforms ?? string.Empty
+										: walk.Leg.To.Name,
+
+								CaptionPlace =
+									insideStop
+										? null
+										: PlaceOf(walk.Leg.To),
 
 								RailBottom =
 									WalkColor(),
 
 								Description =
 									$"{strings.Walk} {walkTime} " +
-									$"{strings.To} {StopLabel.Compose(walk.Leg.To)}"
+									(insideStop
+										? $"{strings.WithinStop} {platforms}".TrimEnd()
+										: $"{strings.To} {StopLabel.Compose(walk.Leg.To)}")
 							});
 					}
 
@@ -394,7 +451,12 @@ public static class TimelineRowFactory
 					lastWalk.EffectiveArrival
 						?? lastWalk.Leg.EffectiveArrival,
 					WalkColor(),
-					Colors.Transparent));
+					Colors.Transparent,
+					options.ShowPlatforms
+						? PlatformText(
+							lastWalk.Leg.ArrivalPlatform,
+							lastWalk.Leg.ArrivalPlatformKind)
+						: null));
 		}
 		else if (items.Count > 0
 	&& items[^1] is BoundaryItem
@@ -492,6 +554,9 @@ public static class TimelineRowFactory
 
 					DelayText =
 						delay,
+
+					IsEarly =
+						IsEarly(leg.DepartureDelay),
 
 					Name =
 						leg.From.Name,
@@ -611,6 +676,11 @@ public static class TimelineRowFactory
 											stop.DepartureDelay
 											?? stop.ArrivalDelay),
 
+									IsEarly =
+										IsEarly(
+											stop.DepartureDelay
+											?? stop.ArrivalDelay),
+
 									IsNotServed =
 										stop.IsCancelled,
 
@@ -716,6 +786,9 @@ public static class TimelineRowFactory
 					DelayText =
 						delay,
 
+					IsEarly =
+						IsEarly(leg.ArrivalDelay),
+
 					Name =
 						leg.To.Name,
 
@@ -794,11 +867,22 @@ public static class TimelineRowFactory
 				((RideItem)items[i + 1]).Leg;
 
 
+			// The row already names the place under the stop, so the continuation only repeats
+			// the city when the next stop really is in another one.
+			string continueName =
+				string.Equals(
+					from.To.Place,
+					to.From.Place,
+					StringComparison.OrdinalIgnoreCase)
+					? to.From.Name
+					: StopLabel.Compose(to.From);
+
+
 			string? connectionText =
 				JoinText(
 					from.To.Name == to.From.Name
 						? null
-						: $"{strings.ContinueFrom} {StopLabel.Compose(to.From)}",
+						: $"{strings.ContinueFrom} {continueName}",
 					options.ShowPlatforms
 						? PlatformPair(
 							from.ArrivalPlatform,
@@ -838,6 +922,12 @@ public static class TimelineRowFactory
 					DepartureDelay =
 						Format.Delay(
 							to.DepartureDelay),
+
+					ArrivalIsEarly =
+						IsEarly(from.ArrivalDelay),
+
+					DepartureIsEarly =
+						IsEarly(to.DepartureDelay),
 
 					Name =
 						from.To.Name,
@@ -906,8 +996,14 @@ public static class TimelineRowFactory
 						$"{strings.Walk} " +
 						Format.Duration(walkTime),
 
-					Caption =
-						$"{strings.To} {StopLabel.Compose(boundary.At)}",
+					CaptionPrefix =
+						strings.To,
+
+					CaptionName =
+						boundary.At.Name,
+
+					CaptionPlace =
+						PlaceOf(boundary.At),
 
 					RailTop =
 						RailAt(
@@ -955,11 +1051,15 @@ public static class TimelineRowFactory
 		string? place,
 		DateTimeOffset? time,
 		Color top,
-		Color bottom) =>
+		Color bottom,
+		string? platform = null) =>
 		new()
 		{
 			Place =
 				place,
+
+			PlatformText =
+				platform,
 
 			Time =
 				Format.TimeOrDash(time),
@@ -1039,6 +1139,32 @@ public static class TimelineRowFactory
 		StopLabel.PlaceFor(
 			station.Name,
 			station.Place);
+
+
+	/// <summary>Two stop references that mean the same place (same provider id, or same name and city).</summary>
+	private static bool SameStation(
+		Station a,
+		Station b) =>
+		!string.IsNullOrWhiteSpace(a.Id)
+		&& !string.IsNullOrWhiteSpace(b.Id)
+			? string.Equals(
+				a.Id,
+				b.Id,
+				StringComparison.OrdinalIgnoreCase)
+			: string.Equals(
+				a.Name,
+				b.Name,
+				StringComparison.CurrentCultureIgnoreCase)
+				&& string.Equals(
+					a.Place,
+					b.Place,
+					StringComparison.CurrentCultureIgnoreCase);
+
+
+	private static bool IsEarly(
+		TimeSpan? delay) =>
+		delay is { } value
+		&& value < TimeSpan.Zero;
 
 
 	private static OccupancyLevel OccupancyAt(

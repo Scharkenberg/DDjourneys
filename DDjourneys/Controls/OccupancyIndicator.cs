@@ -3,14 +3,14 @@ using DDjourneys.Core.Models;
 namespace DDjourneys.Controls;
 
 /// <summary>
-/// Occupancy as a row of dots: as many filled dots as the level has steps,
-/// the rest hollow. Fixed size (6 dots, 52 px), so it never wraps or gets crushed;
-/// collapses completely when the level is unknown. Colour only reinforces the
-/// count (green, amber, red), it is never the sole carrier of the information.
+/// Occupancy as three dots, the granularity the provider really has (many seats, few seats,
+/// standing room): one, two or three filled, the rest hollow. Fixed size, so it never wraps or
+/// gets crushed; collapses completely when the level is unknown. Colour (green, amber, red) only
+/// reinforces the count, it is never the sole carrier of the information.
 /// </summary>
 public sealed class OccupancyIndicator : ContentView
 {
-	private const int Steps = 6;
+	private const int Steps = 3;
 	private const double Dot = 7;
 	private const double Hole = 3;
 	private const double Gap = 2;
@@ -39,19 +39,19 @@ public sealed class OccupancyIndicator : ContentView
 
 	private void Rebuild()
 	{
-		int filled = (int)Level;
+		int filled = DotsFor(Level);
 
-		if (filled <= 0 || filled > Steps)
+		if (filled == 0)
 		{
 			Content = null;
 			IsVisible = false;
 			return;
 		}
 
-		string tone = Level switch
+		string tone = filled switch
 		{
-			OccupancyLevel.VeryLow or OccupancyLevel.Low => "OnTime",
-			OccupancyLevel.Medium or OccupancyLevel.High => "Delay",
+			1 => "OnTime",
+			2 => "Delay",
 			_ => "Cancelled"
 		};
 
@@ -68,6 +68,16 @@ public sealed class OccupancyIndicator : ContentView
 		Content = row;
 		IsVisible = true;
 	}
+
+	/// <summary>Number of filled dots: 1 = many seats, 2 = few seats, 3 = standing room or worse.</summary>
+	public static int DotsFor(OccupancyLevel level) =>
+		level switch
+		{
+			OccupancyLevel.VeryLow => 1,
+			OccupancyLevel.Low or OccupancyLevel.Medium => 2,
+			OccupancyLevel.High or OccupancyLevel.Full or OccupancyLevel.Overloaded => 3,
+			_ => 0
+		};
 
 	private static View Filled(string tone)
 	{

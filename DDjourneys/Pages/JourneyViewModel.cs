@@ -1,6 +1,8 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
 using DDjourneys.Core.Models;
+using DDjourneys.Core.Providers;
+using DDjourneys.Core.Providers.Abstractions;
 using DDjourneys.Core.Tracking;
 using DDjourneys.Localization;
 using DDjourneys.Support;
@@ -20,10 +22,16 @@ public sealed class JourneyViewModel :
 	private Journey? _journey;
 
 
+	private readonly ProviderRegistry _providers;
+
+
 	public JourneyViewModel(
 		AppSettings settings,
-		IJourneyTracker tracker)
+		IJourneyTracker tracker,
+		ProviderRegistry providers)
 	{
+		_providers = providers ?? throw new ArgumentNullException(nameof(providers));
+
 		ArgumentNullException.ThrowIfNull(
 			settings);
 
@@ -99,7 +107,9 @@ public sealed class JourneyViewModel :
 
 	public bool ExpertViewEnabled => _settings.ExpertView;
 
-	public bool IsTrackingAvailable => _tracker.IsAvailable;
+	public bool IsTrackingAvailable =>
+		_tracker.IsAvailable
+		&& _providers.Supports(ProviderCapabilities.Tracking);
 
 	/// <summary>The watchlist entry of this journey, if the user follows it.</summary>
 	public bool IsFollowed => _followed is not null;
@@ -252,6 +262,44 @@ public sealed class JourneyViewModel :
 				ex.Message);
 
 
+
+	/// <summary>Start and destination, split so the header can put the city under the name.</summary>
+	public string FromName
+	{
+		get => field;
+		private set => SetProperty(
+			ref field,
+			value);
+	} = string.Empty;
+
+
+	public string? FromPlace
+	{
+		get => field;
+		private set => SetProperty(
+			ref field,
+			value);
+	}
+
+
+	public string ToName
+	{
+		get => field;
+		private set => SetProperty(
+			ref field,
+			value);
+	} = string.Empty;
+
+
+	public string? ToPlace
+	{
+		get => field;
+		private set => SetProperty(
+			ref field,
+			value);
+	}
+
+
 	public ObservableCollection<TimelineRow> Rows { get; } =
 		[];
 
@@ -396,6 +444,22 @@ public sealed class JourneyViewModel :
 		RouteText =
 			$"{StopLabel.Compose(journey.From)} " +
 			$"\u2192 {StopLabel.Compose(journey.To)}";
+
+		FromName =
+			journey.From.Name;
+
+		FromPlace =
+			StopLabel.PlaceFor(
+				journey.From.Name,
+				journey.From.Place);
+
+		ToName =
+			journey.To.Name;
+
+		ToPlace =
+			StopLabel.PlaceFor(
+				journey.To.Name,
+				journey.To.Place);
 
 
 		DayText =

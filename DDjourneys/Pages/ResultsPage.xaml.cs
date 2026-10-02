@@ -12,6 +12,7 @@ public partial class ResultsPage : ContentPage
 	public ResultsPage(ResultsViewModel vm)
 	{
 		InitializeComponent();
+		Motion.Prepare(this);
 
 		_localization = LocalizationService.Current;
 		BindingContext = _vm = vm;

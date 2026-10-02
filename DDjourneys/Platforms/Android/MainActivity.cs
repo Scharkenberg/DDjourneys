@@ -1,6 +1,7 @@
 using Android.App;
 using Android.Content.PM;
 using DDjourneys.Core.Tracking;
+using DDjourneys.Platforms.Android;
 using DDjourneys.Platforms.Android.LiveJourney.Schutzengel;
 
 namespace DDjourneys
@@ -8,9 +9,18 @@ namespace DDjourneys
 	[Activity(Theme = "@style/Maui.SplashTheme", MainLauncher = true, LaunchMode = LaunchMode.SingleTop, ConfigurationChanges = ConfigChanges.ScreenSize | ConfigChanges.Orientation | ConfigChanges.UiMode | ConfigChanges.ScreenLayout | ConfigChanges.SmallestScreenSize | ConfigChanges.Density)]
 	public class MainActivity : MauiAppCompatActivity
 	{
+		protected override void OnCreate(global::Android.OS.Bundle? savedInstanceState)
+		{
+			base.OnCreate(savedInstanceState);
+
+			SystemBars.Apply(this, Support.Theme.IsDark);
+		}
+
 		protected override void OnResume()
 		{
 			base.OnResume();
+
+			SystemBars.Apply(this, Support.Theme.IsDark);
 
 			_ = ResumeTrackingAsync();
 		}

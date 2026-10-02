@@ -34,26 +34,38 @@
 		RowDefinitions="Auto,*"
 		RowSpacing="{StaticResource SpaceM}">
 
-		<Grid
+		<!--  The field carries its own frame: the platform underline is gone on purpose  -->
+		<Border
 			Grid.Row="0"
-			ColumnDefinitions="*,Auto"
-			ColumnSpacing="{StaticResource SpaceS}">
-			<Entry
-				x:Name="QueryEntry"
-				Grid.Column="0"
-				ClearButtonVisibility="WhileEditing"
-				Placeholder="{localization:Tr PlaceSearch.SearchPlaceholder}"
-				ReturnType="Search"
-				SemanticProperties.Description="{localization:Tr PlaceSearch.SearchForPlace}"
-				Text="{Binding Query}" />
-			<ActivityIndicator
-				Grid.Column="1"
-				HeightRequest="20"
-				IsRunning="{Binding IsSearching}"
-				IsVisible="{Binding IsSearching}"
-				VerticalOptions="Center"
-				WidthRequest="20" />
-		</Grid>
+			Padding="10,0"
+			StyleClass="Card">
+
+			<Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{StaticResource SpaceS}">
+
+				<controls:Icon
+					Glyph="Search"
+					Size="19"
+					VerticalOptions="Center"
+					Color="{DynamicResource InkMuted}" />
+
+				<Entry
+					x:Name="QueryEntry"
+					Grid.Column="1"
+					ClearButtonVisibility="WhileEditing"
+					Placeholder="{localization:Tr PlaceSearch.SearchPlaceholder}"
+					ReturnType="Search"
+					SemanticProperties.Description="{localization:Tr PlaceSearch.SearchForPlace}"
+					Text="{Binding Query}" />
+
+				<ActivityIndicator
+					Grid.Column="2"
+					HeightRequest="20"
+					IsRunning="{Binding IsSearching}"
+					IsVisible="{Binding IsSearching}"
+					VerticalOptions="Center"
+					WidthRequest="20" />
+			</Grid>
+		</Border>
 
 		<ScrollView Grid.Row="1">
 			<VerticalStackLayout Spacing="{StaticResource SpaceM}">

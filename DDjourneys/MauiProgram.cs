@@ -1,6 +1,7 @@
 using CommunityToolkit.Maui;
 using DDjourneys.Core.Api;
 using DDjourneys.Core.Diagnostics;
+using DDjourneys.Core.Providers;
 using DDjourneys.Core.Providers.Abstractions;
 using DDjourneys.Core.Providers.Vvo;
 using DDjourneys.Core.Services;
@@ -35,6 +36,10 @@ public static class MauiProgram
 		InstallLabelContainerDiagnostics();
 #endif
 
+#if ANDROID
+		Platforms.Android.NativeStyling.Install();
+#endif
+
 		var settings = new AppSettings();
 
 		LocalizationInitializer.Initialize(settings);
@@ -45,7 +50,17 @@ public static class MauiProgram
 		builder.Services.AddSingleton<ApiClient>();
 		builder.Services.AddSingleton<VvoApiClient>();
 
-		builder.Services.AddSingleton<IJourneyProvider, VvoJourneyProvider>();
+		// Providers: every provider registers its description; the registry holds the user's choice.
+		builder.Services.AddSingleton(VvoProviderInfo.Value);
+		builder.Services.AddSingleton(
+			services => new ProviderRegistry(
+				services.GetServices<ProviderInfo>(),
+				() => settings.ProviderId,
+				id => settings.ProviderId = id));
+
+		builder.Services.AddSingleton<VvoJourneyProvider>();
+		builder.Services.AddSingleton<IJourneyProvider>(
+			services => services.GetRequiredService<VvoJourneyProvider>());
 
 		builder.Services.AddSingleton<JourneyProviderDiagnostics>();
 		builder.Services.AddSingleton<JourneyService>();
@@ -54,7 +69,10 @@ public static class MauiProgram
 		builder.Services.AddSingleton<LocationService>();
 
 #if ANDROID
-		builder.Services.AddSingleton<IJourneyTracker, Platforms.Android.LiveJourney.Schutzengel.SchutzengelJourneyTracker>();
+		// Schutzengel is the DVB/VVO service, so it always requeries through the VVO provider.
+		builder.Services.AddSingleton<IJourneyTracker>(
+			services => new Platforms.Android.LiveJourney.Schutzengel.SchutzengelJourneyTracker(
+				services.GetRequiredService<VvoJourneyProvider>()));
 #elif WINDOWS
 		builder.Services.AddSingleton<IJourneyTracker, Platforms.Windows.NoOpJourneyTracker>();
 #endif
@@ -84,6 +102,9 @@ public static class MauiProgram
 
 		builder.Services.AddTransient<ExpertPage>();
 		builder.Services.AddTransient<ExpertViewModel>();
+
+		builder.Services.AddTransient<ProvidersPage>();
+		builder.Services.AddTransient<ProvidersViewModel>();
 
 		builder.Services.AddTransient<RoutingSettingsPage>();
 		builder.Services.AddTransient<RoutingSettingsViewModel>();

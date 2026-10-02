@@ -7,6 +7,7 @@ public partial class RoutingSettingsPage : ContentPage
 	public RoutingSettingsPage(RoutingSettingsViewModel vm)
 	{
 		InitializeComponent();
+		Motion.Prepare(this);
 
 		BindingContext = vm;
 	}

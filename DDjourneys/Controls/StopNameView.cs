@@ -3,8 +3,11 @@ using DDjourneys.Core.Models;
 namespace DDjourneys.Controls;
 
 /// <summary>
-/// A stop name with its city/region right behind it on the same line ("Hauptbahnhof, Dresden"),
-/// wrapping together when the line is narrow. The city is set in the muted ink colour.
+/// A stop name with its city/region on a second, smaller and fainter line — the one presentation
+/// used for every stop in the app (planner, place search, timeline, headers).
+///
+/// The second line disappears when there is no city, or when the name already ends with it
+/// ("Hauptbahnhof, Dresden"), so rows never keep an empty gap.
 /// </summary>
 public sealed class StopNameView : ContentView
 {
@@ -14,8 +17,7 @@ public sealed class StopNameView : ContentView
 			typeof(string),
 			typeof(StopNameView),
 			string.Empty,
-			propertyChanged: (bindable, _, _) =>
-				((StopNameView)bindable).Rebuild());
+			propertyChanged: OnContentChanged);
 
 	public static readonly BindableProperty PlaceProperty =
 		BindableProperty.Create(
@@ -23,8 +25,15 @@ public sealed class StopNameView : ContentView
 			typeof(string),
 			typeof(StopNameView),
 			null,
-			propertyChanged: (bindable, _, _) =>
-				((StopNameView)bindable).Rebuild());
+			propertyChanged: OnContentChanged);
+
+	public static readonly BindableProperty PrefixProperty =
+		BindableProperty.Create(
+			nameof(Prefix),
+			typeof(string),
+			typeof(StopNameView),
+			null,
+			propertyChanged: OnContentChanged);
 
 	public static readonly BindableProperty CompactProperty =
 		BindableProperty.Create(
@@ -32,19 +41,48 @@ public sealed class StopNameView : ContentView
 			typeof(bool),
 			typeof(StopNameView),
 			false,
-			propertyChanged: (bindable, _, _) =>
-				((StopNameView)bindable).Rebuild());
+			propertyChanged: OnLookChanged);
 
-	private readonly Label _label =
+	public static readonly BindableProperty MutedProperty =
+		BindableProperty.Create(
+			nameof(Muted),
+			typeof(bool),
+			typeof(StopNameView),
+			false,
+			propertyChanged: OnLookChanged);
+
+	public static readonly BindableProperty NameFontSizeProperty =
+		BindableProperty.Create(
+			nameof(NameFontSize),
+			typeof(double),
+			typeof(StopNameView),
+			0d,
+			propertyChanged: OnLookChanged);
+
+	private readonly Label _name =
 		new()
 		{
 			LineBreakMode = LineBreakMode.WordWrap
 		};
 
+	private readonly Label _place =
+		new()
+		{
+			LineBreakMode = LineBreakMode.TailTruncation,
+			StyleClass = ["Faint"]
+		};
+
 	public StopNameView()
 	{
-		Content = _label;
-		Rebuild();
+		Content =
+			new VerticalStackLayout
+			{
+				Spacing = 1,
+				Children = { _name, _place }
+			};
+
+		ApplyLook();
+		Refresh();
 	}
 
 	/// <summary>The stop's name.</summary>
@@ -61,50 +99,115 @@ public sealed class StopNameView : ContentView
 		set => SetValue(PlaceProperty, value);
 	}
 
-	/// <summary>Caption-sized, regular weight (intermediate stops, chips).</summary>
+	/// <summary>Muted lead-in before the name, e.g. "to" in a walking caption.</summary>
+	public string? Prefix
+	{
+		get => (string?)GetValue(PrefixProperty);
+		set => SetValue(PrefixProperty, value);
+	}
+
+	/// <summary>Caption-sized, regular weight name (intermediate stops).</summary>
 	public bool Compact
 	{
 		get => (bool)GetValue(CompactProperty);
 		set => SetValue(CompactProperty, value);
 	}
 
-	private void Rebuild()
+	/// <summary>Placeholder look: the name is drawn in the muted ink (nothing chosen yet).</summary>
+	public bool Muted
 	{
-		_label.StyleClass =
-			Compact
-				? ["Caption"]
-				: null;
+		get => (bool)GetValue(MutedProperty);
+		set => SetValue(MutedProperty, value);
+	}
 
-		var text = new FormattedString();
+	/// <summary>Explicit size for the name line; 0 keeps the style's size.</summary>
+	public double NameFontSize
+	{
+		get => (double)GetValue(NameFontSizeProperty);
+		set => SetValue(NameFontSizeProperty, value);
+	}
 
-		var name =
-			new Span
-			{
-				Text = Stop
-			};
+	private static void OnContentChanged(BindableObject bindable, object? oldValue, object? newValue) =>
+		((StopNameView)bindable).Refresh();
 
-		if (!Compact)
+	private static void OnLookChanged(BindableObject bindable, object? oldValue, object? newValue) =>
+		((StopNameView)bindable).ApplyLook();
+
+	private void ApplyLook()
+	{
+		if (Compact)
 		{
-			name.FontFamily = "OpenSansSemibold";
-		}
-
-		text.Spans.Add(name);
-
-		if (StopLabel.PlaceFor(Stop, Place) is { } city)
-		{
-			var place =
-				new Span
-				{
-					Text = $", {city}"
-				};
-
-			text.Spans.Add(place);
-			_label.FormattedText = text;
-			place.SetDynamicResource(Span.TextColorProperty, "InkMuted");
+			_name.StyleClass = ["Caption"];
+			_name.ClearValue(Label.FontFamilyProperty);
 		}
 		else
 		{
-			_label.FormattedText = text;
+			_name.StyleClass = [];
+			_name.FontFamily = "OpenSansSemibold";
 		}
+
+		if (NameFontSize > 0)
+		{
+			_name.FontSize = NameFontSize;
+		}
+		else
+		{
+			_name.ClearValue(Label.FontSizeProperty);
+		}
+
+		_name.RemoveDynamicResource(Label.TextColorProperty);
+
+		// Compact rows take their colour from the Caption style; everything else is explicit,
+		// so a placeholder can be muted without losing the theme.
+		_name.SetDynamicResource(
+			Label.TextColorProperty,
+			Muted || Compact
+				? "InkMuted"
+				: "Ink");
+
+		// The prefix span carries its own colour, so rebuild the text whenever the look changes.
+		Refresh();
+	}
+
+	private void Refresh()
+	{
+		string name = Stop ?? string.Empty;
+
+		if (string.IsNullOrEmpty(Prefix))
+		{
+			_name.FormattedText = null;
+			_name.Text = name;
+		}
+		else
+		{
+			var text = new FormattedString();
+
+			var prefix =
+				new Span
+				{
+					Text = name.Length == 0
+						? Prefix
+						: $"{Prefix} "
+				};
+
+			prefix.SetDynamicResource(Span.TextColorProperty, "InkMuted");
+			text.Spans.Add(prefix);
+
+			if (name.Length > 0)
+			{
+				text.Spans.Add(
+					new Span
+					{
+						Text = name
+					});
+			}
+
+			_name.FormattedText = text;
+		}
+
+		string? city = StopLabel.PlaceFor(name, Place);
+
+		_place.Text = city;
+		_place.IsVisible = city is not null;
 	}
 }

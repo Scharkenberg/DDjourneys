@@ -8,9 +8,14 @@ namespace DDjourneys.Core.Providers.Vvo;
 /// <summary>
 /// Provides location search using the VVO WebAPI.
 /// </summary>
-public sealed class VvoLocationProvider : ILocationProvider
+public sealed class VvoLocationProvider : ILocationProvider, IProviderDescriptor
 {
 	private readonly VvoApiClient _apiClient;
+
+
+	/// <inheritdoc />
+	public ProviderInfo Info =>
+		VvoProviderInfo.Value;
 
 
 	public VvoLocationProvider(

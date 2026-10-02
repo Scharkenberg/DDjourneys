@@ -43,7 +43,12 @@ public sealed class EnglishUiStrings : IUiStrings
 		Time = "Time",
 		LeaveNow = "Now",
 		Favourites = "Favourites",
-		Recent = "Recent",
+		Recent = "Recent places",
+		RecentSearches = "Recent searches",
+		ShowAllSearches = "Show all {0}",
+		ShowFewer = "Show fewer",
+		ForgetSearch = "Remove this search",
+		SearchAgain = "Search this connection again",
 		StartAndDestinationRequired = "Start and destination are required.",
 		PlacesYouSearchForWillAppearHere =
 			"Places you search for will appear here."
@@ -122,6 +127,7 @@ public sealed class EnglishUiStrings : IUiStrings
 		ConnectionMayBeMissed = "Connection may be missed",
 		ChangeAt = "Change at",
 		Platform = "Platform",
+		WithinStop = "within the stop",
 		Track = "Track",
 		LowFloor = "Low floor",
 		WheelchairAccessible = "Wheelchair accessible",
@@ -248,6 +254,21 @@ public sealed class EnglishUiStrings : IUiStrings
 		AvoidEscalatorsDescription = "Used when no accessibility level is set",
 		FewestTransfers = "Fewest transfers",
 		FewestTransfersDescription = "Prefer fewer changes over a faster trip"
+	};
+
+	public ProviderStrings Provider { get; } = new()
+	{
+		Title = "Provider",
+		Intro = "Where journeys and stops come from. Each provider covers its own region; changing it clears the current start and destination.",
+		InUse = "In use",
+		CapJourneys = "Journeys",
+		CapPlaces = "Stop search",
+		CapContinuation = "Earlier / later",
+		CapTracking = "Live tracking",
+		CapOccupancy = "Occupancy",
+		CapPlatforms = "Platforms",
+		CapRouting = "Route preferences",
+		Footer = "More providers can be added in future versions."
 	};
 
 	public ExpertStrings Expert { get; } = new()

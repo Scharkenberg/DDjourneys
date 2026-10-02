@@ -1,4 +1,5 @@
 ﻿using DDjourneys.Core.Models;
+using DDjourneys.Core.Providers;
 using DDjourneys.Core.Providers.Abstractions;
 
 namespace DDjourneys.Core.Services;
@@ -23,20 +24,32 @@ namespace DDjourneys.Core.Services;
 /// </remarks>
 public sealed class JourneyService
 {
-	private readonly IEnumerable<IJourneyProvider> _providers;
+	private readonly IEnumerable<IJourneyProvider> _all;
+	private readonly ProviderRegistry? _registry;
 
 
 	/// <summary>
 	/// Creates a new journey service.
 	/// </summary>
+	/// <param name="providers">All registered journey providers.</param>
+	/// <param name="registry">When given, only the provider the user selected is asked.</param>
 	public JourneyService(
-		IEnumerable<IJourneyProvider> providers)
+		IEnumerable<IJourneyProvider> providers,
+		ProviderRegistry? registry = null)
 	{
 		ArgumentNullException.ThrowIfNull(
 			providers);
 
-		_providers = providers;
+		_all = providers;
+		_registry = registry;
 	}
+
+
+	/// <summary>The providers eligible for the current selection, in registration order.</summary>
+	private IEnumerable<IJourneyProvider> _providers =>
+		_registry is null
+			? _all
+			: _all.Where(_registry.IsSelected);
 
 
 	/// <summary>

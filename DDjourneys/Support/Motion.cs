@@ -97,42 +97,49 @@ public static class Motion
 	}
 
 	/// <summary>
-	/// Page entrance: the top-level blocks of the page wave in, once per page instance.
-	/// Coming back to a page (Pop) shows it immediately: no replay, no flicker.
+	/// Hides the page content before its first frame, so the entrance fade starts from nothing
+	/// instead of flashing the finished page first. Call from the page constructor, after
+	/// InitializeComponent. A failsafe timer shows the page even if it never appears.
+	/// </summary>
+	public static void Prepare(ContentPage page)
+	{
+		ArgumentNullException.ThrowIfNull(page);
+
+		if (!Enabled || page.Content is not VisualElement content)
+		{
+			return;
+		}
+
+		content.Opacity = 0;
+
+		page.Dispatcher.DispatchDelayed(
+			TimeSpan.FromMilliseconds(1500),
+			() => content.Opacity = 1);
+	}
+
+	/// <summary>
+	/// Page entrance: the whole page fades in once per page instance (no per-element movement, so
+	/// nothing jumps). Coming back to a page (Pop) shows it immediately.
 	/// Call from OnAppearing.
 	/// </summary>
 	public static void EnterPage(ContentPage page)
 	{
 		ArgumentNullException.ThrowIfNull(page);
 
+		if (page.Content is not VisualElement content)
+		{
+			return;
+		}
+
 		if (!Enabled || Entered.TryGetValue(page, out _))
 		{
+			content.Opacity = 1;
 			return;
 		}
 
 		Entered.Add(page, new object());
 
-		try
-		{
-			IView? content = page.Content;
-
-			if (content is ScrollView { Content: Layout inner })
-			{
-				Cascade(inner.Children);
-			}
-			else if (content is Layout layout)
-			{
-				Cascade(layout.Children);
-			}
-			else if (content is VisualElement single)
-			{
-				_ = RevealAsync(single, 0, 260, 12);
-			}
-		}
-		catch (Exception ex)
-		{
-			System.Diagnostics.Debug.WriteLine($"EnterPage skipped: {ex.Message}");
-		}
+		_ = RevealAsync(content, 0, 180, 0);
 	}
 
 	/// <summary>Quick press feedback (scale down, spring back). Fire and forget.</summary>

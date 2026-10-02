@@ -102,6 +102,44 @@ public sealed class ResultsViewModel :
 	} = string.Empty;
 
 
+
+	/// <summary>Start and destination, split so the header can put the city under the name.</summary>
+	public string FromName
+	{
+		get => field;
+		private set => SetProperty(
+			ref field,
+			value);
+	} = string.Empty;
+
+
+	public string? FromPlace
+	{
+		get => field;
+		private set => SetProperty(
+			ref field,
+			value);
+	}
+
+
+	public string ToName
+	{
+		get => field;
+		private set => SetProperty(
+			ref field,
+			value);
+	} = string.Empty;
+
+
+	public string? ToPlace
+	{
+		get => field;
+		private set => SetProperty(
+			ref field,
+			value);
+	}
+
+
 	public string WhenText
 	{
 		get => field;
@@ -209,6 +247,22 @@ public sealed class ResultsViewModel :
 			RouteText =
 				$"{StopLabel.Compose(journeyQuery.From)} \u2192 " +
 				$"{StopLabel.Compose(journeyQuery.To)}";
+
+			FromName =
+				journeyQuery.From.Name;
+
+			FromPlace =
+				StopLabel.PlaceFor(
+					journeyQuery.From.Name,
+					journeyQuery.From.Place);
+
+			ToName =
+				journeyQuery.To.Name;
+
+			ToPlace =
+				StopLabel.PlaceFor(
+					journeyQuery.To.Name,
+					journeyQuery.To.Place);
 
 			WhenText =
 				DescribeWhen(

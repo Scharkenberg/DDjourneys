@@ -1,3 +1,4 @@
+using DDjourneys.Core.Providers;
 using DDjourneys.Localization;
 using DDjourneys.Support;
 
@@ -9,11 +10,15 @@ public sealed class SettingsViewModel : ObservableObject
 	private readonly AppSettings _settings;
 	private readonly LocalizationService _localization;
 
-	public SettingsViewModel(AppSettings settings)
+	private readonly ProviderRegistry _providers;
+
+	public SettingsViewModel(AppSettings settings, ProviderRegistry providers)
 	{
 		ArgumentNullException.ThrowIfNull(settings);
+		ArgumentNullException.ThrowIfNull(providers);
 
 		_settings = settings;
+		_providers = providers;
 		_localization = LocalizationService.Current;
 
 		_localization.PropertyChanged += OnLocalizationChanged;
@@ -23,6 +28,7 @@ public sealed class SettingsViewModel : ObservableObject
 		SelectLanguageCommand = new Command<string>(SelectLanguage);
 		ResetCommand = new Command(Reset);
 		OpenRoutingCommand = new AsyncCommand(OpenRoutingAsync);
+		OpenProvidersCommand = new AsyncCommand(OpenProvidersAsync);
 	}
 
 	public AsyncCommand SelectSystemThemeCommand { get; }
@@ -30,6 +36,16 @@ public sealed class SettingsViewModel : ObservableObject
 	public Command<string> SelectLanguageCommand { get; }
 	public Command ResetCommand { get; }
 	public AsyncCommand OpenRoutingCommand { get; }
+	public AsyncCommand OpenProvidersCommand { get; }
+
+	/// <summary>Name of the selected provider, shown on the entry row.</summary>
+	public string ProviderText =>
+		_providers.Selected is { } provider
+			? $"{provider.Name} \u00b7 {provider.FullName}"
+			: string.Empty;
+
+	public void RefreshProvider() =>
+		OnPropertyChanged(nameof(ProviderText));
 
 	// ----- Localization -----
 
@@ -233,6 +249,9 @@ public sealed class SettingsViewModel : ObservableObject
 	public double MinSearchDelay => AppSettings.MinSearchDelayMs;
 
 	public double MaxSearchDelay => AppSettings.MaxSearchDelayMs;
+
+	private static Task OpenProvidersAsync() =>
+		Shell.Current.GoToAsync(Routes.Providers);
 
 	private static Task OpenRoutingAsync() =>
 		Shell.Current.GoToAsync(Routes.Routing);

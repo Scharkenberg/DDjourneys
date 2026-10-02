@@ -9,6 +9,7 @@ public interface IUiStrings
 	JourneyStrings Journey { get; }
 	TrackingStrings Tracking { get; }
 	ExpertStrings Expert { get; }
+	ProviderStrings Provider { get; }
 	RoutingStrings Routing { get; }
 	SettingsStrings Settings { get; }
 	TransportStrings Transport { get; }
@@ -56,6 +57,11 @@ public sealed class PlanStrings
 	public required string LeaveNow { get; init; }
 	public required string Favourites { get; init; }
 	public required string Recent { get; init; }
+	public required string RecentSearches { get; init; }
+	public required string ShowAllSearches { get; init; }
+	public required string ShowFewer { get; init; }
+	public required string ForgetSearch { get; init; }
+	public required string SearchAgain { get; init; }
 	public required string PlacesYouSearchForWillAppearHere { get; init; }
 	public required string StartAndDestinationRequired { get; init; }
 }
@@ -121,6 +127,7 @@ public sealed class JourneyStrings
 	public required string ConnectionMayBeMissed { get; init; }
 	public required string ChangeAt { get; init; }
 	public required string Platform { get; init; }
+	public required string WithinStop { get; init; }
 	public required string Track { get; init; }
 	public required string LowFloor { get; init; }
 	public required string WheelchairAccessible { get; init; }
@@ -255,6 +262,21 @@ public sealed class RoutingStrings
 	public required string AvoidEscalatorsDescription { get; init; }
 	public required string FewestTransfers { get; init; }
 	public required string FewestTransfersDescription { get; init; }
+}
+
+public sealed class ProviderStrings
+{
+	public required string Title { get; init; }
+	public required string Intro { get; init; }
+	public required string InUse { get; init; }
+	public required string CapJourneys { get; init; }
+	public required string CapPlaces { get; init; }
+	public required string CapContinuation { get; init; }
+	public required string CapTracking { get; init; }
+	public required string CapOccupancy { get; init; }
+	public required string CapPlatforms { get; init; }
+	public required string CapRouting { get; init; }
+	public required string Footer { get; init; }
 }
 
 public sealed class ExpertStrings

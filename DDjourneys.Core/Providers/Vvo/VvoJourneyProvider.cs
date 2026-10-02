@@ -11,11 +11,17 @@ namespace DDjourneys.Core.Providers.Vvo;
 /// </summary>
 public sealed class VvoJourneyProvider :
 	IJourneyProvider,
-	IJourneyContinuationProvider
+	IJourneyContinuationProvider,
+	IProviderDescriptor
 {
 	private const int MaxContinuationResults = 10;
 
 	private readonly VvoApiClient _apiClient;
+
+
+	/// <inheritdoc />
+	public ProviderInfo Info =>
+		VvoProviderInfo.Value;
 
 
 	public VvoJourneyProvider(

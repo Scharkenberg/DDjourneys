@@ -177,26 +177,55 @@ public sealed class NoticeCard : ContentView
 
 		if (foldable)
 		{
-			var toggle =
+			var toggleLabel =
 				new Label
 				{
 					Text =
 						folded
-							? $"{strings.ShowMore} \u25BE"
-							: $"{strings.ShowLess} \u25B4",
+							? strings.ShowMore
+							: strings.ShowLess,
 					FontFamily = "OpenSansSemibold",
 					FontSize = 13,
+					VerticalOptions =
+						LayoutOptions.Center
+				};
+
+			toggleLabel.SetDynamicResource(
+				Label.TextColorProperty,
+				accentKey);
+
+			var toggleIcon =
+				new Icon
+				{
+					Glyph =
+						folded
+							? IconGlyph.ChevronDown
+							: IconGlyph.ChevronUp,
+					Size = 14,
+					VerticalOptions =
+						LayoutOptions.Center
+				};
+
+			toggleIcon.SetDynamicResource(
+				Icon.ColorProperty,
+				accentKey);
+
+			var toggle =
+				new HorizontalStackLayout
+				{
+					Spacing = 5,
 					Padding =
 						new Thickness(
 							0,
 							6,
 							0,
-							2)
+							2),
+					Children =
+					{
+						toggleLabel,
+						toggleIcon
+					}
 				};
-
-			toggle.SetDynamicResource(
-				Label.TextColorProperty,
-				accentKey);
 
 			SemanticProperties.SetDescription(
 				toggle,
@@ -215,19 +244,19 @@ public sealed class NoticeCard : ContentView
 		}
 
 		var glyph =
-			new Label
+			new Icon
 			{
-				Text =
+				Glyph =
 					warning
-						? "\u26A0\uFE0E"
-						: "\u24D8",
-				FontFamily = "OpenSansSemibold",
+						? IconGlyph.Warning
+						: IconGlyph.Info,
+				Size = 18,
 				VerticalOptions =
 					LayoutOptions.Start
 			};
 
 		glyph.SetDynamicResource(
-			Label.TextColorProperty,
+			Icon.ColorProperty,
 			accentKey);
 
 		var bar =
@@ -257,7 +286,7 @@ public sealed class NoticeCard : ContentView
 		glyph.Margin =
 			new Thickness(
 				0,
-				8,
+				7,
 				0,
 				0);
 

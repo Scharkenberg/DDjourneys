@@ -1,6 +1,9 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
+using DDjourneys.Controls;
 using DDjourneys.Core.Models;
+using DDjourneys.Core.Providers;
+using DDjourneys.Core.Providers.Abstractions;
 using DDjourneys.Core.Tracking;
 using DDjourneys.Localization;
 using DDjourneys.Support;
@@ -8,8 +11,36 @@ using Location = DDjourneys.Core.Models.Location;
 
 namespace DDjourneys.Pages;
 
+/// <summary>A connection the passenger searched before, as the planner lists it.</summary>
+public sealed record RouteRow(
+	RoutePair Route)
+{
+	public string FromName =>
+		Route.From.Name;
+
+	public string? FromPlace =>
+		StopLabel.PlaceFor(
+			Route.From.Name,
+			Route.From.Place);
+
+	public string ToName =>
+		Route.To.Name;
+
+	public string? ToPlace =>
+		StopLabel.PlaceFor(
+			Route.To.Name,
+			Route.To.Place);
+
+	public string Description =>
+		$"{StopLabel.Compose(Route.From)} \u2192 {StopLabel.Compose(Route.To)}";
+}
+
+
 public sealed partial class PlanViewModel : ObservableObject
 {
+	/// <summary>How many searched connections the planner shows before "show all".</summary>
+	private const int CollapsedRoutes = 5;
+
 	private static readonly TimeSpan RolloverGrace =
 		TimeSpan.FromMinutes(30);
 
@@ -20,19 +51,29 @@ public sealed partial class PlanViewModel : ObservableObject
 	private DateTime _when;
 	private bool _syncing;
 
-	/// <summary>Whether the platform can follow journeys (shows the entry to the overview).</summary>
-	public bool IsTrackingAvailable { get; }
+	private readonly ProviderRegistry _providers;
+	private readonly bool _trackerAvailable;
+	private string _providerId;
+
+	/// <summary>Whether the platform and the selected provider can follow journeys (shows the entry to the overview).</summary>
+	public bool IsTrackingAvailable =>
+		_trackerAvailable
+		&& _providers.Supports(ProviderCapabilities.Tracking);
 
 	public PlanViewModel(
 		PlaceStore store,
 		AppSettings settings,
-		IJourneyTracker tracker)
+		IJourneyTracker tracker,
+		ProviderRegistry providers)
 	{
 		ArgumentNullException.ThrowIfNull(store);
 		ArgumentNullException.ThrowIfNull(settings);
 		ArgumentNullException.ThrowIfNull(tracker);
+		ArgumentNullException.ThrowIfNull(providers);
 
-		IsTrackingAvailable = tracker.IsAvailable;
+		_trackerAvailable = tracker.IsAvailable;
+		_providers = providers;
+		_providerId = providers.SelectedId;
 
 		_store = store;
 		_settings = settings;
@@ -94,6 +135,31 @@ public sealed partial class PlanViewModel : ObservableObject
 				() => Safe(
 					_store.ClearRecents));
 
+		ClearRoutesCommand =
+			new Command(
+				() => Safe(
+					_store.ClearRecentRoutes));
+
+		ToggleRoutesCommand =
+			new Command(
+				() => ShowAllRoutes = !ShowAllRoutes);
+
+		UseRouteCommand =
+			new AsyncCommand<RouteRow>(
+				row => SafeAsync(
+					() => UseRouteAsync(row)));
+
+		ForgetRouteCommand =
+			new Command<RouteRow>(
+				row => Safe(
+					() =>
+					{
+						if (row is not null)
+						{
+							_store.RemoveRecentRoute(row.Route);
+						}
+					}));
+
 		SetNow();
 
 		if (_settings.DefaultArrival)
@@ -132,6 +198,15 @@ public sealed partial class PlanViewModel : ObservableObject
 
 	public AsyncCommand SearchCommand { get; }
 
+	public Command ClearRoutesCommand { get; }
+
+	public Command ToggleRoutesCommand { get; }
+
+	/// <summary>Takes a remembered connection and searches it again straight away.</summary>
+	public AsyncCommand<RouteRow> UseRouteCommand { get; }
+
+	public Command<RouteRow> ForgetRouteCommand { get; }
+
 	public Command ClearRecentsCommand { get; }
 
 
@@ -152,6 +227,12 @@ public sealed partial class PlanViewModel : ObservableObject
 			{
 				OnPropertyChanged(
 					nameof(FromText));
+
+				OnPropertyChanged(
+					nameof(FromName));
+
+				OnPropertyChanged(
+					nameof(FromPlace));
 
 				OnPropertyChanged(
 					nameof(HasFrom));
@@ -183,6 +264,12 @@ public sealed partial class PlanViewModel : ObservableObject
 			{
 				OnPropertyChanged(
 					nameof(ToText));
+
+				OnPropertyChanged(
+					nameof(ToName));
+
+				OnPropertyChanged(
+					nameof(ToPlace));
 
 				OnPropertyChanged(
 					nameof(HasTo));
@@ -218,6 +305,91 @@ public sealed partial class PlanViewModel : ObservableObject
 			.ChooseDestination;
 
 
+	/// <summary>Name line of the start; the placeholder when nothing is chosen yet.</summary>
+	public string FromName =>
+		From?.Name
+		?? _localization
+			.CurrentStrings
+			.Plan
+			.ChooseStart;
+
+
+	/// <summary>City of the start, shown under the name.</summary>
+	public string? FromPlace =>
+		From is null
+			? null
+			: StopLabel.PlaceFor(
+				From.Name,
+				From.Place);
+
+
+	public string ToName =>
+		To?.Name
+		?? _localization
+			.CurrentStrings
+			.Plan
+			.ChooseDestination;
+
+
+	public string? ToPlace =>
+		To is null
+			? null
+			: StopLabel.PlaceFor(
+				To.Name,
+				To.Place);
+
+
+	/// <summary>The connections searched before, most recent first.</summary>
+	public ObservableCollection<RouteRow> RecentRoutes { get; } =
+		[];
+
+
+	public bool HasRecentRoutes =>
+		RecentRoutes.Count > 0;
+
+
+	/// <summary>True while the list is cut short; the toggle then offers the rest.</summary>
+	public bool CanExpandRoutes
+	{
+		get => field;
+
+		private set => SetProperty(
+			ref field,
+			value);
+	}
+
+
+	public bool ShowAllRoutes
+	{
+		get => field;
+
+		set
+		{
+			if (SetProperty(
+					ref field,
+					value))
+			{
+				RefreshRoutes();
+			}
+		}
+	}
+
+
+	public string RoutesToggleText =>
+		ShowAllRoutes
+			? _localization
+				.CurrentStrings
+				.Plan
+				.ShowFewer
+			: string.Format(
+				CultureInfo.CurrentCulture,
+				_localization
+					.CurrentStrings
+					.Plan
+					.ShowAllSearches,
+				_store.RecentRoutes.Count);
+
+
 	public bool HasFrom =>
 		From is not null;
 
@@ -246,11 +418,11 @@ public sealed partial class PlanViewModel : ObservableObject
 		To is not null;
 
 
-	public string FromStar =>
+	public IconGlyph FromStar =>
 		Star(From);
 
 
-	public string ToStar =>
+	public IconGlyph ToStar =>
 		Star(To);
 
 
@@ -386,7 +558,8 @@ public sealed partial class PlanViewModel : ObservableObject
 
 	public bool IsPlacesEmpty =>
 		!HasFavourites
-		&& !HasRecents;
+		&& !HasRecents
+		&& !HasRecentRoutes;
 
 
 	public bool CanSearch =>
@@ -404,6 +577,15 @@ public sealed partial class PlanViewModel : ObservableObject
 			{
 				DateTime now =
 					Format.NowLocal();
+
+				// Stop ids belong to one provider: a switch invalidates start and destination.
+				if (!string.Equals(_providerId, _providers.SelectedId, StringComparison.OrdinalIgnoreCase))
+				{
+					_providerId = _providers.SelectedId;
+					From = null;
+					To = null;
+					OnPropertyChanged(nameof(IsTrackingAvailable));
+				}
 
 				MinDate =
 					now.Date;
@@ -606,6 +788,10 @@ public sealed partial class PlanViewModel : ObservableObject
 		_store.AddRecent(query.To);
 		_store.AddRecent(query.From);
 
+		_store.AddRecentRoute(
+			query.From,
+			query.To);
+
 		await OpenResults(query);
 	}
 
@@ -627,19 +813,19 @@ public sealed partial class PlanViewModel : ObservableObject
 	}
 
 
-	private string Star(
+	private IconGlyph Star(
 		Location? place)
 	{
 		try
 		{
 			return place is not null
 				&& _store.IsFavourite(place)
-					? "\u2605"
-					: "\u2606";
+					? IconGlyph.StarFilled
+					: IconGlyph.Star;
 		}
 		catch
 		{
-			return "\u2606";
+			return IconGlyph.Star;
 		}
 	}
 
@@ -665,11 +851,68 @@ public sealed partial class PlanViewModel : ObservableObject
 			RefreshLocalizedProperties);
 
 
+	/// <summary>Rebuilds the list of searched connections, honouring the "show all" toggle.</summary>
+	private void RefreshRoutes()
+	{
+		IReadOnlyList<RoutePair> all =
+			_store.RecentRoutes;
+
+		IEnumerable<RoutePair> shown =
+			ShowAllRoutes
+				? all
+				: all.Take(CollapsedRoutes);
+
+		RecentRoutes.Clear();
+
+		foreach (RoutePair route in shown)
+		{
+			RecentRoutes.Add(
+				new RouteRow(route));
+		}
+
+		CanExpandRoutes =
+			all.Count > CollapsedRoutes;
+
+		if (!CanExpandRoutes
+			&& ShowAllRoutes)
+		{
+			// The list shrank below the fold: fold it back without recursing.
+			ShowAllRoutes = false;
+		}
+
+		OnPropertyChanged(
+			nameof(HasRecentRoutes));
+
+		OnPropertyChanged(
+			nameof(RoutesToggleText));
+	}
+
+
+	private async Task UseRouteAsync(
+		RouteRow? row)
+	{
+		if (row is null)
+		{
+			return;
+		}
+
+		From = row.Route.From;
+		To = row.Route.To;
+
+		if (CanSearch)
+		{
+			await SearchAsync();
+		}
+	}
+
+
 	private void RefreshPlaces()
 	{
 		Safe(
 			() =>
 			{
+				RefreshRoutes();
+
 				Replace(
 					Recents,
 					_store.Recents);
@@ -702,13 +945,22 @@ public sealed partial class PlanViewModel : ObservableObject
 			nameof(FromText));
 
 		OnPropertyChanged(
+			nameof(FromName));
+
+		OnPropertyChanged(
 			nameof(ToText));
+
+		OnPropertyChanged(
+			nameof(ToName));
 
 		OnPropertyChanged(
 			nameof(WhenText));
 
 		OnPropertyChanged(
 			nameof(ModeText));
+
+		OnPropertyChanged(
+			nameof(RoutesToggleText));
 	}
 
 

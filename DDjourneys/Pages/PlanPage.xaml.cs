@@ -15,6 +15,7 @@ public partial class PlanPage : ContentPage, IQueryAttributable
 		AppSettings settings)
 	{
 		InitializeComponent();
+		Motion.Prepare(this);
 
 		_settings = settings;
 		_localization = LocalizationService.Current;

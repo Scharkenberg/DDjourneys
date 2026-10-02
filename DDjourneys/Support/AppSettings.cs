@@ -68,6 +68,13 @@ public sealed class AppSettings
 
 	// ----- Journey / provider -----
 
+	/// <summary>Id of the selected data provider (empty = the first registered one).</summary>
+	public string ProviderId
+	{
+		get => Read("providerId", string.Empty);
+		set => Write("providerId", value);
+	}
+
 	/// <summary>How many journeys to request (clamped to 3..10).</summary>
 	public int MaxResults
 	{

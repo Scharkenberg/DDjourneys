@@ -10,6 +10,7 @@ public partial class TrackedJourneysPage : ContentPage
 	public TrackedJourneysPage(TrackedJourneysViewModel vm)
 	{
 		InitializeComponent();
+		Motion.Prepare(this);
 
 		BindingContext = _vm = vm;
 

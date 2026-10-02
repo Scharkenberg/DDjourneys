@@ -1,0 +1,144 @@
+using DDjourneys.Core.Providers;
+using DDjourneys.Core.Providers.Abstractions;
+using DDjourneys.Localization;
+using DDjourneys.Support;
+
+namespace DDjourneys.Pages;
+
+/// <summary>One provider as the list shows it.</summary>
+public sealed class ProviderRow : ObservableObject
+{
+	public ProviderRow(
+		ProviderInfo info,
+		IReadOnlyList<string> capabilities,
+		Command select)
+	{
+		Info = info;
+		Capabilities = capabilities;
+		SelectCommand = select;
+	}
+
+	public ProviderInfo Info { get; }
+
+	public string Name => Info.Name;
+
+	public string FullName => Info.FullName;
+
+	public string Coverage => Info.Coverage;
+
+	/// <summary>Localized labels of what the provider supports.</summary>
+	public IReadOnlyList<string> Capabilities { get; }
+
+	public bool IsSelected
+	{
+		get => field;
+		internal set =>
+			SetProperty(
+				ref field,
+				value);
+	}
+
+	public Command SelectCommand { get; }
+
+	public string Description =>
+		$"{Info.Name}, {Info.FullName}, {Info.Coverage}";
+}
+
+
+/// <summary>Providers of one region (one heading, one card).</summary>
+public sealed record ProviderGroup(
+	string Region,
+	IReadOnlyList<ProviderRow> Rows);
+
+
+/// <summary>Provider picker. Lists whatever the registry holds, grouped by region, so new providers need no UI work.</summary>
+public sealed class ProvidersViewModel : ObservableObject
+{
+	private static readonly (ProviderCapabilities Flag, Func<ProviderStrings, string> Label)[] Labels =
+	[
+		(ProviderCapabilities.Journeys, s => s.CapJourneys),
+		(ProviderCapabilities.Places, s => s.CapPlaces),
+		(ProviderCapabilities.Continuation, s => s.CapContinuation),
+		(ProviderCapabilities.RoutingPreferences, s => s.CapRouting),
+		(ProviderCapabilities.Platforms, s => s.CapPlatforms),
+		(ProviderCapabilities.Occupancy, s => s.CapOccupancy),
+		(ProviderCapabilities.Tracking, s => s.CapTracking)
+	];
+
+	private readonly ProviderRegistry _registry;
+	private readonly LocalizationService _localization;
+
+	public ProvidersViewModel(ProviderRegistry registry)
+	{
+		ArgumentNullException.ThrowIfNull(registry);
+
+		_registry = registry;
+		_localization = LocalizationService.Current;
+
+		_localization.PropertyChanged += OnLocalizationChanged;
+
+		Build();
+	}
+
+	public IReadOnlyList<ProviderGroup> Groups
+	{
+		get => field;
+		private set =>
+			SetProperty(
+				ref field,
+				value);
+	} = [];
+
+	private void Select(ProviderRow row)
+	{
+		_registry.Select(row.Info.Id);
+		RefreshSelection();
+	}
+
+	private void Build()
+	{
+		ProviderStrings strings =
+			_localization.CurrentStrings.Provider;
+
+		Groups =
+			[.. _registry.Providers
+				.GroupBy(provider => provider.Region)
+				.Select(
+					group => new ProviderGroup(
+						group.Key,
+						[.. group.Select(
+							provider =>
+							{
+								ProviderRow? row = null;
+
+								row =
+									new ProviderRow(
+										provider,
+										[.. Labels
+											.Where(label => provider.Supports(label.Flag))
+											.Select(label => label.Label(strings))],
+										new Command(() => Select(row!)));
+
+								return row;
+							})]))];
+
+		RefreshSelection();
+	}
+
+	private void RefreshSelection()
+	{
+		foreach (ProviderRow row in Groups.SelectMany(group => group.Rows))
+		{
+			row.IsSelected =
+				string.Equals(
+					row.Info.Id,
+					_registry.SelectedId,
+					StringComparison.OrdinalIgnoreCase);
+		}
+	}
+
+	private void OnLocalizationChanged(
+		object? sender,
+		System.ComponentModel.PropertyChangedEventArgs e) =>
+		MainThread.BeginInvokeOnMainThread(Build);
+}

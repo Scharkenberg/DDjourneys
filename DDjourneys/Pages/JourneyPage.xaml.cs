@@ -5,15 +5,15 @@ namespace DDjourneys.Pages;
 public partial class JourneyPage : ContentPage
 {
 	private readonly JourneyViewModel _vm;
-	private bool _headerShown;
 
 	public JourneyPage(JourneyViewModel vm)
 	{
 		InitializeComponent();
+		Motion.Prepare(this);
 		BindingContext = _vm = vm;
 	}
 
-	protected override async void OnAppearing()
+	protected override void OnAppearing()
 	{
 		base.OnAppearing();
 		_vm.RefreshFromSettings();
@@ -29,13 +29,7 @@ public partial class JourneyPage : ContentPage
 
 		_vm.StartObservingTracking();
 
-		if (_headerShown)
-		{
-			return;
-		}
-
-		_headerShown = true;
-		await Motion.RevealAsync(HeaderBlock, 0, 300, 16);
+		Motion.EnterPage(this);
 	}
 
 	protected override void OnDisappearing()

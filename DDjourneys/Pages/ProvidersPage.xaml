@@ -1,0 +1,98 @@
+<ContentPage
+	x:Class="DDjourneys.Pages.ProvidersPage"
+	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+	xmlns:controls="clr-namespace:DDjourneys.Controls"
+	xmlns:local="clr-namespace:DDjourneys.Pages"
+	xmlns:localization="clr-namespace:DDjourneys.Localization"
+	Title="{localization:Tr Provider.Title}"
+	x:DataType="local:ProvidersViewModel">
+
+	<ScrollView>
+		<VerticalStackLayout Padding="{StaticResource PadPage}" Spacing="{StaticResource SpaceS}">
+
+			<Label StyleClass="Caption" Text="{localization:Tr Provider.Intro}" />
+
+			<VerticalStackLayout BindableLayout.ItemsSource="{Binding Groups}" Spacing="{StaticResource SpaceS}">
+
+				<BindableLayout.ItemTemplate>
+					<DataTemplate x:DataType="local:ProviderGroup">
+
+						<VerticalStackLayout Spacing="{StaticResource SpaceS}">
+
+							<Label
+								Margin="0,8,0,0"
+								SemanticProperties.HeadingLevel="Level2"
+								StyleClass="Section"
+								Text="{Binding Region}" />
+
+							<Border Padding="0" StyleClass="Card">
+								<VerticalStackLayout BindableLayout.ItemsSource="{Binding Rows}">
+
+									<BindableLayout.ItemTemplate>
+										<DataTemplate x:DataType="local:ProviderRow">
+
+											<Grid
+												Padding="14,12"
+												ColumnDefinitions="*,Auto"
+												ColumnSpacing="12"
+												MinimumHeightRequest="64"
+												SemanticProperties.Description="{Binding Description}">
+
+												<VerticalStackLayout Spacing="3" VerticalOptions="Center">
+
+													<Label FontFamily="OpenSansSemibold" Text="{Binding Name}" />
+
+													<Label StyleClass="Caption" Text="{Binding FullName}" />
+
+													<Label StyleClass="Faint" Text="{Binding Coverage}" />
+
+													<!--  What it supports: informative, not tappable, so pill-shaped chips are fine  -->
+													<FlexLayout
+														Margin="0,4,0,0"
+														BindableLayout.ItemsSource="{Binding Capabilities}"
+														Wrap="Wrap">
+
+														<BindableLayout.ItemTemplate>
+															<DataTemplate x:DataType="x:String">
+																<Border
+																	Margin="0,0,6,6"
+																	FlexLayout.Shrink="0"
+																	StyleClass="Chip">
+																	<Label StyleClass="Faint" Text="{Binding .}" />
+																</Border>
+															</DataTemplate>
+														</BindableLayout.ItemTemplate>
+													</FlexLayout>
+												</VerticalStackLayout>
+
+												<controls:Icon
+													Grid.Column="1"
+													Glyph="Check"
+													IsVisible="{Binding IsSelected}"
+													Size="20"
+													VerticalOptions="Start"
+													Color="{DynamicResource Accent}" />
+
+												<Grid.GestureRecognizers>
+													<TapGestureRecognizer Command="{Binding SelectCommand}" />
+												</Grid.GestureRecognizers>
+											</Grid>
+										</DataTemplate>
+									</BindableLayout.ItemTemplate>
+								</VerticalStackLayout>
+							</Border>
+						</VerticalStackLayout>
+					</DataTemplate>
+				</BindableLayout.ItemTemplate>
+			</VerticalStackLayout>
+
+			<Label
+				Margin="0,8"
+				HorizontalOptions="Center"
+				StyleClass="Caption"
+				Text="{localization:Tr Provider.Footer}" />
+
+		</VerticalStackLayout>
+	</ScrollView>
+</ContentPage>

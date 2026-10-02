@@ -15,10 +15,6 @@
 			Command="{Binding OpenExpertCommand}"
 			Order="Secondary"
 			Text="{localization:Tr Expert.Open}" />
-		<ToolbarItem
-			Command="{Binding ShareCommand}"
-			SemanticProperties.Description="{localization:Tr Common.Share}"
-			Text="&#x2934;" />
 	</ContentPage.ToolbarItems>
 
 	<ContentPage.Resources>
@@ -50,7 +46,16 @@
 					<Label
 						IsVisible="{Binding HasDelay}"
 						StyleClass="Delay"
-						Text="{Binding DelayText}" />
+						Text="{Binding DelayText}">
+						<Label.Triggers>
+							<DataTrigger
+								Binding="{Binding IsEarly}"
+								TargetType="Label"
+								Value="True">
+								<Setter Property="TextColor" Value="{DynamicResource OnTime}" />
+							</DataTrigger>
+						</Label.Triggers>
+					</Label>
 				</VerticalStackLayout>
 
 				<Grid Grid.Column="1" RowDefinitions="16,*">
@@ -154,7 +159,16 @@
 						<Label
 							IsVisible="{Binding HasDelay}"
 							StyleClass="Delay"
-							Text="{Binding DelayText}" />
+							Text="{Binding DelayText}">
+							<Label.Triggers>
+								<DataTrigger
+									Binding="{Binding IsEarly}"
+									TargetType="Label"
+									Value="True">
+									<Setter Property="TextColor" Value="{DynamicResource OnTime}" />
+								</DataTrigger>
+							</Label.Triggers>
+						</Label>
 
 						<Label
 							IsVisible="{Binding IsNotServed}"
@@ -263,20 +277,12 @@
 							TextColor="{DynamicResource Accent}"
 							VerticalOptions="Center" />
 
-						<Grid
-							HeightRequest="24"
+						<controls:Icon
+							Glyph="ChevronDown"
+							Rotation="{Binding ChevronRotation}"
+							Size="18"
 							VerticalOptions="Center"
-							WidthRequest="24">
-
-							<Polygon
-								Fill="{DynamicResource Accent}"
-								HeightRequest="8"
-								HorizontalOptions="Center"
-								Points="0,0 12,0 6,8"
-								Rotation="{Binding ChevronRotation}"
-								VerticalOptions="Center"
-								WidthRequest="12" />
-						</Grid>
+							Color="{DynamicResource Accent}" />
 
 						<HorizontalStackLayout.GestureRecognizers>
 							<TapGestureRecognizer Tapped="StopsToggled" />
@@ -312,10 +318,12 @@
 
 					<Label FontFamily="OpenSansSemibold" Text="{Binding Text}" />
 
-					<Label
+					<controls:StopNameView
+						Compact="True"
 						IsVisible="{Binding HasCaption}"
-						StyleClass="Caption"
-						Text="{Binding Caption}" />
+						Place="{Binding CaptionPlace}"
+						Prefix="{Binding CaptionPrefix}"
+						Stop="{Binding CaptionName}" />
 				</VerticalStackLayout>
 			</Grid>
 		</DataTemplate>
@@ -352,7 +360,16 @@
 						<Label
 							IsVisible="{Binding HasArrivalDelay}"
 							StyleClass="Delay"
-							Text="{Binding ArrivalDelay}" />
+							Text="{Binding ArrivalDelay}">
+							<Label.Triggers>
+								<DataTrigger
+									Binding="{Binding ArrivalIsEarly}"
+									TargetType="Label"
+									Value="True">
+									<Setter Property="TextColor" Value="{DynamicResource OnTime}" />
+								</DataTrigger>
+							</Label.Triggers>
+						</Label>
 					</VerticalStackLayout>
 
 					<VerticalStackLayout
@@ -366,7 +383,16 @@
 						<Label
 							IsVisible="{Binding HasDepartureDelay}"
 							StyleClass="Delay"
-							Text="{Binding DepartureDelay}" />
+							Text="{Binding DepartureDelay}">
+							<Label.Triggers>
+								<DataTrigger
+									Binding="{Binding DepartureIsEarly}"
+									TargetType="Label"
+									Value="True">
+									<Setter Property="TextColor" Value="{DynamicResource OnTime}" />
+								</DataTrigger>
+							</Label.Triggers>
+						</Label>
 
 						<controls:OccupancyIndicator IsVisible="{Binding HasDepartureOccupancy}" Level="{Binding DepartureOccupancy}" />
 					</VerticalStackLayout>
@@ -487,12 +513,27 @@
 
 			<VerticalStackLayout x:Name="HeaderBlock" Spacing="{StaticResource SpaceM}">
 
-				<VerticalStackLayout Spacing="2">
+				<Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource SpaceS}">
 
-					<Label StyleClass="Title" Text="{Binding RouteText}" />
+					<VerticalStackLayout Spacing="4">
 
-					<Label StyleClass="Caption" Text="{Binding DayText}" />
-				</VerticalStackLayout>
+						<controls:RouteView
+							From="{Binding FromName}"
+							FromPlace="{Binding FromPlace}"
+							NameFontSize="{StaticResource FontTitle}"
+							To="{Binding ToName}"
+							ToPlace="{Binding ToPlace}" />
+
+						<Label StyleClass="Caption" Text="{Binding DayText}" />
+					</VerticalStackLayout>
+
+					<controls:IconButton
+						Grid.Column="1"
+						Command="{Binding ShareCommand}"
+						Glyph="Share"
+						SemanticProperties.Description="{localization:Tr Common.Share}"
+						VerticalOptions="Start" />
+				</Grid>
 
 				<controls:JourneyCard BindingContext="{Binding Summary}" />
 

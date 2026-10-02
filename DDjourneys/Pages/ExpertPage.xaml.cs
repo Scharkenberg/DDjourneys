@@ -7,6 +7,7 @@ public partial class ExpertPage : ContentPage
 	public ExpertPage(ExpertViewModel vm)
 	{
 		InitializeComponent();
+		Motion.Prepare(this);
 
 		BindingContext = vm;
 	}

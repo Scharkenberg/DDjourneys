@@ -46,7 +46,12 @@ public sealed class GermanUiStrings : IUiStrings
 		Time = "Zeit",
 		LeaveNow = "Jetzt",
 		Favourites = "Favoriten",
-		Recent = "Zuletzt",
+		Recent = "Zuletzt gesucht",
+		RecentSearches = "Letzte Suchen",
+		ShowAllSearches = "Alle {0} anzeigen",
+		ShowFewer = "Weniger anzeigen",
+		ForgetSearch = "Diese Suche entfernen",
+		SearchAgain = "Diese Verbindung erneut suchen",
 		StartAndDestinationRequired =
 			"Start und Ziel sind erforderlich.",
 		PlacesYouSearchForWillAppearHere =
@@ -128,6 +133,7 @@ public sealed class GermanUiStrings : IUiStrings
 			"Anschluss kann verpasst werden",
 		ChangeAt = "Umstieg bei",
 		Platform = "Steig",
+		WithinStop = "innerhalb der Haltestelle",
 		Track = "Gleis",
 		LowFloor = "Niederflur",
 		WheelchairAccessible =
@@ -257,6 +263,21 @@ public sealed class GermanUiStrings : IUiStrings
 		AvoidEscalatorsDescription = "Gilt, wenn keine Barrierefreiheitsstufe gewählt ist",
 		FewestTransfers = "Wenigste Umstiege",
 		FewestTransfersDescription = "Weniger Umstiege vor schnellerer Fahrt"
+	};
+
+	public ProviderStrings Provider { get; } = new()
+	{
+		Title = "Anbieter",
+		Intro = "Woher Verbindungen und Haltestellen kommen. Jeder Anbieter deckt seine eigene Region ab; ein Wechsel setzt Start und Ziel zurück.",
+		InUse = "Aktiv",
+		CapJourneys = "Verbindungen",
+		CapPlaces = "Haltestellensuche",
+		CapContinuation = "Früher / später",
+		CapTracking = "Live-Verfolgung",
+		CapOccupancy = "Auslastung",
+		CapPlatforms = "Steige und Gleise",
+		CapRouting = "Routenpräferenzen",
+		Footer = "Weitere Anbieter können in künftigen Versionen folgen."
 	};
 
 	public ExpertStrings Expert { get; } = new()

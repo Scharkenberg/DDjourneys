@@ -1,23 +1,21 @@
-﻿using DDjourneys.Support;
+using DDjourneys.Support;
 
 namespace DDjourneys.Pages;
 
-public partial class ThemesPage : ContentPage
+public partial class ProvidersPage : ContentPage
 {
-	private readonly ThemesViewModel _vm;
-
-	public ThemesPage(ThemesViewModel vm)
+	public ProvidersPage(ProvidersViewModel vm)
 	{
 		InitializeComponent();
 		Motion.Prepare(this);
-		_vm = vm;
+
 		BindingContext = vm;
 	}
 
 	protected override void OnAppearing()
 	{
 		base.OnAppearing();
-		_vm.Refresh();
+
 		Motion.EnterPage(this);
 	}
 }
