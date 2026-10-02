@@ -22,12 +22,20 @@
 					Text="{localization:Tr Plan.Title}"
 					VerticalOptions="Center" />
 
-				<Button
-					Grid.Column="1"
-					Clicked="SettingsClicked"
-					SemanticProperties.Description="{localization:Tr Settings.Title}"
-					StyleClass="IconButton"
-					Text="&#x2699;" />
+				<HorizontalStackLayout Grid.Column="1" Spacing="0">
+					<Button
+						Clicked="TrackedClicked"
+						IsVisible="{Binding IsTrackingAvailable}"
+						SemanticProperties.Description="{localization:Tr Tracking.FollowedJourneys}"
+						StyleClass="IconButton"
+						Text="&#x1F514;" />
+
+					<Button
+						Clicked="SettingsClicked"
+						SemanticProperties.Description="{localization:Tr Settings.Title}"
+						StyleClass="IconButton"
+						Text="&#x2699;" />
+				</HorizontalStackLayout>
 			</Grid>
 
 			<!--  From / To  -->

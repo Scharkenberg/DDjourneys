@@ -103,6 +103,13 @@ public partial class PlanPage : ContentPage, IQueryAttributable
 			Routes.Settings,
 			[]);
 
+	private async void TrackedClicked(
+		object? sender,
+		EventArgs e) =>
+		await NavigateAsync(
+			Routes.Tracked,
+			[]);
+
 	private async void SwapClicked(
 		object? sender,
 		EventArgs e)

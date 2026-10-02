@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
 using DDjourneys.Core.Models;
+using DDjourneys.Core.Tracking;
 using DDjourneys.Localization;
 using DDjourneys.Support;
 using Location = DDjourneys.Core.Models.Location;
@@ -19,12 +20,19 @@ public sealed partial class PlanViewModel : ObservableObject
 	private DateTime _when;
 	private bool _syncing;
 
+	/// <summary>Whether the platform can follow journeys (shows the entry to the overview).</summary>
+	public bool IsTrackingAvailable { get; }
+
 	public PlanViewModel(
 		PlaceStore store,
-		AppSettings settings)
+		AppSettings settings,
+		IJourneyTracker tracker)
 	{
 		ArgumentNullException.ThrowIfNull(store);
 		ArgumentNullException.ThrowIfNull(settings);
+		ArgumentNullException.ThrowIfNull(tracker);
+
+		IsTrackingAvailable = tracker.IsAvailable;
 
 		_store = store;
 		_settings = settings;

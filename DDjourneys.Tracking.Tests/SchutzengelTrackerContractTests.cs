@@ -586,63 +586,6 @@ public sealed class SchutzengelTrackerContractTests
 	}
 
 
-	[Theory]
-	[InlineData(
-		"{\"notifications\":[{\"message\":\"Missed connection\"}]}",
-		JourneyTrackingEventKind.RiskChanged,
-		TrackingPhase.AtRisk)]
-	[InlineData(
-		"{\"tripCancelled\":true}",
-		JourneyTrackingEventKind.Cancelled,
-		TrackingPhase.Cancelled)]
-	[InlineData(
-		"{\"status\":\"arrived\"}",
-		JourneyTrackingEventKind.Arrived,
-		TrackingPhase.Arrived)]
-	public void Realtime_and_notification_responses_map_to_contract_events(
-		string response,
-		JourneyTrackingEventKind expectedKind,
-		TrackingPhase expectedPhase)
-	{
-		TrackingPhase phase =
-			SchutzengelRealtimeTranslator.Translate(
-				response,
-				out JourneyTrackingEventKind kind,
-				out _);
-
-
-		Assert.Equal(
-			expectedKind,
-			kind);
-
-
-		Assert.Equal(
-			expectedPhase,
-			phase);
-	}
-
-
-	[Fact]
-	public void Restart_recovery_matches_exact_plan_identifier()
-	{
-		using JsonDocument plans =
-			JsonDocument.Parse(
-				"{\"plans\":[{\"plan_id\":\"plan-17\"},{\"plan_id\":\"plan-170\"}]}");
-
-
-		Assert.True(
-			SchutzengelPlanRecovery.ContainsPlan(
-				plans.RootElement,
-				"plan-17"));
-
-
-		Assert.False(
-			SchutzengelPlanRecovery.ContainsPlan(
-				plans.RootElement,
-				"plan-1"));
-	}
-
-
 	[Fact]
 	public async Task Deactivation_and_delete_use_separate_lifecycle_endpoints()
 	{
@@ -768,6 +711,7 @@ public sealed class SchutzengelTrackerContractTests
 		using var options =
 			await api.SetOptionsAsync(
 				"plan-9",
+				SchutzengelOptions.Default,
 				default);
 
 
@@ -821,79 +765,6 @@ public sealed class SchutzengelTrackerContractTests
 
 
 	[Fact]
-	public void Journey_snapshot_round_trips_for_process_restart_recovery()
-	{
-		var journey =
-			new Journey
-			{
-				Id = "restart-test",
-
-				From =
-					Station(
-						"from",
-						"Start"),
-
-				To =
-					Station(
-						"to",
-						"End"),
-
-				Legs =
-				[
-					new JourneyLeg
-					{
-						Mode =
-							TransitMode.Tram,
-
-						From =
-							Station(
-								"from",
-								"Start"),
-
-						To =
-							Station(
-								"to",
-								"End"),
-
-						ScheduledDeparture =
-							DateTimeOffset.UtcNow.AddHours(1),
-
-						ScheduledArrival =
-							DateTimeOffset.UtcNow.AddHours(2),
-
-						Line =
-							new TransitLine
-							{
-								Name = "2",
-								Mode = TransitMode.Tram
-							}
-					}
-				]
-			};
-
-
-		Journey? restored =
-			JsonSerializer.Deserialize<Journey>(
-				JsonSerializer.Serialize(
-					journey));
-
-
-		Assert.NotNull(
-			restored);
-
-
-		Assert.Equal(
-			"restart-test",
-			restored.Id);
-
-
-		Assert.Equal(
-			"2",
-			restored.Legs[0].Line?.Name);
-	}
-
-
-	[Fact]
 	public async Task Windows_tracker_is_a_noop_and_reports_unavailable()
 	{
 		var tracker =
@@ -921,12 +792,21 @@ public sealed class SchutzengelTrackerContractTests
 		Assert.False(
 			tracker.IsAvailable);
 
+		Assert.Empty(
+			tracker.Watched);
 
-		await tracker.StartAsync(
-			journey);
+		Assert.Null(
+			tracker.Find(journey));
 
+		Assert.False(
+			await tracker.CanNotifyAsync());
 
-		await tracker.StopAsync();
+		await Assert.ThrowsAsync<NotSupportedException>(
+			() => tracker.FollowAsync(journey));
+
+		await tracker.RefreshAsync();
+
+		await tracker.DeleteAllAsync();
 
 
 		await foreach (JourneyTrackingEvent _ in

@@ -1,87 +1,54 @@
+using System.Diagnostics;
 using Microsoft.Maui.Storage;
-using DDjourneys.Core.Models;
-using System.Text.Json;
 
 namespace DDjourneys.Platforms.Android.LiveJourney.Schutzengel;
 
+/// <summary>
+/// Persists the anonymous account token. Only the token lives here; everything else about a
+/// followed journey is stored by the service itself and reloaded from there.
+/// </summary>
 internal sealed class SchutzengelTokenStore
 {
-	private const string TokenKey =
-		"schutzengel_auth_token";
+	private const string TokenKey = "schutzengel_auth_token";
 
-	private const string JourneyKey =
-		"schutzengel_active_journey_snapshot";
-
-
-	public Task<string?> GetAsync(
-		CancellationToken cancellationToken)
+	public async Task<string?> GetAsync(CancellationToken cancellationToken)
 	{
 		cancellationToken.ThrowIfCancellationRequested();
 
-		return SecureStorage.Default.GetAsync(
-			TokenKey);
+		try
+		{
+			return await SecureStorage.Default.GetAsync(TokenKey).ConfigureAwait(false);
+		}
+		catch (Exception ex)
+		{
+			// A keystore that cannot decrypt (restored backup, reset lock screen) throws.
+			// The token is only an anonymous account, so starting over is the right recovery.
+			Debug.WriteLine($"[SCHUTZENGEL] Token storage unreadable, discarding it: {ex.Message}");
+
+			RemoveToken();
+
+			return null;
+		}
 	}
 
-
-	public Task SetAsync(
-		string value,
-		CancellationToken cancellationToken)
+	public Task SetAsync(string value, CancellationToken cancellationToken)
 	{
 		cancellationToken.ThrowIfCancellationRequested();
 
-		ArgumentException.ThrowIfNullOrWhiteSpace(
-			value);
+		ArgumentException.ThrowIfNullOrWhiteSpace(value);
 
-		return SecureStorage.Default.SetAsync(
-			TokenKey,
-			value);
+		return SecureStorage.Default.SetAsync(TokenKey, value);
 	}
-
 
 	public void RemoveToken()
 	{
-		SecureStorage.Default.Remove(
-			TokenKey);
-	}
-
-
-	public Task SaveJourneyAsync(
-		Journey journey,
-		CancellationToken cancellationToken)
-	{
-		cancellationToken.ThrowIfCancellationRequested();
-
-		ArgumentNullException.ThrowIfNull(
-			journey);
-
-		return SecureStorage.Default.SetAsync(
-			JourneyKey,
-			JsonSerializer.Serialize(journey));
-	}
-
-
-	public async Task<Journey?> GetJourneyAsync(
-		CancellationToken cancellationToken)
-	{
-		cancellationToken.ThrowIfCancellationRequested();
-
-		string? json =
-			await SecureStorage.Default.GetAsync(
-				JourneyKey);
-
-		if (string.IsNullOrWhiteSpace(json))
+		try
 		{
-			return null;
+			SecureStorage.Default.Remove(TokenKey);
 		}
-
-		return JsonSerializer.Deserialize<Journey>(
-			json);
-	}
-
-
-	public void RemoveJourney()
-	{
-		SecureStorage.Default.Remove(
-			JourneyKey);
+		catch (Exception ex)
+		{
+			Debug.WriteLine($"[SCHUTZENGEL] Token removal failed: {ex.Message}");
+		}
 	}
 }

@@ -1,67 +1,75 @@
+using System.Diagnostics;
+using System.Globalization;
+using System.Net;
 using System.Text.Json;
-using System.Threading.Channels;
 using DDjourneys.Core.Models;
 using DDjourneys.Core.Providers.Abstractions;
 using DDjourneys.Core.Providers.Vvo;
-using DDjourneys.Core.Providers.Vvo.Models;
 using DDjourneys.Core.Tracking;
+using DDjourneys.Core.Providers.Vvo.Models;
+using DDjourneys.Localization;
+using Android.App;
+using Android.Content;
 
 namespace DDjourneys.Platforms.Android.LiveJourney.Schutzengel;
 
-internal sealed class SchutzengelJourneyTracker :
-	IJourneyTracker
+/// <summary>
+/// Keeps the watchlist of followed journeys in sync with the Schutzengel service and turns it into
+/// live notifications.
+///
+/// The service owns the plans (<c>plansMinimal</c>, <c>planRawData</c>); this class only caches
+/// what it needs, so the overview survives process death without any local persistence besides the
+/// anonymous account token. Like the reference client it polls <c>planRealtime</c> and
+/// <c>notifications</c> with the last <c>data_version</c> / <c>notification_count</c>, keeps a server
+/// clock offset and derives progress from the clock between polls.
+///
+/// All state is guarded by <see cref="_gate"/>. Events, notifications and the foreground service are
+/// only touched after the gate has been released.
+/// </summary>
+internal sealed class SchutzengelJourneyTracker : IJourneyTracker
 {
-	internal static Func<Task>? DeactivateHandler { get; set; }
-	internal static Func<Task>? DeleteHandler { get; set; }
+	private static readonly TimeSpan SyncInterval = TimeSpan.FromSeconds(60);
+	private static readonly TimeSpan RenderInterval = TimeSpan.FromSeconds(10);
+	private static readonly TimeSpan PlanListInterval = TimeSpan.FromMinutes(5);
+	private static readonly TimeSpan ClockInterval = TimeSpan.FromMinutes(10);
 
+	/// <summary>
+	/// A journey is watched in the background from this long before its alert lead time on.
+	/// Without push messages the app has to be running (as foreground service) to notice a start.
+	/// </summary>
+	private static readonly TimeSpan MonitorWindow = TimeSpan.FromHours(2);
 
-	private static readonly TimeSpan NetworkSyncInterval =
-		TimeSpan.FromSeconds(60);
+	/// <summary>A "connection endangered" notice only marks the journey while it is recent.</summary>
+	private static readonly TimeSpan RiskNoticeAge = TimeSpan.FromMinutes(45);
 
-	private static readonly TimeSpan ProgressUpdateInterval =
-		TimeSpan.FromSeconds(1);
-
-
+	private readonly IJourneyProvider _provider;
 	private readonly SchutzengelApi _api;
-	private readonly IJourneyProvider _journeyProvider;
 	private readonly SchutzengelTokenStore _tokens = new();
 
-	private readonly Channel<JourneyTrackingEvent> _events =
-		Channel.CreateUnbounded<JourneyTrackingEvent>();
+	private readonly SemaphoreSlim _gate = new(1, 1);
+	private readonly Dictionary<string, WatchEntry> _entries = new(StringComparer.Ordinal);
+	private readonly Dictionary<string, string> _dismissed = new(StringComparer.Ordinal);
+	private readonly TrackingEventBroadcaster<JourneyTrackingEvent> _events = new();
 
+	private readonly List<string> _pendingForgotten = [];
+
+	private readonly object _runtimeGate = new();
+
+	private volatile IReadOnlyList<WatchedJourney> _watched = [];
+
+	private TimeSpan _serverOffset = TimeSpan.Zero;
+	private DateTimeOffset _clockSyncedAt = DateTimeOffset.MinValue;
+	private DateTimeOffset _planListSyncedAt = DateTimeOffset.MinValue;
+	private string? _liveKey;
 
 	private CancellationTokenSource? _loopCancellation;
+	private Task? _loop;
+	private bool _runWanted;
+	private bool _serviceRunning;
 
-	private Task? _networkLoopTask;
-	private Task? _progressLoopTask;
-
-
-	private Journey? _journey;
-	private string? _planId;
-	private string? _tripId;
-
-	private LiveJourneyState? _state;
-
-	private SchutzengelTripTimeline? _tripTimeline;
-
-	private string? _realtimeDataVersion;
-	private int? _notificationCount;
-
-	private TrackingPhase? _remotePhase;
-	private string? _remoteMessage;
-
-	private TimeSpan _serverTimeOffset;
-
-
-	public SchutzengelJourneyTracker(
-		IJourneyProvider journeyProvider,
-		HttpClient? http = null)
+	public SchutzengelJourneyTracker(IJourneyProvider journeyProvider, HttpClient? http = null)
 	{
-		_journeyProvider =
-			journeyProvider
-			?? throw new ArgumentNullException(
-				nameof(journeyProvider));
-
+		_provider = journeyProvider ?? throw new ArgumentNullException(nameof(journeyProvider));
 
 		_api =
 			new SchutzengelApi(
@@ -70,1747 +78,1179 @@ internal sealed class SchutzengelJourneyTracker :
 				_tokens.SetAsync,
 				_tokens.RemoveToken);
 
-
-		DeactivateHandler =
-			() => StopAsync();
-
-
-		DeleteHandler =
-			EndAsync;
+		Current = this;
 	}
 
+	/// <summary>Reachable from Android components that DI does not create (receiver, service).</summary>
+	internal static SchutzengelJourneyTracker? Current { get; private set; }
 
-	public bool IsAvailable =>
-		true;
+	public bool IsAvailable => true;
 
+	public IAsyncEnumerable<JourneyTrackingEvent> Events => _events.SubscribeAsync();
 
-	public IAsyncEnumerable<JourneyTrackingEvent> Events =>
-		_events.Reader.ReadAllAsync();
+	public IReadOnlyList<WatchedJourney> Watched => _watched;
 
+	public event EventHandler? WatchedChanged;
 
-	internal async Task ResumeStoredAsync(
-		CancellationToken cancellationToken = default)
+	private DateTimeOffset Now => DateTimeOffset.UtcNow + _serverOffset;
+
+	// ----- Queries -----
+
+	public WatchedJourney? Find(Journey journey)
 	{
-		if (!Preferences.Default.Get(
-			"schutzengel_tracking_active",
-			false))
+		ArgumentNullException.ThrowIfNull(journey);
+
+		string? key = JourneyFingerprint.Of(journey);
+
+		return key is null
+			? null
+			: _watched.FirstOrDefault(item => string.Equals(item.JourneyKey, key, StringComparison.Ordinal));
+	}
+
+	public Task<bool> CanNotifyAsync(CancellationToken cancellationToken = default)
+	{
+		try
 		{
-			return;
+			var manager =
+				global::Android.App.Application.Context.GetSystemService(Context.NotificationService)
+					as NotificationManager;
+
+			return Task.FromResult(manager?.AreNotificationsEnabled() ?? false);
 		}
-
-
-		Journey? journey =
-			await _tokens.GetJourneyAsync(
-				cancellationToken);
-
-
-		if (journey is not null)
+		catch (Exception ex)
 		{
-			await StartAsync(
-				journey,
-				cancellationToken);
+			Log($"Notification state unreadable: {ex.Message}");
+
+			return Task.FromResult(false);
 		}
 	}
 
+	// ----- Commands -----
 
-	public async Task StartAsync(
-		Journey journey,
-		CancellationToken cancellationToken = default)
+	public async Task<WatchedJourney> FollowAsync(Journey journey, CancellationToken cancellationToken = default)
 	{
-		ArgumentNullException.ThrowIfNull(
-			journey);
+		ArgumentNullException.ThrowIfNull(journey);
 
+		await RequestNotificationPermissionAsync().ConfigureAwait(false);
 
-		System.Diagnostics.Debug.WriteLine(
-			$"[SCHUTZENGEL] Journey.Id = '{journey.Id}'");
+		string? key = JourneyFingerprint.Of(journey);
+		string planId;
 
+		var effects = new List<PendingEffects>(2);
 
-		await StopLoopAsync();
+		await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
 
-
-		_journey =
-			journey;
-
-		_planId = null;
-		_tripId = null;
-
-		_tripTimeline =
-			SchutzengelTripTimeline.FromJourney(
-				journey);
-
-		_realtimeDataVersion = null;
-		_notificationCount = null;
-
-		_remotePhase = null;
-		_remoteMessage = null;
-
-
-		if (OperatingSystem.IsAndroidVersionAtLeast(
-			33))
+		try
 		{
-			PermissionStatus permission =
-				await Permissions.CheckStatusAsync<
-					Permissions.PostNotifications>();
+			await _api.EnsureAuthenticatedAsync(cancellationToken).ConfigureAwait(false);
 
+			effects.Add(await SyncAsync(force: true, cancellationToken).ConfigureAwait(false));
 
-			if (permission !=
-				PermissionStatus.Granted)
+			WatchEntry? existing =
+				key is null
+					? null
+					: _entries.Values.FirstOrDefault(
+						entry => string.Equals(entry.Summary?.Fingerprint, key, StringComparison.Ordinal));
+
+			if (existing is not null)
 			{
-				permission =
-					await Permissions.RequestAsync<
-						Permissions.PostNotifications>();
+				planId = existing.Info.PlanId;
+
+				if (existing.Info.Deactivated)
+				{
+					using JsonDocument activated =
+						await _api.ActivateAsync(planId, cancellationToken).ConfigureAwait(false);
+				}
+			}
+			else
+			{
+				planId = await CreatePlanAsync(journey, cancellationToken).ConfigureAwait(false);
 			}
 
-
-			if (permission !=
-				PermissionStatus.Granted)
-			{
-				throw new InvalidOperationException(
-					"Notification permission is required to follow a journey.");
-			}
+			effects.Add(await SyncAsync(force: true, cancellationToken).ConfigureAwait(false));
+		}
+		finally
+		{
+			_gate.Release();
 		}
 
+		foreach (PendingEffects pending in effects)
+		{
+			Dispatch(pending);
+		}
 
-		await _tokens.SaveJourneyAsync(
-			journey,
+		return _watched.FirstOrDefault(item => item.PlanId == planId)
+			?? throw new InvalidOperationException("The service did not list the followed journey.");
+	}
+
+	public Task RefreshAsync(CancellationToken cancellationToken = default) =>
+		RunAsync(
+			async () =>
+			{
+				if (!await _api.HasAccountAsync(cancellationToken).ConfigureAwait(false))
+				{
+					return Recompute();
+				}
+
+				return await SyncAsync(force: true, cancellationToken).ConfigureAwait(false);
+			},
 			cancellationToken);
 
+	public Task SetActiveAsync(string planId, bool active, CancellationToken cancellationToken = default)
+	{
+		ArgumentException.ThrowIfNullOrWhiteSpace(planId);
 
-		Preferences.Default.Set(
-			"schutzengel_tracking_active",
-			true);
+		return RunAsync(
+			async () =>
+			{
+				// A notification action can arrive in a fresh process whose cache is still empty.
+				using JsonDocument response =
+					active
+						? await _api.ActivateAsync(planId, cancellationToken).ConfigureAwait(false)
+						: await _api.DeactivateAsync(planId, cancellationToken).ConfigureAwait(false);
 
+				if (_entries.TryGetValue(planId, out WatchEntry? entry))
+				{
+					entry.Info = entry.Info with { Deactivated = !active };
+				}
 
-		JourneyTrackingForegroundService.Start();
+				return await SyncAsync(force: true, cancellationToken).ConfigureAwait(false);
+			},
+			cancellationToken);
+	}
 
+	public Task SetOptionsAsync(string planId, WatchOptions options, CancellationToken cancellationToken = default)
+	{
+		ArgumentException.ThrowIfNullOrWhiteSpace(planId);
+		ArgumentNullException.ThrowIfNull(options);
 
-		_loopCancellation =
-			CancellationTokenSource
-				.CreateLinkedTokenSource(
-					cancellationToken);
+		return RunAsync(
+			async () =>
+			{
+				if (!_entries.TryGetValue(planId, out WatchEntry? entry))
+				{
+					return Recompute();
+				}
 
+				SchutzengelOptions updated = entry.Info.Options.With(options);
 
-		CancellationToken ct =
-			_loopCancellation.Token;
+				using JsonDocument response =
+					await _api.SetOptionsAsync(planId, updated, cancellationToken).ConfigureAwait(false);
 
+				entry.Info = entry.Info with { Options = updated };
 
-		try
+				return await SyncAsync(force: true, cancellationToken).ConfigureAwait(false);
+			},
+			cancellationToken);
+	}
+
+	public Task DeleteAsync(string planId, CancellationToken cancellationToken = default)
+	{
+		ArgumentException.ThrowIfNullOrWhiteSpace(planId);
+
+		return RunAsync(
+			async () =>
+			{
+				using JsonDocument response =
+					await _api.DeletePlanAsync(planId, cancellationToken).ConfigureAwait(false);
+
+				Forget(planId);
+
+				return Recompute();
+			},
+			cancellationToken);
+	}
+
+	public Task DeleteAllAsync(CancellationToken cancellationToken = default) =>
+		RunAsync(
+			async () =>
+			{
+				if (await _api.HasAccountAsync(cancellationToken).ConfigureAwait(false))
+				{
+					using JsonDocument response =
+						await _api.DeleteAllPlansAsync(cancellationToken).ConfigureAwait(false);
+				}
+
+				foreach (string planId in _entries.Keys.ToList())
+				{
+					Forget(planId);
+				}
+
+				return Recompute();
+			},
+			cancellationToken);
+
+	/// <summary>Entry point for the notification action buttons.</summary>
+	internal Task HandleNotificationActionAsync(string action, string planId)
+	{
+		switch (action)
 		{
-			await _api.EnsureAuthenticatedAsync(
-				ct);
-
-
-			using (
-				JsonDocument server =
-					await _api.GetServerTimeAsync(
-						ct))
-			{
-				SynchronizeServerTime(
-					server.RootElement);
-			}
-
-
-			string storedPlan =
-				Preferences.Default.Get(
-					"schutzengel_active_plan",
-					string.Empty);
-
-
-			string storedTrip =
-				Preferences.Default.Get(
-					"schutzengel_active_trip",
-					string.Empty);
-
-
-			string storedJourney =
-				Preferences.Default.Get(
-					"schutzengel_active_journey",
-					string.Empty);
-
-
-			if (!string.IsNullOrWhiteSpace(
-				storedPlan)
-				&& !string.IsNullOrWhiteSpace(
-					storedJourney)
-				&& storedJourney !=
-					JourneyIdentity(journey))
-			{
-				try
-				{
-					await _api.DeactivateAsync(
-						storedPlan,
-						ct);
-				}
-				catch
-				{
-				}
-
-
-				try
-				{
-					await _api.DeletePlanAsync(
-						storedPlan,
-						ct);
-				}
-				catch
-				{
-				}
-
-
-				ClearSavedPlan();
-
-
-				storedPlan = string.Empty;
-				storedTrip = string.Empty;
-			}
-
-
-			if (!string.IsNullOrWhiteSpace(
-				storedPlan)
-				&& !string.IsNullOrWhiteSpace(
-					storedTrip))
-			{
-				using JsonDocument plans =
-					await _api.GetAllPlansAsync(
-						ct);
-
-
-				if (SchutzengelPlanRecovery.ContainsPlan(
-					plans.RootElement,
-					storedPlan))
-				{
-					_planId =
-						storedPlan;
-
-					_tripId =
-						storedTrip;
-
-
-					System.Diagnostics.Debug.WriteLine(
-						$"[SCHUTZENGEL] Recovered plan {_planId} / trip {_tripId}");
-				}
-			}
-
-
-			if (_planId is null)
-			{
-				using JsonDocument cleanup =
-					await _api.DeleteAllPlansAsync(
-						ct);
-			}
-
-
-			if (_planId is null)
-			{
-				System.Diagnostics.Debug.WriteLine(
-					"[SCHUTZENGEL] Creating new plan...");
-
-
-				if (_journeyProvider
-					is not VvoJourneyProvider vvoProvider)
-				{
-					throw new InvalidOperationException(
-						"Schutzengel tracking requires the VVO journey provider.");
-				}
-
-
-				(
-					VvoRoute Route,
-					string? SessionId,
-					VvoStatus? Status
-				)? trackingConnection =
-					await vvoProvider.GetSchutzengelConnectionAsync(
-						journey,
-						ct);
-
-
-				if (trackingConnection is null)
-				{
-					throw new InvalidOperationException(
-						"Could not rehydrate the selected VVO connection for Schutzengel.");
-				}
-
-
-				object rawData =
-					SchutzengelRawDataTranslator.Translate(
-						trackingConnection.Value.Route,
-						journey,
-						trackingConnection.Value.SessionId,
-						trackingConnection.Value.Status);
-
-
-				string serializedPlan =
-					SchutzengelPlanTranslator.Serialize(
-						journey,
-						rawData);
-
-
-				System.Diagnostics.Debug.WriteLine(
-					$"""
-					[SCHUTZENGEL] Matched VVO RouteId =
-					{trackingConnection.Value.Route.RouteId}
-					""");
-
-
-				System.Diagnostics.Debug.WriteLine(
-					$"[SCHUTZENGEL] Plan JSON length = {serializedPlan.Length}");
-
-
-				using JsonDocument created =
-					await _api.CreatePlanAsync(
-						serializedPlan,
-						ct);
-
-
-				System.Diagnostics.Debug.WriteLine(
-					$"[SCHUTZENGEL] CreatePlan response = {created.RootElement}");
-
-
-				_planId =
-					ReadId(
-						created.RootElement,
-						"plan_id",
-						"id",
-						"planId");
-
-
-				if (_planId is null)
-				{
-					throw new InvalidOperationException(
-						"Schutzengel plan response did not include a plan ID.");
-				}
-
-
-				System.Diagnostics.Debug.WriteLine(
-					"[SCHUTZENGEL] Fetching plansMinimal...");
-
-
-				using JsonDocument plans =
-					await _api.GetAllPlansAsync(
-						ct);
-
-
-				System.Diagnostics.Debug.WriteLine(
-					$"[SCHUTZENGEL] plansMinimal = {plans.RootElement}");
-
-
-				_tripId =
-					ReadActiveTripId(
-						plans.RootElement,
-						_planId);
-
-
-				if (_tripId is null)
-				{
-					throw new InvalidOperationException(
-						"Schutzengel plansMinimal response did not include an active trip ID for the created plan.");
-				}
-
-
-				Preferences.Default.Set(
-					"schutzengel_active_plan",
-					_planId);
-
-
-				Preferences.Default.Set(
-					"schutzengel_active_trip",
-					_tripId);
-
-
-				Preferences.Default.Set(
-					"schutzengel_active_journey",
-					JourneyIdentity(journey));
-			}
-
-
-			LiveJourneyState initialState =
-				BuildState();
-
-
-			_state =
-				initialState;
-
-
-			Publish(
-				JourneyTrackingEventKind.Started,
-				initialState);
-
-
-			_networkLoopTask =
-				_tripId is null
-					? null
-					: NetworkLoopAsync(
-						ct);
-
-
-			_progressLoopTask =
-				ProgressLoopAsync(
-					ct);
-		}
-		catch (
-			OperationCanceledException)
-			when (ct.IsCancellationRequested)
-		{
-			throw;
-		}
-		catch (Exception ex)
-		{
-			System.Diagnostics.Debug.WriteLine(
-				$"[SCHUTZENGEL] StartAsync failed: {ex}");
-
-
-			string savedJourney =
-				Preferences.Default.Get(
-					"schutzengel_active_journey",
-					string.Empty);
-
-
-			bool mayResumeSavedPlan =
-				string.IsNullOrWhiteSpace(
-					savedJourney)
-				|| savedJourney ==
-					JourneyIdentity(journey);
-
-
-			_planId =
-				mayResumeSavedPlan
-					? Preferences.Default.Get(
-						"schutzengel_active_plan",
-						string.Empty)
-					: string.Empty;
-
-
-			_tripId =
-				mayResumeSavedPlan
-					? Preferences.Default.Get(
-						"schutzengel_active_trip",
-						string.Empty)
-					: string.Empty;
-
-
-			if (string.IsNullOrWhiteSpace(
-				_planId))
-			{
-				_planId = null;
-			}
-
-
-			if (string.IsNullOrWhiteSpace(
-				_tripId))
-			{
-				_tripId = null;
-			}
-
-
-			_tripTimeline =
-				SchutzengelTripTimeline.FromJourney(
-					journey);
-
-
-			_remotePhase = null;
-			_remoteMessage = null;
-
-
-			LiveJourneyState fallbackState =
-				BuildState(
-					$"Local tracking: Schutzengel unavailable ({ex.Message})");
-
-
-			_state =
-				fallbackState;
-
-
-			Publish(
-				JourneyTrackingEventKind.Started,
-				fallbackState);
-
-
-			_progressLoopTask =
-				ProgressLoopAsync(
-					ct);
-
-
-			_networkLoopTask =
-				null;
+			case LiveJourneyNotification.ActionPause:
+				return SetActiveAsync(planId, false);
+
+			case LiveJourneyNotification.ActionStop:
+				return DeleteAsync(planId);
+
+			case LiveJourneyNotification.ActionDismissed:
+				return RunAsync(
+					() =>
+					{
+						if (_entries.TryGetValue(planId, out WatchEntry? entry))
+						{
+							_dismissed[planId] = StateKey(entry);
+						}
+
+						return Task.FromResult(new PendingEffects());
+					},
+					CancellationToken.None);
+
+			default:
+				return Task.CompletedTask;
 		}
 	}
 
-
-	private async Task NetworkLoopAsync(
-		CancellationToken ct)
+	/// <summary>Called when the app comes to the foreground: refreshes and resumes monitoring.</summary>
+	internal async Task ResumeAsync(CancellationToken cancellationToken = default)
 	{
 		try
 		{
-			await SynchronizeSchutzengelAsync(
-				ct);
+			await RefreshAsync(cancellationToken).ConfigureAwait(false);
 		}
-		catch (
-			OperationCanceledException)
-		when (ct.IsCancellationRequested)
+		catch (Exception ex) when (ex is not OperationCanceledException)
 		{
-			return;
-		}
-		catch (Exception ex)
-		{
-			System.Diagnostics.Debug.WriteLine(
-				$"[SCHUTZENGEL] Initial realtime sync failed: {ex}");
-		}
+			Log($"Resume refresh failed: {ex.Message}");
 
-
-		using var timer =
-			new PeriodicTimer(
-				NetworkSyncInterval);
-
-
-		while (
-			!ct.IsCancellationRequested
-			&& _tripId is not null
-			&& _journey is not null)
-		{
-			try
-			{
-				if (!await timer.WaitForNextTickAsync(
-					ct))
-				{
-					return;
-				}
-
-
-				await SynchronizeSchutzengelAsync(
-					ct);
-			}
-			catch (
-				OperationCanceledException)
-			when (ct.IsCancellationRequested)
-			{
-				return;
-			}
-			catch (Exception ex)
-			{
-				System.Diagnostics.Debug.WriteLine(
-					$"[SCHUTZENGEL] Realtime sync failed: {ex.Message}");
-			}
+			// Offline is not fatal: the cached watchlist keeps counting on the local clock.
+			await RunAsync(() => Task.FromResult(Recompute()), CancellationToken.None).ConfigureAwait(false);
 		}
 	}
 
-
-	private async Task SynchronizeSchutzengelAsync(
-		CancellationToken ct)
+	/// <summary>The foreground service reports that the system ended it; monitoring resumes with the app.</summary>
+	internal void ServiceStopped()
 	{
-		Journey? journey =
-			_journey;
+		lock (_runtimeGate)
+		{
+			_serviceRunning = false;
+		}
+	}
 
+	// ----- Plan creation -----
 
-		string? tripId =
-			_tripId;
+	private async Task<string> CreatePlanAsync(Journey journey, CancellationToken cancellationToken)
+	{
+		if (_provider is not VvoJourneyProvider vvo)
+		{
+			throw new InvalidOperationException("Journey tracking requires the VVO journey provider.");
+		}
 
+		(VvoRoute Route, string? SessionId, VvoStatus? Status)? connection =
+			await vvo.GetSchutzengelConnectionAsync(journey, cancellationToken).ConfigureAwait(false);
 
-		if (journey is null
-			|| string.IsNullOrWhiteSpace(tripId))
+		if (connection is null)
+		{
+			throw new InvalidOperationException(
+				"The selected connection is no longer offered by the timetable service.");
+		}
+
+		object rawData =
+			SchutzengelRawDataTranslator.Translate(
+				connection.Value.Route,
+				journey,
+				connection.Value.SessionId,
+				connection.Value.Status);
+
+		string plan =
+			SchutzengelPlanTranslator.Serialize(journey, rawData, SchutzengelOptions.Default);
+
+		using JsonDocument created =
+			await _api.CreatePlanAsync(plan, cancellationToken).ConfigureAwait(false);
+
+		return SchutzengelPlanList.ReadCreatedPlanId(created.RootElement)
+			?? throw new InvalidOperationException("The service did not return a plan id.");
+	}
+
+	private static async Task RequestNotificationPermissionAsync()
+	{
+		if (!OperatingSystem.IsAndroidVersionAtLeast(33))
 		{
 			return;
 		}
 
-
-		string? requestDataVersion =
-			_realtimeDataVersion;
-
-
-		int? requestNotificationCount =
-			_notificationCount;
-
-
-		using JsonDocument server =
-			await _api.GetServerTimeAsync(
-				ct);
-
-
-		SynchronizeServerTime(
-			server.RootElement);
-
-
-		using JsonDocument plans =
-			await _api.GetAllPlansAsync(
-				ct);
-
-
-		if (TryReadPlanInfo(
-			plans.RootElement,
-			_planId,
-			out string? activeTripId,
-			out bool deactivated))
+		try
 		{
-			if (!string.IsNullOrWhiteSpace(
-				activeTripId)
-				&& !string.Equals(
-					activeTripId,
-					_tripId,
-					StringComparison.Ordinal))
+			await MainThread.InvokeOnMainThreadAsync(
+				async () =>
+				{
+					if (await Permissions.CheckStatusAsync<Permissions.PostNotifications>()
+						!= PermissionStatus.Granted)
+					{
+						await Permissions.RequestAsync<Permissions.PostNotifications>();
+					}
+				}).ConfigureAwait(false);
+		}
+		catch (Exception ex)
+		{
+			// Tracking works without notifications; the overview page still shows everything.
+			Log($"Notification permission request failed: {ex.Message}");
+		}
+	}
+
+	// ----- Synchronisation (always called with the gate held) -----
+
+	private async Task RunAsync(Func<Task<PendingEffects>> work, CancellationToken cancellationToken)
+	{
+		PendingEffects effects;
+
+		await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+
+		try
+		{
+			effects = await work().ConfigureAwait(false);
+		}
+		finally
+		{
+			_gate.Release();
+		}
+
+		Dispatch(effects);
+	}
+
+	private async Task<PendingEffects> SyncAsync(bool force, CancellationToken cancellationToken)
+	{
+		if (!await _api.HasAccountAsync(cancellationToken).ConfigureAwait(false))
+		{
+			_entries.Clear();
+
+			return Recompute();
+		}
+
+		DateTimeOffset localNow = DateTimeOffset.UtcNow;
+
+		if (force || localNow - _clockSyncedAt >= ClockInterval)
+		{
+			await SyncClockAsync(localNow, cancellationToken).ConfigureAwait(false);
+		}
+
+		if (force || localNow - _planListSyncedAt >= PlanListInterval || _entries.Count == 0)
+		{
+			await SyncPlanListAsync(localNow, cancellationToken).ConfigureAwait(false);
+		}
+
+		foreach (WatchEntry entry in _entries.Values.ToList())
+		{
+			cancellationToken.ThrowIfCancellationRequested();
+
+			await LoadSummaryAsync(entry, cancellationToken).ConfigureAwait(false);
+			await LoadTripAsync(entry, cancellationToken).ConfigureAwait(false);
+		}
+
+		return Recompute();
+	}
+
+	private async Task SyncClockAsync(DateTimeOffset localNow, CancellationToken cancellationToken)
+	{
+		try
+		{
+			using JsonDocument time = await _api.GetServerTimeAsync(cancellationToken).ConfigureAwait(false);
+
+			if (SchutzengelTime.ReadServerOffset(time.RootElement, localNow) is { } offset)
 			{
-				System.Diagnostics.Debug.WriteLine(
-					$"[SCHUTZENGEL] Active trip changed: {_tripId} -> {activeTripId}");
+				_serverOffset = offset;
+				_clockSyncedAt = localNow;
+			}
+		}
+		catch (Exception ex) when (ex is not OperationCanceledException)
+		{
+			// The device clock is usually right; keep the last known offset.
+			Log($"Server time unavailable: {ex.Message}");
+		}
+	}
 
+	private async Task SyncPlanListAsync(DateTimeOffset localNow, CancellationToken cancellationToken)
+	{
+		using JsonDocument document = await _api.GetAllPlansAsync(cancellationToken).ConfigureAwait(false);
 
-				_tripId =
-					activeTripId;
+		IReadOnlyList<SchutzengelPlanInfo> plans = SchutzengelPlanList.Parse(document.RootElement);
 
+		_planListSyncedAt = localNow;
 
-				Preferences.Default.Set(
-					"schutzengel_active_trip",
-					activeTripId);
+		HashSet<string> known = plans.Select(plan => plan.PlanId).ToHashSet(StringComparer.Ordinal);
 
+		foreach (string vanished in _entries.Keys.Where(id => !known.Contains(id)).ToList())
+		{
+			Forget(vanished);
+		}
 
-				_realtimeDataVersion = null;
-				_notificationCount = null;
+		foreach (SchutzengelPlanInfo plan in plans)
+		{
+			if (_entries.TryGetValue(plan.PlanId, out WatchEntry? entry))
+			{
+				entry.Info = plan;
+			}
+			else
+			{
+				_entries[plan.PlanId] = new WatchEntry(plan);
+			}
+		}
+	}
 
+	private async Task LoadSummaryAsync(WatchEntry entry, CancellationToken cancellationToken)
+	{
+		if (entry.SummaryLoaded)
+		{
+			return;
+		}
 
-				_tripTimeline =
-					SchutzengelTripTimeline.FromJourney(
-						journey);
+		try
+		{
+			using JsonDocument document =
+				await _api.GetPlanAsync(entry.Info.PlanId, cancellationToken).ConfigureAwait(false);
 
+			entry.Summary = SchutzengelRawSummaryParser.ParsePlanRawData(document.RootElement);
+			entry.SummaryLoaded = true;
+		}
+		catch (Exception ex) when (ex is not OperationCanceledException)
+		{
+			Log($"Plan {entry.Info.PlanId}: raw data unavailable: {ex.Message}");
+		}
+	}
 
-				requestDataVersion = null;
-				requestNotificationCount = null;
+	/// <summary>The realtime and notification poll of the reference client for one plan.</summary>
+	private async Task LoadTripAsync(WatchEntry entry, CancellationToken cancellationToken)
+	{
+		SchutzengelPlanInfo info = entry.Info;
 
+		if (info.Deactivated
+			|| entry.Status is WatchStatus.Recent
+			|| info.ActiveTripId is not { Length: > 0 } tripId)
+		{
+			return;
+		}
 
-				tripId =
-					activeTripId;
+		if (!string.Equals(entry.TripId, tripId, StringComparison.Ordinal))
+		{
+			// A periodic plan moved on to its next trip.
+			entry.TripId = tripId;
+			entry.Timeline = null;
+			entry.Notices = [];
+			entry.NoticeCount = 0;
+			entry.NoticesLoaded = false;
+			entry.NoticesSeeded = false;
+			entry.AlertedNotices = 0;
+		}
+
+		// Like the reference client: only plans of today, once their start is known.
+		if (entry.Timeline?.Start is { } start
+			&& start.ToLocalTime().Date != Now.ToLocalTime().Date)
+		{
+			return;
+		}
+
+		try
+		{
+			string? version = entry.Timeline?.DataVersion?.ToString(CultureInfo.InvariantCulture);
+			int? count = version is null ? null : entry.NoticeCount;
+
+			using (SchutzengelResponse realtime =
+				await _api.FetchRealtimeAsync(tripId, version, count, cancellationToken).ConfigureAwait(false))
+			{
+				if (realtime.StatusCode != HttpStatusCode.Created
+					&& TripTimeline.TryParse(realtime.Root, entry.Timeline, out TripTimeline timeline))
+				{
+					entry.Timeline = timeline;
+				}
 			}
 
+			version = entry.Timeline?.DataVersion?.ToString(CultureInfo.InvariantCulture);
+			count = version is null ? null : entry.NoticeCount;
 
-			if (deactivated)
+			using SchutzengelResponse notices =
+				await _api.FetchNotificationsAsync(tripId, version, count, cancellationToken).ConfigureAwait(false);
+
+			if (notices.StatusCode != HttpStatusCode.NoContent
+				&& notices.Root.ValueKind == JsonValueKind.Array)
 			{
-				_remotePhase =
-					TrackingPhase.Paused;
-
-				_remoteMessage =
-					"Schutzengel monitoring is paused.";
-
-
-				RenderProgress();
-
-
-				return;
+				entry.Notices = [.. SchutzengelNotices.Parse(notices.Root)];
+				entry.NoticeCount = notices.Root.GetArrayLength();
+				entry.NoticesLoaded = true;
 			}
-
-
-			if (_remotePhase ==
-				TrackingPhase.Paused)
+			else if (notices.StatusCode == HttpStatusCode.NoContent)
 			{
-				_remotePhase = null;
-				_remoteMessage = null;
+				entry.NoticesLoaded = true;
 			}
+		}
+		catch (Exception ex) when (ex is not OperationCanceledException)
+		{
+			// One broken trip must not stall the others; its cached data keeps being displayed.
+			Log($"Plan {info.PlanId}: trip update failed: {ex.Message}");
+		}
+	}
+
+	private void Forget(string planId)
+	{
+		_entries.Remove(planId);
+		_dismissed.Remove(planId);
+
+		// Notifications are posted by Dispatch; clearing is cheap and idempotent.
+		_pendingForgotten.Add(planId);
+	}
+
+	// ----- Derived state -----
+
+	/// <summary>Recomputes every entry from the cache and the clock and collects what has to happen.</summary>
+	private PendingEffects Recompute()
+	{
+		DateTimeOffset now = Now;
+		TrackingStrings strings = LocalizationService.Current.CurrentStrings.Tracking;
+
+		var effects = new PendingEffects();
+		var views = new List<WatchedJourney>(_entries.Count);
+
+		WatchEntry? focus = null;
+		WatchedJourney? focusView = null;
+		WatchedJourney? waiting = null;
+		bool run = false;
+
+		foreach (WatchEntry entry in _entries.Values)
+		{
+			WatchedJourney view = Evaluate(entry, now, strings, effects);
+
+			views.Add(view);
+
+			if (view.Status == WatchStatus.Active && view.Phase != TrackingPhase.Paused)
+			{
+				run = true;
+
+				if (focusView is null || Before(view.Departure, focusView.Departure))
+				{
+					focus = entry;
+					focusView = view;
+				}
+			}
+			else if (view.Status == WatchStatus.Planned
+				&& view.Departure is { } departure
+				&& departure - entry.Info.Options.StartLead - MonitorWindow <= now)
+			{
+				run = true;
+
+				if (waiting is null || Before(view.Departure, waiting.Departure))
+				{
+					waiting = view;
+				}
+			}
+		}
+
+		views.Sort(CompareViews);
+
+		effects.ShouldRun = run;
+		effects.Forgotten = [.. _pendingForgotten];
+		_pendingForgotten.Clear();
+
+		if (!SameWatchlist(_watched, views))
+		{
+			_watched = views;
+			effects.WatchlistChanged = true;
+		}
+
+		ScheduleLiveNotification(focus, focusView, waiting, run, now, strings, effects);
+
+		return effects;
+	}
+
+	private WatchedJourney Evaluate(
+		WatchEntry entry,
+		DateTimeOffset now,
+		TrackingStrings strings,
+		PendingEffects effects)
+	{
+		SchutzengelPlanInfo info = entry.Info;
+		TripSnapshot snapshot = entry.Timeline?.Calculate(now) ?? TripSnapshot.Empty;
+		SchutzengelNotice? latest = entry.Notices.Count > 0 ? entry.Notices[^1] : null;
+
+		DateTimeOffset? start = entry.Timeline?.Start ?? entry.Summary?.Departure;
+		DateTimeOffset? end = entry.Timeline?.End ?? entry.Summary?.Arrival;
+
+		bool periodic = info.Options.IsPeriodic;
+
+		WatchStatus status;
+
+		if (info.Deactivated)
+		{
+			status = WatchStatus.Deactivated;
+		}
+		else if (end is { } finish && finish < now && !periodic)
+		{
+			status = WatchStatus.Recent;
+		}
+		else if (end is { } over && over < now)
+		{
+			// A periodic plan waits for its next trip instead of completing.
+			status = WatchStatus.Planned;
+		}
+		else if (start is { } begin && begin - info.Options.StartLead <= now)
+		{
+			status = WatchStatus.Active;
 		}
 		else
 		{
-			System.Diagnostics.Debug.WriteLine(
-				"[SCHUTZENGEL] Stored plan was not returned by plansMinimal; retaining cached trip data.");
-
-			return;
+			status = WatchStatus.Planned;
 		}
 
+		bool freshRisk =
+			latest is { Time: { } time, Severity: SchutzengelNoticeSeverity.ConnectionRisk }
+			&& now - time <= RiskNoticeAge;
 
-		using JsonDocument realtime =
-			await _api.GetRealtimeAsync(
-				tripId,
-				requestDataVersion,
-				requestNotificationCount,
-				ct);
+		TrackingPhase phase;
 
-
-		using JsonDocument notifications =
-			await _api.GetNotificationsAsync(
-				tripId,
-				requestDataVersion,
-				requestNotificationCount,
-				ct);
-
-
-		if (SchutzengelTripTimeline.TryParseRealtime(
-			realtime.RootElement,
-			journey,
-			out SchutzengelTripTimeline? updatedTimeline))
+		if (status == WatchStatus.Deactivated)
 		{
-			_tripTimeline =
-				updatedTimeline;
-
-
-			if (updatedTimeline.DataVersion is { } version)
-			{
-				_realtimeDataVersion =
-					version.ToString(
-						System.Globalization.CultureInfo.InvariantCulture);
-			}
-
-
-			System.Diagnostics.Debug.WriteLine(
-				$"[SCHUTZENGEL] Realtime snapshot updated: " +
-				$"episodes={updatedTimeline.Episodes.Count}, " +
-				$"data_version={updatedTimeline.DataVersion?.ToString() ?? "none"}");
+			phase = TrackingPhase.Paused;
 		}
-
-
-		if (notifications.RootElement.ValueKind ==
-			JsonValueKind.Array)
+		else if (latest?.Severity == SchutzengelNoticeSeverity.Cancellation)
 		{
-			_notificationCount =
-				notifications.RootElement.GetArrayLength();
+			phase = TrackingPhase.Cancelled;
 		}
-
-
-		string realtimeText =
-			realtime.RootElement.GetRawText();
-
-
-		string notificationText =
-			notifications.RootElement.GetRawText();
-
-
-		string combinedText =
-			realtimeText
-			+ "\n"
-			+ notificationText;
-
-
-		TrackingPhase phase =
-			SchutzengelRealtimeTranslator.Translate(
-				combinedText,
-				out JourneyTrackingEventKind kind,
-				out string? message);
-
-
-		if (kind is
-			JourneyTrackingEventKind.Cancelled
-			or JourneyTrackingEventKind.Arrived
-			or JourneyTrackingEventKind.RiskChanged)
+		else if (status == WatchStatus.Recent)
 		{
-			_remotePhase =
-				phase;
-
-			_remoteMessage =
-				message;
+			phase = TrackingPhase.Arrived;
 		}
-
-
-		RenderProgress();
-
-
-		if (kind is
-			JourneyTrackingEventKind.Cancelled
-			or JourneyTrackingEventKind.Arrived)
+		else if (snapshot.Risk is not null || freshRisk)
 		{
-			LiveJourneyState state =
-				BuildState();
-
-
-			Publish(
-				kind,
-				state);
-
-
-			await CleanupPlanAsync(
-				ct);
+			phase = TrackingPhase.AtRisk;
 		}
-	}
-
-
-	private async Task ProgressLoopAsync(
-		CancellationToken ct)
-	{
-		RenderProgress();
-
-
-		using var timer =
-			new PeriodicTimer(
-				ProgressUpdateInterval);
-
-
-		while (!ct.IsCancellationRequested)
+		else
 		{
-			try
-			{
-				if (!await timer.WaitForNextTickAsync(
-					ct))
-				{
-					return;
-				}
-
-
-				if (_journey is null
-					|| _tripTimeline is null)
-				{
-					return;
-				}
-
-
-				RenderProgress();
-			}
-			catch (
-				OperationCanceledException)
-			when (ct.IsCancellationRequested)
-			{
-				return;
-			}
-		}
-	}
-
-
-	private void RenderProgress(
-		string? overrideMessage = null)
-	{
-		Journey? journey =
-			_journey;
-
-
-		SchutzengelTripTimeline? timeline =
-			_tripTimeline;
-
-
-		if (journey is null
-			|| timeline is null)
-		{
-			return;
+			phase = status == WatchStatus.Active ? snapshot.Phase : TrackingPhase.Planned;
 		}
 
+		entry.Status = status;
+		entry.Phase = phase;
+		entry.Snapshot = snapshot;
 
-		SchutzengelProgressSnapshot progress =
-			timeline.Calculate(
-				CurrentTime);
+		RaiseTransitions(entry, status, phase, snapshot, latest, start, now, strings, effects);
 
+		entry.LastStatus = status;
+		entry.LastPhase = phase;
+		entry.LastEpisode = snapshot.EpisodeIndex;
+		entry.Seen = true;
 
-		LiveJourneyState newState =
-			BuildState(
-				progress,
-				overrideMessage);
+		bool riding = status == WatchStatus.Active && snapshot.Stage != TripStage.NotStarted;
 
-
-		LiveJourneyState? previousState =
-			_state;
-
-
-		_state =
-			newState;
-
-
-		LiveJourneyNotification.Show(
-			newState,
-			progress);
-
-
-		bool meaningfulChange =
-			previousState is null
-			|| previousState.Phase != newState.Phase
-			|| previousState.CurrentLegIndex !=
-				newState.CurrentLegIndex
-			|| previousState.EstimatedArrival !=
-				newState.EstimatedArrival
-			|| previousState.Message !=
-				newState.Message;
-
-
-		if (!meaningfulChange)
-		{
-			return;
-		}
-
-
-		System.Diagnostics.Debug.WriteLine(
-			$"[SCHUTZENGEL PROGRESS] " +
-			$"phase={newState.Phase}, " +
-			$"leg={newState.CurrentLegIndex + 1}/{newState.LegCount}, " +
-			$"progress={progress.TimeProgress:P0}, " +
-			$"current={progress.CurrentStopName ?? "-"}, " +
-			$"next={progress.NextStopName ?? "-"}");
-
-
-		if (previousState is null)
-		{
-			return;
-		}
-
-
-		JourneyTrackingEventKind kind =
-			EventKindFor(
-				newState.Phase);
-
-
-		_events.Writer.TryWrite(
-			new JourneyTrackingEvent(
-				kind,
-				newState));
-	}
-
-
-	private LiveJourneyState BuildState(
-		string? overrideMessage = null)
-	{
-		SchutzengelProgressSnapshot progress =
-			_tripTimeline?.Calculate(
-				CurrentTime)
-			?? new SchutzengelProgressSnapshot(
-				-1,
-				0,
-				Math.Max(
-					1,
-					_journey?.Legs.Count ?? 0),
-				0,
-				-1,
-				TrackingPhase.Planned,
-				null,
-				null,
-				null,
-				_journey?.Arrival,
-				"Preparing journey monitoring",
-				null);
-
-
-		return BuildState(
-			progress,
-			overrideMessage);
-	}
-
-
-	private LiveJourneyState BuildState(
-		SchutzengelProgressSnapshot progress,
-		string? overrideMessage = null)
-	{
-		TrackingPhase phase =
-			_remotePhase
-			?? progress.Phase;
-
-
-		string? message =
-			overrideMessage
-			?? _remoteMessage
-			?? progress.Message;
-
-
-		return new LiveJourneyState(
-			JourneyIdentity(
-				_journey!),
-
+		return new WatchedJourney(
+			info.PlanId,
+			entry.Summary?.Fingerprint,
+			entry.Summary?.Origin ?? snapshot.Origin ?? string.Empty,
+			entry.Summary?.Destination ?? snapshot.Destination ?? string.Empty,
+			start,
+			end,
+			entry.Summary?.Lines ?? [],
+			status,
 			phase,
-
-			Math.Clamp(
-				progress.CurrentLegIndex,
-				0,
-				Math.Max(
-					0,
-					progress.LegCount - 1)),
-
-			Math.Max(
-				1,
-				_journey!.Legs.Count),
-
-			_journey.Arrival,
-
-			progress.EstimatedArrival,
-
-			message,
-
-			CurrentTime);
+			riding || status == WatchStatus.Recent ? snapshot.Progress : 0,
+			snapshot.Stage == TripStage.Riding && status == WatchStatus.Active ? snapshot.MotName : null,
+			riding ? snapshot.NextStop : null,
+			riding ? snapshot.NextStopTime : null,
+			latest?.Text,
+			info.Options.ToWatchOptions(),
+			periodic);
 	}
 
-
-	private static string? ReadActiveTripId(
-		JsonElement plans,
-		string planId)
+	private void RaiseTransitions(
+		WatchEntry entry,
+		WatchStatus status,
+		TrackingPhase phase,
+		TripSnapshot snapshot,
+		SchutzengelNotice? latest,
+		DateTimeOffset? start,
+		DateTimeOffset now,
+		TrackingStrings strings,
+		PendingEffects effects)
 	{
-		if (plans.ValueKind ==
-			JsonValueKind.Object
-			&& plans.TryGetProperty(
-				"plans",
-				out JsonElement nestedPlans))
-		{
-			return ReadActiveTripId(
-				nestedPlans,
-				planId);
-		}
+		string planId = entry.Info.PlanId;
+		SchutzengelOptions options = entry.Info.Options;
+		bool alertable = status is WatchStatus.Planned or WatchStatus.Active;
+		bool problemAlerted = false;
 
-
-		if (plans.ValueKind !=
-			JsonValueKind.Array)
-		{
-			return null;
-		}
-
-
-		foreach (JsonElement plan in
-			plans.EnumerateArray())
-		{
-			if (!plan.TryGetProperty(
-				"plan_id",
-				out JsonElement planIdElement)
-				|| planIdElement.ValueKind !=
-					JsonValueKind.String
-				|| !string.Equals(
-					planIdElement.GetString(),
-					planId,
-					StringComparison.Ordinal))
-			{
-				continue;
-			}
-
-
-			if (plan.TryGetProperty(
-				"active_trip_id",
-				out JsonElement tripIdElement)
-				&& tripIdElement.ValueKind ==
-					JsonValueKind.String)
-			{
-				return tripIdElement.GetString();
-			}
-		}
-
-
-		return null;
-	}
-
-
-	private static bool TryReadPlanInfo(
-		JsonElement plans,
-		string? planId,
-		out string? activeTripId,
-		out bool deactivated)
-	{
-		activeTripId = null;
-		deactivated = false;
-
-
-		if (string.IsNullOrWhiteSpace(
-			planId))
-		{
-			return false;
-		}
-
-
-		if (plans.ValueKind ==
-			JsonValueKind.Object
-			&& plans.TryGetProperty(
-				"plans",
-				out JsonElement nestedPlans))
-		{
-			return TryReadPlanInfo(
-				nestedPlans,
+		LiveJourneyState State(string? message) =>
+			new(
 				planId,
-				out activeTripId,
-				out deactivated);
-		}
+				phase,
+				snapshot.LegIndex,
+				snapshot.LegCount,
+				snapshot.PlannedArrival,
+				snapshot.Arrival,
+				message,
+				now);
 
-
-		if (plans.ValueKind !=
-			JsonValueKind.Array)
+		// New notices since the last look. The first load only seeds the counter.
+		if (entry.NoticesLoaded)
 		{
-			return false;
-		}
-
-
-		foreach (JsonElement plan in
-			plans.EnumerateArray())
-		{
-			if (!plan.TryGetProperty(
-				"plan_id",
-				out JsonElement idElement)
-				|| idElement.ValueKind !=
-					JsonValueKind.String
-				|| !string.Equals(
-					idElement.GetString(),
-					planId,
-					StringComparison.Ordinal))
+			if (!entry.NoticesSeeded)
 			{
-				continue;
+				entry.AlertedNotices = entry.Notices.Count;
+				entry.NoticesSeeded = true;
 			}
-
-
-			if (plan.TryGetProperty(
-				"active_trip_id",
-				out JsonElement tripElement)
-				&& tripElement.ValueKind ==
-					JsonValueKind.String)
+			else
 			{
-				activeTripId =
-					tripElement.GetString();
-			}
-
-
-			if (plan.TryGetProperty(
-				"deactivated",
-				out JsonElement deactivatedElement)
-				&& deactivatedElement.ValueKind ==
-					JsonValueKind.True)
-			{
-				deactivated = true;
-			}
-
-
-			return true;
-		}
-
-
-		return false;
-	}
-
-
-	private async Task LocalLoopAsync(
-		CancellationToken ct)
-	{
-		using var timer =
-			new PeriodicTimer(
-				NetworkSyncInterval);
-
-
-		while (!ct.IsCancellationRequested
-			&& _journey is { } journey)
-		{
-			try
-			{
-				if (!await timer.WaitForNextTickAsync(
-					ct))
+				foreach (SchutzengelNotice notice in entry.Notices.Skip(entry.AlertedNotices))
 				{
-					return;
+					bool problem = notice.Severity != SchutzengelNoticeSeverity.Information;
+
+					if (!alertable || !(problem ? options.Problem : options.Change))
+					{
+						continue;
+					}
+
+					problemAlerted |= problem;
+
+					effects.Actions.Add(
+						() => LiveJourneyNotification.ShowAlert(
+							planId,
+							problem ? JourneyAlertKind.Problem : JourneyAlertKind.Change,
+							problem ? strings.NotifProblemAlertTitle : strings.NotifChangeAlertTitle,
+							notice.Text));
 				}
-			}
-			catch (OperationCanceledException)
-			{
-				return;
-			}
 
-
-			Journey current;
-
-
-			try
-			{
-				current =
-					await RefreshFromPlannerAsync(
-						journey,
-						ct);
-			}
-			catch (
-				OperationCanceledException)
-			when (ct.IsCancellationRequested)
-			{
-				return;
-			}
-			catch
-			{
-				current =
-					journey;
-			}
-
-
-			_journey =
-				current;
-
-
-			_tripTimeline =
-				SchutzengelTripTimeline.FromJourney(
-					current);
-
-
-			TrackingPhase phase =
-				InferLocalPhase(
-					current);
-
-
-			JourneyTrackingEventKind kind =
-				EventKindFor(
-					phase);
-
-
-			LiveJourneyState state =
-				BuildState();
-
-
-			_state =
-				state;
-
-
-			Publish(
-				kind,
-				state);
-
-
-			if (kind is
-				JourneyTrackingEventKind.Cancelled
-				or JourneyTrackingEventKind.Arrived)
-			{
-				await CleanupPlanAsync(
-					ct);
-
-
-				LiveJourneyNotification.Dismiss();
-
-
-				return;
-			}
-		}
-	}
-
-
-	public async Task StopAsync(
-		CancellationToken cancellationToken = default)
-	{
-		await StopLoopAsync();
-
-
-		if (_planId is not null)
-		{
-			await _api.DeactivateAsync(
-				_planId,
-				cancellationToken);
-		}
-
-
-		_journey = null;
-		_tripTimeline = null;
-
-		_planId = null;
-		_tripId = null;
-
-		_remotePhase = null;
-		_remoteMessage = null;
-
-
-		Preferences.Default.Set(
-			"schutzengel_tracking_active",
-			false);
-
-
-		LiveJourneyNotification.Dismiss();
-		JourneyTrackingForegroundService.Stop();
-	}
-
-
-	private async Task EndAsync()
-	{
-		await StopLoopAsync();
-
-
-		if (_planId is not null)
-		{
-			try
-			{
-				await _api.DeactivateAsync(
-					_planId,
-					CancellationToken.None);
-			}
-			catch
-			{
-			}
-
-
-			try
-			{
-				await _api.DeletePlanAsync(
-					_planId,
-					CancellationToken.None);
-			}
-			catch
-			{
+				entry.AlertedNotices = entry.Notices.Count;
 			}
 		}
 
-
-		ClearSavedPlan();
-
-
-		_planId = null;
-		_tripId = null;
-		_journey = null;
-		_tripTimeline = null;
-
-		_remotePhase = null;
-		_remoteMessage = null;
-
-
-		Preferences.Default.Set(
-			"schutzengel_tracking_active",
-			false);
-
-
-		_tokens.RemoveJourney();
-
-		LiveJourneyNotification.Dismiss();
-		JourneyTrackingForegroundService.Stop();
-	}
-
-
-	private async Task CleanupPlanAsync(
-		CancellationToken ct)
-	{
-		if (_planId is not null)
-		{
-			bool stopped = false;
-
-
-			try
-			{
-				await _api.DeactivateAsync(
-					_planId,
-					ct);
-
-				stopped = true;
-			}
-			catch
-			{
-			}
-
-
-			try
-			{
-				await _api.DeletePlanAsync(
-					_planId,
-					ct);
-
-				stopped = true;
-			}
-			catch
-			{
-				try
-				{
-					using JsonDocument plan =
-						await _api.GetPlanAsync(
-							_planId,
-							ct);
-				}
-				catch
-				{
-				}
-			}
-
-
-			if (!stopped)
-			{
-				return;
-			}
-		}
-
-
-		ClearSavedPlan();
-
-
-		Preferences.Default.Set(
-			"schutzengel_tracking_active",
-			false);
-
-
-		_tokens.RemoveJourney();
-
-
-		_planId = null;
-		_tripId = null;
-		_journey = null;
-		_tripTimeline = null;
-
-		_remotePhase = null;
-		_remoteMessage = null;
-
-
-		LiveJourneyNotification.Dismiss();
-		JourneyTrackingForegroundService.Stop();
-	}
-
-
-	private async Task StopLoopAsync()
-	{
-		if (_loopCancellation is null)
+		if (!entry.Seen)
 		{
 			return;
 		}
 
-
-		CancellationTokenSource cancellation =
-			_loopCancellation;
-
-
-		_loopCancellation = null;
-
-
-		await cancellation.CancelAsync();
-
-
-		List<Task> tasks =
-			[];
-
-
-		if (_networkLoopTask is not null)
+		if (entry.LastStatus == WatchStatus.Planned && status == WatchStatus.Active)
 		{
-			tasks.Add(
-				_networkLoopTask);
-		}
-
-
-		if (_progressLoopTask is not null)
-		{
-			tasks.Add(
-				_progressLoopTask);
-		}
-
-
-		_networkLoopTask = null;
-		_progressLoopTask = null;
-
-
-		if (tasks.Count > 0)
-		{
-			try
+			if (options.StartActive)
 			{
-				await Task.WhenAll(
-					tasks);
+				string text =
+					string.Format(
+						CultureInfo.CurrentCulture,
+						strings.NotifStartAlertText,
+						entry.Summary?.Origin ?? snapshot.Origin,
+						entry.Summary?.Destination ?? snapshot.Destination,
+						DDjourneys.Support.Format.TimeOrDash(start));
+
+				effects.Actions.Add(
+					() => LiveJourneyNotification.ShowAlert(
+						planId,
+						JourneyAlertKind.Start,
+						strings.NotifStartAlertTitle,
+						text));
 			}
-			catch (OperationCanceledException)
-			{
-			}
+
+			effects.Events.Add(new JourneyTrackingEvent(JourneyTrackingEventKind.Started, State(null)));
+		}
+		else if (status == WatchStatus.Active
+			&& phase == entry.LastPhase
+			&& snapshot.EpisodeIndex != entry.LastEpisode)
+		{
+			effects.Events.Add(new JourneyTrackingEvent(JourneyTrackingEventKind.Updated, State(null)));
 		}
 
+		if (phase == entry.LastPhase)
+		{
+			return;
+		}
 
-		cancellation.Dispose();
-	}
-
-
-	private void Publish(
-		JourneyTrackingEventKind kind,
-		LiveJourneyState state)
-	{
-		_state =
-			state;
-
-
-		_events.Writer.TryWrite(
-			new JourneyTrackingEvent(
-				kind,
-				state));
-
-
-		LiveJourneyNotification.Show(
-			state,
-			_tripTimeline?.Calculate(
-				CurrentTime));
-	}
-
-
-	private async Task<Journey> RefreshFromPlannerAsync(
-		Journey original,
-		CancellationToken ct)
-	{
-		JourneyResult result =
-			await _journeyProvider.SearchAsync(
-				new JourneyQuery
+		switch (phase)
+		{
+			case TrackingPhase.AtRisk when alertable:
 				{
-					From =
-						new DDjourneys.Core.Models.Location
-						{
-							Id = original.From.Id,
-							Name = original.From.Name,
-							Place = original.From.Place,
-							Latitude = original.From.Latitude,
-							Longitude = original.From.Longitude
-						},
+					string text =
+						snapshot.Risk is { } risk
+							? string.Format(
+								CultureInfo.CurrentCulture,
+								risk.Missed ? strings.NotifMissedText : strings.NotifTightText,
+								risk.Station)
+							: latest?.Text ?? string.Empty;
 
-					To =
-						new DDjourneys.Core.Models.Location
-						{
-							Id = original.To.Id,
-							Name = original.To.Name,
-							Place = original.To.Place,
-							Latitude = original.To.Latitude,
-							Longitude = original.To.Longitude
-						},
+					if (options.Problem && !problemAlerted)
+					{
+						effects.Actions.Add(
+							() => LiveJourneyNotification.ShowAlert(
+								planId,
+								JourneyAlertKind.Problem,
+								strings.NotifRiskTitle,
+								text));
+					}
 
-					DateTime =
-						original.Departure
-						?? CurrentTime,
+					effects.Events.Add(new JourneyTrackingEvent(JourneyTrackingEventKind.RiskChanged, State(text)));
+					break;
+				}
 
-					MaxResults = 10,
+			case TrackingPhase.Cancelled:
+				effects.Events.Add(
+					new JourneyTrackingEvent(JourneyTrackingEventKind.Cancelled, State(latest?.Text)));
+				break;
 
-					TimeoutSeconds = 15
-				},
-				ct);
+			case TrackingPhase.Arrived when entry.LastStatus == WatchStatus.Active:
+				{
+					string destination = entry.Summary?.Destination ?? snapshot.Destination ?? string.Empty;
 
+					effects.Actions.Add(
+						() => LiveJourneyNotification.ShowAlert(
+							planId,
+							JourneyAlertKind.Arrived,
+							strings.NotifArrivedTitle,
+							destination));
 
-		if (!result.IsSuccessful
-			|| !result.HasJourneys)
-		{
-			return original;
+					effects.Events.Add(new JourneyTrackingEvent(JourneyTrackingEventKind.Arrived, State(destination)));
+					break;
+				}
+
+			case TrackingPhase.InProgress or TrackingPhase.AtInterchange
+				when entry.LastPhase is TrackingPhase.AtRisk:
+				effects.Events.Add(new JourneyTrackingEvent(JourneyTrackingEventKind.RiskChanged, State(null)));
+				break;
 		}
-
-
-		return result.Journeys
-			.Select(
-				candidate =>
-					(
-						Journey: candidate,
-						Score:
-							MatchScore(
-								original,
-								candidate)))
-			.Where(
-				item =>
-					item.Score > 0)
-			.OrderByDescending(
-				item =>
-					item.Score)
-			.ThenBy(
-				item =>
-					Math.Abs(
-						(
-							(item.Journey.Departure
-								?? CurrentTime)
-							- (
-								original.Departure
-								?? CurrentTime)
-						)
-						.TotalSeconds))
-			.Select(
-				item =>
-					item.Journey)
-			.FirstOrDefault()
-			?? original;
 	}
 
-
-	private static int MatchScore(
-		Journey original,
-		Journey candidate)
+	/// <summary>Decides what the single live notification shows (or that it should go away).</summary>
+	private void ScheduleLiveNotification(
+		WatchEntry? focus,
+		WatchedJourney? focusView,
+		WatchedJourney? waiting,
+		bool run,
+		DateTimeOffset now,
+		TrackingStrings strings,
+		PendingEffects effects)
 	{
-		if (original.From.Id != candidate.From.Id
-			|| original.To.Id != candidate.To.Id
-			|| original.Legs.Count != candidate.Legs.Count)
+		LiveJourneyContent? content = null;
+
+		if (focus is not null && focusView is not null)
 		{
-			return 0;
-		}
+			string planId = focus.Info.PlanId;
 
-
-		int score =
-			1;
-
-
-		for (int i = 0;
-			i < original.Legs.Count;
-			i++)
-		{
-			JourneyLeg expected =
-				original.Legs[i];
-
-
-			JourneyLeg actual =
-				candidate.Legs[i];
-
-
-			if (expected.Mode != actual.Mode
-				|| expected.Line?.Name !=
-					actual.Line?.Name
-				|| expected.From.Id !=
-					actual.From.Id
-				|| expected.To.Id !=
-					actual.To.Id)
+			if (_dismissed.TryGetValue(planId, out string? dismissedState))
 			{
-				return 0;
+				if (dismissedState == StateKey(focus))
+				{
+					// The user swiped it away; it returns when the situation changes.
+					if (_liveKey is not null)
+					{
+						_liveKey = null;
+						effects.Actions.Add(LiveJourneyNotification.Dismiss);
+					}
+
+					return;
+				}
+
+				_dismissed.Remove(planId);
 			}
 
-
-			score++;
+			content =
+				LiveJourneyContent.Create(
+					planId,
+					focus.Snapshot,
+					focus.Phase,
+					focusView.LatestNotice,
+					now,
+					strings);
+		}
+		else if (run)
+		{
+			content =
+				waiting is not null
+					? LiveJourneyContent.Waiting(waiting, strings)
+					: LiveJourneyContent.Monitoring(strings);
 		}
 
+		if (content is null)
+		{
+			if (_liveKey is not null)
+			{
+				_liveKey = null;
+				effects.Actions.Add(LiveJourneyNotification.Dismiss);
+			}
 
-		return score;
+			return;
+		}
+
+		string key = content.Key;
+
+		if (key == _liveKey)
+		{
+			return;
+		}
+
+		_liveKey = key;
+
+		effects.Actions.Add(() => LiveJourneyNotification.Show(content));
 	}
 
+	private static string StateKey(WatchEntry entry) =>
+		$"{entry.Phase}|{entry.Snapshot.EpisodeIndex}";
 
-	private DateTimeOffset CurrentTime =>
-		DateTimeOffset.UtcNow
-		+ _serverTimeOffset;
+	private static bool Before(DateTimeOffset? left, DateTimeOffset? right) =>
+		(left ?? DateTimeOffset.MaxValue) < (right ?? DateTimeOffset.MaxValue);
 
+	private static int CompareViews(WatchedJourney left, WatchedJourney right)
+	{
+		int byStatus = Rank(left.Status).CompareTo(Rank(right.Status));
 
-	private TrackingPhase InferLocalPhase(
-		Journey journey) =>
-		journey.IsCancelled
-			? TrackingPhase.Cancelled
-			: journey.Arrival <= CurrentTime
-				? TrackingPhase.Arrived
-				: journey.Transfers.Any(
-					transfer =>
-						!transfer.IsGuaranteed)
-					? TrackingPhase.AtRisk
-					: journey.Departure <= CurrentTime
-						? TrackingPhase.InProgress
-						: TrackingPhase.Planned;
-
-
-	private static TrackingPhase DetectTerminalOrRisk(
-		string text,
-		out JourneyTrackingEventKind kind,
-		out string? message) =>
-		SchutzengelRealtimeTranslator.Translate(
-			text,
-			out kind,
-			out message);
-
-
-	private JourneyTrackingEventKind EventKindFor(
-		TrackingPhase phase) =>
-		phase switch
+		if (byStatus != 0)
 		{
-			TrackingPhase.Cancelled =>
-				JourneyTrackingEventKind.Cancelled,
+			return byStatus;
+		}
 
-			TrackingPhase.Arrived =>
-				JourneyTrackingEventKind.Arrived,
+		int byTime =
+			(left.Departure ?? DateTimeOffset.MaxValue).CompareTo(right.Departure ?? DateTimeOffset.MaxValue);
 
-			TrackingPhase.AtRisk
-				when _state?.Phase !=
-					TrackingPhase.AtRisk =>
-				JourneyTrackingEventKind.RiskChanged,
+		// Finished journeys: most recent first.
+		return left.Status == WatchStatus.Recent ? -byTime : byTime;
+	}
 
-			_ =>
-				JourneyTrackingEventKind.Updated
+	private static int Rank(WatchStatus status) =>
+		status switch
+		{
+			WatchStatus.Active => 0,
+			WatchStatus.Planned => 1,
+			WatchStatus.Deactivated => 2,
+			_ => 3
 		};
 
-
-	private static string? ReadId(
-		JsonElement json,
-		params string[] names)
+	private static bool SameWatchlist(IReadOnlyList<WatchedJourney> left, IReadOnlyList<WatchedJourney> right)
 	{
-		foreach (string name in names)
+		if (left.Count != right.Count)
 		{
-			if (json.ValueKind ==
-				JsonValueKind.Object
-				&& json.TryGetProperty(
-					name,
-					out JsonElement value)
-				&& value.ValueKind ==
-					JsonValueKind.String)
-			{
-				return value.GetString();
-			}
+			return false;
+		}
 
+		for (int i = 0; i < left.Count; i++)
+		{
+			WatchedJourney a = left[i];
+			WatchedJourney b = right[i];
 
-			if (json.ValueKind ==
-				JsonValueKind.Object
-				&& json.TryGetProperty(
-					"data",
-					out JsonElement data)
-				&& data.ValueKind ==
-					JsonValueKind.Object
-				&& data.TryGetProperty(
-					name,
-					out value)
-				&& value.ValueKind ==
-					JsonValueKind.String)
+			bool same =
+				a.PlanId == b.PlanId
+				&& a.JourneyKey == b.JourneyKey
+				&& a.Origin == b.Origin
+				&& a.Destination == b.Destination
+				&& a.Departure == b.Departure
+				&& a.Arrival == b.Arrival
+				&& a.Status == b.Status
+				&& a.Phase == b.Phase
+				&& Math.Abs(a.Progress - b.Progress) < 0.005
+				&& a.CurrentLine == b.CurrentLine
+				&& a.NextStop == b.NextStop
+				&& a.NextStopTime == b.NextStopTime
+				&& a.LatestNotice == b.LatestNotice
+				&& a.Options == b.Options
+				&& a.IsPeriodic == b.IsPeriodic
+				&& a.Lines.SequenceEqual(b.Lines);
+
+			if (!same)
 			{
-				return value.GetString();
+				return false;
 			}
 		}
 
-
-		return null;
+		return true;
 	}
 
+	// ----- Effects (always called without the gate) -----
 
-	private void SynchronizeServerTime(
-		JsonElement root)
+	private void Dispatch(PendingEffects effects)
 	{
-		DateTimeOffset? serverTime =
-			root.ValueKind switch
-			{
-				JsonValueKind.String
-					when DateTimeOffset.TryParse(
-						root.GetString(),
-						out DateTimeOffset parsed)
-					=>
-						parsed,
-
-				JsonValueKind.Number
-					when root.TryGetInt64(
-						out long epoch)
-					=>
-						DateTimeOffset.FromUnixTimeMilliseconds(
-							Math.Abs(epoch)
-								> 100_000_000_000
-								? epoch
-								: epoch * 1000),
-
-				JsonValueKind.Object =>
-					ReadServerTimeProperty(
-						root),
-
-				_ =>
-					null
-			};
-
-
-		if (serverTime is { } time)
+		foreach (string planId in effects.Forgotten)
 		{
-			_serverTimeOffset =
-				time - DateTimeOffset.UtcNow;
+			Guarded(() => LiveJourneyNotification.ClearAlerts(planId));
+		}
+
+		foreach (Action action in effects.Actions)
+		{
+			Guarded(action);
+		}
+
+		foreach (JourneyTrackingEvent trackingEvent in effects.Events)
+		{
+			_events.Publish(trackingEvent);
+		}
+
+		UpdateRuntime(effects.ShouldRun);
+
+		if (effects.WatchlistChanged)
+		{
+			Guarded(() => WatchedChanged?.Invoke(this, EventArgs.Empty));
 		}
 	}
 
-
-	private static DateTimeOffset? ReadServerTimeProperty(
-		JsonElement root)
+	private static void Guarded(Action action)
 	{
-		foreach (string propertyName in
-			new[]
-			{
-				"serverTime",
-				"server_time",
-				"timestamp",
-				"time"
-			})
+		try
 		{
-			if (!root.TryGetProperty(
-				propertyName,
-				out JsonElement value))
+			action();
+		}
+		catch (Exception ex)
+		{
+			Log($"Effect failed: {ex}");
+		}
+	}
+
+	// ----- Runtime: polling loop and foreground service -----
+
+	private void UpdateRuntime(bool run)
+	{
+		lock (_runtimeGate)
+		{
+			_runWanted = run;
+
+			if (run)
 			{
-				continue;
+				if (!_serviceRunning)
+				{
+					_serviceRunning = JourneyTrackingForegroundService.TryStart();
+				}
+
+				if (_loop is null)
+				{
+					var cancellation = new CancellationTokenSource();
+					CancellationToken token = cancellation.Token;
+
+					_loopCancellation = cancellation;
+					_loop = Task.Run(() => LoopAsync(token));
+				}
+
+				return;
 			}
 
-
-			return value.ValueKind switch
+			if (_serviceRunning)
 			{
-				JsonValueKind.String
-					when DateTimeOffset.TryParse(
-						value.GetString(),
-						out DateTimeOffset parsed)
-					=>
-						parsed,
-
-				JsonValueKind.Number
-					when value.TryGetInt64(
-						out long epoch)
-					=>
-						DateTimeOffset.FromUnixTimeMilliseconds(
-							Math.Abs(epoch)
-								> 100_000_000_000
-								? epoch
-								: epoch * 1000),
-
-				_ =>
-					null
-			};
+				_serviceRunning = false;
+				JourneyTrackingForegroundService.Stop();
+			}
 		}
-
-
-		return null;
 	}
 
-
-	private static string JourneyIdentity(
-		Journey journey) =>
-		$"{journey.Id}:{journey.From.Id}:{journey.To.Id}:{journey.Departure:O}:{journey.Arrival:O}";
-
-
-	private static void ClearSavedPlan()
+	private async Task LoopAsync(CancellationToken cancellationToken)
 	{
-		Preferences.Default.Remove(
-			"schutzengel_active_plan");
+		DateTimeOffset nextSync = DateTimeOffset.MinValue;
 
-		Preferences.Default.Remove(
-			"schutzengel_active_trip");
+		try
+		{
+			while (!cancellationToken.IsCancellationRequested)
+			{
+				PendingEffects effects;
 
-		Preferences.Default.Remove(
-			"schutzengel_active_journey");
+				await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+
+				try
+				{
+					DateTimeOffset local = DateTimeOffset.UtcNow;
+
+					if (local >= nextSync)
+					{
+						nextSync = local + SyncInterval;
+
+						try
+						{
+							effects = await SyncAsync(force: false, cancellationToken).ConfigureAwait(false);
+						}
+						catch (Exception ex) when (ex is not OperationCanceledException)
+						{
+							// Offline or service trouble: keep counting on the local clock.
+							Log($"Sync failed: {ex.Message}");
+
+							effects = Recompute();
+						}
+					}
+					else
+					{
+						effects = Recompute();
+					}
+				}
+				finally
+				{
+					_gate.Release();
+				}
+
+				Dispatch(effects);
+
+				lock (_runtimeGate)
+				{
+					if (!_runWanted)
+					{
+						return;
+					}
+				}
+
+				await Task.Delay(RenderInterval, cancellationToken).ConfigureAwait(false);
+			}
+		}
+		catch (OperationCanceledException)
+		{
+		}
+		catch (Exception ex)
+		{
+			Log($"Polling loop ended: {ex}");
+		}
+		finally
+		{
+			lock (_runtimeGate)
+			{
+				_loop = null;
+				_loopCancellation?.Dispose();
+				_loopCancellation = null;
+			}
+		}
+	}
+
+	[Conditional("DEBUG")]
+	private static void Log(string message) =>
+		Debug.WriteLine($"[SCHUTZENGEL] {message}");
+
+	// ----- Types -----
+
+	/// <summary>Cached knowledge about one plan of the account.</summary>
+	private sealed class WatchEntry(SchutzengelPlanInfo info)
+	{
+		public SchutzengelPlanInfo Info { get; set; } = info;
+
+		public SchutzengelRawSummary? Summary { get; set; }
+
+		public bool SummaryLoaded { get; set; }
+
+		public string? TripId { get; set; }
+
+		public TripTimeline? Timeline { get; set; }
+
+		public IReadOnlyList<SchutzengelNotice> Notices { get; set; } = [];
+
+		public int NoticeCount { get; set; }
+
+		public bool NoticesLoaded { get; set; }
+
+		public bool NoticesSeeded { get; set; }
+
+		public int AlertedNotices { get; set; }
+
+		public TripSnapshot Snapshot { get; set; } = TripSnapshot.Empty;
+
+		public WatchStatus Status { get; set; } = WatchStatus.Planned;
+
+		public TrackingPhase Phase { get; set; } = TrackingPhase.Planned;
+
+		public bool Seen { get; set; }
+
+		public WatchStatus LastStatus { get; set; }
+
+		public TrackingPhase LastPhase { get; set; }
+
+		public int LastEpisode { get; set; } = -1;
+	}
+
+	private sealed class PendingEffects
+	{
+		public List<Action> Actions { get; } = [];
+
+		public List<JourneyTrackingEvent> Events { get; } = [];
+
+		public IReadOnlyList<string> Forgotten { get; set; } = [];
+
+		public bool WatchlistChanged { get; set; }
+
+		public bool ShouldRun { get; set; }
 	}
 }

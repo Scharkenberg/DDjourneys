@@ -7,6 +7,7 @@ public interface IUiStrings
 	PlaceSearchStrings PlaceSearch { get; }
 	ResultsStrings Results { get; }
 	JourneyStrings Journey { get; }
+	TrackingStrings Tracking { get; }
 	SettingsStrings Settings { get; }
 	TransportStrings Transport { get; }
 }
@@ -192,4 +193,65 @@ public sealed class TransportStrings
 	public required string CableCar { get; init; }
 	public required string Taxi { get; init; }
 	public required string OnDemand { get; init; }
+}
+
+public sealed class TrackingStrings
+{
+	public required string Title { get; init; }
+	public required string Empty { get; init; }
+	public required string EmptyHint { get; init; }
+	public required string SectionActive { get; init; }
+	public required string SectionPlanned { get; init; }
+	public required string SectionRecent { get; init; }
+	public required string SectionPaused { get; init; }
+	public required string Pause { get; init; }
+	public required string Resume { get; init; }
+	public required string StopFollowing { get; init; }
+	public required string DeleteAll { get; init; }
+	public required string DeleteTitle { get; init; }
+	public required string DeleteMessage { get; init; }
+	public required string DeleteAllMessage { get; init; }
+	public required string Alerts { get; init; }
+	public required string AlertStart { get; init; }
+	public required string AlertChange { get; init; }
+	public required string AlertProblem { get; init; }
+	public required string LeadMinutes { get; init; }
+	public required string Periodic { get; init; }
+	public required string NextStop { get; init; }
+	public required string Departs { get; init; }
+	public required string ArrivedAt { get; init; }
+	public required string PhasePlanned { get; init; }
+	public required string PhaseInProgress { get; init; }
+	public required string PhaseAtInterchange { get; init; }
+	public required string PhaseAtRisk { get; init; }
+	public required string PhaseCancelled { get; init; }
+	public required string PhaseArrived { get; init; }
+	public required string PhasePaused { get; init; }
+	public required string FollowedJourneys { get; init; }
+	public required string Following { get; init; }
+	public required string FollowFailed { get; init; }
+	public required string NotificationsDenied { get; init; }
+	public required string ChannelLive { get; init; }
+	public required string ChannelAlerts { get; init; }
+	public required string NotifStartsAt { get; init; }
+	public required string NotifRoute { get; init; }
+	public required string NotifRiding { get; init; }
+	public required string NotifNext { get; init; }
+	public required string NotifChangeTitle { get; init; }
+	public required string NotifChangeText { get; init; }
+	public required string NotifRiskTitle { get; init; }
+	public required string NotifMissedText { get; init; }
+	public required string NotifTightText { get; init; }
+	public required string NotifCancelledTitle { get; init; }
+	public required string NotifArrivedTitle { get; init; }
+	public required string NotifDelay { get; init; }
+	public required string NotifMonitoring { get; init; }
+	public required string NotifActionPause { get; init; }
+	public required string NotifActionStop { get; init; }
+	public required string NotifStartAlertTitle { get; init; }
+	public required string NotifStartAlertText { get; init; }
+	public required string NotifChangeAlertTitle { get; init; }
+	public required string NotifProblemAlertTitle { get; init; }
+	public required string NotifMinutes { get; init; }
+	public required string NotifNow { get; init; }
 }

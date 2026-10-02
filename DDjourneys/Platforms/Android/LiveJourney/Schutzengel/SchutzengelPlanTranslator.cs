@@ -7,7 +7,8 @@ internal static class SchutzengelPlanTranslator
 {
 	public static object Translate(
 		Journey journey,
-		object rawData)
+		object rawData,
+		SchutzengelOptions? options = null)
 	{
 		ArgumentNullException.ThrowIfNull(
 			journey);
@@ -15,6 +16,9 @@ internal static class SchutzengelPlanTranslator
 		ArgumentNullException.ThrowIfNull(
 			rawData);
 
+
+		SchutzengelOptions alerts =
+			options ?? SchutzengelOptions.Default;
 
 		var episodes =
 			new List<object>();
@@ -60,13 +64,13 @@ internal static class SchutzengelPlanTranslator
 					start =
 						new
 						{
-							timeBeforeSeconds = 300,
-							active = true
+							timeBeforeSeconds = alerts.StartLeadSeconds,
+							active = alerts.StartActive
 						},
 
-					change = true,
+					change = alerts.Change,
 
-					problem = true
+					problem = alerts.Problem
 				},
 
 			type = "static"
@@ -76,11 +80,13 @@ internal static class SchutzengelPlanTranslator
 
 	public static string Serialize(
 		Journey journey,
-		object rawData) =>
+		object rawData,
+		SchutzengelOptions? options = null) =>
 		JsonSerializer.Serialize(
 			Translate(
 				journey,
-				rawData));
+				rawData,
+				options));
 
 
 	private static object MovementEpisode(

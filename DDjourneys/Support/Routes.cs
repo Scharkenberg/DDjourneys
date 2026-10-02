@@ -15,4 +15,5 @@ public static class Routes
 	public const string Journey = "journey";
 	public const string Settings = "settings";
 	public const string Themes = "themes";
+	public const string Tracked = "tracked";
 }

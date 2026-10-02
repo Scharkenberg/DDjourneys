@@ -47,8 +47,11 @@ public sealed class JourneyViewModel :
 		ShareCommand =
 			new AsyncCommand(
 				ShareAsync);
-		FollowJourneyCommand = new AsyncCommand(FollowJourneyAsync, () => _journey is not null && _tracker.IsAvailable, ShowTrackingError);
-		DeactivateTrackingCommand = new AsyncCommand(DeactivateTrackingAsync, () => IsTracking, ShowTrackingError);
+		FollowJourneyCommand = new AsyncCommand(FollowJourneyAsync, () => _journey is not null && CanFollow, ShowTrackingError);
+		PauseCommand = new AsyncCommand(() => SetPausedAsync(true), () => CanPause, ShowTrackingError);
+		ResumeCommand = new AsyncCommand(() => SetPausedAsync(false), () => IsPaused, ShowTrackingError);
+		StopFollowingCommand = new AsyncCommand(StopFollowingAsync, () => IsFollowed, ShowTrackingError);
+		OpenFollowedCommand = new AsyncCommand(OpenFollowedAsync, null, ShowTrackingError);
 	}
 
 
@@ -80,65 +83,158 @@ public sealed class JourneyViewModel :
 	public Command<LegRow> ToggleStopsCommand { get; }
 
 	public AsyncCommand ShareCommand { get; }
-	public AsyncCommand FollowJourneyCommand { get; }
-	public AsyncCommand DeactivateTrackingCommand { get; }
-	public bool IsTrackingAvailable => _tracker.IsAvailable;
-	public bool IsTracking { get; private set { if (SetProperty(ref field, value)) { DeactivateTrackingCommand.RaiseCanExecuteChanged(); OnPropertyChanged(nameof(CanFollow)); } } }
-	public bool CanFollow => IsTrackingAvailable && !IsTracking;
-	public string? TrackingStatus { get; private set => SetProperty(ref field, value); }
 
+	public AsyncCommand FollowJourneyCommand { get; }
+
+	public AsyncCommand PauseCommand { get; }
+
+	public AsyncCommand ResumeCommand { get; }
+
+	public AsyncCommand StopFollowingCommand { get; }
+
+	public AsyncCommand OpenFollowedCommand { get; }
+
+	public bool IsTrackingAvailable => _tracker.IsAvailable;
+
+	/// <summary>The watchlist entry of this journey, if the user follows it.</summary>
+	public bool IsFollowed => _followed is not null;
+
+	public bool IsPaused => _followed?.Status == WatchStatus.Deactivated;
+
+	public bool CanPause => IsFollowed && !IsPaused && _followed?.Status != WatchStatus.Recent;
+
+	public bool CanFollow => IsTrackingAvailable && !IsFollowed;
+
+	public string? TrackingStatus
+	{
+		get => field;
+		private set => SetProperty(ref field, value);
+	}
+
+	private WatchedJourney? _followed;
+
+	/// <summary>Starts listening for watchlist changes while the page is visible.</summary>
 	public void StartObservingTracking()
 	{
-		if (_trackingObservation is not null) return;
+		if (_trackingObservation is not null || !_tracker.IsAvailable)
+		{
+			return;
+		}
+
 		_trackingObservation = new CancellationTokenSource();
-		_ = ObserveTrackingAsync(_trackingObservation.Token);
+
+		_tracker.WatchedChanged += OnWatchedChanged;
+
+		UpdateFollowState();
+
+		_ = LoadFollowStateAsync(_trackingObservation.Token);
 	}
 
 	public void StopObservingTracking()
 	{
+		_tracker.WatchedChanged -= OnWatchedChanged;
+
 		_trackingObservation?.Cancel();
 		_trackingObservation?.Dispose();
 		_trackingObservation = null;
 	}
 
-	private async Task ObserveTrackingAsync(CancellationToken cancellationToken)
+	private async Task LoadFollowStateAsync(CancellationToken cancellationToken)
 	{
 		try
 		{
-			await foreach (var update in _tracker.Events.WithCancellation(cancellationToken))
-			{
-				MainThread.BeginInvokeOnMainThread(() =>
-				{
-					IsTracking = update.Kind is not (JourneyTrackingEventKind.Cancelled or JourneyTrackingEventKind.Arrived);
-					TrackingStatus = update.State.Message ?? update.State.Phase switch
-					{
-						TrackingPhase.AtRisk => "Connection at risk",
-						TrackingPhase.Cancelled => "Journey cancelled",
-						TrackingPhase.Arrived => "Arrived",
-						_ => "Journey tracking is active. Progress appears in your notification shade."
-					};
-				});
-			}
+			await _tracker.RefreshAsync(cancellationToken);
 		}
-		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+		catch (OperationCanceledException)
+		{
+		}
+		catch (Exception ex)
+		{
+			// Offline: the cached watchlist is still shown.
+			System.Diagnostics.Debug.WriteLine($"Watchlist refresh failed: {ex.Message}");
+		}
+	}
+
+	private void OnWatchedChanged(object? sender, EventArgs e) =>
+		MainThread.BeginInvokeOnMainThread(UpdateFollowState);
+
+	private void UpdateFollowState()
+	{
+		_followed = _journey is null ? null : _tracker.Find(_journey);
+
+		OnPropertyChanged(nameof(IsFollowed));
+		OnPropertyChanged(nameof(IsPaused));
+		OnPropertyChanged(nameof(CanPause));
+		OnPropertyChanged(nameof(CanFollow));
+
+		FollowJourneyCommand.RaiseCanExecuteChanged();
+		PauseCommand.RaiseCanExecuteChanged();
+		ResumeCommand.RaiseCanExecuteChanged();
+		StopFollowingCommand.RaiseCanExecuteChanged();
+
+		TrackingStrings strings = _localization.CurrentStrings.Tracking;
+
+		TrackingStatus =
+			_followed switch
+			{
+				null => null,
+				{ Phase: TrackingPhase.Planned or TrackingPhase.InProgress } => strings.Following,
+				{ } followed => TrackedJourneysViewModel.PhaseText(followed.Phase, strings)
+			};
 	}
 
 	private async Task FollowJourneyAsync()
 	{
-		if (_journey is null) return;
-		await _tracker.StartAsync(_journey);
-		IsTracking = true;
-		TrackingStatus = "Journey tracking is active. Progress appears in your notification shade.";
+		if (_journey is null)
+		{
+			return;
+		}
+
+		TrackingStrings strings = _localization.CurrentStrings.Tracking;
+
+		await _tracker.FollowAsync(_journey);
+
+		UpdateFollowState();
+
+		if (!await _tracker.CanNotifyAsync())
+		{
+			TrackingStatus = $"{TrackingStatus} {strings.NotificationsDenied}";
+		}
 	}
 
-	private async Task DeactivateTrackingAsync()
+	private async Task SetPausedAsync(bool paused)
 	{
-		await _tracker.StopAsync();
-		IsTracking = false;
-		TrackingStatus = "Journey tracking paused.";
+		if (_followed is null)
+		{
+			return;
+		}
+
+		await _tracker.SetActiveAsync(_followed.PlanId, !paused);
+
+		UpdateFollowState();
 	}
 
-	private void ShowTrackingError(Exception ex) => TrackingStatus = $"Journey tracking could not be started: {ex.Message}";
+	private async Task StopFollowingAsync()
+	{
+		if (_followed is null)
+		{
+			return;
+		}
+
+		await _tracker.DeleteAsync(_followed.PlanId);
+
+		UpdateFollowState();
+	}
+
+	private static Task OpenFollowedAsync() =>
+		Shell.Current.GoToAsync(Routes.Tracked);
+
+	private void ShowTrackingError(Exception ex) =>
+		TrackingStatus =
+			string.Format(
+				CultureInfo.CurrentCulture,
+				_localization.CurrentStrings.Tracking.FollowFailed,
+				ex.Message);
 
 
 	public ObservableCollection<TimelineRow> Rows { get; } =
@@ -248,7 +344,7 @@ public sealed class JourneyViewModel :
 		{
 			_journey =
 				journey;
-			FollowJourneyCommand.RaiseCanExecuteChanged();
+			UpdateFollowState();
 
 			LoadError =
 				null;

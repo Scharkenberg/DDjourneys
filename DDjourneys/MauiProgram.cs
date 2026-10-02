@@ -79,6 +79,9 @@ public static class MauiProgram
 		builder.Services.AddTransient<ThemesPage>();
 		builder.Services.AddTransient<ThemesViewModel>();
 
+		builder.Services.AddTransient<TrackedJourneysPage>();
+		builder.Services.AddTransient<TrackedJourneysViewModel>();
+
 		return builder.Build();
 	}
 
