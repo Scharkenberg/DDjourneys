@@ -1,7 +1,7 @@
 using System.Net;
-using System.Text;
 using System.Text.Json;
 using DDjourneys.Core.Models;
+using DDjourneys.Core.Providers.Vvo.Models;
 using DDjourneys.Core.Tracking;
 using DDjourneys.Platforms.Android.LiveJourney.Schutzengel;
 using DDjourneys.Platforms.Windows;
@@ -13,36 +13,102 @@ public sealed class SchutzengelTrackerContractTests
 	[Fact]
 	public async Task Account_creation_uses_documented_path_and_returns_plain_token()
 	{
-		var handler = new RecordingHandler(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("anonymous-token") });
-		var api = new SchutzengelApi(new HttpClient(handler));
+		var handler =
+			new RecordingHandler(
+				_ =>
+					new HttpResponseMessage(
+						HttpStatusCode.OK)
+					{
+						Content =
+							new StringContent(
+								"anonymous-token")
+					});
 
-		var token = await api.CreateAccountAsync(CancellationToken.None);
 
-		Assert.Equal("anonymous-token", token);
-		Assert.Equal("https://m.dvb.de/schutzengel/api/create-account", handler.Requests.Single().Uri); 
-		Assert.Equal(HttpMethod.Post, handler.Requests.Single().Method);
+		var api =
+			new SchutzengelApi(
+				new HttpClient(handler));
+
+
+		string token =
+			await api.CreateAccountAsync(
+				CancellationToken.None);
+
+
+		Assert.Equal(
+			"anonymous-token",
+			token);
+
+
+		Assert.Equal(
+			"https://m.dvb.de/schutzengel/api/create-account",
+			handler.Requests.Single().Uri);
+
+
+		Assert.Equal(
+			HttpMethod.Post,
+			handler.Requests.Single().Method);
 	}
+
 
 	[Fact]
 	public async Task Authenticated_requests_use_Authentication_bearer_header_and_plan_payload()
 	{
-		var handler = new RecordingHandler(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("{\"plan_id\":\"p-42\",\"trip_id\":\"t-42\"}") });
-		var api = new SchutzengelApi(new HttpClient(handler));
-		api.Authenticate("anonymous-token");
+		var handler =
+			new RecordingHandler(
+				_ =>
+					new HttpResponseMessage(
+						HttpStatusCode.OK)
+					{
+						Content =
+							new StringContent(
+								"{\"plan_id\":\"p-42\",\"trip_id\":\"t-42\"}")
+					});
 
-		using var result = await api.CreatePlanAsync("{\"legs\":[]}", CancellationToken.None);
 
-		Assert.Equal("https://m.dvb.de/schutzengel/plans", handler.Requests.Single().Uri);
-		Assert.Equal("Bearer anonymous-token", handler.Requests.Single().Authentication);
-		Assert.Contains("\"legs\":[]", handler.Requests.Single().Body);
-		Assert.Equal("p-42", result.RootElement.GetProperty("plan_id").GetString());
+		var api =
+			new SchutzengelApi(
+				new HttpClient(handler));
+
+
+		api.Authenticate(
+			"anonymous-token");
+
+
+		using var result =
+			await api.CreatePlanAsync(
+				"{\"legs\":[]}",
+				CancellationToken.None);
+
+
+		Assert.Equal(
+			"https://m.dvb.de/schutzengel/plans",
+			handler.Requests.Single().Uri);
+
+
+		Assert.Equal(
+			"Bearer anonymous-token",
+			handler.Requests.Single().Authentication);
+
+
+		Assert.Contains(
+			"\"legs\":[]",
+			handler.Requests.Single().Body);
+
+
+		Assert.Equal(
+			"p-42",
+			result.RootElement
+				.GetProperty("plan_id")
+				.GetString());
 	}
+
 
 	[Fact]
 	public void Journey_translation_uses_the_actual_schutzengel_schema()
 	{
-		var departure =
-			new DateTimeOffset(
+		DateTimeOffset departure =
+			new(
 				2026,
 				10,
 				2,
@@ -51,15 +117,22 @@ public sealed class SchutzengelTrackerContractTests
 				0,
 				TimeSpan.FromHours(2));
 
-		var from =
+
+		Station from =
 			Station(
 				"a",
-				"Origin");
+				"Origin",
+				51.0400,
+				13.7000);
 
-		var to =
+
+		Station to =
 			Station(
 				"z",
-				"Destination");
+				"Destination",
+				51.0500,
+				13.7100);
+
 
 		var journey =
 			new Journey
@@ -75,229 +148,863 @@ public sealed class SchutzengelTrackerContractTests
 				Legs =
 				[
 					new JourneyLeg
-				{
-					Id = "0",
+					{
+						Id = "0",
 
-					Mode =
-						TransitMode.Tram,
+						Mode =
+							TransitMode.Tram,
 
-					From =
-						from,
+						From =
+							from,
 
-					To =
-						to,
+						To =
+							to,
 
-					Stops =
-					[
-						new StopTime
-						{
-							Station =
-								from,
+						Stops =
+						[
+							new StopTime
+							{
+								Station =
+									from,
 
-							ScheduledDeparture =
-								departure
-						},
+								ScheduledDeparture =
+									departure
+							},
 
-						new StopTime
-						{
-							Station =
-								to,
+							new StopTime
+							{
+								Station =
+									to,
 
-							ScheduledArrival =
-								departure.AddMinutes(10)
-						}
-					],
+								ScheduledArrival =
+									departure.AddMinutes(10)
+							}
+						],
 
-					ScheduledDeparture =
-						departure,
+						Path =
+						[
+							(
+								51.0400,
+								13.7000),
 
-					ScheduledArrival =
-						departure.AddMinutes(10),
+							(
+								51.0450,
+								13.7050),
 
-					Line =
-						new TransitLine
-						{
-							Name = "3",
-							Mode = TransitMode.Tram,
-							Destination = "Destination"
-						}
-				}
+							(
+								51.0500,
+								13.7100)
+						],
+
+						ScheduledDeparture =
+							departure,
+
+						ScheduledArrival =
+							departure.AddMinutes(10),
+
+						Line =
+							new TransitLine
+							{
+								Name = "3",
+								Mode = TransitMode.Tram,
+								Destination = "Destination"
+							}
+					}
 				]
 			};
 
-		object rawData = new { };
-		string tripReference = journey.Id ?? string.Empty;
 
-		using var plan =
-	JsonDocument.Parse(
-		SchutzengelPlanTranslator.Serialize(
-			journey,
-			rawData,
-			tripReference));
+		object rawData =
+			new
+			{
+				source = "test"
+			};
+
+
+		using JsonDocument plan =
+			JsonDocument.Parse(
+				SchutzengelPlanTranslator.Serialize(
+					journey,
+					rawData));
+
+
+		JsonElement root =
+			plan.RootElement;
+
+
+		Assert.False(
+			root.TryGetProperty(
+				"trip_reference",
+				out _));
+
+
+		Assert.Equal(
+			"test",
+			root.GetProperty(
+				"rawData")
+				.GetProperty(
+					"source")
+				.GetString());
+
 
 		JsonElement episode =
-			plan.RootElement
+			root
 				.GetProperty("journey")
 				.GetProperty("episodes")[0];
+
 
 		Assert.Equal(
 			"public",
 			episode.GetProperty("type").GetString());
 
+
 		Assert.Equal(
 			"vvo",
 			episode.GetProperty("api").GetString());
+
 
 		Assert.Equal(
 			"0",
 			episode.GetProperty("id").GetString());
 
+
 		Assert.Equal(
 			"TRAM",
-			episode.GetProperty("mot").GetProperty("type").GetString());
+			episode
+				.GetProperty("mot")
+				.GetProperty("type")
+				.GetString());
+
 
 		Assert.Equal(
 			"3",
-			episode.GetProperty("mot").GetProperty("name").GetString());
+			episode
+				.GetProperty("mot")
+				.GetProperty("name")
+				.GetString());
+
 
 		Assert.Equal(
 			2,
-			episode.GetProperty("allStations").GetArrayLength());
+			episode
+				.GetProperty("allStations")
+				.GetArrayLength());
+
 
 		Assert.Equal(
 			"a",
-			episode.GetProperty("from").GetProperty("id").GetString());
+			episode
+				.GetProperty("from")
+				.GetProperty("id")
+				.GetString());
+
 
 		Assert.Equal(
 			"z",
-			episode.GetProperty("to").GetProperty("id").GetString());
+			episode
+				.GetProperty("to")
+				.GetProperty("id")
+				.GetString());
+
+
+		JsonElement polyline =
+			episode.GetProperty(
+				"polyline");
+
+
+		Assert.Equal(
+			3,
+			polyline.GetArrayLength());
+
+
+		Assert.Equal(
+			51.0450,
+			polyline[1]
+				.GetProperty("lat")
+				.GetDouble(),
+			precision: 6);
+
+
+		Assert.Equal(
+			13.7050,
+			polyline[1]
+				.GetProperty("lon")
+				.GetDouble(),
+			precision: 6);
 	}
 
-	[Theory]
-	[InlineData("{\"notifications\":[{\"message\":\"Missed connection\"}]}", JourneyTrackingEventKind.RiskChanged, TrackingPhase.AtRisk)]
-	[InlineData("{\"tripCancelled\":true}", JourneyTrackingEventKind.Cancelled, TrackingPhase.Cancelled)]
-	[InlineData("{\"status\":\"arrived\"}", JourneyTrackingEventKind.Arrived, TrackingPhase.Arrived)]
-	public void Realtime_and_notification_responses_map_to_contract_events(string response, JourneyTrackingEventKind expectedKind, TrackingPhase expectedPhase)
+
+	[Fact]
+	public void Vvo_raw_data_reconstructs_provider_native_connection_shape()
 	{
-		var phase = SchutzengelRealtimeTranslator.Translate(response, out var kind, out _);
-		Assert.Equal(expectedKind, kind);
-		Assert.Equal(expectedPhase, phase);
+		DateTimeOffset departure =
+			new(
+				2026,
+				10,
+				2,
+				8,
+				0,
+				0,
+				TimeSpan.Zero);
+
+
+		Station from =
+			Station(
+				"a",
+				"Origin",
+				51.0400,
+				13.7000);
+
+
+		Station to =
+			Station(
+				"z",
+				"Destination",
+				51.0500,
+				13.7100);
+
+
+		var journey =
+			new Journey
+			{
+				Id = "0",
+
+				From =
+					from,
+
+				To =
+					to,
+
+				Legs =
+				[
+					new JourneyLeg
+					{
+						Id = "0",
+
+						Mode =
+							TransitMode.Tram,
+
+						From =
+							from,
+
+						To =
+							to,
+
+						Stops =
+						[
+							new StopTime
+							{
+								Station =
+									from,
+
+								ScheduledDeparture =
+									departure
+							},
+
+							new StopTime
+							{
+								Station =
+									to,
+
+								ScheduledArrival =
+									departure.AddMinutes(10)
+							}
+						],
+
+						Path =
+						[
+							(
+								51.0400,
+								13.7000),
+
+							(
+								51.0500,
+								13.7100)
+						],
+
+						ScheduledDeparture =
+							departure,
+
+						ScheduledArrival =
+							departure.AddMinutes(10),
+
+						Line =
+							new TransitLine
+							{
+								Name = "3",
+								Mode = TransitMode.Tram,
+								Destination = "Destination"
+							}
+					}
+				]
+			};
+
+
+		var route =
+			new VvoRoute
+			{
+				RouteId = 12,
+				Price = "3,60",
+				Net = "voe",
+				NumberOfFareZones = "1 Tarifzone",
+				FareZoneOrigin = 10,
+				FareZoneDestination = 10,
+				FareZoneNames = "TZ Dresden (10)",
+				Duration = 10,
+
+				PartialRoutes =
+				[
+					new VvoPartialRoute
+					{
+						PartialRouteId = 0,
+						Duration = 10,
+
+						Mot =
+							new VvoMot
+							{
+								Type = "Tram",
+								Name = "3",
+								Direction = "Destination"
+							},
+
+						RegularStops =
+						[
+							new VvoStop
+							{
+								DataId = "a",
+								Name = "Origin",
+								Place = "Dresden",
+								Type = "Stop",
+								DepartureTime = departure,
+								ArrivalTime = departure,
+								Latitude = 4500000,
+								Longitude = 5650000
+							},
+
+							new VvoStop
+							{
+								DataId = "z",
+								Name = "Destination",
+								Place = "Dresden",
+								Type = "Stop",
+								ArrivalTime = departure.AddMinutes(10),
+								DepartureTime = departure.AddMinutes(10),
+								Latitude = 4501000,
+								Longitude = 5651000
+							}
+						]
+					}
+				]
+			};
+
+
+		object raw =
+			SchutzengelRawDataTranslator.Translate(
+				route,
+				journey,
+				"session-1",
+				new VvoStatus
+				{
+					Code = "Ok"
+				});
+
+
+		using JsonDocument document =
+			JsonDocument.Parse(
+				JsonSerializer.Serialize(raw));
+
+
+		JsonElement root =
+			document.RootElement;
+
+
+		Assert.Equal(
+			"12",
+			root.GetProperty("id").GetString());
+
+
+		Assert.Equal(
+			360,
+			root.GetProperty("price").GetInt32());
+
+
+		Assert.Equal(
+			"voe",
+			root.GetProperty("tariffInformation")
+				.GetProperty("network")
+				.GetString());
+
+
+		JsonElement partial =
+			root
+				.GetProperty("partialConnections")[0];
+
+
+		Assert.Equal(
+			1,
+			partial
+				.GetProperty("mot")
+				.GetProperty("type")
+				.GetInt32());
+
+
+		Assert.Equal(
+			0,
+			partial
+				.GetProperty("mot")
+				.GetProperty("category")
+				.GetInt32());
+
+
+		JsonElement node =
+			partial
+				.GetProperty("nodes")[0];
+
+
+		Assert.Equal(
+			51.0400,
+			node
+				.GetProperty("location")
+				.GetProperty("latitude")
+				.GetDouble(),
+			precision: 6);
+
+
+		Assert.Equal(
+			1,
+			node
+				.GetProperty("location")
+				.GetProperty("projection")
+				.GetInt32());
+
+
+		Assert.Equal(
+			"session-1",
+			root
+				.GetProperty("sessionId")
+				.GetString());
 	}
+
+
+	[Theory]
+	[InlineData(
+		"{\"notifications\":[{\"message\":\"Missed connection\"}]}",
+		JourneyTrackingEventKind.RiskChanged,
+		TrackingPhase.AtRisk)]
+	[InlineData(
+		"{\"tripCancelled\":true}",
+		JourneyTrackingEventKind.Cancelled,
+		TrackingPhase.Cancelled)]
+	[InlineData(
+		"{\"status\":\"arrived\"}",
+		JourneyTrackingEventKind.Arrived,
+		TrackingPhase.Arrived)]
+	public void Realtime_and_notification_responses_map_to_contract_events(
+		string response,
+		JourneyTrackingEventKind expectedKind,
+		TrackingPhase expectedPhase)
+	{
+		TrackingPhase phase =
+			SchutzengelRealtimeTranslator.Translate(
+				response,
+				out JourneyTrackingEventKind kind,
+				out _);
+
+
+		Assert.Equal(
+			expectedKind,
+			kind);
+
+
+		Assert.Equal(
+			expectedPhase,
+			phase);
+	}
+
 
 	[Fact]
 	public void Restart_recovery_matches_exact_plan_identifier()
 	{
-		using var plans = JsonDocument.Parse("{\"plans\":[{\"plan_id\":\"plan-17\"},{\"plan_id\":\"plan-170\"}]}");
-		Assert.True(SchutzengelPlanRecovery.ContainsPlan(plans.RootElement, "plan-17"));
-		Assert.False(SchutzengelPlanRecovery.ContainsPlan(plans.RootElement, "plan-1"));
+		using JsonDocument plans =
+			JsonDocument.Parse(
+				"{\"plans\":[{\"plan_id\":\"plan-17\"},{\"plan_id\":\"plan-170\"}]}");
+
+
+		Assert.True(
+			SchutzengelPlanRecovery.ContainsPlan(
+				plans.RootElement,
+				"plan-17"));
+
+
+		Assert.False(
+			SchutzengelPlanRecovery.ContainsPlan(
+				plans.RootElement,
+				"plan-1"));
 	}
+
 
 	[Fact]
 	public async Task Deactivation_and_delete_use_separate_lifecycle_endpoints()
 	{
-		var handler = new RecordingHandler(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("{}") });
-		var api = new SchutzengelApi(new HttpClient(handler));
-		api.Authenticate("token");
-		using var paused = await api.DeactivateAsync("p-1", CancellationToken.None);
-		using var deleted = await api.DeletePlanAsync("p-1", CancellationToken.None);
-		using var allDeleted = await api.DeleteAllPlansAsync(CancellationToken.None);
+		var handler =
+			new RecordingHandler(
+				_ =>
+					new HttpResponseMessage(
+						HttpStatusCode.OK)
+					{
+						Content =
+							new StringContent("{}")
+					});
+
+
+		var api =
+			new SchutzengelApi(
+				new HttpClient(handler));
+
+
+		api.Authenticate(
+			"token");
+
+
+		using var paused =
+			await api.DeactivateAsync(
+				"p-1",
+				CancellationToken.None);
+
+
+		using var deleted =
+			await api.DeletePlanAsync(
+				"p-1",
+				CancellationToken.None);
+
+
+		using var allDeleted =
+			await api.DeleteAllPlansAsync(
+				CancellationToken.None);
+
+
 		Assert.EndsWith(
-	"/schutzengel/deactivatePlan",
-	handler.Requests[0].Uri);
-		Assert.Equal(HttpMethod.Delete, handler.Requests[1].Method);
+			"/schutzengel/deactivatePlan",
+			handler.Requests[0].Uri);
+
+
+		Assert.Equal(
+			HttpMethod.Delete,
+			handler.Requests[1].Method);
+
+
 		Assert.EndsWith(
-	"/schutzengel/plan?plan_id=p-1",
-	handler.Requests[1].Uri);
-		Assert.Equal(HttpMethod.Delete, handler.Requests[2].Method);
+			"/schutzengel/plan",
+			handler.Requests[1].Uri);
+
+		using JsonDocument deleteBody =
+			JsonDocument.Parse(
+				handler.Requests[1].Body);
+
+		Assert.Equal(
+			"p-1",
+			deleteBody
+				.RootElement
+				.GetProperty("plan_id")
+				.GetString());
+
+
+		Assert.Equal(
+			HttpMethod.Delete,
+			handler.Requests[2].Method);
+
+
 		Assert.EndsWith(
-	"/schutzengel/allPlans",
-	handler.Requests[2].Uri);
+			"/schutzengel/allPlans",
+			handler.Requests[2].Uri);
 	}
+
 
 	[Fact]
 	public async Task Remaining_service_calls_use_the_documented_endpoint_names_and_bearer_header()
 	{
-		var handler = new RecordingHandler(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("{}") });
-		var api = new SchutzengelApi(new HttpClient(handler));
-		api.Authenticate("token-9");
-		using var time = await api.GetServerTimeAsync(default);
-		using var all = await api.GetAllPlansAsync(default);
-		using var realtime = await api.GetRealtimeAsync("trip 9", default);
-		using var notifications = await api.GetNotificationsAsync("trip 9", default);
-		using var options = await api.SetOptionsAsync("plan-9", default);
-		using var activated = await api.ActivateAsync("plan-9", default);
-		using var registered = await api.RegisterFirebaseAsync("fcm-9", default);
-		using var unregistered = await api.UnregisterFirebaseAsync("fcm-9", default);
+		var handler =
+			new RecordingHandler(
+				_ =>
+					new HttpResponseMessage(
+						HttpStatusCode.OK)
+					{
+						Content =
+							new StringContent("{}")
+					});
+
+
+		var api =
+			new SchutzengelApi(
+				new HttpClient(handler));
+
+
+		api.Authenticate(
+			"token-9");
+
+
+		using var time =
+			await api.GetServerTimeAsync(
+				default);
+
+
+		using var all =
+			await api.GetAllPlansAsync(
+				default);
+
+
+		using var realtime =
+			await api.GetRealtimeAsync(
+				"trip 9",
+				default);
+
+
+		using var notifications =
+			await api.GetNotificationsAsync(
+				"trip 9",
+				default);
+
+
+		using var options =
+			await api.SetOptionsAsync(
+				"plan-9",
+				default);
+
+
+		using var activated =
+			await api.ActivateAsync(
+				"plan-9",
+				default);
+
+
+		using var registered =
+			await api.RegisterFirebaseAsync(
+				"fcm-9",
+				default);
+
+
+		using var unregistered =
+			await api.UnregisterFirebaseAsync(
+				"fcm-9",
+				default);
+
 
 		Assert.Equal(
-	new[]
-	{
-		"serverTime",
-		"plansMinimal",
-		"planRealtime?trip_id=trip%209",
-		"notifications",
-		"planSetOptions",
-		"activatePlan",
-		"register-firebase",
-		"unregister-firebase"
-	},
-	handler.Requests
-		.Select(
-			r =>
-				new Uri(r.Uri)
-					.PathAndQuery
-					.Split('/')
-					.Last())
-		.ToArray());
-		Assert.All(handler.Requests, request => Assert.Equal("Bearer token-9", request.Authentication));
+			new[]
+			{
+				"serverTime",
+				"plansMinimal",
+				"planRealtime?trip_id=trip%209",
+				"notifications",
+				"planSetOptions",
+				"activatePlan",
+				"register-firebase",
+				"unregister-firebase"
+			},
+			handler.Requests
+				.Select(
+					request =>
+						new Uri(request.Uri)
+							.PathAndQuery
+							.Split('/')
+							.Last())
+				.ToArray());
+
+
+		Assert.All(
+			handler.Requests,
+			request =>
+				Assert.Equal(
+					"Bearer token-9",
+					request.Authentication));
 	}
+
 
 	[Fact]
 	public void Journey_snapshot_round_trips_for_process_restart_recovery()
 	{
-		var journey = new Journey
-		{
-			Id = "restart-test",
-			From = Station("from", "Start"),
-			To = Station("to", "End"),
-			Legs = new[] { new JourneyLeg { Mode = TransitMode.Tram, From = Station("from", "Start"), To = Station("to", "End"), ScheduledDeparture = DateTimeOffset.UtcNow.AddHours(1), ScheduledArrival = DateTimeOffset.UtcNow.AddHours(2), Line = new TransitLine { Name = "2", Mode = TransitMode.Tram } } }
-		};
+		var journey =
+			new Journey
+			{
+				Id = "restart-test",
 
-		var restored = JsonSerializer.Deserialize<Journey>(JsonSerializer.Serialize(journey));
-		Assert.NotNull(restored);
-		Assert.Equal("restart-test", restored.Id);
-		Assert.Equal("2", restored.Legs[0].Line?.Name);
+				From =
+					Station(
+						"from",
+						"Start"),
+
+				To =
+					Station(
+						"to",
+						"End"),
+
+				Legs =
+				[
+					new JourneyLeg
+					{
+						Mode =
+							TransitMode.Tram,
+
+						From =
+							Station(
+								"from",
+								"Start"),
+
+						To =
+							Station(
+								"to",
+								"End"),
+
+						ScheduledDeparture =
+							DateTimeOffset.UtcNow.AddHours(1),
+
+						ScheduledArrival =
+							DateTimeOffset.UtcNow.AddHours(2),
+
+						Line =
+							new TransitLine
+							{
+								Name = "2",
+								Mode = TransitMode.Tram
+							}
+					}
+				]
+			};
+
+
+		Journey? restored =
+			JsonSerializer.Deserialize<Journey>(
+				JsonSerializer.Serialize(
+					journey));
+
+
+		Assert.NotNull(
+			restored);
+
+
+		Assert.Equal(
+			"restart-test",
+			restored.Id);
+
+
+		Assert.Equal(
+			"2",
+			restored.Legs[0].Line?.Name);
 	}
+
 
 	[Fact]
 	public async Task Windows_tracker_is_a_noop_and_reports_unavailable()
 	{
-		var tracker = new NoOpJourneyTracker();
-		var journey = new Journey
-		{
-			From = Station("from", "Start"),
-			To = Station("to", "End"),
-			Legs = Array.Empty<JourneyLeg>()
-		};
+		var tracker =
+			new NoOpJourneyTracker();
 
-		Assert.False(tracker.IsAvailable);
-		await tracker.StartAsync(journey);
+
+		var journey =
+			new Journey
+			{
+				From =
+					Station(
+						"from",
+						"Start"),
+
+				To =
+					Station(
+						"to",
+						"End"),
+
+				Legs =
+					Array.Empty<JourneyLeg>()
+			};
+
+
+		Assert.False(
+			tracker.IsAvailable);
+
+
+		await tracker.StartAsync(
+			journey);
+
+
 		await tracker.StopAsync();
-		await foreach (var _ in tracker.Events) Assert.Fail("No-op tracker must not emit updates.");
-	}
 
-	private static Station Station(string id, string name) => new() { Id = id, Name = name, Place = "Dresden" };
 
-	private sealed class RecordingHandler(Func<HttpRequestMessage, HttpResponseMessage> responseFactory) : HttpMessageHandler
-	{
-		public List<CapturedRequest> Requests { get; } = [];
-		protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+		await foreach (JourneyTrackingEvent _ in
+			tracker.Events)
 		{
-			Requests.Add(new CapturedRequest(request.Method, request.RequestUri!.ToString(), request.Headers.TryGetValues("Authentication", out var values) ? values.Single() : null, request.Content is null ? string.Empty : await request.Content.ReadAsStringAsync(cancellationToken)));
-			return responseFactory(request);
+			Assert.Fail(
+				"No-op tracker must not emit updates.");
 		}
 	}
 
-	private sealed record CapturedRequest(HttpMethod Method, string Uri, string? Authentication, string Body);
-}
 
+	private static Station Station(
+		string id,
+		string name,
+		double? latitude = null,
+		double? longitude = null)
+	{
+		return new Station
+		{
+			Id = id,
+			Name = name,
+			Place = "Dresden",
+			Latitude = latitude,
+			Longitude = longitude
+		};
+	}
+
+
+	private sealed class RecordingHandler :
+		HttpMessageHandler
+	{
+		public List<CapturedRequest> Requests { get; } =
+			[];
+
+
+		private readonly Func<
+			HttpRequestMessage,
+			HttpResponseMessage> _responseFactory;
+
+
+		public RecordingHandler(
+			Func<
+				HttpRequestMessage,
+				HttpResponseMessage> responseFactory)
+		{
+			_responseFactory =
+				responseFactory;
+		}
+
+
+		protected override async Task<HttpResponseMessage> SendAsync(
+			HttpRequestMessage request,
+			CancellationToken cancellationToken)
+		{
+			Requests.Add(
+				new CapturedRequest(
+					request.Method,
+					request.RequestUri!.ToString(),
+					request.Headers.TryGetValues(
+						"Authentication",
+						out var values)
+						? values.Single()
+						: null,
+					request.Content is null
+						? string.Empty
+						: await request.Content.ReadAsStringAsync(
+							cancellationToken)));
+
+
+			return _responseFactory(
+				request);
+		}
+	}
+
+
+	private sealed record CapturedRequest(
+		HttpMethod Method,
+		string Uri,
+		string? Authentication,
+		string Body);
+}

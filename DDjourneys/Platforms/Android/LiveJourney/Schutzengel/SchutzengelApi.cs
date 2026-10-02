@@ -168,13 +168,17 @@ internal sealed class SchutzengelApi(HttpClient http)
 
 
 	public Task<JsonDocument> DeletePlanAsync(
-		string planId,
-		CancellationToken ct) =>
-		SendAsync(
-			HttpMethod.Delete,
-			$"plan?plan_id={Uri.EscapeDataString(planId)}",
-			null,
-			ct);
+	string planId,
+	CancellationToken ct) =>
+	SendAsync(
+		HttpMethod.Delete,
+		"plan",
+		JsonSerializer.Serialize(
+			new
+			{
+				plan_id = planId
+			}),
+		ct);
 
 
 	public Task<JsonDocument> RegisterFirebaseAsync(

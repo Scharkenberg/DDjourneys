@@ -30,6 +30,46 @@ public sealed class VvoRoute
 	public int RouteId { get; init; }
 
 
+	[JsonPropertyName("Price")]
+	public string? Price { get; init; }
+
+
+	[JsonPropertyName("PriceDayTicket")]
+	public string? PriceDayTicket { get; init; }
+
+
+	[JsonPropertyName("TicketNotes")]
+	public string? TicketNotes { get; init; }
+
+
+	[JsonPropertyName("Net")]
+	public string? Net { get; init; }
+
+
+	[JsonPropertyName("NumberOfFareZones")]
+	public string? NumberOfFareZones { get; init; }
+
+
+	[JsonPropertyName("NumberOfFareZonesDayTicket")]
+	public string? NumberOfFareZonesDayTicket { get; init; }
+
+
+	[JsonPropertyName("FareZoneNames")]
+	public string? FareZoneNames { get; init; }
+
+
+	[JsonPropertyName("FareZoneNamesDayTicket")]
+	public string? FareZoneNamesDayTicket { get; init; }
+
+
+	[JsonPropertyName("FareZoneOrigin")]
+	public int? FareZoneOrigin { get; init; }
+
+
+	[JsonPropertyName("FareZoneDestination")]
+	public int? FareZoneDestination { get; init; }
+
+
 	[JsonPropertyName("Duration")]
 	public int Duration { get; init; }
 
@@ -54,12 +94,15 @@ public sealed class VvoRoute
 
 	[JsonPropertyName("MapData")]
 	public IReadOnlyList<string> MapData { get; init; }
-	= Array.Empty<string>();
+		= Array.Empty<string>();
 }
 
 
 /// <summary>
-/// Represents one leg of a journey.
+/// Represents one partial route returned by VVO.
+///
+/// A partial route with regular stops is a movement segment.
+/// Transfer/accessibility partial routes may have no regular stops.
 /// </summary>
 public sealed class VvoPartialRoute
 {
@@ -84,6 +127,10 @@ public sealed class VvoPartialRoute
 		= Array.Empty<string>();
 
 
+	[JsonPropertyName("BookingLink")]
+	public string? BookingLink { get; init; }
+
+
 	[JsonPropertyName("Mot")]
 	public VvoMot? Mot { get; init; }
 
@@ -92,27 +139,19 @@ public sealed class VvoPartialRoute
 	public IReadOnlyList<VvoStop> RegularStops { get; init; }
 		= Array.Empty<VvoStop>();
 
+
 	[JsonPropertyName("MapDataIndex")]
 	public int MapDataIndex { get; init; } = -1;
 }
 
 
 /// <summary>
-/// Represents transport information for a VVO leg.
-///
-/// This object contains provider-specific information about the
-/// vehicle mode, public line name, internal VVO identifiers,
-/// operator information and destination.
+/// Represents transport information for a VVO partial route.
 /// </summary>
 public sealed class VvoMot
 {
 	/// <summary>
 	/// Public line name displayed to passengers.
-	///
-	/// Examples:
-	/// "6"
-	/// "S2"
-	/// "RE1"
 	/// </summary>
 	[JsonPropertyName("Name")]
 	public string? Name { get; init; }
@@ -120,12 +159,6 @@ public sealed class VvoMot
 
 	/// <summary>
 	/// Provider transport type.
-	///
-	/// Examples:
-	/// Tram
-	/// Bus
-	/// Train
-	/// RapidTransit
 	/// </summary>
 	[JsonPropertyName("Type")]
 	public string? Type { get; init; }
@@ -147,10 +180,6 @@ public sealed class VvoMot
 
 	/// <summary>
 	/// Transport operator name.
-	///
-	/// Examples:
-	/// "DB Regio AG Südost"
-	/// "DVB AG"
 	/// </summary>
 	[JsonPropertyName("TransportationCompany")]
 	public string? TransportationCompany { get; init; }
@@ -158,10 +187,6 @@ public sealed class VvoMot
 
 	/// <summary>
 	/// Operator identifier.
-	///
-	/// Examples:
-	/// "8004"
-	/// "LD"
 	/// </summary>
 	[JsonPropertyName("OperatorCode")]
 	public string? OperatorCode { get; init; }
@@ -169,10 +194,6 @@ public sealed class VvoMot
 
 	/// <summary>
 	/// Human-readable product category.
-	///
-	/// Examples:
-	/// "S-Bahn"
-	/// "Zug"
 	/// </summary>
 	[JsonPropertyName("ProductName")]
 	public string? ProductName { get; init; }
@@ -180,10 +201,6 @@ public sealed class VvoMot
 
 	/// <summary>
 	/// Vehicle or service number assigned by the operator.
-	///
-	/// Examples:
-	/// "32721"
-	/// "5672"
 	/// </summary>
 	[JsonPropertyName("TrainNumber")]
 	public string? TrainNumber { get; init; }
@@ -203,9 +220,19 @@ public sealed class VvoMot
 	public string? StatelessId { get; init; }
 
 
-	/// <summary>Realtime passenger load reported for this service.</summary>
+	/// <summary>
+	/// Realtime passenger load reported for this service.
+	/// </summary>
 	[JsonPropertyName("Occupancy")]
 	public string? Occupancy { get; init; }
+
+
+	/// <summary>
+	/// VVO disruption identifiers attached to this movement.
+	/// </summary>
+	[JsonPropertyName("Changes")]
+	public IReadOnlyList<string> Changes { get; init; }
+		= Array.Empty<string>();
 }
 
 

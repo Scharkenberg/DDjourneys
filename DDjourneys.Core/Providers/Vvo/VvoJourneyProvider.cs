@@ -132,6 +132,167 @@ public sealed class VvoJourneyProvider :
 	}
 
 
+	/// <summary>
+	/// Requeries VVO and returns the provider-native route corresponding
+	/// to a normalized DDjourneys journey.
+	///
+	/// Schutzengel requires the original VVO Connection object as rawData.
+	/// The normalized Journey intentionally does not retain provider-specific
+	/// state, so the original connection is rehydrated when tracking starts.
+	/// </summary>
+	public async Task<
+		(VvoRoute Route, string? SessionId, VvoStatus? Status)?>
+		GetSchutzengelConnectionAsync(
+			Journey target,
+			CancellationToken cancellationToken = default)
+	{
+		ArgumentNullException.ThrowIfNull(
+			target);
+
+		if (string.IsNullOrWhiteSpace(
+			target.From.Id))
+		{
+			return null;
+		}
+
+		if (string.IsNullOrWhiteSpace(
+			target.To.Id))
+		{
+			return null;
+		}
+
+
+		DateTimeOffset requestedTime =
+			target.Departure
+			?? target.Legs
+				.FirstOrDefault()
+				?.ScheduledDeparture
+			?? DateTimeOffset.UtcNow;
+
+
+		var request =
+			new VvoTripRequest
+			{
+				Origin =
+					target.From.Id,
+
+				Destination =
+					target.To.Id,
+
+				Time =
+					requestedTime,
+
+				IsArrivalTime = false,
+
+				ShortTermChanges = true,
+
+				StandardSettings =
+					CreateStandardSettings(),
+
+				MobilitySettings =
+					CreateMobilitySettings()
+			};
+
+
+		VvoTripResponse? response =
+			await _apiClient.GetTripsAsync(
+				request,
+				cancellationToken,
+				TimeSpan.FromSeconds(15))
+			.ConfigureAwait(false);
+
+
+		if (response is null
+			|| response.Routes.Count == 0)
+		{
+			return null;
+		}
+
+
+		IReadOnlyList<Journey> journeys =
+			VvoJourneyMapper.Map(
+				response);
+
+
+		int count =
+			Math.Min(
+				response.Routes.Count,
+				journeys.Count);
+
+
+		var candidates =
+			new List<
+				(
+					int Index,
+					int Score,
+					double TimeDeltaSeconds
+				)>();
+
+
+		for (int i = 0; i < count; i++)
+		{
+			Journey candidate =
+				journeys[i];
+
+			int score =
+				GetTrackingMatchScore(
+					target,
+					candidate);
+
+			if (score <= 0)
+			{
+				continue;
+			}
+
+
+			candidates.Add(
+				(
+					Index: i,
+					Score: score,
+					TimeDeltaSeconds:
+						GetScheduledTimeDeltaSeconds(
+							target,
+							candidate)
+				));
+		}
+
+
+		if (candidates.Count == 0)
+		{
+			return null;
+		}
+
+
+		var best =
+			candidates
+				.OrderByDescending(
+					item => item.Score)
+				.ThenBy(
+					item => item.TimeDeltaSeconds)
+				.First();
+
+
+		VvoRoute route =
+			response.Routes[best.Index];
+
+
+		System.Diagnostics.Debug.WriteLine(
+			$"""
+			[VVO SCHUTZENGEL]
+			Matched RouteId={route.RouteId}
+			Score={best.Score}
+			TimeDeltaSeconds={best.TimeDeltaSeconds:F0}
+			SessionId={response.SessionId}
+			""");
+
+
+		return (
+			Route: route,
+			SessionId: response.SessionId,
+			Status: response.Status);
+	}
+
+
 	/// <inheritdoc />
 	public Task<JourneyResult> GetPreviousAsync(
 		JourneyQuery query,
@@ -297,6 +458,152 @@ public sealed class VvoJourneyProvider :
 			return JourneyResult.Failure(
 				"vvo_response_unreadable");
 		}
+	}
+
+
+	private static int GetTrackingMatchScore(
+		Journey expected,
+		Journey actual)
+	{
+		if (!string.Equals(
+			expected.From.Id,
+			actual.From.Id,
+			StringComparison.OrdinalIgnoreCase)
+			|| !string.Equals(
+				expected.To.Id,
+				actual.To.Id,
+				StringComparison.OrdinalIgnoreCase)
+			|| expected.Legs.Count != actual.Legs.Count)
+		{
+			return 0;
+		}
+
+
+		int score = 10;
+
+
+		for (int i = 0;
+			i < expected.Legs.Count;
+			i++)
+		{
+			JourneyLeg expectedLeg =
+				expected.Legs[i];
+
+			JourneyLeg actualLeg =
+				actual.Legs[i];
+
+
+			if (expectedLeg.Mode != actualLeg.Mode
+				|| !string.Equals(
+					expectedLeg.Line?.Name,
+					actualLeg.Line?.Name,
+					StringComparison.OrdinalIgnoreCase)
+				|| !string.Equals(
+					expectedLeg.From.Id,
+					actualLeg.From.Id,
+					StringComparison.OrdinalIgnoreCase)
+				|| !string.Equals(
+					expectedLeg.To.Id,
+					actualLeg.To.Id,
+					StringComparison.OrdinalIgnoreCase))
+			{
+				return 0;
+			}
+
+
+			score += 10;
+
+
+			if (!string.IsNullOrWhiteSpace(
+				expectedLeg.Id)
+				&& !string.IsNullOrWhiteSpace(
+					actualLeg.Id)
+				&& string.Equals(
+					expectedLeg.Id,
+					actualLeg.Id,
+					StringComparison.Ordinal))
+			{
+				score += 2;
+			}
+
+
+			if (expectedLeg.Stops.Count > 0
+				&& actualLeg.Stops.Count > 0)
+			{
+				if (expectedLeg.Stops.Count
+					!= actualLeg.Stops.Count)
+				{
+					return 0;
+				}
+
+
+				for (int stopIndex = 0;
+					stopIndex < expectedLeg.Stops.Count;
+					stopIndex++)
+				{
+					if (!string.Equals(
+						expectedLeg.Stops[stopIndex].Station.Id,
+						actualLeg.Stops[stopIndex].Station.Id,
+						StringComparison.OrdinalIgnoreCase))
+					{
+						return 0;
+					}
+				}
+
+
+				score += 5;
+			}
+		}
+
+
+		return score;
+	}
+
+
+	private static double GetScheduledTimeDeltaSeconds(
+		Journey expected,
+		Journey actual)
+	{
+		double totalSeconds = 0;
+
+
+		int count =
+			Math.Min(
+				expected.Legs.Count,
+				actual.Legs.Count);
+
+
+		for (int i = 0; i < count; i++)
+		{
+			JourneyLeg expectedLeg =
+				expected.Legs[i];
+
+			JourneyLeg actualLeg =
+				actual.Legs[i];
+
+
+			if (expectedLeg.ScheduledDeparture is { } expectedDeparture
+				&& actualLeg.ScheduledDeparture is { } actualDeparture)
+			{
+				totalSeconds +=
+					Math.Abs(
+						(expectedDeparture - actualDeparture)
+						.TotalSeconds);
+			}
+
+
+			if (expectedLeg.ScheduledArrival is { } expectedArrival
+				&& actualLeg.ScheduledArrival is { } actualArrival)
+			{
+				totalSeconds +=
+					Math.Abs(
+						(expectedArrival - actualArrival)
+						.TotalSeconds);
+			}
+		}
+
+
+		return totalSeconds;
 	}
 
 

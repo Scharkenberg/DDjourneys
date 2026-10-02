@@ -1,5 +1,5 @@
-using DDjourneys.Core.Models;
 using System.Text.Json;
+using DDjourneys.Core.Models;
 
 namespace DDjourneys.Platforms.Android.LiveJourney.Schutzengel;
 
@@ -7,143 +7,91 @@ internal static class SchutzengelPlanTranslator
 {
 	public static object Translate(
 		Journey journey,
-		object rawData,
-		string tripReference)
+		object rawData)
 	{
-		ArgumentNullException.ThrowIfNull(journey);
-		ArgumentNullException.ThrowIfNull(rawData);
-		ArgumentNullException.ThrowIfNull(tripReference);
+		ArgumentNullException.ThrowIfNull(
+			journey);
 
-		var episodes = new List<object>();
+		ArgumentNullException.ThrowIfNull(
+			rawData);
 
-		for (int i = 0; i < journey.Legs.Count; i++)
+
+		var episodes =
+			new List<object>();
+
+
+		for (int i = 0;
+			i < journey.Legs.Count;
+			i++)
 		{
-			if (i == 0)
-			{
-				AddTerminalTransfer(
-					episodes,
-					journey,
-					previousLegIndex: null,
-					nextLegIndex: 0);
-			}
-			else
-			{
-				AddTransfer(
-					episodes,
-					journey,
-					i - 1,
-					i);
-			}
+			JourneyLeg leg =
+				journey.Legs[i];
+
 
 			episodes.Add(
-	PublicEpisode(
-		journey.Legs[i]));
+				MovementEpisode(
+					leg));
+
+
+			if (i < journey.Legs.Count - 1)
+			{
+				AddInterLegTransfer(
+					episodes,
+					journey,
+					i,
+					i + 1);
+			}
 		}
 
-		AddTerminalTransfer(
-			episodes,
-			journey,
-			previousLegIndex: journey.Legs.Count - 1,
-			nextLegIndex: null);
 
 		return new
 		{
-			journey = new
-			{
-				episodes
-			},
+			journey =
+				new
+				{
+					episodes
+				},
 
 			rawData,
 
-			trip_reference = tripReference,
-
-			attentions = new
-			{
-				start = new
+			attentions =
+				new
 				{
-					timeBeforeSeconds = 300,
-					active = true
-				},
+					start =
+						new
+						{
+							timeBeforeSeconds = 300,
+							active = true
+						},
 
-				change = true,
-				problem = true
-			},
+					change = true,
+
+					problem = true
+				},
 
 			type = "static"
 		};
 	}
 
+
 	public static string Serialize(
 		Journey journey,
-		object rawData,
-		string tripReference) =>
+		object rawData) =>
 		JsonSerializer.Serialize(
 			Translate(
 				journey,
-				rawData,
-				tripReference));
+				rawData));
 
-	private static void AddTransfer(
-		List<object> episodes,
-		Journey journey,
-		int previousLegIndex,
-		int nextLegIndex)
+
+	private static object MovementEpisode(
+		JourneyLeg leg)
 	{
-		JourneyTransfer? transfer =
-			journey.Transfers.FirstOrDefault(
-				t =>
-					t.PreviousLegIndex == previousLegIndex
-					&& t.NextLegIndex == nextLegIndex
-					&& t.Kind == TransferKind.Walk);
-
-		if (transfer is null)
-		{
-			return;
-		}
-
-		episodes.Add(
-			WalkingEpisode(
-				GetTransferFrom(
-					journey,
-					transfer),
-
-				GetTransferTo(
-					journey,
-					transfer),
-
-				transfer.Duration));
-	}
-
-
-	private static void AddTerminalTransfer(
-		List<object> episodes,
-		Journey journey,
-		int? previousLegIndex,
-		int? nextLegIndex)
-	{
-		JourneyTransfer? transfer =
-			journey.Transfers.FirstOrDefault(
-				t =>
-					t.PreviousLegIndex == previousLegIndex
-					&& t.NextLegIndex == nextLegIndex
-					&& t.Kind == TransferKind.Walk);
-
-		if (transfer is null)
-		{
-			return;
-		}
-
-		episodes.Add(
-			WalkingEpisode(
-				GetTransferFrom(
-					journey,
-					transfer),
-
-				GetTransferTo(
-					journey,
-					transfer),
-
-				transfer.Duration));
+		return IsIndividualTransport(
+			leg.Mode)
+			? IndividualEpisode(
+				leg)
+			: PublicEpisode(
+				leg);
 	}
 
 
@@ -151,13 +99,16 @@ internal static class SchutzengelPlanTranslator
 		JourneyLeg leg)
 	{
 		StopTime[] stops =
-			BuildStops(leg);
+			BuildStops(
+				leg);
+
 
 		if (stops.Length == 0)
 		{
 			throw new InvalidOperationException(
 				"Schutzengel public episode has no stops.");
 		}
+
 
 		return new
 		{
@@ -177,77 +128,272 @@ internal static class SchutzengelPlanTranslator
 
 			type = "public",
 
-			mot = new
-			{
-				type =
-					MotType(
-						leg.Mode),
+			mot =
+				new
+				{
+					type =
+						MotType(
+							leg.Mode),
 
-				name =
-					leg.Line?.Name
-					?? string.Empty,
+					name =
+						leg.Line?.Name
+						?? string.Empty,
 
-				direction =
-					leg.Line?.Destination
-					?? string.Empty
-			},
+					direction =
+						leg.Line?.Destination
+						?? string.Empty
+				},
 
-			id = leg.Id	?? string.Empty,
+			id =
+				leg.Id
+				?? string.Empty,
 
 			polyline =
 				BuildPolyline(
-					stops.Select(
-						stop => stop.Station))
+					leg.Path)
 		};
+	}
+
+
+	private static object IndividualEpisode(
+		JourneyLeg leg)
+	{
+		DateTimeOffset? fromTime =
+			leg.ScheduledDeparture
+			?? leg.EffectiveDeparture;
+
+
+		DateTimeOffset? toTime =
+			leg.ScheduledArrival
+			?? leg.EffectiveArrival;
+
+
+		int durationSeconds =
+			PlannedDurationSeconds(
+				leg);
+
+
+		return new
+		{
+			id =
+				leg.Id
+				?? string.Empty,
+
+			mot =
+				new
+				{
+					type =
+						MotType(
+							leg.Mode),
+
+					name =
+						leg.Line?.Name
+						?? string.Empty,
+
+					direction =
+						leg.Line?.Destination
+						?? string.Empty
+				},
+
+			from =
+				WalkingStationObject(
+					leg.From,
+					fromTime),
+
+			to =
+				WalkingStationObject(
+					leg.To,
+					toTime),
+
+			type = "individual",
+
+			allStations =
+				new[]
+				{
+					WalkingStationObject(
+						leg.From,
+						fromTime),
+
+					WalkingStationObject(
+						leg.To,
+						toTime)
+				},
+
+			requiredTimeMS =
+				durationSeconds * 1000,
+
+			durationSeconds,
+
+			polyline =
+				BuildPolyline(
+					leg.Path)
+		};
+	}
+
+
+	private static void AddInterLegTransfer(
+		List<object> episodes,
+		Journey journey,
+		int previousLegIndex,
+		int nextLegIndex)
+	{
+		JourneyLeg previousLeg =
+			journey.Legs[previousLegIndex];
+
+		JourneyLeg nextLeg =
+			journey.Legs[nextLegIndex];
+
+
+		JourneyTransfer[] transfers =
+			journey.Transfers
+				.Where(
+					transfer =>
+						transfer.PreviousLegIndex
+							== previousLegIndex
+						&& transfer.NextLegIndex
+							== nextLegIndex)
+				.ToArray();
+
+
+		if (transfers.Length > 0)
+		{
+			Station from =
+				previousLeg.To;
+
+			Station to =
+				nextLeg.From;
+
+
+			TimeSpan transferDuration =
+				TimeSpan.FromSeconds(
+					transfers.Sum(
+						transfer =>
+							Math.Max(
+								0,
+								transfer.Duration
+									.TotalSeconds)));
+
+
+			var path =
+				transfers
+					.SelectMany(
+						transfer =>
+							transfer.Path);
+
+
+			episodes.Add(
+				WalkingEpisode(
+					from,
+					to,
+					GetTransferDepartureTime(
+						previousLeg),
+					GetTransferArrivalTime(
+						nextLeg),
+					transferDuration,
+					path));
+
+
+			return;
+		}
+
+
+		if (!string.Equals(
+			previousLeg.To.Id,
+			nextLeg.From.Id,
+			StringComparison.OrdinalIgnoreCase))
+		{
+			return;
+		}
+
+
+		DateTimeOffset? fromTime =
+			GetTransferDepartureTime(
+				previousLeg);
+
+		DateTimeOffset? toTime =
+			GetTransferArrivalTime(
+				nextLeg);
+
+
+		if (fromTime is not { }
+			fromValue
+			|| toTime is not { }
+			toValue)
+		{
+			return;
+		}
+
+
+		TimeSpan syntheticDuration =
+			toValue >= fromValue
+				? toValue - fromValue
+				: TimeSpan.Zero;
+
+
+		episodes.Add(
+			WalkingEpisode(
+				previousLeg.To,
+				nextLeg.From,
+				fromValue,
+				toValue,
+				syntheticDuration,
+				Array.Empty<
+					(double Latitude, double Longitude)>()));
 	}
 
 
 	private static object WalkingEpisode(
 		Station from,
 		Station to,
-		TimeSpan duration)
+		DateTimeOffset? fromTime,
+		DateTimeOffset? toTime,
+		TimeSpan duration,
+		IEnumerable<
+			(double Latitude, double Longitude)> path)
 	{
 		int seconds =
 			Math.Max(
 				0,
-				(int)Math.Round(
-					duration.TotalSeconds));
+				(int)
+					Math.Round(
+						duration.TotalSeconds));
+
 
 		return new
 		{
 			id = string.Empty,
 
-			to =
-				WalkingStationObject(
-					to,
-					GetWalkingTime(
-						to)),
-
-			mot = new
-			{
-				name = "Fussweg",
-				type = "WALKING",
-				direction = string.Empty
-			},
+			mot =
+				new
+				{
+					name = "Fussweg",
+					type = "WALKING",
+					direction = string.Empty
+				},
 
 			from =
 				WalkingStationObject(
 					from,
-					GetWalkingTime(
-						from)),
+					fromTime),
+
+			to =
+				WalkingStationObject(
+					to,
+					toTime),
 
 			type = "individual",
 
-			allStations = new[]
-			{
-				WalkingStationObject(
-					from,
-					GetWalkingTime(from)),
+			allStations =
+				new[]
+				{
+					WalkingStationObject(
+						from,
+						fromTime),
 
-				WalkingStationObject(
-					to,
-					GetWalkingTime(to))
-			},
+					WalkingStationObject(
+						to,
+						toTime)
+				},
 
 			requiredTimeMS =
 				seconds * 1000,
@@ -257,11 +403,7 @@ internal static class SchutzengelPlanTranslator
 
 			polyline =
 				BuildPolyline(
-					new[]
-					{
-						from,
-						to
-					})
+					path)
 		};
 	}
 
@@ -274,6 +416,7 @@ internal static class SchutzengelPlanTranslator
 			var result =
 				leg.Stops.ToList();
 
+
 			if (!SameStation(
 				result[0].Station,
 				leg.From))
@@ -285,6 +428,7 @@ internal static class SchutzengelPlanTranslator
 						leg.ScheduledDeparture));
 			}
 
+
 			if (!SameStation(
 				result[^1].Station,
 				leg.To))
@@ -295,8 +439,10 @@ internal static class SchutzengelPlanTranslator
 						leg.ScheduledArrival));
 			}
 
+
 			return result.ToArray();
 		}
+
 
 		return
 		[
@@ -317,10 +463,17 @@ internal static class SchutzengelPlanTranslator
 	{
 		return new StopTime
 		{
-			Station = station,
-			ScheduledArrival = time,
-			ScheduledDeparture = time,
-			Platform = station.Platform
+			Station =
+				station,
+
+			ScheduledArrival =
+				time,
+
+			ScheduledDeparture =
+				time,
+
+			Platform =
+				station.Platform
 		};
 	}
 
@@ -328,8 +481,8 @@ internal static class SchutzengelPlanTranslator
 	private static object StopObject(
 		StopTime stop)
 	{
-		Dictionary<string, object?> result =
-			new()
+		var result =
+			new Dictionary<string, object?>
 			{
 				["name"] =
 					stop.Station.Name,
@@ -346,20 +499,24 @@ internal static class SchutzengelPlanTranslator
 						stop.ScheduledDeparture
 						?? stop.ScheduledArrival),
 
-				["platform"] =
-					PlatformObject(
-						stop.Platform),
-
 				["api"] =
 					"vvo"
 			};
 
-		if (string.IsNullOrWhiteSpace(
+
+		if (!string.IsNullOrWhiteSpace(
 			stop.Platform))
 		{
-			result.Remove(
-				"platform");
+			result["platform"] =
+				new
+				{
+					type = "Steig",
+
+					name =
+						stop.Platform
+				};
 		}
+
 
 		return result;
 	}
@@ -371,23 +528,22 @@ internal static class SchutzengelPlanTranslator
 	{
 		return new
 		{
-			id = station.Id,
-			api = "vvo",
-			name = station.Name,
-			coords = Coordinates(station),
+			id =
+				station.Id,
+
+			api =
+				"vvo",
+
+			name =
+				station.Name,
+
+			coords =
+				Coordinates(
+					station),
+
 			scheduledTime =
-				ToUnixMilliseconds(time)
-		};
-	}
-
-
-	private static object PlatformObject(
-		string? platform)
-	{
-		return new
-		{
-			type = "Steig",
-			name = platform ?? string.Empty
+				ToUnixMilliseconds(
+					time)
 		};
 	}
 
@@ -398,38 +554,42 @@ internal static class SchutzengelPlanTranslator
 		return new
 		{
 			lat =
-				station.Latitude ?? 0,
+				station.Latitude
+				?? 0,
 
 			lon =
-				station.Longitude ?? 0,
+				station.Longitude
+				?? 0,
 
-			projection = "WGS84"
+			projection =
+				"WGS84"
 		};
 	}
 
 
 	private static long? ToUnixMilliseconds(
-		DateTimeOffset? value)
-	{
-		return value?.ToUnixTimeMilliseconds();
-	}
+		DateTimeOffset? value) =>
+		value?.ToUnixTimeMilliseconds();
 
 
 	private static object[] BuildPolyline(
-		IEnumerable<Station> stations)
+		IEnumerable<
+			(double Latitude, double Longitude)> path)
 	{
-		return stations
-			.Where(
-				s =>
-					s.Latitude.HasValue
-					&& s.Longitude.HasValue)
+		return path
 			.Select(
-				s => new
-				{
-					lat = s.Latitude!.Value,
-					lon = s.Longitude!.Value,
-					projection = "WGS84"
-				})
+				point =>
+					new
+					{
+						lat =
+							point.Latitude,
+
+						lon =
+							point.Longitude,
+
+						projection =
+							"WGS84"
+					})
 			.ToArray();
 	}
 
@@ -448,7 +608,7 @@ internal static class SchutzengelPlanTranslator
 				"SUBWAY",
 
 			TransitMode.SuburbanRail =>
-				"TRAIN",
+				"TRAIN_URBAN",
 
 			TransitMode.RegionalTrain =>
 				"TRAIN",
@@ -460,63 +620,93 @@ internal static class SchutzengelPlanTranslator
 				"FERRY",
 
 			TransitMode.CableCar =>
-				"CABLECAR",
+				"CABLEWAY",
 
 			TransitMode.Taxi =>
 				"TAXI",
 
 			TransitMode.OnDemand =>
-				"ONDEMAND",
+				"HAILEDSHAREDTAXI",
+
+			TransitMode.Walk =>
+				"WALKING",
 
 			_ =>
-				"UNKNOWN"
+				"ANY"
 		};
 
 
-	private static Station GetTransferFrom(
-		Journey journey,
-		JourneyTransfer transfer)
+	private static bool IsIndividualTransport(
+		TransitMode mode) =>
+		mode is
+			TransitMode.Taxi
+			or TransitMode.OnDemand
+			or TransitMode.Walk;
+
+
+	private static int PlannedDurationSeconds(
+		JourneyLeg leg)
 	{
-		if (transfer.PreviousLegIndex is { } index
-			&& index >= 0
-			&& index < journey.Legs.Count)
+		DateTimeOffset? departure =
+			leg.ScheduledDeparture;
+
+		DateTimeOffset? arrival =
+			leg.ScheduledArrival;
+
+
+		if (departure is not { }
+			|| arrival is not { })
 		{
-			return journey.Legs[index].To;
+			departure =
+				leg.EffectiveDeparture;
+
+			arrival =
+				leg.EffectiveArrival;
 		}
 
-		return journey.From;
-	}
 
-
-	private static Station GetTransferTo(
-		Journey journey,
-		JourneyTransfer transfer)
-	{
-		if (transfer.NextLegIndex is { } index
-			&& index >= 0
-			&& index < journey.Legs.Count)
+		if (departure is not { }
+			departureValue
+			|| arrival is not { }
+			arrivalValue
+			|| arrivalValue <= departureValue)
 		{
-			return journey.Legs[index].From;
+			return 0;
 		}
 
-		return journey.To;
+
+		return Math.Max(
+			0,
+			(int)
+				Math.Round(
+					(arrivalValue - departureValue)
+						.TotalSeconds));
 	}
 
 
-	private static DateTimeOffset? GetWalkingTime(
-		Station station)
-	{
-		return null;
-	}
+	private static DateTimeOffset? GetTransferDepartureTime(
+		JourneyLeg leg) =>
+		leg.Stops
+			.LastOrDefault()
+			?.ScheduledDeparture
+			?? leg.ScheduledArrival
+			?? leg.EffectiveArrival;
+
+
+	private static DateTimeOffset? GetTransferArrivalTime(
+		JourneyLeg leg) =>
+		leg.Stops
+			.FirstOrDefault()
+			?.ScheduledDeparture
+			?? leg.ScheduledDeparture
+			?? leg.EffectiveDeparture;
 
 
 	private static bool SameStation(
 		Station left,
-		Station right)
-	{
-		return string.Equals(
+		Station right) =>
+		string.Equals(
 			left.Id,
 			right.Id,
 			StringComparison.OrdinalIgnoreCase);
-	}
 }

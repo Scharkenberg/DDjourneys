@@ -25,6 +25,7 @@
     <Compile Include="..\DDjourneys\Platforms\Android\LiveJourney\Schutzengel\SchutzengelRealtimeTranslator.cs" Link="Schutzengel\SchutzengelRealtimeTranslator.cs" />
     <Compile Include="..\DDjourneys\Platforms\Android\LiveJourney\Schutzengel\SchutzengelPlanRecovery.cs" Link="Schutzengel\SchutzengelPlanRecovery.cs" />
     <Compile Include="..\DDjourneys\Platforms\Windows\NoOpJourneyTracker.cs" Link="Platforms\Windows\NoOpJourneyTracker.cs" />
+	<Compile Include="..\DDjourneys\Platforms\Android\LiveJourney\Schutzengel\SchutzengelRawDataTranslator.cs" Link="Schutzengel\SchutzengelRawDataTranslator.cs" />
   </ItemGroup>
 
 </Project>
