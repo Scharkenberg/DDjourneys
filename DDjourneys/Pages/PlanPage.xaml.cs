@@ -45,6 +45,61 @@ public partial class PlanPage : ContentPage, IQueryAttributable
 				_localization.CurrentStrings.Common.Ok);
 	}
 
+	private bool? _dateTimeStacked;
+
+	/// <summary>
+	/// Date and time sit side by side while both pickers fit their half of the row; otherwise the time
+	/// moves to a row of its own. (The Windows time picker has a wide built-in minimum that cannot be
+	/// narrowed safely, so the layout adapts instead of cutting it off.)
+	/// </summary>
+	private void OnDateTimeGridSizeChanged(object? sender, EventArgs e)
+	{
+		if (DateTimeGrid.Width <= 0)
+		{
+			return;
+		}
+
+		double required = Math.Max(
+			DesiredWidth(DatePickerControl),
+			DesiredWidth(TimePickerControl));
+
+		if (required <= 0)
+		{
+			return;
+		}
+
+		Thickness padding = DateTimeGrid.Padding;
+		double half = (DateTimeGrid.Width - padding.HorizontalThickness - DateTimeGrid.ColumnSpacing) / 2;
+		bool stacked = half < required;
+
+		if (_dateTimeStacked == stacked)
+		{
+			return;
+		}
+
+		_dateTimeStacked = stacked;
+
+		if (stacked)
+		{
+			DateTimeGrid.ColumnDefinitions = [new ColumnDefinition(GridLength.Star)];
+			DateTimeGrid.RowDefinitions = [new RowDefinition(GridLength.Auto), new RowDefinition(GridLength.Auto)];
+			DateTimeGrid.RowSpacing = 4;
+			Grid.SetRow(TimeCell, 1);
+			Grid.SetColumn(TimeCell, 0);
+		}
+		else
+		{
+			DateTimeGrid.RowDefinitions = [];
+			DateTimeGrid.ColumnDefinitions = [new ColumnDefinition(GridLength.Star), new ColumnDefinition(GridLength.Star)];
+			DateTimeGrid.RowSpacing = 0;
+			Grid.SetRow(TimeCell, 0);
+			Grid.SetColumn(TimeCell, 1);
+		}
+	}
+
+	private static double DesiredWidth(View view) =>
+		view.Measure(double.PositiveInfinity, double.PositiveInfinity).Width;
+
 	protected override void OnAppearing()
 	{
 		base.OnAppearing();

@@ -151,15 +151,18 @@
 
 					<!--  Date and time share one row  -->
 					<Grid
+						x:Name="DateTimeGrid"
 						support:Dense.Padding="12,6"
 						ColumnDefinitions="*,*"
 						ColumnSpacing="12"
+						SizeChanged="OnDateTimeGridSizeChanged"
 						support:Dense.MinHeight="64">
 
-						<VerticalStackLayout Spacing="0" VerticalOptions="Center">
+						<VerticalStackLayout x:Name="DateCell" Spacing="0" VerticalOptions="Center">
 							<Label StyleClass="Caption" Text="{localization:Tr Plan.Date}" />
 
 							<DatePicker
+								x:Name="DatePickerControl"
 								Date="{Binding Date}"
 								Format="ddd, d MMM"
 								HorizontalOptions="Start"
@@ -168,12 +171,14 @@
 						</VerticalStackLayout>
 
 						<VerticalStackLayout
+							x:Name="TimeCell"
 							Grid.Column="1"
 							Spacing="0"
 							VerticalOptions="Center">
 							<Label StyleClass="Caption" Text="{localization:Tr Plan.Time}" />
 
 							<TimePicker
+								x:Name="TimePickerControl"
 								Format="HH:mm"
 								HorizontalOptions="Start"
 								Time="{Binding Time}" />
