@@ -613,6 +613,7 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 				await _api.GetPlanAsync(entry.Info.PlanId, cancellationToken).ConfigureAwait(false);
 
 			entry.Summary = SchutzengelRawSummaryParser.ParsePlanRawData(document.RootElement);
+			entry.Timeline?.SetEnsured(entry.Summary?.EnsuredChanges);
 			entry.SummaryLoaded = true;
 		}
 		catch (Exception ex) when (ex is not OperationCanceledException)
@@ -663,6 +664,7 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 				if (realtime.StatusCode != HttpStatusCode.Created
 					&& TripTimeline.TryParse(realtime.Root, entry.Timeline, out TripTimeline timeline))
 				{
+					timeline.SetEnsured(entry.Summary?.EnsuredChanges);
 					entry.Timeline = timeline;
 				}
 			}
@@ -799,6 +801,8 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 		return effects;
 	}
 
+	private const int UnconfirmedArrivalGraceMinutes = 30;
+
 	private WatchedJourney Evaluate(
 		WatchEntry entry,
 		DateTimeOffset now,
@@ -820,11 +824,13 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 		{
 			status = WatchStatus.Deactivated;
 		}
-		else if (end is { } finish && finish < now && !periodic)
+		else if (end is { } finish && finish < now && !periodic
+			&& (entry.Timeline is not null || finish.AddMinutes(UnconfirmedArrivalGraceMinutes) < now))
 		{
+			// Without live data the planned arrival is only a guess: a delayed journey is not over yet.
 			status = WatchStatus.Recent;
 		}
-		else if (end is { } over && over < now)
+		else if (end is { } over && over < now && periodic)
 		{
 			// A periodic plan waits for its next trip instead of completing.
 			status = WatchStatus.Planned;

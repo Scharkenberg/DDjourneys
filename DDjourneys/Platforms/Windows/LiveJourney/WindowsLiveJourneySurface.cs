@@ -14,7 +14,7 @@ namespace DDjourneys.Platforms.Windows.LiveJourney;
 /// progress are updated in place. Windows removes a notification when it is clicked (body or
 /// button) and also when the user dismisses it; the two are told apart by the activation event.
 /// </summary>
-internal sealed class WindowsLiveJourneySurface : ILiveJourneySurface, IDisposable
+internal sealed partial class WindowsLiveJourneySurface : ILiveJourneySurface, IDisposable
 {
 	private const string LiveTag = "live";
 
@@ -83,7 +83,7 @@ internal sealed class WindowsLiveJourneySurface : ILiveJourneySurface, IDisposab
 					&& !(WindowsNotificationHost.Embedded && !_shownBefore);
 
 				_content = content;
-				_basis = now;
+				_basis = content.PositionAt ?? now;
 				_shownBefore = true;
 
 				if (!_live || key != _layoutKey)

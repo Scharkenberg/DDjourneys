@@ -22,14 +22,27 @@ public static class Theme
 
 	// Everything currently written to Application.Resources by the theme (colours, brushes, fonts).
 	private static readonly Dictionary<string, object> Current = new();
+
+	// The palette as chosen, before a window material made parts of it translucent: what drawing code and
+	// native chrome (status bar, share image) must use.
+	private static readonly Dictionary<string, Color> Solid = new();
 	private static readonly ConditionalWeakTable<Element, StampBox> Stamps = new();
 
 	private static Application? _app;
 	private static AppSettings? _settings;
 	private static int _version;
 	private static bool _applying;
+	private static bool _materialDirty;
 
 	public static event EventHandler? Changed;
+
+	/// <summary>The page background of the palette in effect; the system bars wear it.</summary>
+	public static Color BarColor =>
+		Solid.TryGetValue("Bg", out Color color)
+			? color
+			: IsDark
+				? Colors.Black
+				: Colors.White;
 
 	/// <summary>Whether the palette currently in effect is a dark one.</summary>
 	public static bool IsDark { get; private set; }
@@ -56,6 +69,7 @@ public static class Theme
 		ColorId = ColorCatalog.Find(settings.ThemeColor).Id;
 		PureBlack = settings.ThemePureBlack;
 		Font = FontCatalog.Normalize(settings.FontFace);
+		Material.Initialize(settings);
 
 		app.RequestedThemeChanged += (_, _) =>
 		{
@@ -121,6 +135,14 @@ public static class Theme
 				return true;
 			});
 
+	/// <summary>Windows: the window material (none, mica, micaalt, acrylic).</summary>
+	public static Task SetMaterialAsync(string materialId) =>
+		ChangeAsync(() => Material.SetMaterial(materialId), notify: true);
+
+	/// <summary>Windows: how far the window material reaches into the surfaces.</summary>
+	public static Task SetMaterialSurfacesAsync(string surfacesId) =>
+		ChangeAsync(() => Material.SetSurfaces(surfacesId), notify: true);
+
 	public static Task SetFontAsync(string fontId)
 	{
 		string value = FontCatalog.Normalize(fontId);
@@ -142,7 +164,9 @@ public static class Theme
 
 	/// <summary>A colour of the palette currently in effect (for code that draws outside the view tree).</summary>
 	public static Color ColorOf(string key, Color fallback) =>
-		Current.TryGetValue(key, out object? value) && value is Color color ? color : fallback;
+		Solid.TryGetValue(key, out Color color)
+			? color
+			: Current.TryGetValue(key, out object? value) && value is Color current ? current : fallback;
 
 	/// <summary>Re-reads OS-dependent inputs (system accent, OS dark mode). Cheap when nothing changed.</summary>
 	public static void Refresh() => Apply();
@@ -199,12 +223,15 @@ public static class Theme
 			_ => ModeSystem
 		};
 
-	private static async Task ChangeAsync(Func<bool> mutate)
+	private static async Task ChangeAsync(Func<bool> mutate, bool notify = false)
 	{
 		if (!mutate())
 		{
 			return;
 		}
+
+		// The window material itself changes without a colour change (Mica to Mica Alt): tell the platform.
+		_materialDirty |= notify;
 
 		VisualElement? page = null;
 		bool animate = _settings?.Animations ?? false;
@@ -285,11 +312,19 @@ public static class Theme
 			};
 
 			// 2. Colours and fonts, written in place; only entries that differ are touched.
-			ResourceDictionary resources = _app.Resources;
-			bool changed = false;
+			//    A window material (Windows 11) makes background and surfaces translucent layers.
+			bool materialWas = Material.Active;
+			Material.Resolve(dark, PureBlack);
 
-			foreach ((string key, Color color) in ColorCatalog.Resolve(ColorId, dark, PureBlack))
+			ResourceDictionary resources = _app.Resources;
+			bool changed = materialWas != Material.Active || _materialDirty;
+
+			foreach ((string key, Color solid) in ColorCatalog.Resolve(ColorId, dark, PureBlack))
 			{
+				Solid[key] = solid;
+
+				Color color = Material.Tint(key, solid, dark);
+
 				if (Current.TryGetValue(key, out object? old) && old is Color oldColor && oldColor == color)
 				{
 					continue;
@@ -322,8 +357,14 @@ public static class Theme
 
 			_version++;
 
+			if (_materialDirty || materialWas != Material.Active)
+			{
+				_materialDirty = false;
+				Material.Raise();
+			}
+
 #if ANDROID
-			// System bars: transparent, with icons that stay legible on this theme.
+			// System bars: the palette's background, with icons that stay legible on this theme.
 			// The activity may not exist yet (first call during app start); MainActivity repeats this.
 			DDjourneys.Platforms.Android.SystemBars.Apply(
 				Microsoft.Maui.ApplicationModel.Platform.CurrentActivity,

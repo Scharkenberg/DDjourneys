@@ -135,6 +135,27 @@ internal sealed class TripTimeline
 
 	public int? DataVersion { get; }
 
+	/// <summary>Per change between consecutive rides: the provider ensures it (the next vehicle waits).</summary>
+	private IReadOnlyList<bool> _ensured = [];
+
+	/// <summary>Takes over the ensured changes of the plan's raw data; ignored when they do not fit the rides.</summary>
+	public void SetEnsured(IReadOnlyList<bool>? ensured) =>
+		_ensured = ensured ?? [];
+
+	private bool IsEnsuredChange(int episodeIndex)
+	{
+		int rides = Episodes.Count(episode => !episode.IsIndividual);
+
+		if (_ensured.Count == 0 || _ensured.Count != rides - 1)
+		{
+			return false;
+		}
+
+		int before = Episodes.Take(episodeIndex).Count(episode => !episode.IsIndividual) - 1;
+
+		return before >= 0 && before < _ensured.Count && _ensured[before];
+	}
+
 	public IReadOnlyList<TripEpisode> Episodes { get; }
 
 	public DateTimeOffset? Start =>
@@ -189,6 +210,7 @@ internal sealed class TripTimeline
 		}
 
 		timeline = new TripTimeline(ReadInt(root, "data_version"), Normalize(episodes));
+		timeline._ensured = previous?._ensured ?? [];
 		return true;
 	}
 
@@ -453,6 +475,12 @@ internal sealed class TripTimeline
 			TripEpisode before = Episodes[i - 1];
 			TripEpisode after = Episodes[i + 1];
 
+			// An ensured connection waits for the arriving vehicle; it is neither at risk nor lost.
+			if (IsEnsuredChange(i))
+			{
+				continue;
+			}
+
 			if (!change.IsIndividual
 				|| before.IsIndividual
 				|| after.IsIndividual
@@ -478,8 +506,50 @@ internal sealed class TripTimeline
 
 	// ----- Parsing -----
 
+	/// <summary>
+	/// A vehicle that is late stays late: stops without a real-time value after a delayed stop of the same ride
+	/// inherit that delay (the service often reports real time only for the stops near the vehicle).
+	/// Without this a delayed tram counts as arrived at its planned time.
+	/// </summary>
+	private static TripEpisode CarryDelay(TripEpisode episode)
+	{
+		if (episode.IsIndividual)
+		{
+			return episode;
+		}
+
+		TimeSpan? delay = null;
+
+		static TimeSpan? DelayOf(TripStop stop) =>
+			stop.Realtime is { } real && stop.Scheduled is { } plan ? real - plan : null;
+
+		static TripStop Apply(TripStop stop, TimeSpan? late) =>
+			stop.Realtime is null && stop.Scheduled is { } plan && late is { } by && by > TimeSpan.Zero
+				? stop with { Realtime = plan + by }
+				: stop;
+
+		var stops = new List<TripStop>(episode.Stops.Count);
+
+		foreach (TripStop stop in episode.Stops)
+		{
+			delay = DelayOf(stop) ?? delay;
+			stops.Add(Apply(stop, delay));
+		}
+
+		TripStop from = Apply(episode.From, DelayOf(episode.From));
+		delay = DelayOf(from) ?? delay;
+		TripStop to = Apply(episode.To, delay);
+
+		return episode with { From = from, To = to, Stops = stops };
+	}
+
 	private static List<TripEpisode> Normalize(List<TripEpisode> episodes)
 	{
+		for (int i = 0; i < episodes.Count; i++)
+		{
+			episodes[i] = CarryDelay(episodes[i]);
+		}
+
 		for (int i = 0; i < episodes.Count; i++)
 		{
 			TripEpisode episode = episodes[i];

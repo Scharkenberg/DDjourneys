@@ -46,6 +46,9 @@ public static class MauiProgram
 		Platforms.Android.NativeStyling.Install();
 #endif
 
+		// Versioned on-device storage: bring it up to date before anything reads it.
+		AppStorage.Upgrade();
+
 		var settings = new AppSettings();
 
 		LocalizationInitializer.Initialize(settings);
@@ -103,6 +106,9 @@ public static class MauiProgram
 				services.GetRequiredService<ITrackingRuntime>(),
 				services.GetRequiredService<INotificationAccess>(),
 				defaultLeadMinutes: () => services.GetRequiredService<AppSettings>().DefaultLeadMinutes));
+
+		builder.Services.AddSingleton(
+			services => new Lazy<IJourneyTracker>(() => services.GetRequiredService<IJourneyTracker>()));
 
 		// External contract (links, intents, protocol launches): see docs/EXTERNAL_CONTRACT.md.
 		builder.Services.AddSingleton<ICallbackLauncher, PlatformCallbackLauncher>();

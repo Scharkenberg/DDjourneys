@@ -34,6 +34,7 @@ public static class JourneyFeasibility
 		ArgumentNullException.ThrowIfNull(journey);
 
 		JourneyLeg? previousRide = null;
+		int previousRideIndex = -1;
 
 		for (int i = 0; i < journey.Legs.Count; i++)
 		{
@@ -65,7 +66,10 @@ public static class JourneyFeasibility
 			// Broken means certain: the next vehicle leaves before the previous one arrives. Footpaths are not
 			// added (a change without a real footpath carries its whole wait as duration); a merely tight change
 			// is the provider's "endangered" flag, not an impossibility.
+			// An ensured connection (the next vehicle waits) is never broken by the clock: the provider's
+			// departure time may still show the timetable while the vehicle is held back.
 			if (previousRide is not null
+				&& !IsEnsuredChange(journey, previousRideIndex, i)
 				&& (previousRide.RealtimeArrival.HasValue || leg.RealtimeDeparture.HasValue)
 				&& previousRide.EffectiveArrival is { } arrival
 				&& leg.EffectiveDeparture is { } departure
@@ -75,8 +79,34 @@ public static class JourneyFeasibility
 			}
 
 			previousRide = leg;
+			previousRideIndex = i;
 		}
 
 		return null;
+	}
+
+	/// <summary>
+	/// True when the provider ensures the change from the ride at <paramref name="fromLegIndex"/> to the ride at
+	/// <paramref name="toLegIndex"/> (the connecting vehicle waits). Legs in between (a footpath) belong to the change.
+	/// </summary>
+	public static bool IsEnsuredChange(Journey journey, int fromLegIndex, int toLegIndex)
+	{
+		ArgumentNullException.ThrowIfNull(journey);
+
+		foreach (JourneyTransfer transfer in journey.Transfers)
+		{
+			if (transfer.IsEnsured
+				&& transfer.PreviousLegIndex is { } previous
+				&& transfer.NextLegIndex is { } next
+				&& previous >= fromLegIndex
+				&& next <= toLegIndex
+				&& previous < toLegIndex
+				&& next > fromLegIndex)
+			{
+				return true;
+			}
+		}
+
+		return false;
 	}
 }

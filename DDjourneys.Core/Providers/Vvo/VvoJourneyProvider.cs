@@ -111,6 +111,8 @@ public sealed class VvoJourneyProvider :
 					query.From,
 					query.To);
 
+			RememberRouting(journeys, query.Routing);
+
 
 			// Everything the service offered: the journey service trims to the requested number,
 			// from the right end for the search mode ("arrive by" keeps the latest arrivals).
@@ -192,10 +194,10 @@ public sealed class VvoJourneyProvider :
 				ShortTermChanges = true,
 
 				StandardSettings =
-					CreateStandardSettings(),
+					CreateStandardSettings(RoutingOf(target)),
 
 				MobilitySettings =
-					CreateMobilitySettings()
+					CreateMobilitySettings(RoutingOf(target))
 			};
 
 
@@ -236,36 +238,48 @@ public sealed class VvoJourneyProvider :
 				)>();
 
 
-		for (int i = 0; i < count; i++)
+		// Strict first (same stops); then lenient (same legs and times, stops may have changed in real time).
+		for (int pass = 0; pass < 2 && candidates.Count == 0; pass++)
 		{
-			Journey candidate =
-				journeys[i];
+			bool strict = pass == 0;
 
-			int score =
-				GetTrackingMatchScore(
-					target,
-					candidate);
-
-			if (score <= 0)
+			for (int i = 0; i < count; i++)
 			{
-				continue;
+				Journey candidate =
+					journeys[i];
+
+				int score =
+					GetTrackingMatchScore(
+						target,
+						candidate,
+						strict);
+
+				double delta =
+					GetScheduledTimeDeltaSeconds(
+						target,
+						candidate);
+
+				if (score <= 0
+					|| (!strict && delta > 300 * Math.Max(1, target.Legs.Count)))
+				{
+					continue;
+				}
+
+				candidates.Add(
+					(
+						Index: i,
+						Score: score,
+						TimeDeltaSeconds: delta
+					));
 			}
-
-
-			candidates.Add(
-				(
-					Index: i,
-					Score: score,
-					TimeDeltaSeconds:
-						GetScheduledTimeDeltaSeconds(
-							target,
-							candidate)
-				));
 		}
 
 
 		if (candidates.Count == 0)
 		{
+			System.Diagnostics.Debug.WriteLine(
+				$"[VVO SCHUTZENGEL] No match among {count} routes for {target.From.Id}->{target.To.Id} at {requestedTime:u} (legs={target.Legs.Count}).");
+
 			return null;
 		}
 
@@ -449,6 +463,7 @@ public sealed class VvoJourneyProvider :
 					query.From,
 					query.To);
 
+			RememberRouting(journeys, query.Routing);
 
 			return JourneyResult.Success(
 				LimitResults(
@@ -534,9 +549,24 @@ public sealed class VvoJourneyProvider :
 	}
 
 
+	private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Journey, RoutingPreferences> RoutingByJourney = new();
+
+	private static void RememberRouting(IReadOnlyList<Journey> journeys, RoutingPreferences routing)
+	{
+		foreach (Journey journey in journeys)
+		{
+			RoutingByJourney.AddOrUpdate(journey, routing);
+		}
+	}
+
+	/// <summary>The routing the journey was found with (the follow search must repeat it), or null for the default.</summary>
+	private static RoutingPreferences? RoutingOf(Journey journey) =>
+		RoutingByJourney.TryGetValue(journey, out RoutingPreferences? routing) ? routing : null;
+
 	private static int GetTrackingMatchScore(
 		Journey expected,
-		Journey actual)
+		Journey actual,
+		bool strictStops = true)
 	{
 		if (!string.Equals(
 			expected.From.Id,
@@ -600,7 +630,8 @@ public sealed class VvoJourneyProvider :
 			}
 
 
-			if (expectedLeg.Stops.Count > 0
+			if (strictStops
+				&& expectedLeg.Stops.Count > 0
 				&& actualLeg.Stops.Count > 0)
 			{
 				if (expectedLeg.Stops.Count

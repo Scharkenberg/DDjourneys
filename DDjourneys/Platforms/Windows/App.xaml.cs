@@ -1,4 +1,5 @@
-﻿using DDjourneys.Platforms.Windows.LiveJourney;
+﻿using DDjourneys.Platforms.Windows;
+using DDjourneys.Platforms.Windows.LiveJourney;
 using Microsoft.UI.Xaml;
 
 // To learn more about WinUI, the WinUI project structure,
@@ -32,6 +33,9 @@ namespace DDjourneys.WinUI
 			WindowsBackground.Initialize(WindowsNotificationHost.Embedded);
 
 			this.InitializeComponent();
+
+			// WinUI's own opaque page/navigation backgrounds must not hide the window material.
+			WindowsMaterial.Prepare();
 		}
 
 		protected override MauiApp CreateMauiApp()
@@ -48,6 +52,7 @@ namespace DDjourneys.WinUI
 						if (handler.PlatformView is Microsoft.UI.Xaml.Window window)
 						{
 							WindowsBackground.Attach(window);
+							WindowsMaterial.Attach(window);
 						}
 					});
 

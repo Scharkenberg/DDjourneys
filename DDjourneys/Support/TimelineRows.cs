@@ -242,6 +242,12 @@ public sealed class InterchangeRow : TimelineRow
 
 	public string? RiskText { get; init; }
 
+	/// <summary>Says the connecting vehicle waits (ensured connection); null otherwise.</summary>
+	public string? AssuranceText { get; init; }
+
+	public bool HasAssurance =>
+		AssuranceText is not null;
+
 	public bool HasArrivalOccupancy =>
 		ArrivalOccupancy != OccupancyLevel.Unknown;
 
@@ -1009,12 +1015,18 @@ public static class TimelineRowFactory
 					// A change that cannot be made says so instead of "may be missed".
 					RiskText =
 						boundary.Endangered
-						&& ChangeBlock(from, to, strings) is null
+						&& ChangeBlock(from, to, strings, boundary.Ensured) is null
 							? strings.ConnectionMayBeMissed
 							: null,
 
+					AssuranceText =
+						boundary.Ensured
+						&& ChangeBlock(from, to, strings, true) is null
+							? strings.ConnectionGuaranteed
+							: null,
+
 					BlockText =
-						ChangeBlock(from, to, strings),
+						ChangeBlock(from, to, strings, boundary.Ensured),
 
 					NodeColor =
 						ModeColors.For(to.Mode),
@@ -1240,7 +1252,7 @@ public static class TimelineRowFactory
 	/// Why a change between two rides cannot be made: the stop is skipped on the way in or out, or by
 	/// real time the next vehicle leaves before the first one arrives. Null when the change works.
 	/// </summary>
-	private static string? ChangeBlock(JourneyLeg from, JourneyLeg to, JourneyStrings strings)
+	private static string? ChangeBlock(JourneyLeg from, JourneyLeg to, JourneyStrings strings, bool ensured = false)
 	{
 		if (from.Stops.Count > 1 && from.Stops[^1].CannotAlight)
 		{
@@ -1252,7 +1264,9 @@ public static class TimelineRowFactory
 			return string.Format(System.Globalization.CultureInfo.CurrentCulture, strings.BlockNotServed, to.From.Name);
 		}
 
-		if ((from.RealtimeArrival.HasValue || to.RealtimeDeparture.HasValue)
+		// The provider ensures the change (the next vehicle waits): the clock cannot make it unreachable.
+		if (!ensured
+			&& (from.RealtimeArrival.HasValue || to.RealtimeDeparture.HasValue)
 			&& from.EffectiveArrival is { } arrival
 			&& to.EffectiveDeparture is { } departure
 			&& departure < arrival)

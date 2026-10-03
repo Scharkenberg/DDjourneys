@@ -1,5 +1,6 @@
 ﻿using System.Text.Json;
 using DDjourneys.Core.Models;
+using DDjourneys.Core.Storage;
 using DDjourneys.Core.Providers.Vvo;
 using Location = DDjourneys.Core.Models.Location;
 
@@ -17,8 +18,10 @@ public sealed record RoutePair(
 /// Remembers recent and favourite places, and the connections that were searched,
 /// between app runs.
 ///
-/// Small lists only: stored as JSON in MAUI Preferences. If this ever grows,
-/// this class is the only thing to replace.
+/// Small lists only: stored as versioned JSON (<see cref="StoredJson"/>) in MAUI Preferences. Reading is
+/// entry by entry, so one unreadable entry never costs the list; every write keeps the previous text as
+/// a fallback, and a text that cannot be read at all is set aside instead of being overwritten. If this ever
+/// grows, this class is the only thing to replace.
 /// </summary>
 public sealed class PlaceStore
 {
@@ -26,6 +29,8 @@ public sealed class PlaceStore
 	private const string FavouritesKey = "places.favourites";
 	private const string RoutesKey = "places.routes";
 	private const int MaxRecents = 8;
+	private const string PreviousSuffix = ".prev";
+	private const string CorruptSuffix = ".corrupt";
 
 	/// <summary>Provider that stored stops without a provider id belong to (the app only knew VVO then).</summary>
 	private const string LegacyProviderId = VvoProviderInfo.Id;
@@ -33,6 +38,7 @@ public sealed class PlaceStore
 	/// <summary>How many searched connections are kept. Older ones drop off the end.</summary>
 	public const int MaxRoutes = 50;
 
+	private readonly IKeyValueStore _store;
 	private readonly object _gate = new();
 	private readonly List<Location> _recents;
 	private readonly List<Location> _favourites;
@@ -57,7 +63,18 @@ public sealed class PlaceStore
 
 
 	public PlaceStore()
+		: this(new PreferencesKeyValueStore())
 	{
+	}
+
+
+	public PlaceStore(
+		IKeyValueStore store)
+	{
+		ArgumentNullException.ThrowIfNull(store);
+
+		_store = store;
+
 		_recents =
 			Load(RecentsKey);
 
@@ -301,6 +318,32 @@ public sealed class PlaceStore
 	}
 
 
+	/// <summary>
+	/// Rewrites every stored list in the current format (readable entries only). Part of the storage
+	/// upgrade; lists that are not stored are left alone.
+	/// </summary>
+	public void Normalize()
+	{
+		lock (_gate)
+		{
+			if (!string.IsNullOrWhiteSpace(_store.Get(RecentsKey)))
+			{
+				Save(RecentsKey, _recents);
+			}
+
+			if (!string.IsNullOrWhiteSpace(_store.Get(FavouritesKey)))
+			{
+				Save(FavouritesKey, _favourites);
+			}
+
+			if (!string.IsNullOrWhiteSpace(_store.Get(RoutesKey)))
+			{
+				SaveRoutes();
+			}
+		}
+	}
+
+
 	private void RaiseChanged()
 	{
 		try
@@ -337,6 +380,7 @@ public sealed class PlaceStore
 	// Stored shape is independent of the domain model,
 	// so the model can evolve without invalidating stored data.
 	// ProviderId is optional: entries written before it existed have none (see ToLocation).
+	// Property names stay PascalCase, as the first releases wrote them.
 	private sealed record Entry(
 		string? Id,
 		string Name,
@@ -346,81 +390,67 @@ public sealed class PlaceStore
 		string? ProviderId = null);
 
 
-	private static readonly System.Text.Json.JsonSerializerOptions JsonOptions =
-		new()
-		{
-			WriteIndented = false
-		};
-
-
 	/// <summary>Stored shape of a connection: the two endpoints, nothing else.</summary>
 	private sealed record RouteEntry(
 		Entry? From,
 		Entry? To);
 
 
-	private List<RoutePair> LoadRoutes()
+	private static Entry? ParseEntry(
+		JsonElement element)
 	{
-		try
+		string? name =
+			StoredJson.String(element, "Name");
+
+		if (string.IsNullOrWhiteSpace(name))
 		{
-			string json =
-				Preferences.Get(
-					RoutesKey,
-					string.Empty);
-
-			if (string.IsNullOrWhiteSpace(json))
-			{
-				return [];
-			}
-
-			return
-				(JsonSerializer.Deserialize<List<RouteEntry>>(json, JsonOptions)
-					?? [])
-				.Where(
-					entry =>
-						entry.From is not null
-						&& entry.To is not null
-						&& !string.IsNullOrWhiteSpace(entry.From.Name)
-						&& !string.IsNullOrWhiteSpace(entry.To.Name))
-				.Select(
-					entry =>
-						new RoutePair(
-							ToLocation(entry.From!),
-							ToLocation(entry.To!)))
-				.Take(MaxRoutes)
-				.ToList();
+			return null;
 		}
-		catch (Exception ex)
-		{
-			System.Diagnostics.Debug.WriteLine(
-				$"PlaceStore load '{RoutesKey}' failed: {ex.Message}");
 
-			return [];
-		}
+		return new Entry(
+			StoredJson.String(element, "Id"),
+			name,
+			StoredJson.String(element, "Place"),
+			StoredJson.Number(element, "Latitude"),
+			StoredJson.Number(element, "Longitude"),
+			StoredJson.String(element, "ProviderId"));
 	}
 
 
-	private void SaveRoutes()
+	private static RouteEntry? ParseRoute(
+		JsonElement element)
 	{
-		try
+		if (!StoredJson.TryGet(element, "From", out JsonElement from)
+			|| !StoredJson.TryGet(element, "To", out JsonElement to)
+			|| ParseEntry(from) is not { } fromEntry
+			|| ParseEntry(to) is not { } toEntry)
 		{
-			var entries =
-				_routes.Select(
-					route =>
-						new RouteEntry(
-							ToEntry(route.From),
-							ToEntry(route.To)));
+			return null;
+		}
 
-			Preferences.Set(
-				RoutesKey,
-				JsonSerializer.Serialize(entries, JsonOptions));
-		}
-		catch (Exception ex)
-		{
-			System.Diagnostics.Debug.WriteLine(
-				$"PlaceStore save '{RoutesKey}' failed: {ex.Message}");
-		}
+		return new RouteEntry(fromEntry, toEntry);
 	}
+
+
+	private List<RoutePair> LoadRoutes() =>
+		LoadList(RoutesKey, ParseRoute)
+			.Select(
+				entry =>
+					new RoutePair(
+						ToLocation(entry.From!),
+						ToLocation(entry.To!)))
+			.Take(MaxRoutes)
+			.ToList();
+
+
+	private void SaveRoutes() =>
+		SaveList(
+			RoutesKey,
+			_routes.Select(
+				route =>
+					new RouteEntry(
+						ToEntry(route.From),
+						ToEntry(route.To))));
 
 
 	private static Entry ToEntry(
@@ -458,53 +488,92 @@ public sealed class PlaceStore
 		};
 
 
-	private static List<Location> Load(
-		string key)
+	private List<Location> Load(
+		string key) =>
+		LoadList(key, ParseEntry)
+			.Select(ToLocation)
+			.ToList();
+
+
+	private void Save(
+		string key,
+		List<Location> places) =>
+		SaveList(
+			key,
+			places.Select(ToEntry));
+
+
+	/// <summary>
+	/// Reads a stored list: the text itself, else the fallback copy of the write before it. A text that
+	/// cannot be understood at all is set aside under "&lt;key&gt;.corrupt" (kept for diagnosis, never read).
+	/// </summary>
+	private List<T> LoadList<T>(
+		string key,
+		Func<JsonElement, T?> parse)
+		where T : class
 	{
-		try
+		foreach (string candidate in new[] { key, key + PreviousSuffix })
 		{
-			string json =
-				Preferences.Get(
-					key,
-					string.Empty);
-
-			if (string.IsNullOrWhiteSpace(json))
+			try
 			{
-				return [];
+				string? text =
+					_store.Get(candidate);
+
+				if (string.IsNullOrWhiteSpace(text))
+				{
+					continue;
+				}
+
+				StoredRead<T> read =
+					StoredJson.Read(text, parse);
+
+				if (!read.Recognized)
+				{
+					_store.Set(candidate + CorruptSuffix, text);
+					_store.Remove(candidate);
+
+					continue;
+				}
+
+				if (read.Dropped > 0)
+				{
+					System.Diagnostics.Debug.WriteLine(
+						$"PlaceStore '{candidate}': {read.Dropped} unreadable entries skipped");
+				}
+
+				if (read.Items.Count > 0 || candidate == key)
+				{
+					return read.Items.ToList();
+				}
 			}
-
-			return
-				(JsonSerializer.Deserialize<List<Entry>>(json)
-					?? [])
-				.Where(
-					e =>
-						!string.IsNullOrWhiteSpace(
-							e.Name))
-				.Select(ToLocation)
-				.ToList();
+			catch (Exception ex)
+			{
+				System.Diagnostics.Debug.WriteLine(
+					$"PlaceStore load '{candidate}' failed: {ex.Message}");
+			}
 		}
-		catch (Exception ex)
-		{
-			System.Diagnostics.Debug.WriteLine(
-				$"PlaceStore load '{key}' failed: {ex.Message}");
 
-			return [];
-		}
+		return [];
 	}
 
 
-	private static void Save(
+	private void SaveList<T>(
 		string key,
-		List<Location> places)
+		IEnumerable<T> entries)
 	{
 		try
 		{
-			var entries =
-				places.Select(ToEntry);
+			string? previous =
+				_store.Get(key);
 
-			Preferences.Set(
+			if (!string.IsNullOrWhiteSpace(previous))
+			{
+				_store.Set(key + PreviousSuffix, previous);
+			}
+
+			_store.Set(
 				key,
-				JsonSerializer.Serialize(entries));
+				StoredJson.Write(entries));
 		}
 		catch (Exception ex)
 		{

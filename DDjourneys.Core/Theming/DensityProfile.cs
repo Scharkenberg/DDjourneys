@@ -1,8 +1,8 @@
 namespace DDjourneys.Core.Theming;
 
 /// <summary>
-/// One UI density: how much room controls, rows and pages take. Normal is the authored design; the other
-/// profiles derive from it, so every number in the XAML stays the one source of truth.
+/// One UI density: how much room controls, rows and pages take. The values written in the XAML are the reference; every profile
+/// derives from them by factor (Normal is a little tighter than authored), so the XAML stays the one source of truth.
 /// <para>
 /// Two kinds of numbers: factors (applied to values written in XAML through <c>Dense.*</c>) and a token table
 /// (the shared spacing and padding resources). Font sizes are deliberately not part of a density; text size
@@ -16,63 +16,63 @@ public sealed record DensityProfile
 	public const string TouchId = "touch";
 
 	/// <summary>Compact never shrinks a control below this (or below its authored size, if that is smaller): a fingertip is ~9 mm.</summary>
-	public const double CompactHitFloor = 36;
+	public const double CompactHitFloor = 34;
 
 	public static readonly DensityProfile Compact = new()
 	{
 		Id = CompactId,
-		HeightFactor = 0.85,
-		VerticalPaddingFactor = 0.5,
-		HorizontalPaddingFactor = 0.85,
-		SpaceXS = 3,
-		SpaceS = 6,
-		SpaceM = 8,
-		SpaceL = 12,
-		SpaceXL = 16,
-		CardPadding = 10,
-		PagePaddingHorizontal = 12,
-		PagePaddingVertical = 8,
-		FieldPaddingHorizontal = 12,
-		FieldPaddingVertical = 6,
-		SectionGap = 4
+		HeightFactor = 0.8,
+		VerticalPaddingFactor = 0.45,
+		HorizontalPaddingFactor = 0.8,
+		SpaceXS = 2,
+		SpaceS = 5,
+		SpaceM = 7,
+		SpaceL = 10,
+		SpaceXL = 14,
+		CardPadding = 9,
+		PagePaddingHorizontal = 10,
+		PagePaddingVertical = 6,
+		FieldPaddingHorizontal = 10,
+		FieldPaddingVertical = 5,
+		SectionGap = 3
 	};
 
 	public static readonly DensityProfile Normal = new()
 	{
 		Id = NormalId,
-		HeightFactor = 1,
-		VerticalPaddingFactor = 1,
-		HorizontalPaddingFactor = 1,
-		SpaceXS = 4,
-		SpaceS = 8,
-		SpaceM = 12,
-		SpaceL = 16,
-		SpaceXL = 24,
-		CardPadding = 14,
-		PagePaddingHorizontal = 16,
-		PagePaddingVertical = 12,
-		FieldPaddingHorizontal = 14,
-		FieldPaddingVertical = 8,
-		SectionGap = 8
+		HeightFactor = 0.95,
+		VerticalPaddingFactor = 0.9,
+		HorizontalPaddingFactor = 0.95,
+		SpaceXS = 3,
+		SpaceS = 7,
+		SpaceM = 11,
+		SpaceL = 14,
+		SpaceXL = 22,
+		CardPadding = 12,
+		PagePaddingHorizontal = 14,
+		PagePaddingVertical = 10,
+		FieldPaddingHorizontal = 12,
+		FieldPaddingVertical = 7,
+		SectionGap = 7
 	};
 
 	public static readonly DensityProfile Touch = new()
 	{
 		Id = TouchId,
-		HeightFactor = 1.2,
-		VerticalPaddingFactor = 1.5,
-		HorizontalPaddingFactor = 1.1,
-		SpaceXS = 5,
-		SpaceS = 10,
-		SpaceM = 16,
-		SpaceL = 20,
-		SpaceXL = 28,
-		CardPadding = 18,
-		PagePaddingHorizontal = 16,
-		PagePaddingVertical = 16,
-		FieldPaddingHorizontal = 16,
-		FieldPaddingVertical = 12,
-		SectionGap = 12
+		HeightFactor = 1.12,
+		VerticalPaddingFactor = 1.4,
+		HorizontalPaddingFactor = 1.05,
+		SpaceXS = 4,
+		SpaceS = 9,
+		SpaceM = 14,
+		SpaceL = 18,
+		SpaceXL = 26,
+		CardPadding = 16,
+		PagePaddingHorizontal = 15,
+		PagePaddingVertical = 14,
+		FieldPaddingHorizontal = 15,
+		FieldPaddingVertical = 11,
+		SectionGap = 10
 	};
 
 	public static IReadOnlyList<DensityProfile> All { get; } = [Compact, Normal, Touch];

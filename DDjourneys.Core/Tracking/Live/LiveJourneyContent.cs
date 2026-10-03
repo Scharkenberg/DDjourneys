@@ -11,6 +11,7 @@ namespace DDjourneys.Core.Tracking.Live;
 /// <param name="Individual">Per segment: walking or other individual transport.</param>
 /// <param name="Position">Progress along the summed <paramref name="Segments"/>.</param>
 /// <param name="When">The moment the next event happens (countdown target), if any.</param>
+/// <param name="PositionAt">The moment <paramref name="Position"/> was true (the start of the current ride or walk), so a renderer can advance the bar with the clock; null means "now".</param>
 public sealed record LiveJourneyContent(
 	string PlanId,
 	string Title,
@@ -22,7 +23,8 @@ public sealed record LiveJourneyContent(
 	int Position,
 	TrackingPhase Phase,
 	bool Ongoing,
-	DateTimeOffset? When = null)
+	DateTimeOffset? When = null,
+	DateTimeOffset? PositionAt = null)
 {
 	/// <summary>Records compare lists by reference; this key compares what is displayed.</summary>
 	public string Key =>

@@ -130,6 +130,8 @@ public sealed class JourneyStrings
 	public required string WalkAbout { get; init; }
 	public required string BetweenStops { get; init; }
 	public required string ConnectionMayBeMissed { get; init; }
+
+	public required string ConnectionGuaranteed { get; init; }
 	public required string NotPossible { get; init; }
 	public required string BlockRideCancelled { get; init; }
 	public required string BlockNotServed { get; init; }
@@ -193,6 +195,23 @@ public sealed class SettingsStrings
 	public required string DensityNormalDescription { get; init; }
 	public required string DensityTouch { get; init; }
 	public required string DensityTouchDescription { get; init; }
+	public required string MaterialHeader { get; init; }
+	public required string MaterialNone { get; init; }
+	public required string MaterialNoneDescription { get; init; }
+	public required string MaterialMica { get; init; }
+	public required string MaterialMicaDescription { get; init; }
+	public required string MaterialMicaAlt { get; init; }
+	public required string MaterialMicaAltDescription { get; init; }
+	public required string MaterialAcrylic { get; init; }
+	public required string MaterialAcrylicDescription { get; init; }
+	public required string MaterialNote { get; init; }
+	public required string SurfacesHeader { get; init; }
+	public required string SurfacesBackdrop { get; init; }
+	public required string SurfacesBackdropDescription { get; init; }
+	public required string SurfacesLayered { get; init; }
+	public required string SurfacesLayeredDescription { get; init; }
+	public required string SurfacesImmersive { get; init; }
+	public required string SurfacesImmersiveDescription { get; init; }
 	public required string FontHeader { get; init; }
 	public required string FontSystem { get; init; }
 	public required string FontSystemDescription { get; init; }

@@ -24,6 +24,13 @@ public sealed class AppearanceViewModel : DisposableViewModel
 
 		Densities = DensityProfile.All.Select(d => new AppearanceChoice(d.Id, false)).ToList();
 
+		Materials = MaterialProfile.Materials.Where(Material.IsSupported).Select(id => new AppearanceChoice(id, false)).ToList();
+
+		MaterialSurfaces = MaterialProfile.Coverages.Select(id => new AppearanceChoice(id, false)).ToList();
+
+		SelectMaterialCommand = new AsyncCommand<string>(id => ApplyAsync(() => Theme.SetMaterialAsync(id ?? MaterialProfile.Mica)));
+		SelectMaterialSurfacesCommand = new AsyncCommand<string>(id => ApplyAsync(() => Theme.SetMaterialSurfacesAsync(id ?? MaterialProfile.Layered)));
+
 		SelectModeCommand = new AsyncCommand<string>(id => ApplyAsync(() => Theme.SetModeAsync(id ?? Theme.ModeSystem)));
 		SelectColorCommand = new AsyncCommand<string>(id => ApplyAsync(() => Theme.SetColorAsync(id ?? ColorCatalog.DefaultId)));
 		SelectFontCommand = new AsyncCommand<string>(id => ApplyAsync(() => Theme.SetFontAsync(id ?? FontCatalog.OpenSansId)));
@@ -61,6 +68,18 @@ public sealed class AppearanceViewModel : DisposableViewModel
 	public List<AppearanceChoice> Fonts { get; }
 
 	public List<AppearanceChoice> Densities { get; }
+
+	/// <summary>Window materials this device can show (Windows 11); none elsewhere.</summary>
+	public List<AppearanceChoice> Materials { get; }
+
+	public List<AppearanceChoice> MaterialSurfaces { get; }
+
+	/// <summary>The material settings only exist where a material can be shown.</summary>
+	public bool ShowMaterial => Material.Available;
+
+	public AsyncCommand<string> SelectMaterialCommand { get; }
+
+	public AsyncCommand<string> SelectMaterialSurfacesCommand { get; }
 
 	public AsyncCommand<string> SelectModeCommand { get; }
 
@@ -148,6 +167,31 @@ public sealed class AppearanceViewModel : DisposableViewModel
 			};
 
 			density.IsSelected = density.Id == Density.Profile.Id;
+		}
+
+		foreach (AppearanceChoice material in Materials)
+		{
+			(material.Title, material.Description) = material.Id switch
+			{
+				MaterialProfile.Mica => (s.MaterialMica, s.MaterialMicaDescription),
+				MaterialProfile.MicaAlt => (s.MaterialMicaAlt, s.MaterialMicaAltDescription),
+				MaterialProfile.Acrylic => (s.MaterialAcrylic, s.MaterialAcrylicDescription),
+				_ => (s.MaterialNone, s.MaterialNoneDescription)
+			};
+
+			material.IsSelected = material.Id == Material.Id;
+		}
+
+		foreach (AppearanceChoice surfaces in MaterialSurfaces)
+		{
+			(surfaces.Title, surfaces.Description) = surfaces.Id switch
+			{
+				MaterialProfile.Backdrop => (s.SurfacesBackdrop, s.SurfacesBackdropDescription),
+				MaterialProfile.Immersive => (s.SurfacesImmersive, s.SurfacesImmersiveDescription),
+				_ => (s.SurfacesLayered, s.SurfacesLayeredDescription)
+			};
+
+			surfaces.IsSelected = surfaces.Id == Material.Surfaces;
 		}
 
 		OnPropertyChanged(nameof(PureBlack));

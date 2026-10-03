@@ -446,6 +446,11 @@
 						StyleClass="Delay"
 						Text="{Binding RiskText}" />
 
+					<Label
+						IsVisible="{Binding HasAssurance}"
+						StyleClass="Caption"
+						Text="{Binding AssuranceText}" />
+
 					<!--  The change cannot be made (stop skipped, or the next vehicle leaves first)  -->
 					<Label
 						IsVisible="{Binding HasBlock}"

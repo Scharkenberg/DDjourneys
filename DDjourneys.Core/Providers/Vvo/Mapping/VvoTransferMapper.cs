@@ -44,6 +44,14 @@ public static class VvoTransferMapper
 			== true;
 	}
 
+	/// <summary>"StayForConnection": the connecting vehicle waits for the arriving one.</summary>
+	public static bool IsEnsuredConnection(
+		VvoPartialRoute route) =>
+		string.Equals(
+			route.Mot?.Type,
+			"StayForConnection",
+			StringComparison.OrdinalIgnoreCase);
+
 	public static JourneyTransfer MapTransfer(
 		VvoPartialRoute route,
 		JourneyLeg? previousLeg,
@@ -117,7 +125,11 @@ public static class VvoTransferMapper
 					departureStop),
 
 			IsGuaranteed =
-				!route.ChangeoverEndangered,
+				IsEnsuredConnection(route)
+				|| !route.ChangeoverEndangered,
+
+			IsEnsured =
+				IsEnsuredConnection(route),
 
 			ProviderData =
 				route,

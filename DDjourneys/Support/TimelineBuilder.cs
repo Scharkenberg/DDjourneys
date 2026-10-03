@@ -23,7 +23,8 @@ public sealed record BoundaryItem(
 	bool ShowWait,
 	bool Endangered = false,
 	TimeSpan? WalkTime = null,
-	Station? Origin = null) : TimelineItem;
+	Station? Origin = null,
+	bool Ensured = false) : TimelineItem;
 
 /// <summary>
 /// Converts the provider-neutral journey model into a flat, display-ready
@@ -202,8 +203,13 @@ public static class TimelineBuilder
 
 		// With realtime data the connection can already be lost: the next
 		// vehicle leaves before the passenger can get there.
+		// An ensured connection waits for the arriving vehicle: whatever the clock says, it is not lost.
+		bool ensured =
+			transfers.Any(transfer => transfer.IsEnsured);
+
 		bool missed =
 			showWait
+			&& !ensured
 			&& previousArrival is { } arrives
 			&& nextDeparture is { } departs
 			&& departs < arrives + (walkTime ?? TimeSpan.Zero);
@@ -216,8 +222,9 @@ public static class TimelineBuilder
 				.ToArray();
 
 		bool endangered =
-			missed
-			|| transfers.Any(transfer => !transfer.IsGuaranteed);
+			!ensured
+			&& (missed
+				|| transfers.Any(transfer => !transfer.IsGuaranteed));
 
 		return new BoundaryItem(
 			location,
@@ -225,7 +232,8 @@ public static class TimelineBuilder
 			notes,
 			showWait,
 			endangered,
-			walkTime);
+			walkTime,
+			Ensured: ensured);
 	}
 
 	/// <summary>

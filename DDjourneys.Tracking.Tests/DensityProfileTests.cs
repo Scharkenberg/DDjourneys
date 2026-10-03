@@ -6,25 +6,25 @@ namespace DDjourneys.Tracking.Tests;
 public sealed class DensityProfileTests
 {
 	[Fact]
-	public void Normal_keeps_every_authored_value()
+	public void Normal_is_a_touch_tighter_than_the_authored_values()
 	{
 		DensityProfile normal = DensityProfile.Normal;
 
-		Assert.Equal(52, normal.Hit(52));
-		Assert.Equal(44, normal.Hit(44));
-		Assert.Equal(8, normal.PaddingVertical(8));
-		Assert.Equal(12, normal.PaddingHorizontal(12));
+		Assert.Equal(49, normal.Hit(52));
+		Assert.Equal(42, normal.Hit(44));
+		Assert.Equal(7, normal.PaddingVertical(8));
+		Assert.Equal(11, normal.PaddingHorizontal(12));
 	}
 
 	[Theory]
-	[InlineData(52, 44, 52, 62)]
-	[InlineData(48, 41, 48, 58)]
-	[InlineData(44, 37, 44, 53)]
-	[InlineData(64, 54, 64, 77)]
-	[InlineData(40, 36, 40, 48)]
-	[InlineData(38, 36, 38, 46)]
-	[InlineData(36, 36, 36, 43)]
-	[InlineData(28, 28, 28, 34)]
+	[InlineData(52, 42, 49, 58)]
+	[InlineData(48, 38, 46, 54)]
+	[InlineData(44, 35, 42, 49)]
+	[InlineData(64, 51, 61, 72)]
+	[InlineData(40, 34, 38, 45)]
+	[InlineData(38, 34, 36, 43)]
+	[InlineData(36, 34, 34, 40)]
+	[InlineData(28, 28, 27, 31)]
 	public void Hit_sizes_per_density(double authored, double compact, double normal, double touch)
 	{
 		Assert.Equal(compact, DensityProfile.Compact.Hit(authored));
@@ -94,8 +94,8 @@ public sealed class DensityProfileTests
 	public void Padding_rounds_to_whole_units()
 	{
 		Assert.Equal(5, DensityProfile.Compact.PaddingVertical(10));
-		Assert.Equal(15, DensityProfile.Touch.PaddingVertical(10));
-		Assert.Equal(9, DensityProfile.Compact.PaddingHorizontal(10));
+		Assert.Equal(14, DensityProfile.Touch.PaddingVertical(10));
+		Assert.Equal(8, DensityProfile.Compact.PaddingHorizontal(10));
 		Assert.Equal(13, DensityProfile.Touch.PaddingHorizontal(12));
 	}
 }

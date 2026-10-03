@@ -86,6 +86,30 @@ public sealed class LiveTrackingTests
 		Assert.All(trip.Segments.SelectMany(segment => segment.Stops), stop => Assert.Equal(TrackedStopState.Upcoming, stop.State));
 	}
 
+	[Fact]
+	public void A_late_vehicle_is_not_arrived_at_its_planned_time()
+	{
+		static long Ms(double minutes) => Base.AddMinutes(minutes).ToUnixTimeMilliseconds();
+
+		string json =
+			$$"""
+			{"data_version":1,"episodes":[
+			 {"type":"public","mot":{"name":"2","direction":"Gorbitz"},
+			  "from":{"name":"A","scheduledTime":{{Ms(0)}},"realtime":{{Ms(7)}} },
+			  "to":{"name":"B","scheduledTime":{{Ms(14)}} },
+			  "allStations":[
+			   {"name":"A","scheduledTime":{{Ms(0)}},"realtime":{{Ms(7)}} },
+			   {"name":"B","scheduledTime":{{Ms(14)}} }]}]}
+			""";
+
+		using JsonDocument document = JsonDocument.Parse(json);
+
+		Assert.True(TripTimeline.TryParse(document.RootElement, null, out TripTimeline timeline));
+
+		Assert.Equal(Base.AddMinutes(21), timeline.End);
+		Assert.NotEqual(TripStage.Arrived, timeline.Calculate(Base.AddMinutes(15)).Stage);
+	}
+
 	/// <summary>Ride 11 A(0) M(5) B(10, real-time 12), a walk at B, ride 7 B(20) C(35).</summary>
 	private static TripTimeline Timeline()
 	{

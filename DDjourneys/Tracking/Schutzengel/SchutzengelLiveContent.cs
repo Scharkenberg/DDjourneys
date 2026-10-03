@@ -47,6 +47,7 @@ internal static class SchutzengelLiveContent
 		bool ongoing = true;
 		DateTimeOffset? when = null;
 		int position = snapshot.Position;
+		DateTimeOffset? positionAt = null;
 
 		switch (phase)
 		{
@@ -75,6 +76,7 @@ internal static class SchutzengelLiveContent
 							: notice;
 				shortText = "!";
 				position = snapshot.EpisodeStartPosition;
+				positionAt = now - TimeSpan.FromSeconds(Math.Max(0, snapshot.Position - snapshot.EpisodeStartPosition));
 				break;
 
 			case TrackingPhase.AtInterchange:
@@ -95,6 +97,7 @@ internal static class SchutzengelLiveContent
 						: string.Format(CultureInfo.CurrentCulture, strings.NotifChangeText, Format.TimeOrDash(snapshot.NextStopTime));
 				when = ride?.From.Effective ?? snapshot.NextStopTime;
 				position = snapshot.EpisodeStartPosition;
+				positionAt = now - TimeSpan.FromSeconds(Math.Max(0, snapshot.Position - snapshot.EpisodeStartPosition));
 				break;
 			}
 
@@ -114,6 +117,7 @@ internal static class SchutzengelLiveContent
 						: route;
 				when = snapshot.EpisodeEnd?.Effective;
 				position = snapshot.EpisodeStartPosition;
+				positionAt = now - TimeSpan.FromSeconds(Math.Max(0, snapshot.Position - snapshot.EpisodeStartPosition));
 				break;
 
 			default:
@@ -141,7 +145,8 @@ internal static class SchutzengelLiveContent
 			Math.Clamp(position, 0, total),
 			phase,
 			ongoing,
-			when);
+			when,
+			positionAt);
 	}
 
 	/// <summary>Content for the service notification while journeys wait for their start.</summary>

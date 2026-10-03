@@ -58,6 +58,20 @@ public sealed class AppSettings
 		set => Write("uiDensity", value);
 	}
 
+	/// <summary>Windows window material: "none", "mica", "micaalt" or "acrylic" (see MaterialProfile; ignored elsewhere).</summary>
+	public string WindowMaterial
+	{
+		get => Read("windowMaterial", "mica");
+		set => Write("windowMaterial", value);
+	}
+
+	/// <summary>How far the window material reaches: "backdrop", "layered" or "immersive".</summary>
+	public string MaterialSurfaces
+	{
+		get => Read("materialSurfaces", "layered");
+		set => Write("materialSurfaces", value);
+	}
+
 	/// <summary>Font face id from <see cref="FontCatalog"/>.</summary>
 	public string FontFace
 	{

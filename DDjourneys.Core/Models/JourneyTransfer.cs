@@ -60,7 +60,16 @@ public sealed class JourneyTransfer
 	public IReadOnlyList<(double Latitude, double Longitude)> Path { get; init; }
 		= [];
 
+	/// <summary>
+	/// The provider does not flag this change as endangered (also true for an ensured connection).
+	/// </summary>
 	public bool IsGuaranteed { get; init; }
+
+	/// <summary>
+	/// The provider says the connecting vehicle waits for this one (an ensured connection, "Anschlusssicherung",
+	/// as at Dresden's Postplatz at minute 45). Real-time arithmetic must never call such a change impossible.
+	/// </summary>
+	public bool IsEnsured { get; init; }
 
 	/// <summary>The provider's own object this transfer was mapped from (diagnostics only).</summary>
 	public object? ProviderData { get; init; }

@@ -229,6 +229,104 @@
 				</VerticalStackLayout>
 			</Border>
 
+			<Label
+				Margin="{DynamicResource SectionGap}"
+				IsVisible="{Binding ShowMaterial}"
+				StyleClass="Section"
+				Text="{localization:Tr Settings.MaterialHeader}" />
+
+			<Border
+				Padding="0"
+				IsVisible="{Binding ShowMaterial}"
+				StyleClass="Card">
+				<VerticalStackLayout BindableLayout.ItemsSource="{Binding Materials}">
+					<BindableLayout.ItemTemplate>
+						<DataTemplate x:DataType="local:AppearanceChoice">
+							<VerticalStackLayout>
+								<Grid
+									support:Dense.Padding="12,8"
+									ColumnDefinitions="*,Auto"
+									ColumnSpacing="12"
+									support:Dense.MinHeight="52"
+									SemanticProperties.Description="{Binding Title}">
+
+									<VerticalStackLayout Spacing="1" VerticalOptions="Center">
+										<Label FontFamily="{DynamicResource FontSemibold}" Text="{Binding Title}" />
+										<Label StyleClass="Caption" Text="{Binding Description}" />
+									</VerticalStackLayout>
+
+									<controls:Icon
+										Grid.Column="1"
+										Glyph="Check"
+										IsVisible="{Binding IsSelected}"
+										Size="20"
+										VerticalOptions="Center"
+										Color="{DynamicResource Accent}" />
+
+									<Grid.GestureRecognizers>
+										<TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type local:AppearanceViewModel}}, Path=SelectMaterialCommand}" CommandParameter="{Binding Id}" />
+									</Grid.GestureRecognizers>
+								</Grid>
+
+								<BoxView StyleClass="Divider" />
+							</VerticalStackLayout>
+						</DataTemplate>
+					</BindableLayout.ItemTemplate>
+				</VerticalStackLayout>
+			</Border>
+
+			<Label
+				Margin="{DynamicResource SectionGap}"
+				IsVisible="{Binding ShowMaterial}"
+				StyleClass="Section"
+				Text="{localization:Tr Settings.SurfacesHeader}" />
+
+			<Border
+				Padding="0"
+				IsVisible="{Binding ShowMaterial}"
+				StyleClass="Card">
+				<VerticalStackLayout BindableLayout.ItemsSource="{Binding MaterialSurfaces}">
+					<BindableLayout.ItemTemplate>
+						<DataTemplate x:DataType="local:AppearanceChoice">
+							<VerticalStackLayout>
+								<Grid
+									support:Dense.Padding="12,8"
+									ColumnDefinitions="*,Auto"
+									ColumnSpacing="12"
+									support:Dense.MinHeight="52"
+									SemanticProperties.Description="{Binding Title}">
+
+									<VerticalStackLayout Spacing="1" VerticalOptions="Center">
+										<Label FontFamily="{DynamicResource FontSemibold}" Text="{Binding Title}" />
+										<Label StyleClass="Caption" Text="{Binding Description}" />
+									</VerticalStackLayout>
+
+									<controls:Icon
+										Grid.Column="1"
+										Glyph="Check"
+										IsVisible="{Binding IsSelected}"
+										Size="20"
+										VerticalOptions="Center"
+										Color="{DynamicResource Accent}" />
+
+									<Grid.GestureRecognizers>
+										<TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type local:AppearanceViewModel}}, Path=SelectMaterialSurfacesCommand}" CommandParameter="{Binding Id}" />
+									</Grid.GestureRecognizers>
+								</Grid>
+
+								<BoxView StyleClass="Divider" />
+							</VerticalStackLayout>
+						</DataTemplate>
+					</BindableLayout.ItemTemplate>
+				</VerticalStackLayout>
+			</Border>
+
+			<Label
+				IsVisible="{Binding ShowMaterial}"
+				Margin="4,0,0,0"
+				StyleClass="Caption"
+				Text="{localization:Tr Settings.MaterialNote}" />
+
 		</VerticalStackLayout>
 	</ScrollView>
 </ContentPage>

@@ -35,6 +35,15 @@ namespace DDjourneys
 			}
 		}
 
+		public override void OnConfigurationChanged(global::Android.Content.Res.Configuration newConfig)
+		{
+			base.OnConfigurationChanged(newConfig);
+
+			// The system switched light/dark (the activity is not recreated): follow it, bars included.
+			Support.Theme.Refresh();
+			SystemBars.Apply(this, Support.Theme.IsDark);
+		}
+
 		protected override void OnNewIntent(Intent? intent)
 		{
 			base.OnNewIntent(intent);
@@ -52,7 +61,8 @@ namespace DDjourneys
 
 			SystemBars.Apply(this, Support.Theme.IsDark);
 
-			_ = ResumeTrackingAsync();
+			// Off the UI thread and after the first frame: the tracking graph is built here on a cold start.
+			_ = Task.Run(ResumeTrackingAsync);
 
 			if (Service<TrackedJourneyNavigator>() is { } navigator)
 			{
@@ -105,6 +115,8 @@ namespace DDjourneys
 		{
 			try
 			{
+				await Task.Delay(400).ConfigureAwait(false);
+
 				// Resolving the tracker creates it (and attaches it to the bridge) on a cold start.
 				_ = Service<IJourneyTracker>();
 

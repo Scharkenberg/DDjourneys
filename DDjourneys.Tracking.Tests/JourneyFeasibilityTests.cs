@@ -129,4 +129,57 @@ public sealed class JourneyFeasibilityTests
 
 		Assert.Null(journey.Block);
 	}
+
+	[Fact]
+	public void An_ensured_connection_is_never_broken_by_the_clock()
+	{
+		JourneyLeg[] legs =
+		[
+			Ride(A, B, At(17, 21), At(17, 27), liveArr: At(17, 34)),
+			Ride(B, C, At(17, 32), At(17, 36))
+		];
+
+		Journey journey =
+			new()
+			{
+				From = A,
+				To = C,
+				Legs = legs,
+				Transfers =
+				[
+					new JourneyTransfer
+					{
+						Location = B,
+						PreviousLegIndex = 0,
+						NextLegIndex = 1,
+						IsEnsured = true,
+						IsGuaranteed = true
+					}
+				]
+			};
+
+		Assert.Null(journey.Block);
+		Assert.True(JourneyFeasibility.IsEnsuredChange(journey, 0, 1));
+	}
+
+	[Fact]
+	public void An_ensured_connection_does_not_excuse_a_skipped_stop()
+	{
+		JourneyLeg[] legs =
+		[
+			Ride(A, B, At(17, 21), At(17, 27), last: Stop(B, arrivalCancelled: true)),
+			Ride(B, C, At(17, 32), At(17, 36))
+		];
+
+		Journey journey =
+			new()
+			{
+				From = A,
+				To = C,
+				Legs = legs,
+				Transfers = [new JourneyTransfer { Location = B, PreviousLegIndex = 0, NextLegIndex = 1, IsEnsured = true }]
+			};
+
+		Assert.Equal(JourneyBlockKind.AlightingNotServed, journey.Block?.Kind);
+	}
 }

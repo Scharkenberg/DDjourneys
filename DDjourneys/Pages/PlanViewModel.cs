@@ -53,18 +53,18 @@ public sealed partial class PlanViewModel : DisposableViewModel
 	private bool _syncing;
 
 	private readonly ProviderRegistry _providers;
-	private readonly bool _trackerAvailable;
+	private readonly Lazy<IJourneyTracker> _tracker;
 	private string _providerId;
 
 	/// <summary>Whether the platform and the selected provider can follow journeys (shows the entry to the overview).</summary>
 	public bool IsTrackingAvailable =>
-		_trackerAvailable
-		&& _providers.Supports(ProviderCapabilities.Tracking);
+		_providers.Supports(ProviderCapabilities.Tracking)
+		&& (!_tracker.IsValueCreated || _tracker.Value.IsAvailable);
 
 	public PlanViewModel(
 		PlaceStore store,
 		AppSettings settings,
-		IJourneyTracker tracker,
+		Lazy<IJourneyTracker> tracker,
 		ProviderRegistry providers)
 	{
 		ArgumentNullException.ThrowIfNull(store);
@@ -72,7 +72,8 @@ public sealed partial class PlanViewModel : DisposableViewModel
 		ArgumentNullException.ThrowIfNull(tracker);
 		ArgumentNullException.ThrowIfNull(providers);
 
-		_trackerAvailable = tracker.IsAvailable;
+		// Resolved on first use: building the tracking graph must not delay the first frame.
+		_tracker = tracker;
 		_providers = providers;
 		_providerId = providers.SelectedId;
 

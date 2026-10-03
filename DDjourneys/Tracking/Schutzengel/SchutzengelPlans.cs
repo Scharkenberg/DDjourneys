@@ -397,7 +397,8 @@ internal sealed record SchutzengelRawSummary(
 	DateTimeOffset? Departure,
 	DateTimeOffset? Arrival,
 	IReadOnlyList<string> Lines,
-	string? Fingerprint);
+	string? Fingerprint,
+	IReadOnlyList<bool>? EnsuredChanges = null);
 
 internal static class SchutzengelRawSummaryParser
 {
@@ -503,6 +504,23 @@ internal static class SchutzengelRawSummaryParser
 
 		var rides = movements.Where(movement => movement.Ride).ToList();
 
+		// Per change between two consecutive rides: does the provider ensure it (the next vehicle waits)?
+		var ensured = new List<bool>();
+
+		for (int r = 0; r + 1 < rides.Count; r++)
+		{
+			int from = movements.IndexOf(rides[r]);
+			int to = movements.IndexOf(rides[r + 1]);
+			bool change = false;
+
+			for (int m = from; m < to && !change; m++)
+			{
+				change = HasEnsuredTransition(movements[m].Partial);
+			}
+
+			ensured.Add(change);
+		}
+
 		string? fingerprint = null;
 
 		if (rides.Count > 0)
@@ -532,7 +550,40 @@ internal static class SchutzengelRawSummaryParser
 			ReadTime(firstNode, "departureDateTime") ?? ReadTime(firstNode, "arrivalDateTime"),
 			ReadTime(lastNode, "arrivalDateTime") ?? ReadTime(lastNode, "departureDateTime"),
 			lines,
-			fingerprint);
+			fingerprint,
+			ensured);
+	}
+
+	/// <summary>A transition section of type "ensured connection" (wire code 12) follows this movement.</summary>
+	private static bool HasEnsuredTransition(JsonElement partial)
+	{
+		if (!partial.TryGetProperty("transitions", out JsonElement transitions)
+			|| transitions.ValueKind != JsonValueKind.Array)
+		{
+			return false;
+		}
+
+		foreach (JsonElement transition in transitions.EnumerateArray())
+		{
+			if (transition.ValueKind == JsonValueKind.Object
+				&& transition.TryGetProperty("sections", out JsonElement sections)
+				&& sections.ValueKind == JsonValueKind.Array)
+			{
+				foreach (JsonElement section in sections.EnumerateArray())
+				{
+					if (section.ValueKind == JsonValueKind.Object
+						&& section.TryGetProperty("type", out JsonElement type)
+						&& type.ValueKind == JsonValueKind.Number
+						&& type.TryGetInt32(out int code)
+						&& code == SchutzengelWireCodes.TransitionTypeEnsuredConnection)
+					{
+						return true;
+					}
+				}
+			}
+		}
+
+		return false;
 	}
 
 	private static DateTimeOffset? ReadTime(JsonElement node, string name) =>
