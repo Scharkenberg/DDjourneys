@@ -112,6 +112,8 @@ public sealed class GermanUiStrings : IUiStrings
 		ShareTitle = "Verbindung teilen",
 		ShareAsText = "Als Text",
 		ShareAsImage = "Als Bild",
+		HandOff = "Diese Verbindung \u00FCbernehmen",
+		HandOffFailed = "Die Verbindung konnte nicht an die andere App \u00FCbergeben werden.",
 
 		Direct = "Direkt",
 		OneTransfer = "1 Umstieg",

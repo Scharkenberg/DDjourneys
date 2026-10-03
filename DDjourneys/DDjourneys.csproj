@@ -67,32 +67,32 @@
 	</PropertyGroup>
 
   <ItemGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net11.0-android|AnyCPU'">
-	<MauiIcon Include="Resources\AppIcon\appicon.svg" Color="#F2C43D">
+	<MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appicon_foreground.svg" Color="#121016">
 	  <CopyToOutputDirectory>Always</CopyToOutputDirectory>
 	</MauiIcon>
   </ItemGroup>
 
   <ItemGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net11.0-android|AnyCPU'">
-	<MauiIcon Include="Resources\AppIcon\appicon.svg" Color="#F2C43D">
+	<MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appicon_foreground.svg" Color="#121016">
 	  <CopyToOutputDirectory>Always</CopyToOutputDirectory>
 	</MauiIcon>
   </ItemGroup>
 
   <ItemGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net11.0-windows10.0.26100.0|AnyCPU'">
-	<MauiIcon Include="Resources\AppIcon\appicon_windows.svg" Color="#EAB62C">
+	<MauiIcon Include="Resources\AppIcon\appicon_windows.svg" Color="#121016">
 	  <CopyToOutputDirectory>Always</CopyToOutputDirectory>
 	</MauiIcon>
   </ItemGroup>
 
   <ItemGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net11.0-windows10.0.26100.0|AnyCPU'">
-	<MauiIcon Include="Resources\AppIcon\appicon_windows.svg" Color="#EAB62C">
+	<MauiIcon Include="Resources\AppIcon\appicon_windows.svg" Color="#121016">
 	  <CopyToOutputDirectory>Always</CopyToOutputDirectory>
 	</MauiIcon>
   </ItemGroup>
 
   <ItemGroup>
 		<!-- Splash Screen -->
-		<MauiSplashScreen Include="Resources\Splash\splash.svg" Color="#512BD4" BaseSize="128,128" />
+		<MauiSplashScreen Include="Resources\Splash\splash.svg" Color="#121016" BaseSize="160,160" />
 
 		<!-- Images -->
 		<MauiImage Include="Resources\Images\*" />

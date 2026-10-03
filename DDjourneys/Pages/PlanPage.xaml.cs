@@ -1,3 +1,4 @@
+using DDjourneys.Contract;
 using DDjourneys.Localization;
 using DDjourneys.Support;
 using Location = DDjourneys.Core.Models.Location;
@@ -50,6 +51,17 @@ public partial class PlanPage : ContentPage, IQueryAttributable
 
 		_vm.Refresh();
 		Motion.EnterPage(this);
+	}
+
+	/// <summary>An external request (contract): fill the planner and, when asked, search.</summary>
+	public void ApplyContract(ResolvedPlan plan)
+	{
+		_vm.ApplyContract(plan);
+
+		if (plan.Search)
+		{
+			_vm.SearchCommand.Execute(null);
+		}
 	}
 
 	public void ApplyQueryAttributes(

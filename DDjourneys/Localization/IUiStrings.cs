@@ -109,6 +109,8 @@ public sealed class JourneyStrings
 	public required string ShareTitle { get; init; }
 	public required string ShareAsText { get; init; }
 	public required string ShareAsImage { get; init; }
+	public required string HandOff { get; init; }
+	public required string HandOffFailed { get; init; }
 	public required string Direct { get; init; }
 	public required string OneTransfer { get; init; }
 	public required string MultipleTransfers { get; init; }

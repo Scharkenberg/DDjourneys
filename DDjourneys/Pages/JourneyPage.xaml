@@ -525,6 +525,14 @@
 
 				<controls:JourneyCard BindingContext="{Binding Summary}" />
 
+				<VerticalStackLayout IsVisible="{Binding IsHandOffAvailable}" Spacing="8">
+					<Button Command="{Binding HandOffCommand}" Text="{localization:Tr Journey.HandOff}" />
+					<Label
+						IsVisible="{Binding HasHandOffStatus}"
+						StyleClass="Caption"
+						Text="{Binding HandOffStatus}" />
+				</VerticalStackLayout>
+
 				<VerticalStackLayout IsVisible="{Binding IsTrackingAvailable}" Spacing="8">
 
 					<Button

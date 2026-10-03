@@ -107,6 +107,8 @@ public sealed class EnglishUiStrings : IUiStrings
 		ShareTitle = "Share journey",
 		ShareAsText = "As text",
 		ShareAsImage = "As image",
+		HandOff = "Use this journey",
+		HandOffFailed = "The journey could not be passed to the other app.",
 
 		Direct = "Direct",
 		OneTransfer = "1 transfer",

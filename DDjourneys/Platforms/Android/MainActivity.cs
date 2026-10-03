@@ -1,6 +1,8 @@
 using Android.App;
 using Android.Content;
 using Android.Content.PM;
+using DDjourneys.Contract;
+using DDjourneys.Core.Contract;
 using DDjourneys.Core.Tracking;
 using DDjourneys.Core.Tracking.Live;
 using DDjourneys.Platforms.Android;
@@ -8,7 +10,15 @@ using DDjourneys.Tracking;
 
 namespace DDjourneys
 {
-	[Activity(Theme = "@style/Maui.SplashTheme", MainLauncher = true, LaunchMode = LaunchMode.SingleTop, ConfigurationChanges = ConfigChanges.ScreenSize | ConfigChanges.Orientation | ConfigChanges.UiMode | ConfigChanges.ScreenLayout | ConfigChanges.SmallestScreenSize | ConfigChanges.Density)]
+	// External contract: ddjourneys:// links and the CONTRACT action (docs/EXTERNAL_CONTRACT.md).
+	[IntentFilter(
+		new[] { Intent.ActionView },
+		Categories = new[] { Intent.CategoryDefault, Intent.CategoryBrowsable },
+		DataScheme = ContractVersion.Scheme)]
+	[IntentFilter(
+		new[] { ContractVersion.AndroidAction },
+		Categories = new[] { Intent.CategoryDefault })]
+	[Activity(Theme = "@style/Maui.SplashTheme", MainLauncher = true, Exported = true, LaunchMode = LaunchMode.SingleTop, ConfigurationChanges = ConfigChanges.ScreenSize | ConfigChanges.Orientation | ConfigChanges.UiMode | ConfigChanges.ScreenLayout | ConfigChanges.SmallestScreenSize | ConfigChanges.Density)]
 	public class MainActivity : MauiAppCompatActivity
 	{
 		protected override void OnCreate(global::Android.OS.Bundle? savedInstanceState)
@@ -32,6 +42,8 @@ namespace DDjourneys
 			Intent = intent;
 
 			Accept(intent);
+
+			ContractEntry.Deliver();
 		}
 
 		protected override void OnResume()
@@ -46,18 +58,39 @@ namespace DDjourneys
 			{
 				_ = navigator.DeliverAsync();
 			}
+
+			ContractEntry.Deliver();
 		}
 
-		/// <summary>A tapped live notification or alert opens its followed journey.</summary>
+		/// <summary>
+		/// A tapped live notification opens its followed journey; a contract link or intent from another
+		/// app is queued for the inbox. An intent replayed from the recents list is old news: Android
+		/// re-delivers the launching intent then, and it must not repeat.
+		/// </summary>
 		private static void Accept(Intent? intent)
 		{
-			if (intent is null || intent.Action != TrackingActions.Open)
+			if (intent is null
+				|| (intent.Flags & ActivityFlags.LaunchedFromHistory) != 0)
 			{
 				return;
 			}
 
-			Service<TrackedJourneyNavigator>()?.Request(
-				intent.GetStringExtra(TrackingActions.PlanIdKey));
+			if (intent.Action == TrackingActions.Open)
+			{
+				Service<TrackedJourneyNavigator>()?.Request(
+					intent.GetStringExtra(TrackingActions.PlanIdKey));
+
+				return;
+			}
+
+			if (ContractIntentReader.Read(intent) is { } request)
+			{
+				ContractEntry.Submit(request);
+
+				// Consumed: a recreated activity must not run it again.
+				intent.SetAction(Intent.ActionMain);
+				intent.SetData(null);
+			}
 		}
 
 		private static T? Service<T>()

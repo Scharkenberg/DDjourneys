@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
+using DDjourneys.Contract;
 using DDjourneys.Core.Models;
 using DDjourneys.Core.Providers;
 using DDjourneys.Core.Providers.Abstractions;
@@ -18,6 +19,7 @@ public sealed class JourneyViewModel :
 	private readonly AppSettings _settings;
 	private readonly LocalizationService _localization;
 	private readonly IJourneyTracker _tracker;
+	private readonly ContractSession _contract;
 	private CancellationTokenSource? _trackingObservation;
 
 	private Journey? _journey;
@@ -29,7 +31,8 @@ public sealed class JourneyViewModel :
 	public JourneyViewModel(
 		AppSettings settings,
 		IJourneyTracker tracker,
-		ProviderRegistry providers)
+		ProviderRegistry providers,
+		ContractSession contract)
 	{
 		_providers = providers ?? throw new ArgumentNullException(nameof(providers));
 
@@ -39,6 +42,7 @@ public sealed class JourneyViewModel :
 		_settings =
 			settings;
 		_tracker = tracker ?? throw new ArgumentNullException(nameof(tracker));
+		_contract = contract ?? throw new ArgumentNullException(nameof(contract));
 
 		_localization =
 			LocalizationService.Current;
@@ -63,6 +67,11 @@ public sealed class JourneyViewModel :
 		StopFollowingCommand = new AsyncCommand(StopFollowingAsync, () => IsFollowed, ShowTrackingError);
 		OpenFollowedCommand = new AsyncCommand(OpenFollowedAsync, null, ShowTrackingError);
 		OpenExpertCommand = new AsyncCommand(OpenExpertAsync);
+		HandOffCommand = new AsyncCommand(HandOffAsync);
+
+		Subscribe(
+			() => _contract.Changed += OnContractChanged,
+			() => _contract.Changed -= OnContractChanged);
 	}
 
 
@@ -106,6 +115,72 @@ public sealed class JourneyViewModel :
 	public AsyncCommand OpenFollowedCommand { get; }
 
 	public AsyncCommand OpenExpertCommand { get; }
+
+	/// <summary>Hands this journey back to the app that asked for a pick (contract).</summary>
+	public AsyncCommand HandOffCommand { get; }
+
+	/// <summary>True while another app waits for the user to choose a journey.</summary>
+	public bool IsHandOffAvailable =>
+		_contract.IsPicking
+		&& _journey is not null;
+
+	/// <summary>Why the hand-over failed; empty otherwise.</summary>
+	public string HandOffStatus
+	{
+		get => field;
+
+		private set
+		{
+			if (SetProperty(
+					ref field,
+					value))
+			{
+				OnPropertyChanged(
+					nameof(HasHandOffStatus));
+			}
+		}
+	} = string.Empty;
+
+	public bool HasHandOffStatus =>
+		HandOffStatus.Length > 0;
+
+	private void OnContractChanged(
+		object? sender,
+		EventArgs e) =>
+		MainThread.BeginInvokeOnMainThread(
+			() =>
+			{
+				if (!IsDisposed)
+				{
+					OnPropertyChanged(
+						nameof(IsHandOffAvailable));
+				}
+			});
+
+	private async Task HandOffAsync()
+	{
+		if (_journey is null)
+		{
+			return;
+		}
+
+		HandOffStatus = string.Empty;
+
+		HandOffResult result =
+			await _contract.HandOffAsync(_journey);
+
+		if (result != HandOffResult.Sent)
+		{
+			HandOffStatus =
+				_localization
+					.CurrentStrings
+					.Journey
+					.HandOffFailed;
+		}
+
+		OnPropertyChanged(
+			nameof(IsHandOffAvailable));
+	}
 
 	public bool ExpertViewEnabled => _settings.ExpertView;
 
@@ -416,6 +491,9 @@ public sealed class JourneyViewModel :
 			_journey =
 				journey;
 			UpdateFollowState();
+
+			OnPropertyChanged(
+				nameof(IsHandOffAvailable));
 
 			LoadError =
 				null;

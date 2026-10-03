@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
+using DDjourneys.Contract;
 using DDjourneys.Controls;
 using DDjourneys.Core.Models;
 using DDjourneys.Core.Providers;
@@ -625,6 +626,52 @@ public sealed partial class PlanViewModel : DisposableViewModel
 		{
 			To = place;
 		}
+	}
+
+
+	/// <summary>
+	/// Fills the planner from an external request (see the contract). Only what the caller gave is
+	/// changed; the rest keeps what the user had. The time was validated by the resolver.
+	/// </summary>
+	public void ApplyContract(ResolvedPlan plan)
+	{
+		ArgumentNullException.ThrowIfNull(plan);
+
+		Safe(
+			() =>
+			{
+				if (plan.From is { } from)
+				{
+					From = from;
+				}
+
+				if (plan.To is { } to)
+				{
+					To = to;
+				}
+
+				if (plan.Mode is { } mode)
+				{
+					IsArrival = mode == JourneySearchMode.Arrival;
+				}
+
+				if (plan.IsNow
+					&& !IsArrival)
+				{
+					SetNow();
+				}
+				else if (plan.IsNow)
+				{
+					// "Arrive by now" means nothing; take the current minute as the arrival time.
+					IsNow = false;
+					Apply(Format.NowLocal());
+				}
+				else if (plan.When is { } when)
+				{
+					IsNow = false;
+					Apply(when);
+				}
+			});
 	}
 
 

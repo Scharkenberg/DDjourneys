@@ -1,4 +1,5 @@
 using CommunityToolkit.Maui;
+using DDjourneys.Contract;
 using DDjourneys.Core.Api;
 using DDjourneys.Core.Diagnostics;
 using DDjourneys.Core.Providers;
@@ -11,6 +12,7 @@ using DDjourneys.Localization;
 using DDjourneys.Pages;
 using DDjourneys.Support;
 using Microsoft.Extensions.Logging;
+using Microsoft.Maui.LifecycleEvents;
 
 namespace DDjourneys;
 
@@ -94,6 +96,20 @@ public static class MauiProgram
 				services.GetRequiredService<ILiveJourneySurface>(),
 				services.GetRequiredService<ITrackingRuntime>(),
 				services.GetRequiredService<INotificationAccess>()));
+
+		// External contract (links, intents, protocol launches): see docs/EXTERNAL_CONTRACT.md.
+		builder.Services.AddSingleton<ICallbackLauncher, PlatformCallbackLauncher>();
+		builder.Services.AddSingleton<ContractResponder>();
+		builder.Services.AddSingleton<ContractSession>();
+		builder.Services.AddSingleton<ContractPlaceResolver>();
+		builder.Services.AddSingleton<ContractInbox>();
+
+#if WINDOWS
+		builder.ConfigureLifecycleEvents(
+			events => events.AddWindows(
+				windows => windows.OnAppInstanceActivated(
+					Platforms.Windows.WindowsContractActivation.Handle)));
+#endif
 
 		builder.Services.AddSingleton<PlaceStore>();
 
