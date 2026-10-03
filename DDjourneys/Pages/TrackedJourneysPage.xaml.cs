@@ -6,6 +6,7 @@ namespace DDjourneys.Pages;
 public partial class TrackedJourneysPage : ContentPage
 {
 	private static readonly TimeSpan ScrollDelay = TimeSpan.FromMilliseconds(350);
+	private static readonly int MaxScrollAttempts = 20;
 
 	private readonly TrackedJourneysViewModel _vm;
 
@@ -77,15 +78,26 @@ public partial class TrackedJourneysPage : ContentPage
 			return;
 		}
 
-		Dispatcher.DispatchDelayed(ScrollDelay, () => _ = ScrollToTargetAsync());
+		_ = ScrollToTargetAsync(MaxScrollAttempts);
 	}
 
-	private async Task ScrollToTargetAsync()
+	private async Task ScrollToTargetAsync(int attemptsLeft)
 	{
 		string? target = _scrollTarget;
 
-		if (target is null || !IsLoaded)
+		if (target is null)
 		{
+			return;
+		}
+
+		if (!IsLoaded)
+		{
+			if (attemptsLeft > 0)
+			{
+				await Task.Delay(ScrollDelay);
+				await ScrollToTargetAsync(attemptsLeft - 1);
+			}
+
 			return;
 		}
 
@@ -99,11 +111,16 @@ public partial class TrackedJourneysPage : ContentPage
 
 			if (card is null)
 			{
+				if (attemptsLeft > 0)
+				{
+					await Task.Delay(ScrollDelay);
+					await ScrollToTargetAsync(attemptsLeft - 1);
+				}
+
 				return;
 			}
 
 			_scrollTarget = null;
-
 			await Scroller.ScrollToAsync(card, ScrollToPosition.Start, Motion.Enabled);
 		}
 		catch (Exception ex)

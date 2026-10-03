@@ -178,9 +178,9 @@ public sealed class ContractInbox
 	{
 		using var timeout = new CancellationTokenSource(ResolveTimeout);
 
-		ResolvedPlan plan = await _resolver.ResolveAsync(request, timeout.Token).ConfigureAwait(false);
+		ResolvedPlan plan =
+		await _resolver.ResolveAsync(request, CancellationToken.None).ConfigureAwait(false);
 
-		// A pick waits for the user's choice; any other request ends a pick that is still waiting.
 		if (request.Command == ContractCommand.Pick)
 		{
 			_session.Begin(request);
@@ -190,21 +190,24 @@ public sealed class ContractInbox
 			_session.End();
 		}
 
-		for (int attempt = 0; attempt < MaxAttempts; attempt++)
+		while (true)
 		{
-			bool applied = await MainThread.InvokeOnMainThreadAsync(() => TryApplyAsync(plan)).ConfigureAwait(false);
-
-			if (applied)
+			try
 			{
-				return;
+				bool applied = await MainThread.InvokeOnMainThreadAsync(() => TryApplyAsync(plan)).ConfigureAwait(false);
+
+				if (applied)
+				{
+					return;
+				}
+
+				await Task.Delay(RetryDelay).ConfigureAwait(false);
 			}
-
-			await Task.Delay(RetryDelay).ConfigureAwait(false);
+			catch (Exception)
+			{
+				// Ignore exceptions and continue retrying
+			}
 		}
-
-		_session.End();
-
-		throw new ContractRefusal(ContractErrorCode.Internal, "The app was not ready in time.");
 	}
 
 	/// <summary>Shows the planner (unwinding any pushed pages) and fills it; false while the shell is not ready.</summary>

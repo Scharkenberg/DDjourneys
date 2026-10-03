@@ -10,30 +10,23 @@ namespace DDjourneys.Core.Providers.Vvo.Mapping;
 public static class VvoJourneyMapper
 {
 	public static IReadOnlyList<Journey> Map(
-		VvoTripResponse response,
-		Location? origin = null,
-		Location? destination = null)
+	VvoTripResponse response,
+	Location? origin = null,
+	Location? destination = null)
 	{
 		ArgumentNullException.ThrowIfNull(response);
 
-		Station? originStation =
-			VvoStopMapper.ToStation(origin);
-
-		Station? destinationStation =
-			VvoStopMapper.ToStation(destination);
+		Station? originStation = VvoStopMapper.ToStation(origin);
+		Station? destinationStation = VvoStopMapper.ToStation(destination);
 
 		return response.Routes
-			.Select(
-				route =>
-					MapJourney(
-						route,
-						response.SessionId,
-						originStation,
-						destinationStation))
+			.Select(route => MapJourney(route, response.SessionId, originStation, destinationStation))
+			.Where(journey => journey is not null)
+			.Select(journey => journey!)
 			.ToArray();
 	}
 
-	private static Journey MapJourney(
+	private static Journey? MapJourney(
 		VvoRoute route,
 		string? sessionId,
 		Station? origin,
@@ -180,8 +173,7 @@ public static class VvoJourneyMapper
 
 		if (legs.Count == 0)
 		{
-			throw new InvalidOperationException(
-				"VVO route contains no movement legs.");
+			return null;
 		}
 
 		System.Diagnostics.Debug.WriteLine(

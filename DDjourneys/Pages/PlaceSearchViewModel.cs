@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using DDjourneys.Core.Api;
+using DDjourneys.Core.Providers;
 using DDjourneys.Core.Services;
 using DDjourneys.Localization;
 using DDjourneys.Support;
@@ -16,7 +17,7 @@ public sealed record PlaceRow(Location Place)
 	public bool HasDetail => !string.IsNullOrWhiteSpace(Place.Place);
 }
 
-public sealed class PlaceSearchViewModel : DisposableViewModel, IQueryAttributable
+public sealed partial class PlaceSearchViewModel : DisposableViewModel, IQueryAttributable
 {
 	private enum MessageKind
 	{
@@ -27,6 +28,10 @@ public sealed class PlaceSearchViewModel : DisposableViewModel, IQueryAttributab
 		ServiceUnavailable
 	}
 
+	private readonly ProviderRegistry _providers;
+	private string _providerId;
+	private string CacheKey(string text) =>
+	$"{_providerId}\0{text}";
 
 	/// <summary>Quiet time after the last keystroke before the endpoint is asked (a setting).</summary>
 	private TimeSpan Debounce => TimeSpan.FromMilliseconds(_settings.SearchDelayMs);
@@ -52,23 +57,29 @@ public sealed class PlaceSearchViewModel : DisposableViewModel, IQueryAttributab
 	private MessageKind _messageKind;
 
 	public PlaceSearchViewModel(
-		LocationService locations,
-		PlaceStore store,
-		AppSettings settings)
+	LocationService locations,
+	PlaceStore store,
+	AppSettings settings,
+	ProviderRegistry providers)
 	{
 		ArgumentNullException.ThrowIfNull(locations);
 		ArgumentNullException.ThrowIfNull(store);
 		ArgumentNullException.ThrowIfNull(settings);
+		ArgumentNullException.ThrowIfNull(providers);
 
 		_locations = locations;
 		_store = store;
 		_settings = settings;
+		_providers = providers;
+		_providerId = providers.SelectedId;
 		_localization = LocalizationService.Current;
 
 		ListenToLocalization(_localization, OnLocalizationChanged);
+		Subscribe(
+			() => _providers.SelectionChanged += OnProviderChanged,
+			() => _providers.SelectionChanged -= OnProviderChanged);
 
-		SelectPlaceCommand =
-			new AsyncCommand<Location>(SelectPlaceAsync);
+		SelectPlaceCommand = new AsyncCommand<Location>(SelectPlaceAsync);
 
 		try
 		{
@@ -160,6 +171,34 @@ public sealed class PlaceSearchViewModel : DisposableViewModel, IQueryAttributab
 		}
 	}
 
+	private void OnProviderChanged(object? sender, string providerId)
+	{
+		MainThread.BeginInvokeOnMainThread(() =>
+		{
+			if (IsDisposed)
+			{
+				return;
+			}
+
+			_providerId = providerId;
+
+			_cache.Clear();
+			_cacheOrder.Clear();
+
+			CancelCurrent();
+			Results.Clear();
+
+			if (Query.Trim().Length >= MinQueryLength)
+			{
+				OnQueryChanged();
+			}
+			else
+			{
+				RefreshState();
+			}
+		});
+	}
+
 	private void OnQueryChanged()
 	{
 		CancelCurrent();
@@ -197,7 +236,6 @@ public sealed class PlaceSearchViewModel : DisposableViewModel, IQueryAttributab
 
 		_ = SearchAsync(text, cts);
 	}
-
 	/// <summary>
 	/// Newest search wins. Never throws: it is started fire-and-forget.
 	/// The awaits resume on the UI thread, so the collections may be changed here.
@@ -207,12 +245,13 @@ public sealed class PlaceSearchViewModel : DisposableViewModel, IQueryAttributab
 		CancellationTokenSource cts)
 	{
 		CancellationToken token = cts.Token;
+		string key = CacheKey(text);
 
 		try
 		{
 			IReadOnlyList<Location> found;
 
-			if (_cache.TryGetValue(text, out IReadOnlyList<Location>? cached))
+			if (_cache.TryGetValue(key, out IReadOnlyList<Location>? cached))
 			{
 				found = cached;
 			}
@@ -229,7 +268,7 @@ public sealed class PlaceSearchViewModel : DisposableViewModel, IQueryAttributab
 						token,
 						TimeSpan.FromSeconds(_settings.TimeoutSeconds));
 
-				Remember(text, found);
+				Remember(key, found);
 			}
 
 			if (token.IsCancellationRequested
@@ -308,11 +347,13 @@ public sealed class PlaceSearchViewModel : DisposableViewModel, IQueryAttributab
 		}
 	}
 
-	private void Remember(string text, IReadOnlyList<Location> found)
+	private void Remember(
+	string key,
+	IReadOnlyList<Location> found)
 	{
-		if (_cache.TryAdd(text, found))
+		if (_cache.TryAdd(key, found))
 		{
-			_cacheOrder.Enqueue(text);
+			_cacheOrder.Enqueue(key);
 
 			while (_cacheOrder.Count > CacheSize)
 			{

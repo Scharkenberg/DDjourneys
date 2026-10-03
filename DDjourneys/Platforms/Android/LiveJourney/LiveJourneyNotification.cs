@@ -6,7 +6,7 @@ using Android.Service.Notification;
 using DDjourneys.Core.Tracking;
 using DDjourneys.Core.Tracking.Live;
 using DDjourneys.Localization;
-using DDjourneys.Support;
+using DDjourneys.Platforms.Android.LiveJourney.Schutzengel;
 using DDjourneys.Tracking.Schutzengel;
 
 namespace DDjourneys.Platforms.Android.LiveJourney;

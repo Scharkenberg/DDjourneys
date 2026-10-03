@@ -831,23 +831,47 @@ public sealed partial class PlanViewModel : DisposableViewModel
 
 	private async Task SearchAsync()
 	{
-		if (!CanSearch
-			|| OpenResults is null)
+		if (!CanSearch || OpenResults is null)
 		{
 			return;
 		}
 
-		JourneyQuery query =
-			BuildQuery();
+		if (!TryBuildQuery(out JourneyQuery query))
+		{
+			return;
+		}
 
 		_store.AddRecent(query.To);
 		_store.AddRecent(query.From);
-
-		_store.AddRecentRoute(
-			query.From,
-			query.To);
+		_store.AddRecentRoute(query.From, query.To);
 
 		await OpenResults(query);
+	}
+
+	private bool TryBuildQuery(out JourneyQuery query)
+	{
+		query = default!;
+
+		if (From is null || To is null)
+		{
+			return false;
+		}
+
+		DateTime now = Format.NowLocal();
+		DateTime target = IsNow ? now : _when;
+
+		query = new JourneyQuery
+		{
+			From = From,
+			To = To,
+			DateTime = IsNow ? Format.Now() : Format.ToOffset(target),
+			SearchMode = IsArrival ? JourneySearchMode.Arrival : JourneySearchMode.Departure,
+			MaxResults = _settings.MaxResults,
+			TimeoutSeconds = _settings.TimeoutSeconds,
+			Routing = _settings.Routing
+		};
+
+		return true;
 	}
 
 

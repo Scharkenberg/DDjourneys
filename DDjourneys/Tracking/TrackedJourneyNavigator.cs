@@ -42,7 +42,7 @@ public sealed class TrackedJourneyNavigator
 
 		try
 		{
-			for (int attempt = 0; attempt < MaxAttempts; attempt++)
+			while (true)
 			{
 				string? planId;
 
@@ -63,22 +63,17 @@ public sealed class TrackedJourneyNavigator
 				{
 					lock (_gate)
 					{
-						// A newer request that arrived meanwhile stays pending.
 						if (_pending == planId)
 						{
 							_pending = null;
 						}
 					}
 
-					continue;
+					return;
 				}
 
 				await Task.Delay(RetryDelay);
 			}
-		}
-		catch (Exception ex)
-		{
-			System.Diagnostics.Debug.WriteLine($"Opening the followed journeys failed: {ex.Message}");
 		}
 		finally
 		{
@@ -88,7 +83,6 @@ public sealed class TrackedJourneyNavigator
 			}
 		}
 	}
-
 	private static async Task<bool> TryNavigateAsync(string planId)
 	{
 		if (Shell.Current is not { CurrentPage: { } current } shell)
