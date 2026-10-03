@@ -225,7 +225,7 @@ public sealed record JourneyShareModel
 	private static string? Platform(string? platform, PlatformKind kind, JourneyStrings text) =>
 		string.IsNullOrWhiteSpace(platform)
 			? null
-			: $"{(kind == PlatformKind.Track ? text.Track : text.Platform)} {platform.Trim()}";
+			: $"{(kind == PlatformKind.Railtrack ? text.Track : text.Platform)} {platform.Trim()}";
 
 	private static IReadOnlyList<string> CollectNotices(Journey journey) =>
 		journey.Notices
