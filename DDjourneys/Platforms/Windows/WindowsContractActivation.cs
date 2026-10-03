@@ -70,10 +70,11 @@ internal static class WindowsContractActivation
 				ContractEntry.SubmitUri(protocol.Uri?.AbsoluteUri);
 			}
 
-			if (Microsoft.Maui.Controls.Application.Current is { } maui
-				&& maui.Windows.FirstOrDefault() is { } window)
+			// A link or a second start of the app: the user wants to see the window (it may be hidden
+			// because the app keeps monitoring in the background).
+			if (!(WindowsNotificationHost.Embedded && args.Kind == ExtendedActivationKind.Launch))
 			{
-				maui.ActivateWindow(window);
+				_ = WindowsBackground.RevealAsync();
 			}
 		}
 		catch (Exception ex)

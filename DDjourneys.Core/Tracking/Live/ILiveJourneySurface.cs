@@ -11,6 +11,12 @@ public interface ILiveJourneySurface
 	/// <summary>True when the platform can present live state outside the app.</summary>
 	bool IsSupported { get; }
 
+	/// <summary>
+	/// True when the surface presents a paused journey (with a way to resume it) instead of removing the
+	/// presentation. Surfaces that cannot resume from outside the app keep the default.
+	/// </summary>
+	bool ShowsPaused => false;
+
 	/// <summary>Shows or replaces the single live presentation.</summary>
 	void Show(LiveJourneyContent content);
 

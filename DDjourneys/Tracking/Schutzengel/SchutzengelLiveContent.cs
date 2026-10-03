@@ -171,6 +171,31 @@ internal static class SchutzengelLiveContent
 			journey.Departure);
 	}
 
+	/// <summary>Content for a paused journey: it is not monitored; the surface offers to resume it.</summary>
+	public static LiveJourneyContent Paused(WatchedJourney journey, TrackingStrings strings)
+	{
+		ArgumentNullException.ThrowIfNull(journey);
+		ArgumentNullException.ThrowIfNull(strings);
+
+		return new LiveJourneyContent(
+			journey.PlanId,
+			strings.SectionPaused,
+			string.Format(
+				CultureInfo.CurrentCulture,
+				strings.NotifRoute,
+				journey.Origin,
+				journey.Destination),
+			journey.Departure is { } departure
+				? string.Format(CultureInfo.CurrentCulture, strings.NotifStartsAt, Format.TimeOrDash(departure))
+				: null,
+			null,
+			[],
+			[],
+			0,
+			TrackingPhase.Paused,
+			false);
+	}
+
 	public static LiveJourneyContent Monitoring(TrackingStrings strings) =>
 		new(
 			string.Empty,

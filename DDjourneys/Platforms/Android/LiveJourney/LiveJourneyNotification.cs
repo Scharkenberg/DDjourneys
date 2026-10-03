@@ -30,11 +30,18 @@ internal static class LiveJourneyNotification
 	internal const string ActionOpen = TrackingActions.Open;
 	internal const string ExtraPlanId = TrackingActions.PlanIdKey;
 
-	/// <summary>Group shared by every notification of the app, so the system folds them into one stack.</summary>
-	private const string GroupKey = "dd.journey.group";
+	/// <summary>
+	/// Group of the alerts only. The live notification is deliberately in no group: a group child can
+	/// be folded into a collapsed stack behind its summary, and the live notification must always stand
+	/// on its own (alerts and their stack can never hide, collapse or bundle it).
+	/// </summary>
+	private const string GroupKey = "dd.journey.alerts";
 
-	/// <summary>Id of the group summary; only posted while two or more notifications are visible.</summary>
+	/// <summary>Id of the alert stack summary; only posted while two or more alerts are visible.</summary>
 	private const int SummaryNotificationId = 7315;
+
+	/// <summary>More alerts than this are pointless for a traveller; the oldest are removed.</summary>
+	private const int MaxAlerts = 8;
 
 	private const string StatusIconName = "ic_stat_journey";
 	private const string StopIconName = "ic_live_stop";
@@ -153,8 +160,6 @@ internal static class LiveJourneyNotification
 			.SetSortKey("0")!
 			.SetShowWhen(false);
 
-		ApplyGroup(builder);
-
 		if (content.SubText is { Length: > 0 } sub)
 		{
 			builder.SetSubText(sub);
@@ -216,7 +221,7 @@ internal static class LiveJourneyNotification
 		}
 	}
 
-	/// <summary>Puts a notification into the app's group; the summary itself stays silent.</summary>
+	/// <summary>Puts an alert into the alert group; the summary itself stays silent.</summary>
 	private static void ApplyGroup(Notification.Builder builder, bool summary = false)
 	{
 		builder.SetGroup(GroupKey);
@@ -396,8 +401,8 @@ internal static class LiveJourneyNotification
 	}
 
 	/// <summary>
-	/// Keeps the group summary in step with the notifications of the app: with two or more the
-	/// system shows one expandable stack, with fewer the summary is removed again.
+	/// Keeps the alert stack in step: with two or more alerts the system shows one expandable stack,
+	/// with fewer the summary is removed again. The live notification is never part of it.
 	/// </summary>
 	private static void RefreshSummary()
 	{
@@ -408,7 +413,7 @@ internal static class LiveJourneyNotification
 				return;
 			}
 
-			int children = 0;
+			List<StatusBarNotification> alerts = [];
 
 			StatusBarNotification[]? active = manager.GetActiveNotifications();
 
@@ -417,9 +422,18 @@ internal static class LiveJourneyNotification
 				if (item.Id != SummaryNotificationId
 					&& item.Notification?.Group == GroupKey)
 				{
-					children++;
+					alerts.Add(item);
 				}
 			}
+
+			// Alerts never pile up without bound (the system caps an app's notifications, oldest first).
+			foreach (StatusBarNotification stale in alerts.OrderByDescending(item => item.PostTime).Skip(MaxAlerts).ToList())
+			{
+				manager.Cancel(stale.Id);
+				alerts.Remove(stale);
+			}
+
+			int children = alerts.Count;
 
 			if (children < 2)
 			{
@@ -435,14 +449,14 @@ internal static class LiveJourneyNotification
 
 			Notification.Builder builder =
 				OperatingSystem.IsAndroidVersionAtLeast(26)
-					? new Notification.Builder(context, LiveChannelId)
+					? new Notification.Builder(context, AlertChannelId)
 					: new Notification.Builder(context);
 
 			builder
 				.SetSmallIcon(ResourceId(StatusIconName, global::Android.Resource.Drawable.IcMenuDirections))!
 				.SetColor(AccentColor)!
 				.SetContentTitle(appName)!
-				.SetContentText(Strings.ChannelLive)!
+				.SetContentText(Strings.ChannelAlerts)!
 				.SetOnlyAlertOnce(true)!
 				.SetAutoCancel(true)!
 				.SetShowWhen(false);

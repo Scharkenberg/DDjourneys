@@ -22,6 +22,8 @@ internal sealed class WindowsLiveJourneySurface : ILiveJourneySurface, IDisposab
 	private static readonly TimeSpan RestoreDelay = TimeSpan.FromMilliseconds(2500);
 	private static readonly TimeSpan DismissGrace = TimeSpan.FromSeconds(2);
 
+	private const int MaxAlerts = 8;
+
 	private readonly TrackingCallbackBridge _bridge;
 	private readonly Lock _gate = new();
 	private readonly SemaphoreSlim _wake = new(0);
@@ -38,6 +40,10 @@ internal sealed class WindowsLiveJourneySurface : ILiveJourneySurface, IDisposab
 	private DateTimeOffset? _restoreAt;
 	private DateTimeOffset? _dismissAt;
 	private string _lastSent = string.Empty;
+	private DateTimeOffset? _retryAt;
+	private readonly LinkedList<string> _alertTags = new();
+	private Task _removal = Task.CompletedTask;
+	private bool _shownBefore;
 	private bool _loopStarted;
 	private bool _disposed;
 
@@ -47,6 +53,8 @@ internal sealed class WindowsLiveJourneySurface : ILiveJourneySurface, IDisposab
 	}
 
 	public bool IsSupported => true;
+
+	public bool ShowsPaused => true;
 
 	private static TrackingStrings Strings =>
 		LocalizationService.Current.CurrentStrings.Tracking;
@@ -67,17 +75,20 @@ internal sealed class WindowsLiveJourneySurface : ILiveJourneySurface, IDisposab
 				DateTimeOffset now = DateTimeOffset.UtcNow;
 				string key = LayoutKeyOf(content);
 
+				// A process that was started by a click must not greet the user with another banner.
 				bool loud =
-					_content is null
-					|| _content.PlanId != content.PlanId
-					|| _content.Phase != content.Phase;
+					(_content is null
+						|| _content.PlanId != content.PlanId
+						|| _content.Phase != content.Phase)
+					&& !(WindowsNotificationHost.Embedded && !_shownBefore);
 
 				_content = content;
 				_basis = now;
+				_shownBefore = true;
 
 				if (!_live || key != _layoutKey)
 				{
-					ReplaceLocked(content, key, now, loud);
+					TryReplaceLocked(content, key, now, loud);
 				}
 				else
 				{
@@ -87,11 +98,13 @@ internal sealed class WindowsLiveJourneySurface : ILiveJourneySurface, IDisposab
 				EnsureLoopLocked();
 			}
 
+			WindowsBackground.SetKeepAlive(LiveBackgroundRules.KeepsProcessAlive(content));
+
 			_wake.Release();
 		}
 		catch (Exception ex)
 		{
-			WindowsTrace.Write($"Windows live notification failed: {ex.Message}");
+			WindowsTrace.Write("Windows live notification failed", ex);
 		}
 	}
 
@@ -109,13 +122,16 @@ internal sealed class WindowsLiveJourneySurface : ILiveJourneySurface, IDisposab
 				_dismissAt = null;
 				_layoutKey = string.Empty;
 				_lastSent = string.Empty;
+				_retryAt = null;
+
+				_removal = RemoveAsync(WindowsNotificationHost.LiveGroup, LiveTag);
 			}
 
-			_ = RemoveAsync(WindowsNotificationHost.LiveGroup, LiveTag);
+			WindowsBackground.SetKeepAlive(false);
 		}
 		catch (Exception ex)
 		{
-			WindowsTrace.Write($"Windows live notification removal failed: {ex.Message}");
+			WindowsTrace.Write("Windows live notification removal failed", ex);
 		}
 	}
 
@@ -126,6 +142,7 @@ internal sealed class WindowsLiveJourneySurface : ILiveJourneySurface, IDisposab
 		try
 		{
 			var builder = new AppNotificationBuilder()
+				.AddArgument(WindowsNotificationHost.SourceKey, WindowsNotificationHost.SourceAlert)
 				.AddArgument(WindowsNotificationHost.ActionKey, TrackingActions.Open)
 				.AddArgument(TrackingActions.PlanIdKey, alert.PlanId)
 				.AddText(alert.Title)
@@ -135,14 +152,61 @@ internal sealed class WindowsLiveJourneySurface : ILiveJourneySurface, IDisposab
 
 			notification.Tag = AlertTag(alert.PlanId, alert.Kind);
 			notification.Group = WindowsNotificationHost.AlertGroup;
-			notification.Expiration = DateTimeOffset.Now.AddHours(12);
+			notification.Expiration = DateTimeOffset.Now.AddHours(6);
 			notification.SuppressDisplay = alert.Kind == JourneyAlertKind.Arrived;
 
 			AppNotificationManager.Default.Show(notification);
+
+			TrimAlerts(notification.Tag);
+
+			// A new or replaced alert lands on top of the notification center; the live notification
+			// goes back above it, so it is never pushed behind "see more" (replacing moves to the top).
+			RaiseLive();
 		}
 		catch (Exception ex)
 		{
-			WindowsTrace.Write($"Windows alert failed: {ex.Message}");
+			WindowsTrace.Write("Windows alert failed", ex);
+		}
+	}
+
+	/// <summary>An app may have 20 notifications, first in first out: alerts stay few so the live one is never evicted.</summary>
+	private void TrimAlerts(string tag)
+	{
+		List<string> stale = [];
+
+		lock (_alertTags)
+		{
+			_alertTags.Remove(tag);
+			_alertTags.AddLast(tag);
+
+			while (_alertTags.Count > MaxAlerts)
+			{
+				stale.Add(_alertTags.First!.Value);
+				_alertTags.RemoveFirst();
+			}
+		}
+
+		foreach (string old in stale)
+		{
+			_ = RemoveAsync(WindowsNotificationHost.AlertGroup, old);
+		}
+	}
+
+	private void RaiseLive()
+	{
+		try
+		{
+			lock (_gate)
+			{
+				if (_content is { } content && _live && !_disposed)
+				{
+					TryReplaceLocked(content, LayoutKeyOf(content), DateTimeOffset.UtcNow, loud: false);
+				}
+			}
+		}
+		catch (Exception ex)
+		{
+			WindowsTrace.Write("Raising the live notification failed", ex);
 		}
 	}
 
@@ -186,9 +250,29 @@ internal sealed class WindowsLiveJourneySurface : ILiveJourneySurface, IDisposab
 	private static bool HasProgress(LiveJourneyContent content) =>
 		content.When is not null || content.Segments.Sum() > 0;
 
+	/// <summary>Shows the notification; a failure is logged and retried shortly instead of lost.</summary>
+	private void TryReplaceLocked(LiveJourneyContent content, string key, DateTimeOffset now, bool loud)
+	{
+		try
+		{
+			ReplaceLocked(content, key, now, loud);
+		}
+		catch (Exception ex)
+		{
+			_live = false;
+			_retryAt = now + TimeSpan.FromSeconds(15);
+
+			WindowsTrace.Write("Showing the live notification failed", ex);
+		}
+	}
+
 	private void ReplaceLocked(LiveJourneyContent content, string key, DateTimeOffset now, bool loud)
 	{
+		// A removal that is still under way must not take the new notification with it.
+		_removal.Wait(TimeSpan.FromSeconds(1));
+
 		var builder = new AppNotificationBuilder()
+			.AddArgument(WindowsNotificationHost.SourceKey, WindowsNotificationHost.SourceLive)
 			.AddArgument(WindowsNotificationHost.ActionKey, TrackingActions.Open)
 			.AddArgument(TrackingActions.PlanIdKey, content.PlanId)
 			.MuteAudio()
@@ -211,15 +295,19 @@ internal sealed class WindowsLiveJourneySurface : ILiveJourneySurface, IDisposab
 			builder.AddText(content.SubText);
 		}
 
-		if (content.PlanId.Length > 0 && content.Ongoing)
+		if (content.PlanId.Length > 0 && (content.Ongoing || content.Phase == TrackingPhase.Paused))
 		{
+			bool paused = content.Phase == TrackingPhase.Paused;
+
 			builder.AddButton(
-				new AppNotificationButton(Strings.NotifActionPause)
-					.AddArgument(WindowsNotificationHost.ActionKey, TrackingActions.Pause)
+				new AppNotificationButton(paused ? Strings.Resume : Strings.NotifActionPause)
+					.AddArgument(WindowsNotificationHost.SourceKey, WindowsNotificationHost.SourceLive)
+					.AddArgument(WindowsNotificationHost.ActionKey, paused ? TrackingActions.Resume : TrackingActions.Pause)
 					.AddArgument(TrackingActions.PlanIdKey, content.PlanId));
 
 			builder.AddButton(
 				new AppNotificationButton(Strings.NotifActionStop)
+					.AddArgument(WindowsNotificationHost.SourceKey, WindowsNotificationHost.SourceLive)
 					.AddArgument(WindowsNotificationHost.ActionKey, TrackingActions.Stop)
 					.AddArgument(TrackingActions.PlanIdKey, content.PlanId));
 		}
@@ -230,7 +318,9 @@ internal sealed class WindowsLiveJourneySurface : ILiveJourneySurface, IDisposab
 		notification.Group = WindowsNotificationHost.LiveGroup;
 		notification.SuppressDisplay = !loud;
 		notification.Expiration =
-			(content.When is { } when && when > now ? when : now.AddHours(2)).AddMinutes(30).ToLocalTime();
+			content.Phase == TrackingPhase.Paused
+				? now.AddHours(12).ToLocalTime()
+				: (content.When is { } when && when > now ? when : now.AddHours(2)).AddMinutes(30).ToLocalTime();
 
 		if (progress)
 		{
@@ -245,6 +335,7 @@ internal sealed class WindowsLiveJourneySurface : ILiveJourneySurface, IDisposab
 		_generation++;
 		_restoreAt = null;
 		_dismissAt = null;
+		_retryAt = null;
 		_lastSent = SignatureOf(content, now);
 		_nextTickAt = now + TickInterval(content, now);
 	}
@@ -260,14 +351,19 @@ internal sealed class WindowsLiveJourneySurface : ILiveJourneySurface, IDisposab
 					? Strings.NotifNow
 					: string.Format(CultureInfo.CurrentCulture, Strings.NotifMinutes, LivePresentationRules.Minutes(left));
 
-		string status =
-			new[] { content.SubText, content.ShortText, content.Title }
-				.FirstOrDefault(text => !string.IsNullOrWhiteSpace(text))
-			?? string.Empty;
+		// The headline and text above the bar already say it; the bar only adds what is new.
+		string title =
+			content.ShortText is { Length: > 0 } shortText
+				&& shortText != content.Title
+				&& shortText != content.Text
+				? shortText
+				: string.Empty;
+
+		string status = content.SubText ?? string.Empty;
 
 		return new AppNotificationProgressData(NextSequence())
 		{
-			Title = content.ShortText ?? content.Title,
+			Title = title,
 			Value = ProgressOf(content, now),
 			ValueStringOverride = countdown,
 			Status = status
@@ -349,6 +445,13 @@ internal sealed class WindowsLiveJourneySurface : ILiveJourneySurface, IDisposab
 	/// </summary>
 	private void OnInvoked(AppNotificationManager sender, AppNotificationActivatedEventArgs args)
 	{
+		// Only a click on the live notification (or its buttons) removed it; alerts are separate.
+		if (!args.Arguments.TryGetValue(WindowsNotificationHost.SourceKey, out string? source)
+			|| source != WindowsNotificationHost.SourceLive)
+		{
+			return;
+		}
+
 		lock (_gate)
 		{
 			if (_content is null)
@@ -413,11 +516,29 @@ internal sealed class WindowsLiveJourneySurface : ILiveJourneySurface, IDisposab
 			{
 				if (now >= restoreAt)
 				{
-					ReplaceLocked(content, LayoutKeyOf(content), now, loud: false);
+					_restoreAt = null;
+
+					TryReplaceLocked(content, LayoutKeyOf(content), now, loud: false);
 				}
 				else
 				{
 					wait = Min(wait, restoreAt - now);
+				}
+
+				return Max(wait, TimeSpan.FromMilliseconds(100));
+			}
+
+			if (_retryAt is { } retryAt)
+			{
+				if (now >= retryAt)
+				{
+					_retryAt = null;
+
+					TryReplaceLocked(content, LayoutKeyOf(content), now, loud: true);
+				}
+				else
+				{
+					wait = Min(wait, retryAt - now);
 				}
 
 				return Max(wait, TimeSpan.FromMilliseconds(100));
@@ -466,14 +587,30 @@ internal sealed class WindowsLiveJourneySurface : ILiveJourneySurface, IDisposab
 
 			if (result == AppNotificationProgressResult.AppNotificationNotFound)
 			{
+				bool present = await LiveStillPresentAsync();
+
 				lock (_gate)
 				{
-					// Gone without an activation event: wait briefly for one, then treat as dismissed.
 					if (generation == _generation && _live)
 					{
 						_live = false;
-						_dismissAt = DateTimeOffset.UtcNow + DismissGrace;
-						wait = Min(wait, DismissGrace);
+
+						if (present)
+						{
+							// It is there, only the update did not find it: put a fresh one in its place.
+							WindowsTrace.Write("Update did not find the live notification although it exists; replacing");
+
+							_restoreAt = DateTimeOffset.UtcNow;
+							wait = TimeSpan.FromMilliseconds(100);
+						}
+						else
+						{
+							// Gone without an activation event: wait briefly for one, then treat as dismissed.
+							WindowsTrace.Write("Live notification is gone; waiting for an activation");
+
+							_dismissAt = DateTimeOffset.UtcNow + DismissGrace;
+							wait = Min(wait, DismissGrace);
+						}
 					}
 				}
 			}
@@ -483,6 +620,8 @@ internal sealed class WindowsLiveJourneySurface : ILiveJourneySurface, IDisposab
 		{
 			try
 			{
+				WindowsTrace.Write("Live notification dismissed by the user; telling the tracker");
+
 				await _bridge.HandleActionAsync(TrackingActions.Dismissed, forwardPlan).ConfigureAwait(false);
 			}
 			catch (Exception ex)
@@ -492,6 +631,22 @@ internal sealed class WindowsLiveJourneySurface : ILiveJourneySurface, IDisposab
 		}
 
 		return Max(wait, TimeSpan.FromMilliseconds(100));
+	}
+
+	private static async Task<bool> LiveStillPresentAsync()
+	{
+		try
+		{
+			IList<AppNotification> all = await AppNotificationManager.Default.GetAllAsync();
+
+			return all.Any(item => item.Tag == LiveTag && item.Group == WindowsNotificationHost.LiveGroup);
+		}
+		catch (Exception ex)
+		{
+			WindowsTrace.Write("Listing notifications failed", ex);
+
+			return false;
+		}
 	}
 
 	private static TimeSpan Min(TimeSpan a, TimeSpan b) =>
@@ -504,7 +659,7 @@ internal sealed class WindowsLiveJourneySurface : ILiveJourneySurface, IDisposab
 	{
 		try
 		{
-			await AppNotificationManager.Default.RemoveByTagAndGroupAsync(tag, group);
+			await AppNotificationManager.Default.RemoveByTagAndGroupAsync(tag, group).AsTask().ConfigureAwait(false);
 		}
 		catch (Exception ex)
 		{

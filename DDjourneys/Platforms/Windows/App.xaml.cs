@@ -29,6 +29,7 @@ namespace DDjourneys.WinUI
 
 			// Before anything else: a notification click that started this process needs it registered.
 			WindowsNotificationHost.Register();
+			WindowsBackground.Initialize(WindowsNotificationHost.Embedded);
 
 			this.InitializeComponent();
 		}
@@ -38,6 +39,17 @@ namespace DDjourneys.WinUI
 			try
 			{
 				MauiApp app = MauiProgram.CreateMauiApp();
+
+				// Every MAUI window: closing hides it while a journey is monitored (see WindowsBackground).
+				Microsoft.Maui.Handlers.WindowHandler.Mapper.AppendToMapping(
+					"DDjourneysBackground",
+					(handler, _) =>
+					{
+						if (handler.PlatformView is Microsoft.UI.Xaml.Window window)
+						{
+							WindowsBackground.Attach(window);
+						}
+					});
 
 				WindowsNotificationHost.Initialize(app.Services);
 

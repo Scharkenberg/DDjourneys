@@ -2,20 +2,25 @@ using DDjourneys.Core.Tracking;
 using DDjourneys.Core.Tracking.Live;
 using DDjourneys.Tracking;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Maui.Hosting;
 using Microsoft.Windows.AppNotifications;
 
 namespace DDjourneys.Platforms.Windows.LiveJourney;
 
 /// <summary>
-/// Registers the app for app notifications and routes taps and buttons to the tracker. Cold start:
-/// Windows launches the app, the activation arrives through <see cref="Handle"/>.
+/// Registers the app for app notifications and routes taps and buttons to the tracker. Windows starts
+/// the app for a click when it is not running (COM server, "-Embedding"); the click then arrives through
+/// <see cref="Handle"/> or <c>NotificationInvoked</c>, always with a full MAUI app behind it.
 /// </summary>
 internal static class WindowsNotificationHost
 {
 	internal const string LiveGroup = "dd.journey.live";
 	internal const string AlertGroup = "dd.journey.alert";
 	internal const string ActionKey = "action";
+
+	/// <summary>Which notification a click came from; only the live one is removed and restored by the surface.</summary>
+	internal const string SourceKey = "src";
+	internal const string SourceLive = "live";
+	internal const string SourceAlert = "alert";
 
 	private static readonly TimeSpan Duplicate = TimeSpan.FromMilliseconds(3000);
 
@@ -24,23 +29,16 @@ internal static class WindowsNotificationHost
 	private static IServiceProvider? _services;
 	private static int _initialized;
 	private static int _registered;
-	private static MauiApp? _headless;
 	private static string _lastKey = string.Empty;
 	private static DateTimeOffset _lastAt;
 
 	/// <summary>
-	/// True when Windows started this process only to deliver a notification activation (COM server,
-	/// "-Embedding"): MAUI creates no app and no window then.
+	/// True when Windows started this process only to deliver a notification click. MAUI still builds the
+	/// app and a window then; the window stays hidden unless the click wants it.
 	/// </summary>
 	internal static bool Embedded { get; private set; }
 
-	private static readonly string PendingPath =
-		Path.Combine(
-			Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-			"DDjourneys",
-			"pending-open.txt");
-
-	/// <summary>Called first thing in the process: a notification activation must find a registered app.</summary>
+	/// <summary>Called first thing in the process: a notification click must find a registered app.</summary>
 	public static void Register()
 	{
 		if (Interlocked.Exchange(ref _registered, 1) == 1)
@@ -68,7 +66,7 @@ internal static class WindowsNotificationHost
 		}
 	}
 
-	/// <summary>Called when the services exist (a normal start with UI).</summary>
+	/// <summary>Called when the services exist.</summary>
 	public static void Initialize(IServiceProvider services)
 	{
 		ArgumentNullException.ThrowIfNull(services);
@@ -80,25 +78,11 @@ internal static class WindowsNotificationHost
 
 		_services = services;
 
-		_ = RemoveLeftoversAsync(AppNotificationManager.Default);
-
-		try
+		// A click that started this process must not lose its notification; otherwise a leftover from a
+		// dead process is cleared (the tracker shows a fresh one as soon as it knows what is going on).
+		if (!Embedded)
 		{
-			// A click that found no UI process left its wish here.
-			if (File.Exists(PendingPath))
-			{
-				string planId = File.ReadAllText(PendingPath).Trim();
-
-				File.Delete(PendingPath);
-
-				WindowsTrace.Write($"Pending open for plan '{planId}'");
-
-				_ = Task.Run(() => DispatchAsync(TrackingActions.Open, planId));
-			}
-		}
-		catch (Exception ex)
-		{
-			WindowsTrace.Write("Reading the pending open failed", ex);
+			_ = RemoveLeftoversAsync(AppNotificationManager.Default);
 		}
 	}
 
@@ -147,7 +131,11 @@ internal static class WindowsNotificationHost
 			WindowsTrace.Write($"Activation: action='{action}' plan='{planId}'");
 
 			bool known =
-				action is TrackingActions.Pause or TrackingActions.Stop or TrackingActions.Dismissed or TrackingActions.Open;
+				action is TrackingActions.Pause
+					or TrackingActions.Resume
+					or TrackingActions.Stop
+					or TrackingActions.Dismissed
+					or TrackingActions.Open;
 
 			if (!known || (action != TrackingActions.Open && planId.Length == 0))
 			{
@@ -155,6 +143,8 @@ internal static class WindowsNotificationHost
 
 				return;
 			}
+
+			WindowsBackground.NoteActivation();
 
 			string key = action + "|" + planId;
 
@@ -185,15 +175,8 @@ internal static class WindowsNotificationHost
 	{
 		try
 		{
-			if (Embedded && _services is null)
-			{
-				await DispatchEmbeddedAsync(action, planId);
-
-				return;
-			}
-
 			// A start with UI can deliver the activation before the services exist.
-			for (int i = 0; i < 100 && _services is null; i++)
+			for (int i = 0; i < 150 && _services is null; i++)
 			{
 				await Task.Delay(100);
 			}
@@ -205,141 +188,56 @@ internal static class WindowsNotificationHost
 				return;
 			}
 
-			await RunActionAsync(services, action, planId);
-		}
-		catch (Exception ex)
-		{
-			WindowsTrace.Write("Dispatching the activation failed", ex);
-		}
-	}
+			// Resolving the tracker creates it and attaches it to the bridge.
+			_ = services.GetService<IJourneyTracker>();
 
-	/// <summary>
-	/// Windows started this process just for the click, so there is no UI and no MAUI app. A tap
-	/// starts the real app (which picks up the wish); the buttons run against a headless tracker.
-	/// </summary>
-	private static async Task DispatchEmbeddedAsync(string action, string planId)
-	{
-		try
-		{
 			if (action == TrackingActions.Open)
 			{
-				Directory.CreateDirectory(Path.GetDirectoryName(PendingPath)!);
-				File.WriteAllText(PendingPath, planId);
+				services.GetService<TrackedJourneyNavigator>()?.Request(planId);
 
-				IReadOnlyList<global::Windows.ApplicationModel.Core.AppListEntry> entries =
-					await global::Windows.ApplicationModel.Package.Current.GetAppListEntriesAsync();
+				await WindowsBackground.RevealAsync();
 
-				bool launched = entries.Count > 0 && await entries[0].LaunchAsync();
+				if (services.GetService<TrackedJourneyNavigator>() is { } navigator)
+				{
+					await navigator.DeliverAsync();
+				}
 
-				WindowsTrace.Write($"Started the app for a tap: {launched}");
+				WindowsTrace.Write("Open delivered");
 
 				return;
 			}
 
-			_headless ??= MauiProgram.CreateMauiApp();
-
-			_services = _headless.Services;
-
-			WindowsTrace.Write("Headless services created");
-
-			if (_services.GetService<TrackingCallbackBridge>() is { } bridge)
+			if (services.GetService<TrackingCallbackBridge>() is { } bridge)
 			{
-				// Resolving the tracker attaches it; resuming loads the followed journeys.
-				_ = _services.GetService<IJourneyTracker>();
+				WindowsTrace.Write($"Bridge attached: {bridge.IsAttached}");
 
-				await bridge.ResumeAsync();
+				if (Embedded)
+				{
+					// Cold start: the followed journeys are not loaded yet.
+					await bridge.ResumeAsync();
+
+					WindowsTrace.Write("Followed journeys loaded");
+				}
+
+				await bridge.HandleActionAsync(action, planId);
 			}
 
-			await RunActionAsync(_services, action, planId);
+			WindowsTrace.Write($"{action} handled");
 
-			// Let pending effects (removing the notification) finish.
-			await Task.Delay(TimeSpan.FromSeconds(3));
+			// A process that was started just for this button ends when nothing is monitored.
+			if (WindowsBackground.Stealth)
+			{
+				WindowsBackground.ScheduleExitCheck();
+			}
 		}
 		catch (Exception ex)
 		{
-			WindowsTrace.Write("Headless handling failed", ex);
-		}
-		finally
-		{
-			WindowsTrace.Write("Embedded process exits");
+			WindowsTrace.Write("Dispatching the activation failed", ex);
 
-			Environment.Exit(0);
-		}
-	}
-
-	private static async Task RunActionAsync(IServiceProvider services, string action, string planId)
-	{
-		// Resolving the tracker creates it and attaches it to the bridge.
-		_ = services.GetService<IJourneyTracker>();
-
-		if (action == TrackingActions.Open)
-		{
-			services.GetService<TrackedJourneyNavigator>()?.Request(planId);
-
-			await ActivateWindowAsync();
-
-			if (services.GetService<TrackedJourneyNavigator>() is { } navigator)
+			if (WindowsBackground.Stealth)
 			{
-				await navigator.DeliverAsync();
+				WindowsBackground.ScheduleExitCheck();
 			}
-
-			WindowsTrace.Write("Open delivered");
-
-			return;
 		}
-
-		if (services.GetService<TrackingCallbackBridge>() is { } bridge)
-		{
-			WindowsTrace.Write($"Bridge attached: {bridge.IsAttached}");
-
-			if (Embedded)
-			{
-				// Cold start: the followed journeys are not loaded yet, an action would find nothing.
-				await bridge.ResumeAsync();
-
-				WindowsTrace.Write("Followed journeys loaded");
-			}
-
-			await bridge.HandleActionAsync(action, planId);
-		}
-
-		WindowsTrace.Write($"{action} handled");
-	}
-
-	private static async Task ActivateWindowAsync()
-	{
-		for (int i = 0; i < 80; i++)
-		{
-			try
-			{
-				bool done =
-					await MainThread.InvokeOnMainThreadAsync(
-						() =>
-						{
-							if (Microsoft.Maui.Controls.Application.Current is { } app
-								&& app.Windows.FirstOrDefault() is { } window)
-							{
-								app.ActivateWindow(window);
-
-								return true;
-							}
-
-							return false;
-						});
-
-				if (done)
-				{
-					return;
-				}
-			}
-			catch (InvalidOperationException)
-			{
-				// The main thread is not there yet (cold start).
-			}
-
-			await Task.Delay(250);
-		}
-
-		WindowsTrace.Write("No window to activate");
 	}
 }

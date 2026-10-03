@@ -357,6 +357,9 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 			case TrackingActions.Pause:
 				return SetActiveAsync(planId, false);
 
+			case TrackingActions.Resume:
+				return SetActiveAsync(planId, true);
+
 			case TrackingActions.Stop:
 				return DeleteAsync(planId);
 
@@ -786,7 +789,7 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 
 		string? previousLive = _livePlanId;
 
-		ScheduleLiveNotification(focus, focusView, waiting, run, now, strings, effects);
+		ScheduleLiveNotification(focus, focusView, waiting, ChoosePaused(views, focus, waiting, run, now), run, now, strings, effects);
 
 		if (!string.Equals(previousLive, _livePlanId, StringComparison.Ordinal))
 		{
@@ -1073,6 +1076,7 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 		WatchEntry? focus,
 		WatchedJourney? focusView,
 		WatchedJourney? waiting,
+		WatchedJourney? paused,
 		bool run,
 		DateTimeOffset now,
 		TrackingStrings strings,
@@ -1119,8 +1123,34 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 					? SchutzengelLiveContent.Waiting(waiting, strings)
 					: SchutzengelLiveContent.Monitoring(strings);
 		}
+		else if (paused is not null && _entries.TryGetValue(paused.PlanId, out WatchEntry? pausedEntry))
+		{
+			// Nothing is monitored, but a surface that can resume from outside the app keeps the
+			// paused journey in view (with its Resume button).
+			if (_dismissed.TryGetValue(paused.PlanId, out string? pausedDismissed)
+				&& pausedDismissed == StateKey(pausedEntry))
+			{
+				if (_liveKey is not null)
+				{
+					_liveKey = null;
+					effects.Actions.Add(_surface.Dismiss);
+				}
 
-		_livePlanId = content is { PlanId.Length: > 0 } ? content.PlanId : null;
+				_livePlanId = null;
+
+				return;
+			}
+
+			_dismissed.Remove(paused.PlanId);
+
+			content = SchutzengelLiveContent.Paused(paused, strings);
+		}
+
+		// A paused journey is shown, but it is not "the live journey" of the overview.
+		_livePlanId =
+			content is { PlanId.Length: > 0, Phase: not TrackingPhase.Paused }
+				? content.PlanId
+				: null;
 
 		if (content is null)
 		{
@@ -1143,6 +1173,31 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 		_liveKey = key;
 
 		effects.Actions.Add(() => _surface.Show(content));
+	}
+
+	/// <summary>
+	/// The paused journey a surface keeps in view when nothing else is shown: the preferred one, else the
+	/// one departing first. Long-finished journeys are not worth a notification.
+	/// </summary>
+	private WatchedJourney? ChoosePaused(
+		IReadOnlyList<WatchedJourney> views,
+		WatchEntry? focus,
+		WatchedJourney? waiting,
+		bool run,
+		DateTimeOffset now)
+	{
+		if (focus is not null || waiting is not null || run || !_surface.ShowsPaused)
+		{
+			return null;
+		}
+
+		List<WatchedJourney> candidates =
+			[.. views.Where(
+				view => view.Status == WatchStatus.Deactivated
+					&& (view.Arrival is not { } arrival || arrival > now - TimeSpan.FromHours(6)))];
+
+		return candidates.FirstOrDefault(view => view.PlanId == _preferredLive)
+			?? candidates.OrderBy(view => view.Departure ?? DateTimeOffset.MaxValue).FirstOrDefault();
 	}
 
 	private static string StateKey(WatchEntry entry) =>

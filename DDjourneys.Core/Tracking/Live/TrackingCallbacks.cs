@@ -7,6 +7,7 @@ namespace DDjourneys.Core.Tracking.Live;
 public static class TrackingActions
 {
 	public const string Pause = "dd.journey.pause";
+	public const string Resume = "dd.journey.resume";
 	public const string Stop = "dd.journey.stop";
 	public const string Dismissed = "dd.journey.dismissed";
 	public const string Open = "dd.journey.open";
