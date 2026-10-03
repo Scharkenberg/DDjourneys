@@ -51,6 +51,13 @@ public sealed class AppSettings
 		set => Write("themePureBlack", value);
 	}
 
+	/// <summary>UI density id: "compact", "normal" or "touch" (see DensityProfile).</summary>
+	public string UiDensity
+	{
+		get => Read("uiDensity", "normal");
+		set => Write("uiDensity", value);
+	}
+
 	/// <summary>Font face id from <see cref="FontCatalog"/>.</summary>
 	public string FontFace
 	{

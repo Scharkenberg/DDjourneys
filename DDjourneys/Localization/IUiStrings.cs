@@ -186,6 +186,13 @@ public sealed class SettingsStrings
 	public required string ColorSystemDescription { get; init; }
 	public required string ColorSystemSolarized { get; init; }
 	public required string ColorSystemSolarizedDescription { get; init; }
+	public required string DensityHeader { get; init; }
+	public required string DensityCompact { get; init; }
+	public required string DensityCompactDescription { get; init; }
+	public required string DensityNormal { get; init; }
+	public required string DensityNormalDescription { get; init; }
+	public required string DensityTouch { get; init; }
+	public required string DensityTouchDescription { get; init; }
 	public required string FontHeader { get; init; }
 	public required string FontSystem { get; init; }
 	public required string FontSystemDescription { get; init; }

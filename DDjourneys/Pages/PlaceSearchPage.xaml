@@ -1,4 +1,5 @@
 <ContentPage
+	xmlns:support="clr-namespace:DDjourneys.Support"
 	x:Class="DDjourneys.Pages.PlaceSearchPage"
 	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
 	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
@@ -12,8 +13,8 @@
 		<DataTemplate x:Key="PlaceRow" x:DataType="local:PlaceRow">
 			<Grid RowDefinitions="Auto,Auto" RowSpacing="0">
 				<VerticalStackLayout
-					Padding="14,10"
-					MinimumHeightRequest="48"
+					support:Dense.Padding="14,10"
+					support:Dense.MinHeight="48"
 					Spacing="2"
 					VerticalOptions="Center">
 					<controls:StopNameView Place="{Binding Detail}" Stop="{Binding Name}" />
@@ -30,9 +31,9 @@
 	</ContentPage.Resources>
 
 	<Grid
-		Padding="{StaticResource PadPage}"
+		Padding="{DynamicResource PadPage}"
 		RowDefinitions="Auto,*"
-		RowSpacing="{StaticResource SpaceM}">
+		RowSpacing="{DynamicResource SpaceM}">
 
 		<!--  The field carries its own frame: the platform underline is gone on purpose  -->
 		<Border
@@ -40,7 +41,7 @@
 			Padding="10,0"
 			StyleClass="Card">
 
-			<Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{StaticResource SpaceS}">
+			<Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{DynamicResource SpaceS}">
 
 				<controls:Icon
 					Glyph="Search"
@@ -68,7 +69,7 @@
 		</Border>
 
 		<ScrollView Grid.Row="1">
-			<VerticalStackLayout Spacing="{StaticResource SpaceM}">
+			<VerticalStackLayout Spacing="{DynamicResource SpaceM}">
 
 				<Label
 					Margin="0,24,0,0"
@@ -84,7 +85,7 @@
 					<VerticalStackLayout BindableLayout.ItemTemplate="{StaticResource PlaceRow}" BindableLayout.ItemsSource="{Binding Results}" />
 				</Border>
 
-				<VerticalStackLayout IsVisible="{Binding ShowRecents}" Spacing="{StaticResource SpaceS}">
+				<VerticalStackLayout IsVisible="{Binding ShowRecents}" Spacing="{DynamicResource SpaceS}">
 					<Label StyleClass="Title" Text="{localization:Tr Plan.Recent}" />
 					<Border Padding="0" StyleClass="Card">
 						<VerticalStackLayout BindableLayout.ItemTemplate="{StaticResource PlaceRow}" BindableLayout.ItemsSource="{Binding Recents}" />

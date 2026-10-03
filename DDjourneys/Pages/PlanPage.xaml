@@ -16,7 +16,7 @@
 	</ContentPage.Resources>
 
 	<ScrollView>
-		<VerticalStackLayout Padding="{StaticResource PadPage}" Spacing="{StaticResource SpaceM}">
+		<VerticalStackLayout Padding="{DynamicResource PadPage}" Spacing="{DynamicResource SpaceM}">
 
 			<Grid ColumnDefinitions="*,Auto">
 				<Label
@@ -42,13 +42,13 @@
 			<Border StyleClass="Card">
 				<Grid
 					ColumnDefinitions="*,Auto"
-					ColumnSpacing="{StaticResource SpaceS}"
+					ColumnSpacing="{DynamicResource SpaceS}"
 					RowDefinitions="Auto,Auto,Auto">
 
 					<Grid
 						Grid.Row="0"
 						ColumnDefinitions="*,44"
-						MinimumHeightRequest="64">
+						support:Dense.MinHeight="64">
 
 						<VerticalStackLayout Spacing="2" VerticalOptions="Center">
 							<Label StyleClass="Caption" Text="{localization:Tr Plan.FromPlaceholder}" />
@@ -80,7 +80,7 @@
 					<Grid
 						Grid.Row="2"
 						ColumnDefinitions="*,44"
-						MinimumHeightRequest="64">
+						support:Dense.MinHeight="64">
 
 						<VerticalStackLayout Spacing="2" VerticalOptions="Center">
 							<Label StyleClass="Caption" Text="{localization:Tr Plan.ToPlaceholder}" />
@@ -122,14 +122,14 @@
 				<VerticalStackLayout>
 
 					<Grid
-						Padding="12,10"
+						support:Dense.Padding="12,10"
 						ColumnDefinitions="*,*"
-						ColumnSpacing="{StaticResource SpaceS}">
+						ColumnSpacing="{DynamicResource SpaceS}">
 
 						<Button
 							Grid.Column="0"
 							Command="{Binding DepartCommand}"
-							MinimumHeightRequest="38"
+							support:Dense.MinHeight="38"
 							StyleClass="Tonal"
 							support:Themed.IsOn="{Binding IsDeparture}"
 							support:Themed.OnBackground="Accent"
@@ -139,7 +139,7 @@
 						<Button
 							Grid.Column="1"
 							Command="{Binding ArriveCommand}"
-							MinimumHeightRequest="38"
+							support:Dense.MinHeight="38"
 							StyleClass="Tonal"
 							support:Themed.IsOn="{Binding IsArrival}"
 							support:Themed.OnBackground="Accent"
@@ -151,10 +151,10 @@
 
 					<!--  Date and time share one row  -->
 					<Grid
-						Padding="12,6"
+						support:Dense.Padding="12,6"
 						ColumnDefinitions="*,*"
 						ColumnSpacing="12"
-						MinimumHeightRequest="64">
+						support:Dense.MinHeight="64">
 
 						<VerticalStackLayout Spacing="0" VerticalOptions="Center">
 							<Label StyleClass="Caption" Text="{localization:Tr Plan.Date}" />
@@ -184,9 +184,9 @@
 
 					<!--  Quick steps roll over midnight; "Now" resets  -->
 					<Grid
-						Padding="12,10"
+						support:Dense.Padding="12,10"
 						ColumnDefinitions="*,*,*,*"
-						ColumnSpacing="{StaticResource SpaceS}">
+						ColumnSpacing="{DynamicResource SpaceS}">
 
 						<Button
 							Grid.Column="0"
@@ -194,7 +194,7 @@
 							Command="{Binding NudgeCommand}"
 							CommandParameter="-60"
 							FontSize="{StaticResource FontCaption}"
-							MinimumHeightRequest="40"
+							support:Dense.MinHeight="40"
 							StyleClass="Tonal"
 							Text="&#x2212;1 h" />
 
@@ -204,7 +204,7 @@
 							Command="{Binding NudgeCommand}"
 							CommandParameter="-15"
 							FontSize="{StaticResource FontCaption}"
-							MinimumHeightRequest="40"
+							support:Dense.MinHeight="40"
 							StyleClass="Tonal"
 							Text="&#x2212;15" />
 
@@ -214,7 +214,7 @@
 							Command="{Binding NudgeCommand}"
 							CommandParameter="15"
 							FontSize="{StaticResource FontCaption}"
-							MinimumHeightRequest="40"
+							support:Dense.MinHeight="40"
 							StyleClass="Tonal"
 							Text="+15" />
 
@@ -224,7 +224,7 @@
 							Command="{Binding NudgeCommand}"
 							CommandParameter="60"
 							FontSize="{StaticResource FontCaption}"
-							MinimumHeightRequest="40"
+							support:Dense.MinHeight="40"
 							StyleClass="Tonal"
 							Text="+1 h" />
 					</Grid>
@@ -232,9 +232,9 @@
 					<BoxView StyleClass="Divider" />
 
 					<Grid
-						Padding="12,8"
+						support:Dense.Padding="12,8"
 						ColumnDefinitions="*,Auto"
-						ColumnSpacing="{StaticResource SpaceS}">
+						ColumnSpacing="{DynamicResource SpaceS}">
 
 						<Label
 							LineBreakMode="TailTruncation"
@@ -257,7 +257,7 @@
 							Command="{Binding NowCommand}"
 							FontSize="{StaticResource FontCaption}"
 							IsEnabled="{Binding IsNotNow}"
-							MinimumHeightRequest="36"
+							support:Dense.MinHeight="36"
 							StyleClass="Tonal"
 							Text="{localization:Tr Plan.LeaveNow}" />
 					</Grid>
@@ -268,7 +268,7 @@
 			<Button Command="{Binding SearchCommand}" Text="{localization:Tr Plan.SearchJourneys}" />
 
 			<!--  Recent searches: tapping a row looks the same connection up again  -->
-			<VerticalStackLayout IsVisible="{Binding HasRecentRoutes}" Spacing="{StaticResource SpaceS}">
+			<VerticalStackLayout IsVisible="{Binding HasRecentRoutes}" Spacing="{DynamicResource SpaceS}">
 
 				<Grid ColumnDefinitions="*,Auto">
 
@@ -294,10 +294,10 @@
 								<Grid RowDefinitions="Auto,Auto" RowSpacing="0">
 
 									<Grid
-										Padding="14,10"
+										support:Dense.Padding="14,10"
 										ColumnDefinitions="Auto,*,Auto"
 										ColumnSpacing="10"
-										MinimumHeightRequest="56"
+										support:Dense.MinHeight="56"
 										SemanticProperties.Description="{Binding Description}">
 
 										<controls:Icon
@@ -350,14 +350,14 @@
 					FontSize="{StaticResource FontCaption}"
 					HorizontalOptions="Start"
 					IsVisible="{Binding CanExpandRoutes}"
-					MinimumHeightRequest="40"
+					support:Dense.MinHeight="40"
 					Padding="14,0"
 					StyleClass="Tonal"
 					Text="{Binding RoutesToggleText}" />
 			</VerticalStackLayout>
 
 			<!--  Favourites  -->
-			<VerticalStackLayout IsVisible="{Binding HasFavourites}" Spacing="{StaticResource SpaceS}">
+			<VerticalStackLayout IsVisible="{Binding HasFavourites}" Spacing="{DynamicResource SpaceS}">
 
 				<Label StyleClass="Title" Text="{localization:Tr Plan.Favourites}" />
 
@@ -380,7 +380,7 @@
 			</VerticalStackLayout>
 
 			<!--  Recent  -->
-			<VerticalStackLayout IsVisible="{Binding HasRecents}" Spacing="{StaticResource SpaceS}">
+			<VerticalStackLayout IsVisible="{Binding HasRecents}" Spacing="{DynamicResource SpaceS}">
 
 				<Grid ColumnDefinitions="*,Auto">
 
@@ -404,8 +404,8 @@
 							<DataTemplate x:DataType="core:Location">
 
 								<VerticalStackLayout
-									Padding="14,10"
-									MinimumHeightRequest="48"
+									support:Dense.Padding="14,10"
+									support:Dense.MinHeight="48"
 									Spacing="1"
 									VerticalOptions="Center">
 

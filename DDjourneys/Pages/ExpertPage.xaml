@@ -9,7 +9,7 @@
 	x:DataType="local:ExpertViewModel">
 
 	<ScrollView>
-		<VerticalStackLayout Padding="{StaticResource PadPage}" Spacing="{StaticResource SpaceM}">
+		<VerticalStackLayout Padding="{DynamicResource PadPage}" Spacing="{DynamicResource SpaceM}">
 
 			<Label StyleClass="Caption" Text="{localization:Tr Expert.Hint}" />
 
@@ -18,7 +18,7 @@
 				StyleClass="Tonal"
 				Text="{localization:Tr Expert.Copy}" />
 
-			<VerticalStackLayout BindableLayout.ItemsSource="{Binding Sections}" Spacing="{StaticResource SpaceM}">
+			<VerticalStackLayout BindableLayout.ItemsSource="{Binding Sections}" Spacing="{DynamicResource SpaceM}">
 
 				<BindableLayout.ItemTemplate>
 					<DataTemplate x:DataType="support:ExpertSection">

@@ -10,9 +10,9 @@
 	x:DataType="local:ResultsViewModel">
 
 	<Grid
-		Padding="{StaticResource PadPage}"
+		Padding="{DynamicResource PadPage}"
 		RowDefinitions="Auto,Auto,*"
-		RowSpacing="{StaticResource SpaceM}">
+		RowSpacing="{DynamicResource SpaceM}">
 
 		<!--  Result header  -->
 		<controls:SearchHeader
@@ -90,7 +90,7 @@
 			<VerticalStackLayout
 				Margin="0,48,0,0"
 				IsVisible="{Binding ShowStatus}"
-				Spacing="{StaticResource SpaceM}"
+				Spacing="{DynamicResource SpaceM}"
 				VerticalOptions="Start">
 
 				<ActivityIndicator

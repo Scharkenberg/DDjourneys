@@ -11,6 +11,7 @@ public partial class App : Application
 		InitializeComponent();
 		Motion.Bind(settings);
 		Theme.Initialize(this, settings);
+		Density.Initialize(this, settings);
 		_shellFactory = () => new AppShell();
 
 		AppDomain.CurrentDomain.UnhandledException += (_, e) =>

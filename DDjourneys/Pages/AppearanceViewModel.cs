@@ -1,3 +1,4 @@
+using DDjourneys.Core.Theming;
 using DDjourneys.Localization;
 using DDjourneys.Support;
 
@@ -21,15 +22,34 @@ public sealed class AppearanceViewModel : DisposableViewModel
 
 		Fonts = FontCatalog.Ids.Select(id => new AppearanceChoice(id, false)).ToList();
 
+		Densities = DensityProfile.All.Select(d => new AppearanceChoice(d.Id, false)).ToList();
+
 		SelectModeCommand = new AsyncCommand<string>(id => ApplyAsync(() => Theme.SetModeAsync(id ?? Theme.ModeSystem)));
 		SelectColorCommand = new AsyncCommand<string>(id => ApplyAsync(() => Theme.SetColorAsync(id ?? ColorCatalog.DefaultId)));
 		SelectFontCommand = new AsyncCommand<string>(id => ApplyAsync(() => Theme.SetFontAsync(id ?? FontCatalog.OpenSansId)));
 
+		SelectDensityCommand = new AsyncCommand<string>(
+			id =>
+			{
+				Density.Set(id ?? DensityProfile.NormalId);
+				Refresh();
+
+				return Task.CompletedTask;
+			});
+
 		ListenToLocalization(_localization, OnLocalizationChanged);
 
 		Subscribe(
-			() => Theme.Changed += OnThemeChanged,
-			() => Theme.Changed -= OnThemeChanged);
+			() =>
+			{
+				Theme.Changed += OnThemeChanged;
+				Density.Changed += OnThemeChanged;
+			},
+			() =>
+			{
+				Theme.Changed -= OnThemeChanged;
+				Density.Changed -= OnThemeChanged;
+			});
 
 		Refresh();
 	}
@@ -40,11 +60,15 @@ public sealed class AppearanceViewModel : DisposableViewModel
 
 	public List<AppearanceChoice> Fonts { get; }
 
+	public List<AppearanceChoice> Densities { get; }
+
 	public AsyncCommand<string> SelectModeCommand { get; }
 
 	public AsyncCommand<string> SelectColorCommand { get; }
 
 	public AsyncCommand<string> SelectFontCommand { get; }
+
+	public AsyncCommand<string> SelectDensityCommand { get; }
 
 	/// <summary>Pure black surfaces in dark mode (two-way bound to a switch).</summary>
 	public bool PureBlack
@@ -112,6 +136,18 @@ public sealed class AppearanceViewModel : DisposableViewModel
 			};
 
 			font.IsSelected = font.Id == Theme.Font;
+		}
+
+		foreach (AppearanceChoice density in Densities)
+		{
+			(density.Title, density.Description) = density.Id switch
+			{
+				DensityProfile.CompactId => (s.DensityCompact, s.DensityCompactDescription),
+				DensityProfile.TouchId => (s.DensityTouch, s.DensityTouchDescription),
+				_ => (s.DensityNormal, s.DensityNormalDescription)
+			};
+
+			density.IsSelected = density.Id == Density.Profile.Id;
 		}
 
 		OnPropertyChanged(nameof(PureBlack));

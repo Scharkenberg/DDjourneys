@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage
+	xmlns:support="clr-namespace:DDjourneys.Support"
 	x:Class="DDjourneys.Pages.AppearancePage"
 	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
 	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
@@ -10,7 +11,7 @@
 	x:DataType="local:AppearanceViewModel">
 
 	<ScrollView>
-		<VerticalStackLayout Padding="{StaticResource PadPage}" Spacing="{StaticResource SpaceS}">
+		<VerticalStackLayout Padding="{DynamicResource PadPage}" Spacing="{DynamicResource SpaceS}">
 
 			<Label StyleClass="Section" Text="{localization:Tr Settings.ModeHeader}" />
 
@@ -20,10 +21,10 @@
 						<DataTemplate x:DataType="local:AppearanceChoice">
 							<VerticalStackLayout>
 								<Grid
-									Padding="12,8"
+									support:Dense.Padding="12,8"
 									ColumnDefinitions="*,Auto"
 									ColumnSpacing="12"
-									MinimumHeightRequest="52"
+									support:Dense.MinHeight="52"
 									SemanticProperties.Description="{Binding Title}">
 
 									<VerticalStackLayout Spacing="1" VerticalOptions="Center">
@@ -53,10 +54,10 @@
 
 			<Border Padding="0" StyleClass="Card">
 				<Grid
-					Padding="12,8"
+					support:Dense.Padding="12,8"
 					ColumnDefinitions="*,Auto"
 					ColumnSpacing="12"
-					MinimumHeightRequest="52">
+					support:Dense.MinHeight="52">
 
 					<VerticalStackLayout Spacing="1" VerticalOptions="Center">
 						<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.PureBlack}" />
@@ -72,7 +73,7 @@
 			</Border>
 
 			<Label
-				Margin="{StaticResource SectionGap}"
+				Margin="{DynamicResource SectionGap}"
 				StyleClass="Section"
 				Text="{localization:Tr Settings.ColorsHeader}" />
 
@@ -82,10 +83,10 @@
 						<DataTemplate x:DataType="local:AppearanceChoice">
 							<VerticalStackLayout>
 								<Grid
-									Padding="12,8"
+									support:Dense.Padding="12,8"
 									ColumnDefinitions="Auto,*,Auto"
 									ColumnSpacing="12"
-									MinimumHeightRequest="52"
+									support:Dense.MinHeight="52"
 									SemanticProperties.Description="{Binding Title}">
 
 									<!--  Swatch: background, raised panel, accent and ink bars (for the mode currently in effect)  -->
@@ -145,7 +146,7 @@
 			</Border>
 
 			<Label
-				Margin="{StaticResource SectionGap}"
+				Margin="{DynamicResource SectionGap}"
 				StyleClass="Section"
 				Text="{localization:Tr Settings.FontHeader}" />
 
@@ -155,10 +156,10 @@
 						<DataTemplate x:DataType="local:AppearanceChoice">
 							<VerticalStackLayout>
 								<Grid
-									Padding="12,8"
+									support:Dense.Padding="12,8"
 									ColumnDefinitions="*,Auto"
 									ColumnSpacing="12"
-									MinimumHeightRequest="52"
+									support:Dense.MinHeight="52"
 									SemanticProperties.Description="{Binding Title}">
 
 									<VerticalStackLayout Spacing="1" VerticalOptions="Center">
@@ -176,6 +177,48 @@
 
 									<Grid.GestureRecognizers>
 										<TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type local:AppearanceViewModel}}, Path=SelectFontCommand}" CommandParameter="{Binding Id}" />
+									</Grid.GestureRecognizers>
+								</Grid>
+
+								<BoxView StyleClass="Divider" />
+							</VerticalStackLayout>
+						</DataTemplate>
+					</BindableLayout.ItemTemplate>
+				</VerticalStackLayout>
+			</Border>
+
+			<Label
+				Margin="{DynamicResource SectionGap}"
+				StyleClass="Section"
+				Text="{localization:Tr Settings.DensityHeader}" />
+
+			<Border Padding="0" StyleClass="Card">
+				<VerticalStackLayout BindableLayout.ItemsSource="{Binding Densities}">
+					<BindableLayout.ItemTemplate>
+						<DataTemplate x:DataType="local:AppearanceChoice">
+							<VerticalStackLayout>
+								<Grid
+									support:Dense.Padding="12,8"
+									ColumnDefinitions="*,Auto"
+									ColumnSpacing="12"
+									support:Dense.MinHeight="52"
+									SemanticProperties.Description="{Binding Title}">
+
+									<VerticalStackLayout Spacing="1" VerticalOptions="Center">
+										<Label FontFamily="{DynamicResource FontSemibold}" Text="{Binding Title}" />
+										<Label StyleClass="Caption" Text="{Binding Description}" />
+									</VerticalStackLayout>
+
+									<controls:Icon
+										Grid.Column="1"
+										Glyph="Check"
+										IsVisible="{Binding IsSelected}"
+										Size="20"
+										VerticalOptions="Center"
+										Color="{DynamicResource Accent}" />
+
+									<Grid.GestureRecognizers>
+										<TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type local:AppearanceViewModel}}, Path=SelectDensityCommand}" CommandParameter="{Binding Id}" />
 									</Grid.GestureRecognizers>
 								</Grid>
 

@@ -70,8 +70,6 @@ public sealed class IconButton : ContentView
 				{
 					CornerRadius = 4
 				},
-				MinimumHeightRequest = 44,
-				MinimumWidthRequest = 44,
 				HorizontalOptions = LayoutOptions.Center,
 				VerticalOptions = LayoutOptions.Center
 			};
@@ -79,6 +77,9 @@ public sealed class IconButton : ContentView
 		var tap = new TapGestureRecognizer();
 		tap.Tapped += OnTapped;
 		_surface.GestureRecognizers.Add(tap);
+
+		Dense.SetMinHeight(_surface, 44);
+		Dense.SetMinWidth(_surface, 44);
 
 		Content = _surface;
 	}

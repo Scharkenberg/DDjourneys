@@ -259,7 +259,7 @@
 
 					<HorizontalStackLayout
 						IsVisible="{Binding HasIntermediates}"
-						MinimumHeightRequest="36"
+						support:Dense.MinHeight="36"
 						SemanticProperties.Description="{localization:Tr Journey.ShowOrHideIntermediateStops}"
 						Spacing="6"
 						VerticalOptions="Center">
@@ -498,9 +498,9 @@
 
 
 	<ScrollView>
-		<VerticalStackLayout Padding="{StaticResource PadPage}" Spacing="{StaticResource SpaceM}">
+		<VerticalStackLayout Padding="{DynamicResource PadPage}" Spacing="{DynamicResource SpaceM}">
 
-			<VerticalStackLayout x:Name="HeaderBlock" Spacing="{StaticResource SpaceM}">
+			<VerticalStackLayout x:Name="HeaderBlock" Spacing="{DynamicResource SpaceM}">
 
 				<controls:SearchHeader
 					ActionCommand="{Binding ShareCommand}"
@@ -565,7 +565,7 @@
 				<VerticalStackLayout
 					BindableLayout.ItemsSource="{Binding Notices}"
 					IsVisible="{Binding HasNotices}"
-					Spacing="{StaticResource SpaceS}">
+					Spacing="{DynamicResource SpaceS}">
 
 					<BindableLayout.ItemTemplate>
 						<DataTemplate x:DataType="support:NoticeRow">

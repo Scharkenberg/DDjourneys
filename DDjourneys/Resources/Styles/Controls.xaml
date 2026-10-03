@@ -64,15 +64,15 @@
 		<Setter Property="Stroke" Value="{DynamicResource OutlineBrush}" />
 		<Setter Property="StrokeThickness" Value="1" />
 		<Setter Property="StrokeShape" Value="RoundRectangle 6" />
-		<Setter Property="Padding" Value="{StaticResource PadCard}" />
+		<Setter Property="Padding" Value="{DynamicResource PadCard}" />
 	</Style>
 	<Style Class="Chip" TargetType="Border">
 		<Setter Property="BackgroundColor" Value="{DynamicResource Raised}" />
 		<Setter Property="StrokeThickness" Value="0" />
 		<Setter Property="StrokeShape" Value="RoundRectangle 100" />
 		<!--  Generous horizontal padding: Android measures the semibold font a hair too narrow  -->
-		<Setter Property="Padding" Value="12,4" />
-		<Setter Property="MinimumHeightRequest" Value="28" />
+		<Setter Property="support:Dense.Padding" Value="12,4" />
+		<Setter Property="support:Dense.MinHeight" Value="28" />
 	</Style>
 	<!--  Pill text must never wrap or truncate ("Walk 20 min" -> "Walk 20")  -->
 	<Style Class="ChipLabel" TargetType="Label">
@@ -96,7 +96,7 @@
 		<Setter Property="CornerRadius" Value="6" />
 		<Setter Property="BorderWidth" Value="0" />
 		<Setter Property="BorderColor" Value="Transparent" />
-		<Setter Property="MinimumHeightRequest" Value="48" />
+		<Setter Property="support:Dense.MinHeight" Value="48" />
 		<Setter Property="Padding" Value="16,0" />
 		<Setter Property="VisualStateManager.VisualStateGroups">
 			<VisualStateGroupList>
@@ -120,8 +120,8 @@
 		<Setter Property="support:Themed.DisabledText" Value="InkMuted" />
 		<Setter Property="FontSize" Value="22" />
 		<Setter Property="Padding" Value="0" />
-		<Setter Property="MinimumHeightRequest" Value="44" />
-		<Setter Property="MinimumWidthRequest" Value="44" />
+		<Setter Property="support:Dense.MinHeight" Value="44" />
+		<Setter Property="support:Dense.MinWidth" Value="44" />
 		<Setter Property="VisualStateManager.VisualStateGroups">
 			<VisualStateGroupList>
 				<VisualStateGroup x:Name="CommonStates">
@@ -147,7 +147,7 @@
 		<Setter Property="BackgroundColor" Value="{DynamicResource Raised}" />
 		<Setter Property="StrokeThickness" Value="0" />
 		<Setter Property="StrokeShape" Value="RoundRectangle 4" />
-		<Setter Property="Padding" Value="12,8" />
+		<Setter Property="support:Dense.Padding" Value="12,8" />
 	</Style>
 	<!--  Row container: no border; hairline divider is a separate BoxView  -->
 	<Style Class="Divider" TargetType="BoxView">

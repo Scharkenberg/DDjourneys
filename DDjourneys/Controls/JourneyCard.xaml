@@ -8,10 +8,10 @@
 	x:DataType="support:JourneyCardModel">
 
 	<Border SemanticProperties.Description="{Binding AccessibilityText}" StyleClass="Card">
-		<VerticalStackLayout Spacing="{StaticResource SpaceM}">
+		<VerticalStackLayout Spacing="{DynamicResource SpaceM}">
 
 			<!--  Times  -->
-			<Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{StaticResource SpaceM}">
+			<Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{DynamicResource SpaceM}">
 
 				<VerticalStackLayout Grid.Column="0" Spacing="2">
 					<Label StyleClass="Time" Text="{Binding DepartureTime}" />
@@ -60,7 +60,7 @@
 			<!--  Where from / where to  -->
 			<Grid
 				ColumnDefinitions="*,*"
-				ColumnSpacing="{StaticResource SpaceM}"
+				ColumnSpacing="{DynamicResource SpaceM}"
 				IsVisible="{Binding ShowEndpoints}">
 				<controls:StopNameView
 					Compact="True"
@@ -106,7 +106,7 @@
 				Text="{Binding BlockText}" />
 
 			<!--  State  -->
-			<HorizontalStackLayout IsVisible="{Binding HasStatusRow}" Spacing="{StaticResource SpaceM}">
+			<HorizontalStackLayout IsVisible="{Binding HasStatusRow}" Spacing="{DynamicResource SpaceM}">
 				<Label IsVisible="{Binding IsOnTime}" StyleClass="OnTime">
 					<Label.Text>
 						<localization:Tr Key="Journey.OnTime" />

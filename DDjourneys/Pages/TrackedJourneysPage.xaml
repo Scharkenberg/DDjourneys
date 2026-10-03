@@ -18,7 +18,7 @@
 
 	<RefreshView Command="{Binding RefreshCommand}" IsRefreshing="{Binding IsRefreshing}">
 		<ScrollView x:Name="Scroller">
-			<VerticalStackLayout Padding="{StaticResource PadPage}" Spacing="{StaticResource SpaceM}">
+			<VerticalStackLayout Padding="{DynamicResource PadPage}" Spacing="{DynamicResource SpaceM}">
 
 				<Border IsVisible="{Binding NotificationsBlocked}" StyleClass="Card">
 					<Label StyleClass="Caption" Text="{localization:Tr Tracking.NotificationsDenied}" />
@@ -30,7 +30,7 @@
 					Text="{Binding ErrorText}" />
 
 				<!--  Which journey the live notification follows (only where the platform has one)  -->
-				<VerticalStackLayout IsVisible="{Binding HasLiveOptions}" Spacing="{StaticResource SpaceS}">
+				<VerticalStackLayout IsVisible="{Binding HasLiveOptions}" Spacing="{DynamicResource SpaceS}">
 
 					<Label StyleClass="Section" Text="{localization:Tr Tracking.LiveTitle}" />
 
@@ -39,10 +39,10 @@
 							<BindableLayout.ItemTemplate>
 								<DataTemplate x:DataType="local:LiveOption">
 									<Grid
-										Padding="12,10"
+										support:Dense.Padding="12,10"
 										ColumnDefinitions="*,Auto"
 										ColumnSpacing="10"
-										MinimumHeightRequest="52"
+										support:Dense.MinHeight="52"
 										SemanticProperties.Description="{Binding Title}">
 
 										<VerticalStackLayout Spacing="1" VerticalOptions="Center">
@@ -90,16 +90,16 @@
 						Text="{localization:Tr Tracking.EmptyHint}" />
 				</VerticalStackLayout>
 
-				<VerticalStackLayout BindableLayout.ItemsSource="{Binding Sections}" Spacing="{StaticResource SpaceM}">
+				<VerticalStackLayout BindableLayout.ItemsSource="{Binding Sections}" Spacing="{DynamicResource SpaceM}">
 
 					<BindableLayout.ItemTemplate>
 						<DataTemplate x:DataType="local:TrackedSection">
 
-							<VerticalStackLayout Spacing="{StaticResource SpaceS}">
+							<VerticalStackLayout Spacing="{DynamicResource SpaceS}">
 
 								<Label StyleClass="Section" Text="{Binding Title}" />
 
-								<VerticalStackLayout BindableLayout.ItemsSource="{Binding Items}" Spacing="{StaticResource SpaceS}">
+								<VerticalStackLayout BindableLayout.ItemsSource="{Binding Items}" Spacing="{DynamicResource SpaceS}">
 
 									<BindableLayout.ItemTemplate>
 										<DataTemplate x:DataType="local:TrackedRow">
@@ -207,7 +207,7 @@
 
 													<!--  Only the current notice; outdated or superseded ones are removed by the tracker  -->
 													<Border
-														Padding="10,8"
+														support:Dense.Padding="10,8"
 														BackgroundColor="{DynamicResource Raised}"
 														IsVisible="{Binding HasNotice}"
 														StrokeShape="RoundRectangle 10"
@@ -254,7 +254,7 @@
 															<DataTemplate x:DataType="local:CourseRow">
 																<Grid
 																	ColumnDefinitions="52,22,*"
-																	MinimumHeightRequest="30"
+																	support:Dense.MinHeight="30"
 																	Opacity="{Binding Fade}">
 
 																	<!--  Rail: accent where the journey has been, outline where it still goes  -->

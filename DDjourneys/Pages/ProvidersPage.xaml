@@ -1,4 +1,5 @@
 <ContentPage
+	xmlns:support="clr-namespace:DDjourneys.Support"
 	x:Class="DDjourneys.Pages.ProvidersPage"
 	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
 	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
@@ -9,16 +10,16 @@
 	x:DataType="local:ProvidersViewModel">
 
 	<ScrollView>
-		<VerticalStackLayout Padding="{StaticResource PadPage}" Spacing="{StaticResource SpaceS}">
+		<VerticalStackLayout Padding="{DynamicResource PadPage}" Spacing="{DynamicResource SpaceS}">
 
 			<Label StyleClass="Caption" Text="{localization:Tr Provider.Intro}" />
 
-			<VerticalStackLayout BindableLayout.ItemsSource="{Binding Groups}" Spacing="{StaticResource SpaceS}">
+			<VerticalStackLayout BindableLayout.ItemsSource="{Binding Groups}" Spacing="{DynamicResource SpaceS}">
 
 				<BindableLayout.ItemTemplate>
 					<DataTemplate x:DataType="local:ProviderGroup">
 
-						<VerticalStackLayout Spacing="{StaticResource SpaceS}">
+						<VerticalStackLayout Spacing="{DynamicResource SpaceS}">
 
 							<Label
 								Margin="0,8,0,0"
@@ -33,10 +34,10 @@
 										<DataTemplate x:DataType="local:ProviderRow">
 
 											<Grid
-												Padding="14,12"
+												support:Dense.Padding="14,12"
 												ColumnDefinitions="*,Auto"
 												ColumnSpacing="12"
-												MinimumHeightRequest="64"
+												support:Dense.MinHeight="64"
 												SemanticProperties.Description="{Binding Description}">
 
 												<VerticalStackLayout Spacing="3" VerticalOptions="Center">
