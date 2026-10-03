@@ -1,7 +1,7 @@
 using System.Text.Json;
 using DDjourneys.Core.Models;
 
-namespace DDjourneys.Platforms.Android.LiveJourney.Schutzengel;
+namespace DDjourneys.Tracking.Schutzengel;
 
 internal static class SchutzengelPlanTranslator
 {

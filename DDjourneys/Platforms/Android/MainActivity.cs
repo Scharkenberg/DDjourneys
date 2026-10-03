@@ -1,8 +1,10 @@
 using Android.App;
+using Android.Content;
 using Android.Content.PM;
 using DDjourneys.Core.Tracking;
+using DDjourneys.Core.Tracking.Live;
 using DDjourneys.Platforms.Android;
-using DDjourneys.Platforms.Android.LiveJourney.Schutzengel;
+using DDjourneys.Tracking;
 
 namespace DDjourneys
 {
@@ -14,6 +16,22 @@ namespace DDjourneys
 			base.OnCreate(savedInstanceState);
 
 			SystemBars.Apply(this, Support.Theme.IsDark);
+
+			// A cold start from a notification: the request waits until the shell is ready.
+			// Not when the activity is recreated (rotation, theme): that intent was handled already.
+			if (savedInstanceState is null)
+			{
+				Accept(Intent);
+			}
+		}
+
+		protected override void OnNewIntent(Intent? intent)
+		{
+			base.OnNewIntent(intent);
+
+			Intent = intent;
+
+			Accept(intent);
 		}
 
 		protected override void OnResume()
@@ -23,7 +41,28 @@ namespace DDjourneys
 			SystemBars.Apply(this, Support.Theme.IsDark);
 
 			_ = ResumeTrackingAsync();
+
+			if (Service<TrackedJourneyNavigator>() is { } navigator)
+			{
+				_ = navigator.DeliverAsync();
+			}
 		}
+
+		/// <summary>A tapped live notification or alert opens its followed journey.</summary>
+		private static void Accept(Intent? intent)
+		{
+			if (intent is null || intent.Action != TrackingActions.Open)
+			{
+				return;
+			}
+
+			Service<TrackedJourneyNavigator>()?.Request(
+				intent.GetStringExtra(TrackingActions.PlanIdKey));
+		}
+
+		private static T? Service<T>()
+			where T : class =>
+			IPlatformApplication.Current?.Services.GetService<T>();
 
 		/// <summary>
 		/// Reloads the followed journeys and restarts monitoring (the foreground service may have
@@ -33,12 +72,10 @@ namespace DDjourneys
 		{
 			try
 			{
-				IServiceProvider? services = IPlatformApplication.Current?.Services;
-
 				// Resolving the tracker creates it (and attaches it to the bridge) on a cold start.
-				_ = services?.GetService<IJourneyTracker>();
+				_ = Service<IJourneyTracker>();
 
-				if (services?.GetService<SchutzengelCallbackBridge>() is { } bridge)
+				if (Service<TrackingCallbackBridge>() is { } bridge)
 				{
 					await bridge.ResumeAsync().ConfigureAwait(false);
 				}

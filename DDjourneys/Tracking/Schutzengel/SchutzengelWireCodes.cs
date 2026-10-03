@@ -4,7 +4,7 @@ using System.Text.RegularExpressions;
 using DDjourneys.Core.Models;
 using DDjourneys.Core.Providers.Vvo.Models;
 
-namespace DDjourneys.Platforms.Android.LiveJourney.Schutzengel;
+namespace DDjourneys.Tracking.Schutzengel;
 
 /// <summary>
 /// Numeric codes of the Schutzengel wire format and the VVO/domain vocabulary mapped onto them.

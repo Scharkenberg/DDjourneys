@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using Microsoft.Maui.Storage;
 
-namespace DDjourneys.Platforms.Android.LiveJourney.Schutzengel;
+namespace DDjourneys.Tracking.Schutzengel;
 
 /// <summary>
 /// Persists the anonymous account token. Only the token lives here; everything else about a

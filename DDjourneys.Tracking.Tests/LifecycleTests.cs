@@ -1,5 +1,5 @@
 using DDjourneys.Core.Tracking;
-using DDjourneys.Platforms.Android.LiveJourney.Schutzengel;
+using DDjourneys.Core.Tracking.Live;
 
 namespace DDjourneys.Tracking.Tests;
 
@@ -68,10 +68,10 @@ public sealed class LifecycleTests
 	[Fact]
 	public async Task The_bridge_does_nothing_without_a_tracker()
 	{
-		var bridge = new SchutzengelCallbackBridge();
+		var bridge = new TrackingCallbackBridge();
 
 		bridge.ServiceStopped();
-		await bridge.HandleNotificationActionAsync("pause", "plan");
+		await bridge.HandleActionAsync("pause", "plan");
 		await bridge.ResumeAsync();
 
 		Assert.False(bridge.IsAttached);
@@ -80,13 +80,13 @@ public sealed class LifecycleTests
 	[Fact]
 	public async Task The_bridge_forwards_to_the_attached_tracker()
 	{
-		var bridge = new SchutzengelCallbackBridge();
+		var bridge = new TrackingCallbackBridge();
 		var tracker = new Recorder();
 
 		bridge.Attach(tracker);
 
 		bridge.ServiceStopped();
-		await bridge.HandleNotificationActionAsync("pause", "plan-1");
+		await bridge.HandleActionAsync("pause", "plan-1");
 		await bridge.ResumeAsync();
 
 		Assert.True(bridge.IsAttached);
@@ -98,7 +98,7 @@ public sealed class LifecycleTests
 	[Fact]
 	public void Only_the_attached_tracker_can_detach_itself()
 	{
-		var bridge = new SchutzengelCallbackBridge();
+		var bridge = new TrackingCallbackBridge();
 		var first = new Recorder();
 		var second = new Recorder();
 
@@ -117,7 +117,7 @@ public sealed class LifecycleTests
 		Assert.False(bridge.IsAttached);
 	}
 
-	private sealed class Recorder : ISchutzengelPlatformCallbacks
+	private sealed class Recorder : ITrackingCallbacks
 	{
 		public int Stopped { get; private set; }
 
@@ -127,7 +127,7 @@ public sealed class LifecycleTests
 
 		public void ServiceStopped() => Stopped++;
 
-		public Task HandleNotificationActionAsync(string action, string planId)
+		public Task HandleActionAsync(string action, string planId)
 		{
 			Actions.Add($"{action}:{planId}");
 

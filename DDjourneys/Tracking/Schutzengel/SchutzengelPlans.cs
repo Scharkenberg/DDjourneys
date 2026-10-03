@@ -2,7 +2,7 @@ using System.Globalization;
 using System.Text.Json;
 using DDjourneys.Core.Tracking;
 
-namespace DDjourneys.Platforms.Android.LiveJourney.Schutzengel;
+namespace DDjourneys.Tracking.Schutzengel;
 
 /// <summary>
 /// The plan options object of the service (<c>planOptions</c> / <c>newOptions</c>).

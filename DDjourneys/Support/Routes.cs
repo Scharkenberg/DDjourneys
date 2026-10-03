@@ -16,6 +16,9 @@ public static class Routes
 	public const string Settings = "settings";
 	public const string Themes = "themes";
 	public const string Tracked = "tracked";
+
+	/// <summary>Query key: plan id of the followed journey to bring into view.</summary>
+	public const string FocusPlan = "FocusPlan";
 	public const string Expert = "expert";
 	public const string Routing = "routing";
 	public const string Providers = "providers";

@@ -3,9 +3,9 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using DDjourneys.Core.Models;
 using DDjourneys.Core.Providers.Vvo.Models;
-using static DDjourneys.Platforms.Android.LiveJourney.Schutzengel.SchutzengelWireCodes;
+using static DDjourneys.Tracking.Schutzengel.SchutzengelWireCodes;
 
-namespace DDjourneys.Platforms.Android.LiveJourney.Schutzengel;
+namespace DDjourneys.Tracking.Schutzengel;
 
 /// <summary>
 /// Stop nodes and map points (coordinates) of the raw data.

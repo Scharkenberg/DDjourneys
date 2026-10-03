@@ -107,6 +107,8 @@
 
 	<ItemGroup>
 		<PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
+		<!-- Share image: MAUI Graphics on SkiaSharp, identical output on every platform -->
+		<PackageReference Include="Microsoft.Maui.Graphics.Skia" Version="$(MauiVersion)" />
 		<PackageReference Include="CommunityToolkit.Maui" Version="15.0.1" />
 		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="11.0.0-*" />
 	</ItemGroup>

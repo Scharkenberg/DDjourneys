@@ -17,8 +17,9 @@ namespace DDjourneys.Core.Services;
 /// - parsing provider responses,
 /// - mapping results into DDjourneys domain models.
 ///
-/// Optional provider capabilities, such as adjacent-journey retrieval,
-/// are exposed through dedicated capability interfaces.
+/// Earlier and later journeys are found with ordinary searches that move a time window
+/// (<see cref="JourneyWindow"/>), so they work with every provider; the number of journeys per
+/// search is enforced here as well, not left to the providers.
 ///
 /// When several providers are eligible they are asked in order. Only an answer with journeys ends
 /// the search; an empty answer, a failure and a provider that is not suitable for the request all
@@ -92,11 +93,89 @@ public sealed class JourneyService
 
 			if (result.Outcome == JourneyOutcome.Found)
 			{
-				return result;
+				// Exactly the requested number when the timetable allows: top up or cut.
+				IReadOnlyList<Journey> window =
+					await JourneyWindow.FillAsync(
+						provider.SearchAsync,
+						query,
+						result.Journeys,
+						query.MaxResults,
+						cancellationToken)
+					.ConfigureAwait(false);
+
+				return JourneyResult.Success(
+					window);
 			}
 
 			outcomes.Add(
 				result);
+		}
+
+		return outcomes.Best()
+			?? JourneyResult.Failure(
+				"journey_no_providers");
+	}
+
+
+	/// <summary>
+	/// The next <paramref name="count"/> journeys before (<paramref name="previous"/>) or after the
+	/// journeys on screen, none of them repeated. Works with every provider: the window is moved with
+	/// ordinary searches (see <see cref="JourneyWindow"/>), so no provider-side session is needed.
+	/// </summary>
+	public async Task<JourneyResult> PageAsync(
+		JourneyQuery query,
+		IReadOnlyList<Journey> shown,
+		bool previous,
+		int count,
+		CancellationToken cancellationToken = default)
+	{
+		ArgumentNullException.ThrowIfNull(
+			query);
+
+		ArgumentNullException.ThrowIfNull(
+			shown);
+
+		var outcomes = new Outcomes();
+
+		foreach (IJourneyProvider provider
+			in _providers)
+		{
+			if (!IsSuitable(
+					provider,
+					query.From,
+					query.To)
+				|| shown.Any(
+					journey => !IsSuitable(
+						provider,
+						journey)))
+			{
+				outcomes.Add(
+					JourneyResult.NotSuitable(
+						"journey_endpoint_other_provider"));
+
+				continue;
+			}
+
+			PageResult page =
+				await JourneyWindow.PageAsync(
+					provider.SearchAsync,
+					query,
+					shown,
+					previous,
+					count,
+					cancellationToken)
+				.ConfigureAwait(false);
+
+			if (page.Journeys.Count > 0)
+			{
+				return JourneyResult.Success(
+					page.Journeys);
+			}
+
+			outcomes.Add(
+				page.Failure
+				?? JourneyResult.Success(
+					Array.Empty<Journey>()));
 		}
 
 		return outcomes.Best()
@@ -120,9 +199,9 @@ public sealed class JourneyService
 		ArgumentNullException.ThrowIfNull(
 			currentJourney);
 
-		return GetAdjacentAsync(
+		return PageAsync(
 			query,
-			currentJourney,
+			[currentJourney],
 			previous: true,
 			count,
 			cancellationToken);
@@ -144,74 +223,12 @@ public sealed class JourneyService
 		ArgumentNullException.ThrowIfNull(
 			currentJourney);
 
-		return GetAdjacentAsync(
+		return PageAsync(
 			query,
-			currentJourney,
+			[currentJourney],
 			previous: false,
 			count,
 			cancellationToken);
-	}
-
-
-	private async Task<JourneyResult> GetAdjacentAsync(
-		JourneyQuery query,
-		Journey currentJourney,
-		bool previous,
-		int count,
-		CancellationToken cancellationToken)
-	{
-		var outcomes = new Outcomes();
-
-
-		foreach (IJourneyProvider provider
-			in _providers)
-		{
-			// Continuation is an optional capability, and only the provider that produced the journey
-			// understands its context.
-			if (provider
-					is not IJourneyContinuationProvider continuationProvider
-				|| !IsSuitable(
-					provider,
-					currentJourney))
-			{
-				outcomes.Add(
-					JourneyResult.NotSuitable(
-						"journey_continuation_not_supported"));
-
-				continue;
-			}
-
-
-			JourneyResult result =
-				previous
-					? await continuationProvider.GetPreviousAsync(
-						query,
-						currentJourney,
-						count,
-						cancellationToken)
-						.ConfigureAwait(false)
-					: await continuationProvider.GetNextAsync(
-						query,
-						currentJourney,
-						count,
-						cancellationToken)
-						.ConfigureAwait(false);
-
-
-			if (result.Outcome == JourneyOutcome.Found)
-			{
-				return result;
-			}
-
-
-			outcomes.Add(
-				result);
-		}
-
-
-		return outcomes.Best()
-			?? JourneyResult.NotSuitable(
-				"journey_continuation_not_supported");
 	}
 
 

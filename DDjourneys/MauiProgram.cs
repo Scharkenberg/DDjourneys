@@ -6,6 +6,7 @@ using DDjourneys.Core.Providers.Abstractions;
 using DDjourneys.Core.Providers.Vvo;
 using DDjourneys.Core.Services;
 using DDjourneys.Core.Tracking;
+using DDjourneys.Core.Tracking.Live;
 using DDjourneys.Localization;
 using DDjourneys.Pages;
 using DDjourneys.Support;
@@ -68,16 +69,31 @@ public static class MauiProgram
 		builder.Services.AddSingleton<ILocationProvider, VvoLocationProvider>();
 		builder.Services.AddSingleton<LocationService>();
 
+		// Journey tracking is platform-agnostic; a platform only contributes how live state is shown,
+		// how polling is kept alive and how notification permission works. Platforms without their
+		// own implementations track in-app (the overview page shows everything).
 #if ANDROID
-		// Schutzengel is the DVB/VVO service, so it always requeries through the VVO provider.
-		builder.Services.AddSingleton<Platforms.Android.LiveJourney.Schutzengel.SchutzengelCallbackBridge>();
-		builder.Services.AddSingleton<IJourneyTracker>(
-			services => new Platforms.Android.LiveJourney.Schutzengel.SchutzengelJourneyTracker(
-				services.GetRequiredService<VvoJourneyProvider>(),
-				services.GetRequiredService<Platforms.Android.LiveJourney.Schutzengel.SchutzengelCallbackBridge>()));
-#elif WINDOWS
-		builder.Services.AddSingleton<IJourneyTracker, Platforms.Windows.NoOpJourneyTracker>();
+		builder.Services.AddSingleton<ILiveJourneySurface, Platforms.Android.LiveJourney.AndroidLiveJourneySurface>();
+		builder.Services.AddSingleton<ITrackingRuntime, Platforms.Android.LiveJourney.AndroidTrackingRuntime>();
+		builder.Services.AddSingleton<INotificationAccess, Platforms.Android.LiveJourney.AndroidNotificationAccess>();
+#else
+		builder.Services.AddSingleton<ILiveJourneySurface, NoLiveJourneySurface>();
+		builder.Services.AddSingleton<ITrackingRuntime, InProcessTrackingRuntime>();
+		builder.Services.AddSingleton<INotificationAccess, UnrestrictedNotificationAccess>();
 #endif
+
+		builder.Services.AddSingleton<TrackingCallbackBridge>();
+		builder.Services.AddSingleton<Tracking.TrackedJourneyNavigator>();
+
+		// Schutzengel is the DVB/VVO service, so it always requeries through the VVO provider.
+		// (Platforms.Windows.NoOpJourneyTracker remains available to switch tracking off.)
+		builder.Services.AddSingleton<IJourneyTracker>(
+			services => new Tracking.Schutzengel.SchutzengelJourneyTracker(
+				services.GetRequiredService<VvoJourneyProvider>(),
+				services.GetRequiredService<TrackingCallbackBridge>(),
+				services.GetRequiredService<ILiveJourneySurface>(),
+				services.GetRequiredService<ITrackingRuntime>(),
+				services.GetRequiredService<INotificationAccess>()));
 
 		builder.Services.AddSingleton<PlaceStore>();
 

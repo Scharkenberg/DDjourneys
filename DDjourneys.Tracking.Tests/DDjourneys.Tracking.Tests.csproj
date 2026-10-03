@@ -20,17 +20,16 @@
 
   <ItemGroup>
     <ProjectReference Include="..\DDjourneys.Core\DDjourneys.Core.csproj" />
-    <Compile Include="..\DDjourneys\Platforms\Android\LiveJourney\Schutzengel\SchutzengelApi.cs" Link="Schutzengel\SchutzengelApi.cs" />
-    <Compile Include="..\DDjourneys\Platforms\Android\LiveJourney\Schutzengel\SchutzengelPlanTranslator.cs" Link="Schutzengel\SchutzengelPlanTranslator.cs" />
-    <Compile Include="..\DDjourneys\Platforms\Android\LiveJourney\Schutzengel\SchutzengelPlans.cs" Link="Schutzengel\SchutzengelPlans.cs" />
-    <Compile Include="..\DDjourneys\Platforms\Android\LiveJourney\Schutzengel\SchutzengelTripProgress.cs" Link="Schutzengel\SchutzengelTripProgress.cs" />
+    <Compile Include="..\DDjourneys\Tracking\Schutzengel\SchutzengelApi.cs" Link="Schutzengel\SchutzengelApi.cs" />
+    <Compile Include="..\DDjourneys\Tracking\Schutzengel\SchutzengelPlanTranslator.cs" Link="Schutzengel\SchutzengelPlanTranslator.cs" />
+    <Compile Include="..\DDjourneys\Tracking\Schutzengel\SchutzengelPlans.cs" Link="Schutzengel\SchutzengelPlans.cs" />
+    <Compile Include="..\DDjourneys\Tracking\Schutzengel\SchutzengelTripProgress.cs" Link="Schutzengel\SchutzengelTripProgress.cs" />
     <Compile Include="..\DDjourneys\Platforms\Windows\NoOpJourneyTracker.cs" Link="Platforms\Windows\NoOpJourneyTracker.cs" />
-	<Compile Include="..\DDjourneys\Platforms\Android\LiveJourney\Schutzengel\SchutzengelRawDataTranslator.cs" Link="Schutzengel\SchutzengelRawDataTranslator.cs" />
-	<Compile Include="..\DDjourneys\Platforms\Android\LiveJourney\Schutzengel\SchutzengelWireCodes.cs" Link="Schutzengel\SchutzengelWireCodes.cs" />
-	<Compile Include="..\DDjourneys\Platforms\Android\LiveJourney\Schutzengel\SchutzengelCallbackBridge.cs" Link="Schutzengel\SchutzengelCallbackBridge.cs" />
-	<Compile Include="..\DDjourneys\Platforms\Android\LiveJourney\Schutzengel\SchutzengelTariffMapper.cs" Link="Schutzengel\SchutzengelTariffMapper.cs" />
-	<Compile Include="..\DDjourneys\Platforms\Android\LiveJourney\Schutzengel\SchutzengelNodeMapper.cs" Link="Schutzengel\SchutzengelNodeMapper.cs" />
-	<Compile Include="..\DDjourneys\Platforms\Android\LiveJourney\Schutzengel\SchutzengelTransitionMapper.cs" Link="Schutzengel\SchutzengelTransitionMapper.cs" />
+	<Compile Include="..\DDjourneys\Tracking\Schutzengel\SchutzengelRawDataTranslator.cs" Link="Schutzengel\SchutzengelRawDataTranslator.cs" />
+	<Compile Include="..\DDjourneys\Tracking\Schutzengel\SchutzengelWireCodes.cs" Link="Schutzengel\SchutzengelWireCodes.cs" />
+	<Compile Include="..\DDjourneys\Tracking\Schutzengel\SchutzengelTariffMapper.cs" Link="Schutzengel\SchutzengelTariffMapper.cs" />
+	<Compile Include="..\DDjourneys\Tracking\Schutzengel\SchutzengelNodeMapper.cs" Link="Schutzengel\SchutzengelNodeMapper.cs" />
+	<Compile Include="..\DDjourneys\Tracking\Schutzengel\SchutzengelTransitionMapper.cs" Link="Schutzengel\SchutzengelTransitionMapper.cs" />
   </ItemGroup>
 
 </Project>

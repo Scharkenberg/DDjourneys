@@ -597,11 +597,13 @@ public sealed partial class PlanViewModel : DisposableViewModel
 				OnPropertyChanged(
 					nameof(MaxDate));
 
+				// A chosen time in the past is a deliberate choice and stays; only a date the
+				// picker can no longer show (before today) falls back to now.
 				if (IsNow)
 				{
 					SetNow();
 				}
-				else if (_when < now)
+				else if (_when.Date < now.Date)
 				{
 					Apply(now);
 				}
@@ -641,12 +643,11 @@ public sealed partial class PlanViewModel : DisposableViewModel
 		DateTime now =
 			Format.NowLocal();
 
+		// Past times are allowed: the user may look up a connection that has already left.
 		DateTime target =
 			IsNow
 				? now
-				: _when < now
-					? now
-					: _when;
+				: _when;
 
 		return new JourneyQuery
 		{
@@ -677,14 +678,16 @@ public sealed partial class PlanViewModel : DisposableViewModel
 		DateTime now =
 			Format.NowLocal();
 
-		if (candidate < now)
+		// Convenience for the most common case only: on today's date, setting just the time to
+		// one already gone means "the next time it is that time", i.e. tomorrow. Setting the date
+		// (also back to today afterwards) is taken literally, so past times can be searched.
+		if (fromTimeOfDay
+			&& _when.Date == now.Date
+			&& candidate.Date == now.Date
+			&& now - candidate > RolloverGrace)
 		{
 			candidate =
-				fromTimeOfDay
-				&& candidate.Date == now.Date
-				&& now - candidate > RolloverGrace
-					? candidate.AddDays(1)
-					: now;
+				candidate.AddDays(1);
 		}
 
 		IsNow = false;
@@ -718,8 +721,9 @@ public sealed partial class PlanViewModel : DisposableViewModel
 
 		IsNow = false;
 
+		// Not before today: the date picker could not show it.
 		Apply(
-			next < now
+			next.Date < now.Date
 				? now
 				: next);
 	}

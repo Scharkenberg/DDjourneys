@@ -11,6 +11,9 @@ public partial class JourneyPage : ContentPage
 		InitializeComponent();
 		Motion.Prepare(this);
 		BindingContext = _vm = vm;
+
+		vm.ChooseShareFormat = (title, cancel, options) =>
+			DisplayActionSheetAsync(title, cancel, null, options);
 	}
 
 	protected override void OnNavigatedFrom(

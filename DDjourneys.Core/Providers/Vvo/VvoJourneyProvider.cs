@@ -112,10 +112,10 @@ public sealed class VvoJourneyProvider :
 					query.To);
 
 
+			// Everything the service offered: the journey service trims to the requested number,
+			// from the right end for the search mode ("arrive by" keeps the latest arrivals).
 			return JourneyResult.Success(
-				LimitResults(
-					journeys,
-					query.MaxResults));
+				journeys);
 		}
 		catch (OperationCanceledException)
 		{

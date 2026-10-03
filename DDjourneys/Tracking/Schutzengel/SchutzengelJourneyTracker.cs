@@ -7,15 +7,20 @@ using DDjourneys.Core.Providers.Abstractions;
 using DDjourneys.Core.Providers.Vvo;
 using DDjourneys.Core.Tracking;
 using DDjourneys.Core.Providers.Vvo.Models;
+using DDjourneys.Core.Tracking.Live;
 using DDjourneys.Localization;
-using Android.App;
-using Android.Content;
 
-namespace DDjourneys.Platforms.Android.LiveJourney.Schutzengel;
+namespace DDjourneys.Tracking.Schutzengel;
 
 /// <summary>
 /// Keeps the watchlist of followed journeys in sync with the Schutzengel service and turns it into
-/// live notifications.
+/// a live presentation and alerts.
+///
+/// The class is platform-agnostic. What a platform contributes comes in through three seams:
+/// <see cref="ILiveJourneySurface"/> (how live state and alerts are shown),
+/// <see cref="ITrackingRuntime"/> (keeping polling alive, e.g. an Android foreground service) and
+/// <see cref="INotificationAccess"/> (notification permission). Platform components that DI does
+/// not create reach it through <see cref="TrackingCallbackBridge"/>.
 ///
 /// The service owns the plans (<c>plansMinimal</c>, <c>planRawData</c>); this class only caches
 /// what it needs, so the overview survives process death without any local persistence besides the
@@ -26,7 +31,7 @@ namespace DDjourneys.Platforms.Android.LiveJourney.Schutzengel;
 /// All state is guarded by <see cref="_gate"/>. Events, notifications and the foreground service are
 /// only touched after the gate has been released.
 /// </summary>
-internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ISchutzengelPlatformCallbacks, IDisposable
+internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCallbacks, IDisposable
 {
 	private static readonly TimeSpan SyncInterval = TimeSpan.FromSeconds(60);
 	private static readonly TimeSpan RenderInterval = TimeSpan.FromSeconds(10);
@@ -44,7 +49,10 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ISchutzengelP
 
 	private readonly IJourneyProvider _provider;
 	private readonly SchutzengelApi _api;
-	private readonly SchutzengelCallbackBridge _bridge;
+	private readonly TrackingCallbackBridge _bridge;
+	private readonly ILiveJourneySurface _surface;
+	private readonly ITrackingRuntime _runtime;
+	private readonly INotificationAccess _access;
 	private readonly HttpClient? _ownedHttp;
 	private readonly SchutzengelTokenStore _tokens = new();
 
@@ -64,6 +72,14 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ISchutzengelP
 	private DateTimeOffset _planListSyncedAt = DateTimeOffset.MinValue;
 	private string? _liveKey;
 
+	// The user's choice for the live presentation (null: automatic) and what it shows right now.
+	private volatile string? _preferredLive = LoadPreferredLive();
+	private volatile string? _livePlanId;
+
+	// Immutable copy of the cached trips for readers outside the gate (GetTrip).
+	private volatile IReadOnlyDictionary<string, TripTimeline> _timelines =
+		new Dictionary<string, TripTimeline>(StringComparer.Ordinal);
+
 	private CancellationTokenSource? _loopCancellation;
 	private Task? _loop;
 	private bool _runWanted;
@@ -72,11 +88,17 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ISchutzengelP
 
 	public SchutzengelJourneyTracker(
 		IJourneyProvider journeyProvider,
-		SchutzengelCallbackBridge bridge,
+		TrackingCallbackBridge bridge,
+		ILiveJourneySurface surface,
+		ITrackingRuntime runtime,
+		INotificationAccess access,
 		HttpClient? http = null)
 	{
 		_provider = journeyProvider ?? throw new ArgumentNullException(nameof(journeyProvider));
 		_bridge = bridge ?? throw new ArgumentNullException(nameof(bridge));
+		_surface = surface ?? throw new ArgumentNullException(nameof(surface));
+		_runtime = runtime ?? throw new ArgumentNullException(nameof(runtime));
+		_access = access ?? throw new ArgumentNullException(nameof(access));
 
 		// A client this class created is also this class's to dispose.
 		_ownedHttp = http is null ? new HttpClient() : null;
@@ -88,11 +110,17 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ISchutzengelP
 				_tokens.SetAsync,
 				_tokens.RemoveToken);
 
-		// Android components that DI does not create reach the tracker through the bridge.
+		// Platform components that DI does not create reach the tracker through the bridge.
 		_bridge.Attach(this);
 	}
 
 	public bool IsAvailable => true;
+
+	public bool HasLiveSurface => _surface.IsSupported;
+
+	public string? LivePlanId => _livePlanId;
+
+	public string? PreferredLivePlanId => _preferredLive;
 
 	public IAsyncEnumerable<JourneyTrackingEvent> Events => _events.SubscribeAsync();
 
@@ -115,23 +143,53 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ISchutzengelP
 			: _watched.FirstOrDefault(item => string.Equals(item.JourneyKey, key, StringComparison.Ordinal));
 	}
 
-	public Task<bool> CanNotifyAsync(CancellationToken cancellationToken = default)
+	public async Task<bool> CanNotifyAsync(CancellationToken cancellationToken = default)
 	{
 		try
 		{
-			var manager =
-				global::Android.App.Application.Context.GetSystemService(Context.NotificationService)
-					as NotificationManager;
-
-			return Task.FromResult(manager?.AreNotificationsEnabled() ?? false);
+			return await _access.CanNotifyAsync(cancellationToken).ConfigureAwait(false);
 		}
-		catch (Exception ex)
+		catch (Exception ex) when (ex is not OperationCanceledException)
 		{
 			Log($"Notification state unreadable: {ex.Message}");
 
-			return Task.FromResult(false);
+			return false;
 		}
 	}
+
+	public TrackedTrip? GetTrip(string planId)
+	{
+		ArgumentException.ThrowIfNullOrWhiteSpace(planId);
+
+		// No gate: the snapshot is replaced as a whole after every recomputation, and a trip is
+		// immutable, so the course moves on with the clock between polls.
+		return _timelines.TryGetValue(planId, out TripTimeline? timeline)
+			? timeline.Describe(planId, Now)
+			: null;
+	}
+
+	public Task SetPreferredLivePlanAsync(string? planId, CancellationToken cancellationToken = default) =>
+		RunAsync(
+			() =>
+			{
+				string? choice = string.IsNullOrWhiteSpace(planId) ? null : planId;
+
+				if (choice is not null && !_entries.ContainsKey(choice))
+				{
+					choice = null;
+				}
+
+				_preferredLive = choice;
+				SavePreferredLive(choice);
+
+				PendingEffects effects = Recompute();
+
+				// The choice itself is part of what the overview shows.
+				effects.WatchlistChanged = true;
+
+				return Task.FromResult(effects);
+			},
+			cancellationToken);
 
 	// ----- Commands -----
 
@@ -288,18 +346,18 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ISchutzengelP
 			},
 			cancellationToken);
 
-	/// <summary>Entry point for the notification action buttons.</summary>
-	public Task HandleNotificationActionAsync(string action, string planId)
+	/// <summary>Entry point for the actions of the live presentation (buttons, swipe).</summary>
+	public Task HandleActionAsync(string action, string planId)
 	{
 		switch (action)
 		{
-			case LiveJourneyNotification.ActionPause:
+			case TrackingActions.Pause:
 				return SetActiveAsync(planId, false);
 
-			case LiveJourneyNotification.ActionStop:
+			case TrackingActions.Stop:
 				return DeleteAsync(planId);
 
-			case LiveJourneyNotification.ActionDismissed:
+			case TrackingActions.Dismissed:
 				return RunAsync(
 					() =>
 					{
@@ -308,7 +366,9 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ISchutzengelP
 							_dismissed[planId] = StateKey(entry);
 						}
 
-						return Task.FromResult(new PendingEffects());
+						// A full recomputation, not empty effects: empty effects say "nothing to
+						// monitor" and would stop the keep-alive while the journey is still under way.
+						return Task.FromResult(Recompute());
 					},
 					CancellationToken.None);
 
@@ -333,7 +393,7 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ISchutzengelP
 		}
 	}
 
-	/// <summary>The foreground service reports that the system ended it; monitoring resumes with the app.</summary>
+	/// <summary>The platform ended the keep-alive; monitoring resumes with the app.</summary>
 	public void ServiceStopped()
 	{
 		lock (_runtimeGate)
@@ -377,29 +437,55 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ISchutzengelP
 			?? throw new InvalidOperationException("The service did not return a plan id.");
 	}
 
-	private static async Task RequestNotificationPermissionAsync()
+	private async Task RequestNotificationPermissionAsync()
 	{
-		if (!OperatingSystem.IsAndroidVersionAtLeast(33))
-		{
-			return;
-		}
-
 		try
 		{
-			await MainThread.InvokeOnMainThreadAsync(
-				async () =>
-				{
-					if (await Permissions.CheckStatusAsync<Permissions.PostNotifications>()
-						!= PermissionStatus.Granted)
-					{
-						await Permissions.RequestAsync<Permissions.PostNotifications>();
-					}
-				}).ConfigureAwait(false);
+			await _access.RequestAsync().ConfigureAwait(false);
 		}
 		catch (Exception ex)
 		{
 			// Tracking works without notifications; the overview page still shows everything.
 			Log($"Notification permission request failed: {ex.Message}");
+		}
+	}
+
+	// ----- Live preference (kept across restarts) -----
+
+	private const string PreferredLiveKey = "tracking.live_plan";
+
+	private static string? LoadPreferredLive()
+	{
+		try
+		{
+			string value = Preferences.Default.Get(PreferredLiveKey, string.Empty);
+
+			return value.Length == 0 ? null : value;
+		}
+		catch (Exception ex)
+		{
+			Log($"Live preference unreadable: {ex.Message}");
+
+			return null;
+		}
+	}
+
+	private static void SavePreferredLive(string? planId)
+	{
+		try
+		{
+			if (planId is null)
+			{
+				Preferences.Default.Remove(PreferredLiveKey);
+			}
+			else
+			{
+				Preferences.Default.Set(PreferredLiveKey, planId);
+			}
+		}
+		catch (Exception ex)
+		{
+			Log($"Live preference not saved: {ex.Message}");
 		}
 	}
 
@@ -599,6 +685,12 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ISchutzengelP
 		_entries.Remove(planId);
 		_dismissed.Remove(planId);
 
+		if (_preferredLive == planId)
+		{
+			_preferredLive = null;
+			SavePreferredLive(null);
+		}
+
 		// Notifications are posted by Dispatch; clearing is cheap and idempotent.
 		_pendingForgotten.Add(planId);
 	}
@@ -614,9 +706,10 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ISchutzengelP
 		var effects = new PendingEffects();
 		var views = new List<WatchedJourney>(_entries.Count);
 
-		WatchEntry? focus = null;
-		WatchedJourney? focusView = null;
-		WatchedJourney? waiting = null;
+		// Journeys that may own the live presentation: under way first, then those about to start,
+		// each by departure. The first one is the automatic choice.
+		var underway = new List<(WatchEntry Entry, WatchedJourney View)>();
+		var upcoming = new List<WatchedJourney>();
 		bool run = false;
 
 		foreach (WatchEntry entry in _entries.Values)
@@ -628,27 +721,49 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ISchutzengelP
 			if (view.Status == WatchStatus.Active && view.Phase != TrackingPhase.Paused)
 			{
 				run = true;
-
-				if (focusView is null || Before(view.Departure, focusView.Departure))
-				{
-					focus = entry;
-					focusView = view;
-				}
+				underway.Add((entry, view));
 			}
 			else if (view.Status == WatchStatus.Planned
 				&& view.Departure is { } departure
 				&& departure - entry.Info.Options.StartLead - MonitorWindow <= now)
 			{
 				run = true;
-
-				if (waiting is null || Before(view.Departure, waiting.Departure))
-				{
-					waiting = view;
-				}
+				upcoming.Add(view);
 			}
 		}
 
+		underway.Sort((left, right) => Before(left.View.Departure, right.View.Departure) ? -1 : Before(right.View.Departure, left.View.Departure) ? 1 : 0);
+		upcoming.Sort((left, right) => Before(left.Departure, right.Departure) ? -1 : Before(right.Departure, left.Departure) ? 1 : 0);
+
+		string? chosen =
+			LivePlanSelector.Choose(
+				_preferredLive,
+				[.. underway.Select(item => item.View.PlanId), .. upcoming.Select(item => item.PlanId)]);
+
+		WatchEntry? focus = null;
+		WatchedJourney? focusView = null;
+		WatchedJourney? waiting = null;
+
+		foreach ((WatchEntry entry, WatchedJourney view) in underway)
+		{
+			if (view.PlanId == chosen)
+			{
+				focus = entry;
+				focusView = view;
+			}
+		}
+
+		if (focus is null)
+		{
+			waiting = upcoming.FirstOrDefault(view => view.PlanId == chosen);
+		}
+
 		views.Sort(CompareViews);
+
+		_timelines =
+			_entries
+				.Where(item => item.Value.Timeline is not null)
+				.ToDictionary(item => item.Key, item => item.Value.Timeline!, StringComparer.Ordinal);
 
 		effects.ShouldRun = run;
 		effects.Forgotten = [.. _pendingForgotten];
@@ -660,7 +775,14 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ISchutzengelP
 			effects.WatchlistChanged = true;
 		}
 
+		string? previousLive = _livePlanId;
+
 		ScheduleLiveNotification(focus, focusView, waiting, run, now, strings, effects);
+
+		if (!string.Equals(previousLive, _livePlanId, StringComparison.Ordinal))
+		{
+			effects.WatchlistChanged = true;
+		}
 
 		return effects;
 	}
@@ -812,11 +934,12 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ISchutzengelP
 					problemAlerted |= problem;
 
 					effects.Actions.Add(
-						() => LiveJourneyNotification.ShowAlert(
+						() => _surface.ShowAlert(
+							new JourneyAlert(
 							planId,
 							problem ? JourneyAlertKind.Problem : JourneyAlertKind.Change,
 							problem ? strings.NotifProblemAlertTitle : strings.NotifChangeAlertTitle,
-							notice.Text));
+							notice.Text)));
 				}
 
 				entry.AlertedNotices = entry.Notices.Count;
@@ -841,11 +964,12 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ISchutzengelP
 						DDjourneys.Support.Format.TimeOrDash(start));
 
 				effects.Actions.Add(
-					() => LiveJourneyNotification.ShowAlert(
+					() => _surface.ShowAlert(
+						new JourneyAlert(
 						planId,
 						JourneyAlertKind.Start,
 						strings.NotifStartAlertTitle,
-						text));
+						text)));
 			}
 
 			effects.Events.Add(new JourneyTrackingEvent(JourneyTrackingEventKind.Started, State(null)));
@@ -877,11 +1001,12 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ISchutzengelP
 					if (options.Problem && !problemAlerted)
 					{
 						effects.Actions.Add(
-							() => LiveJourneyNotification.ShowAlert(
+							() => _surface.ShowAlert(
+								new JourneyAlert(
 								planId,
 								JourneyAlertKind.Problem,
 								strings.NotifRiskTitle,
-								text));
+								text)));
 					}
 
 					effects.Events.Add(new JourneyTrackingEvent(JourneyTrackingEventKind.RiskChanged, State(text)));
@@ -898,11 +1023,12 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ISchutzengelP
 					string destination = entry.Summary?.Destination ?? snapshot.Destination ?? string.Empty;
 
 					effects.Actions.Add(
-						() => LiveJourneyNotification.ShowAlert(
+						() => _surface.ShowAlert(
+							new JourneyAlert(
 							planId,
 							JourneyAlertKind.Arrived,
 							strings.NotifArrivedTitle,
-							destination));
+							destination)));
 
 					effects.Events.Add(new JourneyTrackingEvent(JourneyTrackingEventKind.Arrived, State(destination)));
 					break;
@@ -915,7 +1041,7 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ISchutzengelP
 		}
 	}
 
-	/// <summary>Decides what the single live notification shows (or that it should go away).</summary>
+	/// <summary>Decides what the single live presentation shows (or that it should go away).</summary>
 	private void ScheduleLiveNotification(
 		WatchEntry? focus,
 		WatchedJourney? focusView,
@@ -939,8 +1065,10 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ISchutzengelP
 					if (_liveKey is not null)
 					{
 						_liveKey = null;
-						effects.Actions.Add(LiveJourneyNotification.Dismiss);
+						effects.Actions.Add(_surface.Dismiss);
 					}
+
+					_livePlanId = null;
 
 					return;
 				}
@@ -949,7 +1077,7 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ISchutzengelP
 			}
 
 			content =
-				LiveJourneyContent.Create(
+				SchutzengelLiveContent.Create(
 					planId,
 					focus.Snapshot,
 					focus.Phase,
@@ -961,16 +1089,18 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ISchutzengelP
 		{
 			content =
 				waiting is not null
-					? LiveJourneyContent.Waiting(waiting, strings)
-					: LiveJourneyContent.Monitoring(strings);
+					? SchutzengelLiveContent.Waiting(waiting, strings)
+					: SchutzengelLiveContent.Monitoring(strings);
 		}
+
+		_livePlanId = content is { PlanId.Length: > 0 } ? content.PlanId : null;
 
 		if (content is null)
 		{
 			if (_liveKey is not null)
 			{
 				_liveKey = null;
-				effects.Actions.Add(LiveJourneyNotification.Dismiss);
+				effects.Actions.Add(_surface.Dismiss);
 			}
 
 			return;
@@ -985,7 +1115,7 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ISchutzengelP
 
 		_liveKey = key;
 
-		effects.Actions.Add(() => LiveJourneyNotification.Show(content));
+		effects.Actions.Add(() => _surface.Show(content));
 	}
 
 	private static string StateKey(WatchEntry entry) =>
@@ -1064,7 +1194,7 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ISchutzengelP
 	{
 		foreach (string planId in effects.Forgotten)
 		{
-			Guarded(() => LiveJourneyNotification.ClearAlerts(planId));
+			Guarded(() => _surface.ClearAlerts(planId));
 		}
 
 		foreach (Action action in effects.Actions)
@@ -1114,7 +1244,7 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ISchutzengelP
 			{
 				if (!_serviceRunning)
 				{
-					_serviceRunning = JourneyTrackingForegroundService.TryStart();
+					_serviceRunning = _runtime.TryKeepAlive();
 				}
 
 				if (_loop is null)
@@ -1132,7 +1262,7 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ISchutzengelP
 			if (_serviceRunning)
 			{
 				_serviceRunning = false;
-				JourneyTrackingForegroundService.Stop();
+				_runtime.Release();
 			}
 		}
 	}
@@ -1248,7 +1378,7 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ISchutzengelP
 
 		if (stopService)
 		{
-			Guarded(JourneyTrackingForegroundService.Stop);
+			Guarded(_runtime.Release);
 		}
 
 		_events.Dispose();

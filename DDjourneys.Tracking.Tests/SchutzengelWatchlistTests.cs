@@ -2,7 +2,7 @@ using System.Net;
 using System.Text.Json;
 using DDjourneys.Core.Models;
 using DDjourneys.Core.Tracking;
-using DDjourneys.Platforms.Android.LiveJourney.Schutzengel;
+using DDjourneys.Tracking.Schutzengel;
 
 namespace DDjourneys.Tracking.Tests;
 

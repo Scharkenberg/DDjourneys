@@ -2,6 +2,10 @@ using Android.App;
 using Android.Content;
 using Android.OS;
 
+using DDjourneys.Core.Tracking.Live;
+
+// The namespace is part of the generated Java class name of this service; it stays as it is
+// although the class no longer lives in a Schutzengel folder.
 namespace DDjourneys.Platforms.Android.LiveJourney.Schutzengel;
 
 /// <summary>
@@ -97,6 +101,6 @@ internal sealed class JourneyTrackingForegroundService : Service
 	}
 
 	/// <summary>The injected bridge; this component is created by the system, so DI is reached by lookup.</summary>
-	private static SchutzengelCallbackBridge? Bridge() =>
-		IPlatformApplication.Current?.Services.GetService<SchutzengelCallbackBridge>();
+	private static TrackingCallbackBridge? Bridge() =>
+		IPlatformApplication.Current?.Services.GetService<TrackingCallbackBridge>();
 }

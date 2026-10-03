@@ -2,7 +2,7 @@ using System.Globalization;
 using System.Text.Json;
 using DDjourneys.Core.Tracking;
 
-namespace DDjourneys.Platforms.Android.LiveJourney.Schutzengel;
+namespace DDjourneys.Tracking.Schutzengel;
 
 internal sealed record TripStop(
 	string Name,
@@ -325,6 +325,94 @@ internal sealed class TripTimeline
 			episode.IsIndividual
 				? null
 				: EstimateLocation(now, episode.Polyline, recent, next));
+	}
+
+	/// <summary>
+	/// The whole course at <paramref name="now"/>: every episode with every stop and whether it is
+	/// behind, current or ahead. Same clock rule as <see cref="Calculate"/>: the current episode is
+	/// the last one that has started; in it, the next stop is the first one still in the future.
+	/// </summary>
+	public TrackedTrip Describe(string planId, DateTimeOffset now)
+	{
+		bool arrived = End is { } end && end < now;
+		int current = -1;
+
+		for (int i = 0; i < Episodes.Count; i++)
+		{
+			if (Episodes[i].From.Effective is { } episodeStart && episodeStart < now)
+			{
+				current = i;
+			}
+		}
+
+		var segments = new List<TrackedSegment>(Episodes.Count);
+
+		for (int i = 0; i < Episodes.Count; i++)
+		{
+			TripEpisode episode = Episodes[i];
+
+			bool passed = arrived || i < current;
+			bool isCurrent = !arrived && i == current;
+
+			IReadOnlyList<TripStop> source =
+				episode.IsIndividual || episode.Stops.Count < 2
+					? [episode.From, episode.To]
+					: episode.Stops;
+
+			int next = -1;
+
+			if (isCurrent)
+			{
+				for (int j = 0; j < source.Count; j++)
+				{
+					if (source[j].Effective is { } time && time > now)
+					{
+						next = j;
+						break;
+					}
+				}
+			}
+
+			int recent =
+				!isCurrent
+					? -1
+					: next < 0
+						? source.Count - 1
+						: next - 1;
+
+			var stops = new List<TrackedStop>(source.Count);
+
+			for (int j = 0; j < source.Count; j++)
+			{
+				TrackedStopState state =
+					passed
+						? TrackedStopState.Passed
+						: !isCurrent
+							? TrackedStopState.Upcoming
+							: j == next
+								? TrackedStopState.Next
+								: j == recent
+									? TrackedStopState.Current
+									: next < 0 || j < next
+										? TrackedStopState.Passed
+										: TrackedStopState.Upcoming;
+
+				TripStop stop = source[j];
+
+				stops.Add(new TrackedStop(stop.Name, stop.Scheduled, stop.Realtime, state));
+			}
+
+			segments.Add(
+				new TrackedSegment(
+					episode.IsIndividual,
+					episode.MotName,
+					episode.Direction,
+					stops,
+					passed,
+					isCurrent));
+		}
+
+		return new TrackedTrip(planId, segments, now);
 	}
 
 	/// <summary>

@@ -6,6 +6,7 @@ using DDjourneys.Core.Providers.Abstractions;
 using DDjourneys.Core.Tracking;
 using DDjourneys.Localization;
 using DDjourneys.Support;
+using DDjourneys.Support.Sharing;
 using Microsoft.Maui.ApplicationModel.DataTransfer;
 
 namespace DDjourneys.Pages;
@@ -655,6 +656,13 @@ public sealed class JourneyViewModel :
 	}
 
 
+	/// <summary>
+	/// Asks how to share (title, cancel label, options; returns the chosen option or null).
+	/// Set by the page.
+	/// </summary>
+	public Func<string, string, string[], Task<string?>>? ChooseShareFormat { get; set; }
+
+	/// <summary>Text for messengers, or a rendered picture of the journey.</summary>
 	private async Task ShareAsync()
 	{
 		if (_journey is null)
@@ -662,110 +670,46 @@ public sealed class JourneyViewModel :
 			return;
 		}
 
+		IUiStrings strings = _localization.CurrentStrings;
+		JourneyStrings text = strings.Journey;
 
 		try
 		{
-			await Share.Default
-				.RequestAsync(
+			JourneyShareModel model = JourneyShareModel.Create(_journey, strings);
+
+			string? choice =
+				ChooseShareFormat is null
+					? text.ShareAsText
+					: await ChooseShareFormat(
+						text.ShareTitle,
+						strings.Common.Cancel,
+						[text.ShareAsText, text.ShareAsImage]);
+
+			if (choice == text.ShareAsImage)
+			{
+				string path = await JourneyShareImage.RenderToFileAsync(model, strings);
+
+				await Share.Default.RequestAsync(
+					new ShareFileRequest
+					{
+						Title = text.ShareTitle,
+						File = new ShareFile(path, "image/png")
+					});
+			}
+			else if (choice == text.ShareAsText)
+			{
+				await Share.Default.RequestAsync(
 					new ShareTextRequest
 					{
-						Title =
-							_localization
-								.CurrentStrings
-								.Journey
-								.ShareTitle,
-
-						Text =
-							BuildShareText(
-								_journey)
+						Title = text.ShareTitle,
+						Text = JourneyShareText.Build(model, strings)
 					});
+			}
 		}
 		catch (Exception ex)
 		{
 			System.Diagnostics.Debug.WriteLine(
 				$"Share failed:\n{ex}");
 		}
-	}
-
-
-	private string BuildShareText(
-		Journey journey)
-	{
-		JourneyStrings strings =
-			_localization
-				.CurrentStrings
-				.Journey;
-
-
-		var lines =
-			new List<string>
-			{
-				RouteText,
-
-				$"{DayText}, " +
-				$"{Format.TimeOrDash(journey.Departure)}" +
-				$"\u2013{Format.TimeOrDash(journey.Arrival)} " +
-				$"({Format.Duration(journey.Duration)})",
-
-				string.Empty
-			};
-
-
-		foreach (
-			TimelineItem item
-			in TimelineBuilder.Build(journey))
-		{
-			switch (item)
-			{
-				case RideItem ride:
-					{
-						string line =
-							ride.Leg.Line?.Name
-							?? Format.TransportMode(
-								ride.Leg.Mode);
-
-
-						lines.Add(
-							$"{Format.TimeOrDash(ride.Leg.EffectiveDeparture)} " +
-							$"{line}: " +
-							$"{StopLabel.Compose(ride.Leg.From)} " +
-							$"\u2192 {StopLabel.Compose(ride.Leg.To)} " +
-							$"({Format.TimeOrDash(ride.Leg.EffectiveArrival)})");
-
-
-						break;
-					}
-
-
-				case WalkItem walk:
-					lines.Add(
-						$"{strings.Walk} " +
-						$"{Format.Duration(
-							walk.Leg.EffectiveDeparture,
-							walk.Leg.EffectiveArrival)} " +
-						$"{strings.To} " +
-						StopLabel.Compose(walk.Leg.To));
-
-					break;
-
-
-				case BoundaryItem
-				{
-					WalkTime: { } boundaryWalk
-				} boundary:
-					lines.Add(
-						$"{strings.Walk} " +
-						$"{Format.Duration(boundaryWalk)} " +
-						$"{strings.To} " +
-						StopLabel.Compose(boundary.At));
-
-					break;
-			}
-		}
-
-
-		return string.Join(
-			Environment.NewLine,
-			lines);
 	}
 }

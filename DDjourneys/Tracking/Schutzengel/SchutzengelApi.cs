@@ -4,7 +4,7 @@ using System.Net;
 using System.Text;
 using System.Text.Json;
 
-namespace DDjourneys.Platforms.Android.LiveJourney.Schutzengel;
+namespace DDjourneys.Tracking.Schutzengel;
 
 /// <summary>A parsed response together with the status code the protocol keys on.</summary>
 internal sealed class SchutzengelResponse : IDisposable

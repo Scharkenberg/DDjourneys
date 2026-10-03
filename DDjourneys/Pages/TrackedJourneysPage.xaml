@@ -16,7 +16,7 @@
 	</ContentPage.ToolbarItems>
 
 	<RefreshView Command="{Binding RefreshCommand}" IsRefreshing="{Binding IsRefreshing}">
-		<ScrollView>
+		<ScrollView x:Name="Scroller">
 			<VerticalStackLayout Padding="{StaticResource PadPage}" Spacing="{StaticResource SpaceM}">
 
 				<Border IsVisible="{Binding NotificationsBlocked}" StyleClass="Card">
@@ -27,6 +27,51 @@
 					IsVisible="{Binding HasError}"
 					StyleClass="Cancelled"
 					Text="{Binding ErrorText}" />
+
+				<!--  Which journey the live notification follows (only where the platform has one)  -->
+				<VerticalStackLayout IsVisible="{Binding HasLiveOptions}" Spacing="{StaticResource SpaceS}">
+
+					<Label StyleClass="Section" Text="{localization:Tr Tracking.LiveTitle}" />
+
+					<Border Padding="0" StyleClass="Card">
+						<VerticalStackLayout BindableLayout.ItemsSource="{Binding LiveOptions}">
+							<BindableLayout.ItemTemplate>
+								<DataTemplate x:DataType="local:LiveOption">
+									<Grid
+										Padding="12,10"
+										ColumnDefinitions="*,Auto"
+										ColumnSpacing="10"
+										MinimumHeightRequest="52"
+										SemanticProperties.Description="{Binding Title}">
+
+										<VerticalStackLayout Spacing="1" VerticalOptions="Center">
+											<Label
+												FontFamily="OpenSansSemibold"
+												LineBreakMode="TailTruncation"
+												Text="{Binding Title}" />
+											<Label
+												IsVisible="{Binding HasSubtitle}"
+												StyleClass="Caption"
+												Text="{Binding Subtitle}" />
+										</VerticalStackLayout>
+
+										<controls:Icon
+											Grid.Column="1"
+											Glyph="Check"
+											IsVisible="{Binding IsSelected}"
+											Size="20"
+											VerticalOptions="Center"
+											Color="{DynamicResource Accent}" />
+
+										<Grid.GestureRecognizers>
+											<TapGestureRecognizer Command="{Binding SelectCommand}" />
+										</Grid.GestureRecognizers>
+									</Grid>
+								</DataTemplate>
+							</BindableLayout.ItemTemplate>
+						</VerticalStackLayout>
+					</Border>
+				</VerticalStackLayout>
 
 				<VerticalStackLayout
 					Padding="0,32"
@@ -58,7 +103,21 @@
 									<BindableLayout.ItemTemplate>
 										<DataTemplate x:DataType="local:TrackedRow">
 
-											<Border SemanticProperties.Description="{Binding AccessibilityText}" StyleClass="Card">
+											<Border
+												ClassId="{Binding PlanId}"
+												SemanticProperties.Description="{Binding AccessibilityText}"
+												StyleClass="Card">
+
+												<!--  The journey opened from a notification is outlined  -->
+												<Border.Triggers>
+													<DataTrigger
+														Binding="{Binding IsFocused}"
+														TargetType="Border"
+														Value="True">
+														<Setter Property="Stroke" Value="{DynamicResource AccentBrush}" />
+														<Setter Property="StrokeThickness" Value="2" />
+													</DataTrigger>
+												</Border.Triggers>
 
 												<VerticalStackLayout Spacing="8">
 
@@ -66,10 +125,28 @@
 
 														<VerticalStackLayout Spacing="2">
 
-															<Label
-																FontFamily="OpenSansSemibold"
-																LineBreakMode="TailTruncation"
-																Text="{Binding Title}" />
+															<HorizontalStackLayout Spacing="8">
+																<Label
+																	FontFamily="OpenSansSemibold"
+																	LineBreakMode="TailTruncation"
+																	Text="{Binding Title}"
+																	VerticalOptions="Center" />
+
+																<!--  This journey drives the live notification  -->
+																<Border
+																	Padding="8,1"
+																	BackgroundColor="{DynamicResource Accent}"
+																	IsVisible="{Binding IsLive}"
+																	StrokeShape="RoundRectangle 100"
+																	StrokeThickness="0"
+																	VerticalOptions="Center">
+																	<Label
+																		FontFamily="OpenSansSemibold"
+																		FontSize="{StaticResource FontCaption}"
+																		Text="{Binding LiveBadgeText}"
+																		TextColor="{DynamicResource OnAccent}" />
+																</Border>
+															</HorizontalStackLayout>
 
 															<Label StyleClass="Caption" Text="{Binding Subtitle}" />
 
@@ -123,6 +200,103 @@
 														LineBreakMode="WordWrap"
 														StyleClass="Caption"
 														Text="{Binding NoticeText}" />
+
+													<!--  Extended view: every stop, moving with the clock  -->
+													<Label
+														FontFamily="OpenSansSemibold"
+														FontSize="{StaticResource FontCaption}"
+														Text="{Binding CourseToggleText}"
+														TextColor="{DynamicResource Accent}">
+														<Label.GestureRecognizers>
+															<TapGestureRecognizer Command="{Binding ToggleCourseCommand}" />
+														</Label.GestureRecognizers>
+													</Label>
+
+													<Label
+														IsVisible="{Binding HasCourseHint}"
+														StyleClass="Caption"
+														Text="{Binding CourseHint}" />
+
+													<VerticalStackLayout BindableLayout.ItemsSource="{Binding Course}" IsVisible="{Binding HasCourse}">
+														<BindableLayout.ItemTemplate>
+															<DataTemplate x:DataType="local:CourseRow">
+																<Grid
+																	ColumnDefinitions="48,18,*"
+																	MinimumHeightRequest="26"
+																	Opacity="{Binding Fade}">
+
+																	<!--  Rail: continuous line with a dot per stop  -->
+																	<BoxView
+																		Grid.Column="1"
+																		HorizontalOptions="Center"
+																		VerticalOptions="Fill"
+																		WidthRequest="2"
+																		Color="{DynamicResource Outline}" />
+
+																	<!--  Segment heading  -->
+																	<Label
+																		Grid.Column="2"
+																		Padding="0,6,0,2"
+																		FontFamily="OpenSansSemibold"
+																		FontSize="{StaticResource FontCaption}"
+																		IsVisible="{Binding IsHeader}"
+																		Text="{Binding Text}"
+																		TextColor="{DynamicResource InkMuted}" />
+
+																	<!--  Stop  -->
+																	<VerticalStackLayout
+																		IsVisible="{Binding IsStop}"
+																		Spacing="0"
+																		VerticalOptions="Center">
+																		<Label
+																			FontSize="{StaticResource FontCaption}"
+																			HorizontalTextAlignment="End"
+																			Text="{Binding Time}" />
+																		<Label
+																			FontSize="{StaticResource FontCaption}"
+																			HorizontalTextAlignment="End"
+																			IsVisible="{Binding IsLate}"
+																			StyleClass="Delay"
+																			Text="{Binding LiveTime}" />
+																		<Label
+																			FontSize="{StaticResource FontCaption}"
+																			HorizontalTextAlignment="End"
+																			IsVisible="{Binding IsOnTimeLive}"
+																			StyleClass="OnTime"
+																			Text="{Binding LiveTime}" />
+																	</VerticalStackLayout>
+
+																	<Ellipse
+																		Grid.Column="1"
+																		Fill="{DynamicResource AccentBrush}"
+																		HeightRequest="10"
+																		HorizontalOptions="Center"
+																		IsVisible="{Binding IsHighlightedStop}"
+																		VerticalOptions="Center"
+																		WidthRequest="10" />
+
+																	<Ellipse
+																		Grid.Column="1"
+																		Fill="{DynamicResource SurfaceBrush}"
+																		HeightRequest="8"
+																		HorizontalOptions="Center"
+																		IsVisible="{Binding IsPlainStop}"
+																		Stroke="{DynamicResource OutlineBrush}"
+																		StrokeThickness="2"
+																		VerticalOptions="Center"
+																		WidthRequest="8" />
+
+																	<Label
+																		Grid.Column="2"
+																		FontFamily="{Binding NameFont}"
+																		IsVisible="{Binding IsStop}"
+																		LineBreakMode="TailTruncation"
+																		Text="{Binding Text}"
+																		VerticalOptions="Center" />
+																</Grid>
+															</DataTemplate>
+														</BindableLayout.ItemTemplate>
+													</VerticalStackLayout>
 
 													<VerticalStackLayout IsVisible="{Binding IsExpanded}" Spacing="8">
 

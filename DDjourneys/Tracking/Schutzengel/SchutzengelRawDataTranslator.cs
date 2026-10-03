@@ -3,12 +3,12 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using DDjourneys.Core.Models;
 using DDjourneys.Core.Providers.Vvo.Models;
-using static DDjourneys.Platforms.Android.LiveJourney.Schutzengel.SchutzengelWireCodes;
-using static DDjourneys.Platforms.Android.LiveJourney.Schutzengel.SchutzengelTariffMapper;
-using static DDjourneys.Platforms.Android.LiveJourney.Schutzengel.SchutzengelNodeMapper;
-using static DDjourneys.Platforms.Android.LiveJourney.Schutzengel.SchutzengelTransitionMapper;
+using static DDjourneys.Tracking.Schutzengel.SchutzengelWireCodes;
+using static DDjourneys.Tracking.Schutzengel.SchutzengelTariffMapper;
+using static DDjourneys.Tracking.Schutzengel.SchutzengelNodeMapper;
+using static DDjourneys.Tracking.Schutzengel.SchutzengelTransitionMapper;
 
-namespace DDjourneys.Platforms.Android.LiveJourney.Schutzengel;
+namespace DDjourneys.Tracking.Schutzengel;
 
 /// <summary>
 /// Reconstructs the VVO Connection-shaped object used by the

@@ -8,7 +8,7 @@ namespace DDjourneys.Core.Tracking;
 /// </summary>
 public interface IJourneyTracker
 {
-	/// <summary>False on platforms without a tracking implementation.</summary>
+	/// <summary>False where no tracking service can be used.</summary>
 	bool IsAvailable { get; }
 
 	/// <summary>Broadcast of tracking events. Every enumeration is an independent subscription.</summary>
@@ -42,6 +42,28 @@ public interface IJourneyTracker
 
 	/// <summary>Stops following everything.</summary>
 	Task DeleteAllAsync(CancellationToken cancellationToken = default);
+
+	// ----- Live presentation (defaults keep simple implementations short) -----
+
+	/// <summary>True when the platform shows live state outside the app (e.g. a live notification).</summary>
+	bool HasLiveSurface => false;
+
+	/// <summary>The plan the live presentation currently follows; null when none is shown.</summary>
+	string? LivePlanId => null;
+
+	/// <summary>The plan the user chose for the live presentation; null means automatic.</summary>
+	string? PreferredLivePlanId => null;
+
+	/// <summary>
+	/// Chooses the plan for the live presentation (null: automatic, the next journey under way).
+	/// The choice applies while that plan is under way or about to start, and is kept across restarts.
+	/// <see cref="WatchedChanged"/> is raised when the live plan changes.
+	/// </summary>
+	Task SetPreferredLivePlanAsync(string? planId, CancellationToken cancellationToken = default) =>
+		Task.CompletedTask;
+
+	/// <summary>The full course of a followed journey with every stop, or null while it is not known yet.</summary>
+	TrackedTrip? GetTrip(string planId) => null;
 }
 
 public enum TrackingPhase

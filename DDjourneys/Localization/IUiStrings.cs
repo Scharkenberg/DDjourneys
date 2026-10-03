@@ -107,6 +107,8 @@ public sealed class JourneyStrings
 	public required string ShowOrHideIntermediateStops { get; init; }
 	public required string Walk { get; init; }
 	public required string ShareTitle { get; init; }
+	public required string ShareAsText { get; init; }
+	public required string ShareAsImage { get; init; }
 	public required string Direct { get; init; }
 	public required string OneTransfer { get; init; }
 	public required string MultipleTransfers { get; init; }
@@ -305,6 +307,14 @@ public sealed class TrackingStrings
 	public required string Pause { get; init; }
 	public required string Resume { get; init; }
 	public required string StopFollowing { get; init; }
+	public required string LiveTitle { get; init; }
+	public required string LiveAutomatic { get; init; }
+	public required string LiveAutomaticHint { get; init; }
+	public required string LiveBadge { get; init; }
+	public required string CourseShow { get; init; }
+	public required string CourseHide { get; init; }
+	public required string CourseNotYet { get; init; }
+	public required string CourseWalk { get; init; }
 	public required string DeleteAll { get; init; }
 	public required string DeleteTitle { get; init; }
 	public required string DeleteMessage { get; init; }

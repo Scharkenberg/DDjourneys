@@ -201,9 +201,15 @@ public sealed class ResultsViewModel :
 	public bool IsLoading
 	{
 		get => field;
-		private set => SetProperty(
-			ref field,
-			value);
+		private set
+		{
+			if (SetProperty(
+				ref field,
+				value))
+			{
+				RefreshContinuationState();
+			}
+		}
 	}
 
 
@@ -239,16 +245,17 @@ public sealed class ResultsViewModel :
 		Items.Count == 0;
 
 
+	// Paging moves a time window with ordinary searches, so it needs no provider session.
 	public bool CanGoPrevious =>
 		!IsPaging
-		&& Items.Count > 0
-		&& Items[0].Journey.Context is not null;
+		&& !IsLoading
+		&& Items.Count > 0;
 
 
 	public bool CanGoNext =>
 		!IsPaging
-		&& Items.Count > 0
-		&& Items[^1].Journey.Context is not null;
+		&& !IsLoading
+		&& Items.Count > 0;
 
 
 	public void ApplyQueryAttributes(
@@ -516,10 +523,10 @@ public sealed class ResultsViewModel :
 			return;
 		}
 
-		Journey anchor =
-			previous
-				? Items[0].Journey
-				: Items[^1].Journey;
+		Journey[] shown =
+			Items
+				.Select(item => item.Journey)
+				.ToArray();
 
 		var cts =
 			_paging =
@@ -532,17 +539,12 @@ public sealed class ResultsViewModel :
 		try
 		{
 			JourneyResult result =
-				previous
-					? await _journeys.GetPreviousAsync(
-						query,
-						anchor,
-						_queryMaxResults(),
-						cts.Token)
-					: await _journeys.GetNextAsync(
-						query,
-						anchor,
-						_queryMaxResults(),
-						cts.Token);
+				await _journeys.PageAsync(
+					query,
+					shown,
+					previous,
+					_queryMaxResults(),
+					cts.Token);
 
 			if (cts.IsCancellationRequested)
 			{

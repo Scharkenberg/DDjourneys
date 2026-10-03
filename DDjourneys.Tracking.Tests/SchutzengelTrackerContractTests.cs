@@ -3,7 +3,7 @@ using System.Text.Json;
 using DDjourneys.Core.Models;
 using DDjourneys.Core.Providers.Vvo.Models;
 using DDjourneys.Core.Tracking;
-using DDjourneys.Platforms.Android.LiveJourney.Schutzengel;
+using DDjourneys.Tracking.Schutzengel;
 using DDjourneys.Platforms.Windows;
 
 namespace DDjourneys.Tracking.Tests;

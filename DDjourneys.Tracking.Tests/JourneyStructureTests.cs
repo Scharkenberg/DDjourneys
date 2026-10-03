@@ -2,7 +2,7 @@ using DDjourneys.Core.Models;
 using DDjourneys.Core.Providers.Vvo.Mapping;
 using DDjourneys.Core.Providers.Vvo.Models;
 using DDjourneys.Core.Tracking;
-using DDjourneys.Platforms.Android.LiveJourney.Schutzengel;
+using DDjourneys.Tracking.Schutzengel;
 
 namespace DDjourneys.Tracking.Tests;
 

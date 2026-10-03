@@ -1,6 +1,9 @@
 using Android.Content;
 using DDjourneys.Core.Tracking;
+using DDjourneys.Core.Tracking.Live;
 
+// The namespace is part of the generated Java class name that already-posted notifications
+// point to; it stays as it is although the class no longer lives in a Schutzengel folder.
 namespace DDjourneys.Platforms.Android.LiveJourney.Schutzengel;
 
 /// <summary>
@@ -33,9 +36,9 @@ internal sealed class JourneyNotificationActionReceiver : BroadcastReceiver
 					// A fresh process has no tracker yet: resolving it attaches it to the bridge.
 					_ = services?.GetService<IJourneyTracker>();
 
-					if (services?.GetService<SchutzengelCallbackBridge>() is { } bridge)
+					if (services?.GetService<TrackingCallbackBridge>() is { } bridge)
 					{
-						await bridge.HandleNotificationActionAsync(action, planId).ConfigureAwait(false);
+						await bridge.HandleActionAsync(action, planId).ConfigureAwait(false);
 					}
 				}
 				catch (Exception ex)

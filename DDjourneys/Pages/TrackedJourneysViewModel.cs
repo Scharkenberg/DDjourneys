@@ -7,6 +7,39 @@ using DDjourneys.Support;
 
 namespace DDjourneys.Pages;
 
+/// <summary>One choice for the live notification: automatic, or one followed journey.</summary>
+public sealed class LiveOption
+{
+	public required string Title { get; init; }
+	public required string Subtitle { get; init; }
+	public required bool IsSelected { get; init; }
+	public required ICommand SelectCommand { get; init; }
+
+	public bool HasSubtitle => Subtitle.Length > 0;
+}
+
+/// <summary>One line of the extended course view: a segment heading or a stop.</summary>
+public sealed class CourseRow
+{
+	public required bool IsHeader { get; init; }
+	public required string Text { get; init; }
+	public string Time { get; init; } = string.Empty;
+	public string LiveTime { get; init; } = string.Empty;
+	public bool IsLate { get; init; }
+	public bool IsPassed { get; init; }
+	public bool IsCurrent { get; init; }
+	public bool IsNext { get; init; }
+	public bool IsWalk { get; init; }
+
+	public bool IsStop => !IsHeader;
+	public bool HasLiveTime => LiveTime.Length > 0;
+	public bool IsOnTimeLive => HasLiveTime && !IsLate;
+	public bool IsHighlightedStop => IsStop && (IsCurrent || IsNext);
+	public bool IsPlainStop => IsStop && !IsCurrent && !IsNext;
+	public double Fade => IsPassed ? 0.55 : 1.0;
+	public string NameFont => IsNext ? "OpenSansSemibold" : "OpenSansRegular";
+}
+
 /// <summary>One group of the overview: all followed journeys with the same status.</summary>
 public sealed record TrackedSection(string Title, IReadOnlyList<TrackedRow> Items);
 
@@ -38,10 +71,19 @@ public sealed class TrackedRow
 	public required bool ProblemAlertOn { get; init; }
 	public required string StopText { get; init; }
 	public required string AccessibilityText { get; init; }
+	public required bool IsLive { get; init; }
+	public required string LiveBadgeText { get; init; }
+	public required bool IsFocused { get; init; }
+	public required bool IsCourseVisible { get; init; }
+	public required string CourseToggleText { get; init; }
+	public required IReadOnlyList<CourseRow> Course { get; init; }
+	public required string CourseHint { get; init; }
 
 	public bool HasLines => LinesText.Length > 0;
 	public bool HasNext => NextText.Length > 0;
 	public bool HasNotice => NoticeText.Length > 0;
+	public bool HasCourse => Course.Count > 0;
+	public bool HasCourseHint => IsCourseVisible && Course.Count == 0;
 
 	public required ICommand ToggleExpandedCommand { get; init; }
 	public required ICommand PauseResumeCommand { get; init; }
@@ -50,16 +92,23 @@ public sealed class TrackedRow
 	public required ICommand CycleLeadCommand { get; init; }
 	public required ICommand ToggleChangeAlertCommand { get; init; }
 	public required ICommand ToggleProblemAlertCommand { get; init; }
+	public required ICommand ToggleCourseCommand { get; init; }
 }
 
 /// <summary>The overview of all journeys the user follows.</summary>
-public sealed class TrackedJourneysViewModel : DisposableViewModel
+public sealed class TrackedJourneysViewModel : DisposableViewModel, IQueryAttributable
 {
 	private static readonly TimeSpan AutoRefreshInterval = TimeSpan.FromSeconds(60);
+
+	/// <summary>How often an open course view moves on with the clock (between server polls).</summary>
+	private static readonly TimeSpan CourseTick = TimeSpan.FromSeconds(15);
 
 	private readonly IJourneyTracker _tracker;
 	private readonly LocalizationService _localization;
 	private readonly HashSet<string> _expanded = new(StringComparer.Ordinal);
+	private readonly HashSet<string> _courses = new(StringComparer.Ordinal);
+
+	private string? _focused;
 
 	private CancellationTokenSource? _observation;
 
@@ -130,6 +179,49 @@ public sealed class TrackedJourneysViewModel : DisposableViewModel
 		private set => SetProperty(ref field, value);
 	}
 
+	/// <summary>Choices for the live notification; empty where the platform has none.</summary>
+	public IReadOnlyList<LiveOption> LiveOptions
+	{
+		get => field;
+		private set
+		{
+			if (SetProperty(ref field, value))
+			{
+				OnPropertyChanged(nameof(HasLiveOptions));
+			}
+		}
+	} = [];
+
+	public bool HasLiveOptions => LiveOptions.Count > 0;
+
+	/// <summary>Raised with a plan id after <see cref="Focus"/>, once the rows exist; the page scrolls to it.</summary>
+	public event EventHandler<string>? FocusRequested;
+
+	public void ApplyQueryAttributes(IDictionary<string, object> query)
+	{
+		if (query.TryGetValue(Routes.FocusPlan, out object? value))
+		{
+			Focus(value as string);
+		}
+	}
+
+	/// <summary>Opens one followed journey with its course and brings it into view.</summary>
+	public void Focus(string? planId)
+	{
+		if (string.IsNullOrWhiteSpace(planId))
+		{
+			return;
+		}
+
+		_focused = planId;
+		_expanded.Add(planId);
+		_courses.Add(planId);
+
+		Rebuild();
+
+		FocusRequested?.Invoke(this, planId);
+	}
+
 	// ----- Lifetime of the page -----
 
 	public void StartObserving()
@@ -146,6 +238,27 @@ public sealed class TrackedJourneysViewModel : DisposableViewModel
 		Rebuild();
 
 		_ = AutoRefreshAsync(_observation.Token);
+		_ = TickCoursesAsync(_observation.Token);
+	}
+
+	/// <summary>Open course views follow the clock; the server data itself refreshes with the tracker.</summary>
+	private async Task TickCoursesAsync(CancellationToken cancellationToken)
+	{
+		try
+		{
+			while (!cancellationToken.IsCancellationRequested)
+			{
+				await Task.Delay(CourseTick, cancellationToken);
+
+				if (_courses.Count > 0)
+				{
+					RebuildIfAlive();
+				}
+			}
+		}
+		catch (OperationCanceledException)
+		{
+		}
 	}
 
 	protected override void OnDisposing() =>
@@ -222,6 +335,7 @@ public sealed class TrackedJourneysViewModel : DisposableViewModel
 		await _tracker.DeleteAllAsync();
 
 		_expanded.Clear();
+		_courses.Clear();
 	}
 
 	private async Task StopAsync(WatchedJourney journey)
@@ -234,6 +348,7 @@ public sealed class TrackedJourneysViewModel : DisposableViewModel
 		}
 
 		_expanded.Remove(journey.PlanId);
+		_courses.Remove(journey.PlanId);
 
 		await _tracker.DeleteAsync(journey.PlanId);
 	}
@@ -243,6 +358,19 @@ public sealed class TrackedJourneysViewModel : DisposableViewModel
 
 	private Task ChangeOptionsAsync(WatchedJourney journey, Func<WatchOptions, WatchOptions> change) =>
 		_tracker.SetOptionsAsync(journey.PlanId, change(journey.Options));
+
+	private void ToggleCourse(WatchedJourney journey)
+	{
+		if (!_courses.Remove(journey.PlanId))
+		{
+			_courses.Add(journey.PlanId);
+		}
+
+		Rebuild();
+	}
+
+	private Task SelectLiveAsync(string? planId) =>
+		_tracker.SetPreferredLivePlanAsync(planId);
 
 	private void ToggleExpanded(WatchedJourney journey)
 	{
@@ -300,6 +428,7 @@ public sealed class TrackedJourneysViewModel : DisposableViewModel
 
 			Sections = sections;
 			HasItems = journeys.Count > 0;
+			LiveOptions = CreateLiveOptions(journeys, strings);
 		}
 		catch (Exception ex)
 		{
@@ -352,6 +481,10 @@ public sealed class TrackedJourneysViewModel : DisposableViewModel
 
 		string route = $"{journey.Origin} → {journey.Destination}";
 
+		bool live = _tracker.LivePlanId == journey.PlanId;
+		bool course = _courses.Contains(journey.PlanId);
+		IReadOnlyList<CourseRow> rows = course ? CreateCourse(journey.PlanId, strings) : [];
+
 		return new TrackedRow
 		{
 			PlanId = journey.PlanId,
@@ -379,7 +512,15 @@ public sealed class TrackedJourneysViewModel : DisposableViewModel
 			ProblemAlertText = strings.AlertProblem,
 			ProblemAlertOn = options.ProblemAlert,
 			StopText = strings.StopFollowing,
-			AccessibilityText = $"{route}, {subtitle}, {status}",
+			AccessibilityText = live ? $"{route}, {subtitle}, {status}, {strings.LiveBadge}" : $"{route}, {subtitle}, {status}",
+			IsLive = live,
+			LiveBadgeText = strings.LiveBadge,
+			IsFocused = _focused == journey.PlanId,
+			IsCourseVisible = course,
+			CourseToggleText = course ? strings.CourseHide : strings.CourseShow,
+			Course = rows,
+			CourseHint = strings.CourseNotYet,
+			ToggleCourseCommand = new Command(() => ToggleCourse(journey)),
 			ToggleExpandedCommand = new Command(() => ToggleExpanded(journey)),
 			PauseResumeCommand = new AsyncCommand(() => PauseResumeAsync(journey), null, ShowError),
 			StopCommand = new AsyncCommand(() => StopAsync(journey), null, ShowError),
@@ -404,6 +545,126 @@ public sealed class TrackedJourneysViewModel : DisposableViewModel
 					null,
 					ShowError)
 		};
+	}
+
+	/// <summary>"Automatic" plus every journey that can still be live (not completed, not paused).</summary>
+	private IReadOnlyList<LiveOption> CreateLiveOptions(
+		IReadOnlyList<WatchedJourney> journeys,
+		TrackingStrings strings)
+	{
+		if (!_tracker.HasLiveSurface)
+		{
+			return [];
+		}
+
+		List<WatchedJourney> candidates =
+			[.. journeys.Where(item => item.Status is WatchStatus.Active or WatchStatus.Planned)];
+
+		if (candidates.Count < 2 && _tracker.PreferredLivePlanId is null)
+		{
+			// Nothing to choose between.
+			return [];
+		}
+
+		string? preferred = _tracker.PreferredLivePlanId;
+
+		var options =
+			new List<LiveOption>(candidates.Count + 1)
+			{
+				new()
+				{
+					Title = strings.LiveAutomatic,
+					Subtitle = strings.LiveAutomaticHint,
+					IsSelected = preferred is null,
+					SelectCommand = new AsyncCommand(() => SelectLiveAsync(null), null, ShowError)
+				}
+			};
+
+		foreach (WatchedJourney journey in candidates)
+		{
+			string planId = journey.PlanId;
+
+			options.Add(
+				new LiveOption
+				{
+					Title = $"{journey.Origin} → {journey.Destination}",
+					Subtitle =
+						journey.Departure is { } departure
+							? $"{Format.DayLabel(Format.ToWall(departure).Date)}, {Format.TimeOrDash(departure)}"
+							: string.Empty,
+					IsSelected = preferred == planId,
+					SelectCommand = new AsyncCommand(() => SelectLiveAsync(planId), null, ShowError)
+				});
+		}
+
+		return options;
+	}
+
+	/// <summary>The course as flat rows: a heading per ride or walk, then its stops.</summary>
+	private IReadOnlyList<CourseRow> CreateCourse(string planId, TrackingStrings strings)
+	{
+		if (_tracker.GetTrip(planId) is not { IsEmpty: false } trip)
+		{
+			return [];
+		}
+
+		var rows = new List<CourseRow>();
+
+		foreach (TrackedSegment segment in trip.Segments)
+		{
+			if (segment.IsWalk)
+			{
+				rows.Add(
+					new CourseRow
+					{
+						IsHeader = true,
+						IsWalk = true,
+						IsPassed = segment.IsPassed,
+						IsCurrent = segment.IsCurrent,
+						Text = string.Format(
+							CultureInfo.CurrentCulture,
+							strings.CourseWalk,
+							segment.To?.Name ?? string.Empty)
+					});
+
+				continue;
+			}
+
+			rows.Add(
+				new CourseRow
+				{
+					IsHeader = true,
+					IsPassed = segment.IsPassed,
+					IsCurrent = segment.IsCurrent,
+					Text =
+						segment.Direction is { Length: > 0 } direction
+							? $"{segment.Line} → {direction}"
+							: segment.Line ?? string.Empty
+				});
+
+			foreach (TrackedStop stop in segment.Stops)
+			{
+				TimeSpan delay = stop.Delay ?? TimeSpan.Zero;
+
+				rows.Add(
+					new CourseRow
+					{
+						IsHeader = false,
+						Text = stop.Name,
+						Time = Format.TimeOrDash(stop.Scheduled ?? stop.Realtime),
+						LiveTime =
+							stop.Realtime is { } realtime && stop.Scheduled is not null
+								? Format.TimeOrDash(realtime)
+								: string.Empty,
+						IsLate = delay >= TimeSpan.FromMinutes(1),
+						IsPassed = stop.State == TrackedStopState.Passed,
+						IsCurrent = stop.State == TrackedStopState.Current,
+						IsNext = stop.State == TrackedStopState.Next
+					});
+			}
+		}
+
+		return rows;
 	}
 
 	private static int NextLead(int current)
