@@ -54,7 +54,7 @@ public static class ContractLinks
 	{
 		ArgumentNullException.ThrowIfNull(success);
 
-		var pairs = new List<KeyValuePair<string, string>> { new("x-success", success.AbsoluteUri) };
+		var pairs = new List<KeyValuePair<string, string>> { new("x-success", success.OriginalString) };
 
 		if (reference is not null)
 		{
@@ -102,12 +102,12 @@ public static class ContractLinks
 
 		if (success is not null)
 		{
-			pairs.Add(new("x-success", success.AbsoluteUri));
+			pairs.Add(new("x-success", success.OriginalString));
 		}
 
 		if (error is not null)
 		{
-			pairs.Add(new("x-error", error.AbsoluteUri));
+			pairs.Add(new("x-error", error.OriginalString));
 		}
 
 		return Create(command, pairs);

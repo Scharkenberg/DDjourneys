@@ -128,7 +128,7 @@ public sealed class ContractReply
 			return null;
 		}
 
-		string built = Append(target.AbsoluteUri, Pairs());
+		string built = Append(target.OriginalString, Pairs());
 
 		if (built.Length <= ContractLimits.MaxReplyLength || droppable.Length == 0)
 		{
@@ -140,7 +140,7 @@ public sealed class ContractReply
 				.Where(pair => !droppable.Contains(pair.Key, StringComparer.Ordinal))
 				.Append(new("truncated", "1"));
 
-		return new Uri(Append(target.AbsoluteUri, kept), UriKind.Absolute);
+		return new Uri(Append(target.OriginalString, kept), UriKind.Absolute);
 	}
 
 	/// <summary>Appends pairs to a URI string, keeping an existing query and fragment intact.</summary>

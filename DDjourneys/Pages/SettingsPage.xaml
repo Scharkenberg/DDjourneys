@@ -395,8 +395,8 @@
 						<Label StyleClass="Caption" Text="{Binding MinQueryLengthText}" />
 
 						<Slider
-							Maximum="4"
-							Minimum="1"
+							Maximum="{Binding MinQueryLengthCeiling}"
+							Minimum="{Binding MinQueryLengthFloor}"
 							SemanticProperties.Description="{localization:Tr Settings.MinQueryLength}"
 							Value="{Binding MinQueryLength}" />
 					</VerticalStackLayout>

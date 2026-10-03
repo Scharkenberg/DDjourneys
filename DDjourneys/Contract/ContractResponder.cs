@@ -53,7 +53,7 @@ internal sealed class PlatformCallbackLauncher : ICallbackLauncher
 			// No visibility query needed: starting an activity for a VIEW intent works for any scheme.
 			var intent = new global::Android.Content.Intent(
 				global::Android.Content.Intent.ActionView,
-				global::Android.Net.Uri.Parse(uri.AbsoluteUri));
+				global::Android.Net.Uri.Parse(uri.OriginalString));
 
 			intent.AddFlags(global::Android.Content.ActivityFlags.NewTask);
 

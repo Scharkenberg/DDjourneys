@@ -81,12 +81,15 @@ public static class MauiProgram
 		builder.Services.AddSingleton<ILiveJourneySurface, Platforms.Android.LiveJourney.AndroidLiveJourneySurface>();
 		builder.Services.AddSingleton<ITrackingRuntime, Platforms.Android.LiveJourney.AndroidTrackingRuntime>();
 		builder.Services.AddSingleton<INotificationAccess, Platforms.Android.LiveJourney.AndroidNotificationAccess>();
+#elif WINDOWS
+		builder.Services.AddSingleton<ILiveJourneySurface, Platforms.Windows.LiveJourney.WindowsLiveJourneySurface>();
+		builder.Services.AddSingleton<ITrackingRuntime, InProcessTrackingRuntime>();
+		builder.Services.AddSingleton<INotificationAccess, Platforms.Windows.LiveJourney.WindowsNotificationAccess>();
 #else
 		builder.Services.AddSingleton<ILiveJourneySurface, NoLiveJourneySurface>();
 		builder.Services.AddSingleton<ITrackingRuntime, InProcessTrackingRuntime>();
 		builder.Services.AddSingleton<INotificationAccess, UnrestrictedNotificationAccess>();
 #endif
-
 		builder.Services.AddSingleton<TrackingCallbackBridge>();
 		builder.Services.AddSingleton<Tracking.TrackedJourneyNavigator>();
 

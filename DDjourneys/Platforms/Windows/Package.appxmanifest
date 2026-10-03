@@ -4,51 +4,66 @@
   xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
   xmlns:mp="http://schemas.microsoft.com/appx/2014/phone/manifest"
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
-  IgnorableNamespaces="uap rescap">
+  xmlns:com="http://schemas.microsoft.com/appx/manifest/com/windows10"
+  xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
+  IgnorableNamespaces="uap rescap com desktop">
 
   <Identity Name="maui-package-name-placeholder" Publisher="CN=User Name" Version="0.0.0.0" />
 
   <mp:PhoneIdentity PhoneProductId="93BDB5A7-2313-439D-A00A-E54D4EAE85C9" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
 
   <Properties>
-    <DisplayName>$placeholder$</DisplayName>
-    <PublisherDisplayName>User Name</PublisherDisplayName>
-    <Logo>$placeholder$.png</Logo>
+	<DisplayName>$placeholder$</DisplayName>
+	<PublisherDisplayName>User Name</PublisherDisplayName>
+	<Logo>$placeholder$.png</Logo>
   </Properties>
 
   <Dependencies>
-    <TargetDeviceFamily Name="Windows.Universal" MinVersion="10.0.17763.0" MaxVersionTested="10.0.19041.0" />
-    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.19041.0" />
+	<TargetDeviceFamily Name="Windows.Universal" MinVersion="10.0.17763.0" MaxVersionTested="10.0.19041.0" />
+	<TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.19041.0" />
   </Dependencies>
 
   <Resources>
-    <Resource Language="x-generate" />
+	<Resource Language="x-generate" />
   </Resources>
 
   <Applications>
-    <Application Id="App" Executable="$targetnametoken$.exe" EntryPoint="$targetentrypoint$">
-      <uap:VisualElements
+	<Application Id="App" Executable="$targetnametoken$.exe" EntryPoint="$targetentrypoint$">
+	  <uap:VisualElements
         DisplayName="$placeholder$"
         Description="$placeholder$"
         Square150x150Logo="$placeholder$.png"
         Square44x44Logo="$placeholder$.png"
         BackgroundColor="transparent">
-        <uap:DefaultTile Square71x71Logo="$placeholder$.png" Wide310x150Logo="$placeholder$.png" Square310x310Logo="$placeholder$.png" />
-        <uap:SplashScreen Image="$placeholder$.png" />
-      </uap:VisualElements>
-      <Extensions>
-        <!-- External contract: ddjourneys://plan?... (docs/EXTERNAL_CONTRACT.md) -->
-        <uap:Extension Category="windows.protocol">
-          <uap:Protocol Name="ddjourneys">
-            <uap:DisplayName>DDjourneys</uap:DisplayName>
-          </uap:Protocol>
-        </uap:Extension>
-      </Extensions>
-    </Application>
+		<uap:DefaultTile Square71x71Logo="$placeholder$.png" Wide310x150Logo="$placeholder$.png" Square310x310Logo="$placeholder$.png" />
+		<uap:SplashScreen Image="$placeholder$.png" />
+	  </uap:VisualElements>
+	  <Extensions>
+		<!-- External contract: ddjourneys://plan?... (docs/EXTERNAL_CONTRACT.md) -->
+		<uap:Extension Category="windows.protocol">
+		  <uap:Protocol Name="ddjourneys">
+			<uap:DisplayName>DDjourneys</uap:DisplayName>
+		  </uap:Protocol>
+		</uap:Extension>
+
+		<!-- App notification activation (live journey buttons and taps). The CLSID is arbitrary but must match below. -->
+		<desktop:Extension Category="windows.toastNotificationActivation">
+		  <desktop:ToastNotificationActivation ToastActivatorCLSID="D4C0A5A2-6B1E-4F0A-9C3B-7E2D8A1F5B63" />
+		</desktop:Extension>
+
+		<com:Extension Category="windows.comServer">
+		  <com:ComServer>
+			<com:ExeServer Executable="DDjourneys.exe" DisplayName="DDjourneys" Arguments="----AppNotificationActivated:">
+			  <com:Class Id="D4C0A5A2-6B1E-4F0A-9C3B-7E2D8A1F5B63" />
+			</com:ExeServer>
+		  </com:ComServer>
+		</com:Extension>
+	  </Extensions>
+	</Application>
   </Applications>
 
   <Capabilities>
-    <rescap:Capability Name="runFullTrust" />
+	<rescap:Capability Name="runFullTrust" />
   </Capabilities>
 
 </Package>

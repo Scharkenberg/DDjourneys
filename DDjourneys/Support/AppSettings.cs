@@ -213,11 +213,15 @@ public sealed class AppSettings
 		set => Write("searchDelayMs", Math.Clamp(value, MinSearchDelayMs, MaxSearchDelayMs));
 	}
 
-	/// <summary>Characters needed before a place search starts (1..4).</summary>
+	/// <summary>VVO (and most other providers) answer HTTP 400 below three characters.</summary>
+	public const int MinQueryLengthFloor = 3;
+	public const int MinQueryLengthCeiling = 10;
+
+	/// <summary>Characters needed before a place search starts (3..10).</summary>
 	public int MinQueryLength
 	{
-		get => Math.Clamp(Read("minQueryLength", 2), 1, 4);
-		set => Write("minQueryLength", Math.Clamp(value, 1, 4));
+		get => Math.Clamp(Read("minQueryLength", MinQueryLengthFloor), MinQueryLengthFloor, MinQueryLengthCeiling);
+		set => Write("minQueryLength", Math.Clamp(value, MinQueryLengthFloor, MinQueryLengthCeiling));
 	}
 
 	// ----- Routing preferences -----
@@ -327,7 +331,7 @@ public sealed class AppSettings
 		ExpandStops = false;
 		ExpertView = true;
 		SearchDelayMs = 500;
-		MinQueryLength = 2;
+		MinQueryLength = MinQueryLengthFloor;
 		ResetRoutingDefaults();
 	}
 

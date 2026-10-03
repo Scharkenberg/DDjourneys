@@ -267,6 +267,10 @@ public sealed class SettingsViewModel : DisposableViewModel
 			_localization.CurrentStrings.Settings.MinQueryLengthDescription,
 			_settings.MinQueryLength);
 
+	public double MinQueryLengthFloor => AppSettings.MinQueryLengthFloor;
+
+	public double MinQueryLengthCeiling => AppSettings.MinQueryLengthCeiling;
+
 	public double MinSearchDelay => AppSettings.MinSearchDelayMs;
 
 	public double MaxSearchDelay => AppSettings.MaxSearchDelayMs;

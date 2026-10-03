@@ -273,13 +273,14 @@ public sealed class CoreFoundationsTests
 
 	// ----- Helpers -----
 
+	// Endpoints that belong to no provider: every provider is eligible, so the chain itself is tested.
 	private static Task<JourneyResult> Search(params IJourneyProvider[] providers) =>
 		new JourneyService(providers)
 			.SearchAsync(
 				new JourneyQuery
 				{
-					From = Place("1", "alpha"),
-					To = Place("2", "alpha")
+					From = Place("1", string.Empty),
+					To = Place("2", string.Empty)
 				});
 
 	private static Location Place(string id, string providerId) =>
