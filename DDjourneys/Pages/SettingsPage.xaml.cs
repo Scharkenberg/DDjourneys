@@ -25,7 +25,7 @@ public partial class SettingsPage : ContentPage
 	protected override void OnAppearing()
 	{
 		base.OnAppearing();
-		_vm.RefreshTheme();
+		_vm.RefreshAppearance();
 		_vm.RefreshProvider();
 		Motion.EnterPage(this);
 	}

@@ -183,11 +183,12 @@ public sealed class NoticeCard : ContentView
 						folded
 							? strings.ShowMore
 							: strings.ShowLess,
-					FontFamily = "OpenSansSemibold",
 					FontSize = 13,
 					VerticalOptions =
 						LayoutOptions.Center
 				};
+
+			toggleLabel.SetDynamicResource(Label.FontFamilyProperty, "FontSemibold");
 
 			toggleLabel.SetDynamicResource(
 				Label.TextColorProperty,

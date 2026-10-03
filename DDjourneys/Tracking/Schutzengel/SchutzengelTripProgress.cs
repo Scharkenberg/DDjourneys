@@ -9,7 +9,9 @@ internal sealed record TripStop(
 	DateTimeOffset? Scheduled,
 	DateTimeOffset? Realtime,
 	double? Latitude,
-	double? Longitude)
+	double? Longitude,
+	string? Platform = null,
+	bool PlatformIsTrack = false)
 {
 	public DateTimeOffset? Effective => Realtime ?? Scheduled;
 
@@ -98,6 +100,15 @@ internal sealed record TripSnapshot(
 	TripPoint? Location)
 {
 	public int Length => SegmentLengths.Sum();
+
+	/// <summary>Where the current ride or walk ends (alighting stop for a ride).</summary>
+	public TripStop? EpisodeEnd { get; init; }
+
+	/// <summary>Progress position at the start of the current ride or walk (steady within it).</summary>
+	public int EpisodeStartPosition { get; init; }
+
+	/// <summary>The ride that follows the current walk: line, boarding stop and time.</summary>
+	public TripEpisode? NextRide { get; init; }
 
 	public static TripSnapshot Empty { get; } =
 		new(
@@ -318,13 +329,26 @@ internal sealed class TripTimeline
 				0,
 				legCount - 1);
 
+		int episodeStartPosition = lengths.Take(current).Sum();
+
+		TripEpisode? nextRide =
+			episode.IsIndividual
+				? Episodes.Skip(current + 1).FirstOrDefault(item => !item.IsIndividual)
+				: null;
+
 		return Build(
 			stage, phase, current, legIndex, position,
 			episode.MotName, episode.Direction,
 			recent, next, risk,
 			episode.IsIndividual
 				? null
-				: EstimateLocation(now, episode.Polyline, recent, next));
+				: EstimateLocation(now, episode.Polyline, recent, next))
+			with
+		{
+			EpisodeEnd = episode.To,
+			EpisodeStartPosition = episodeStartPosition,
+			NextRide = nextRide
+		};
 	}
 
 	/// <summary>
@@ -399,7 +423,7 @@ internal sealed class TripTimeline
 
 				TripStop stop = source[j];
 
-				stops.Add(new TrackedStop(stop.Name, stop.Scheduled, stop.Realtime, state));
+				stops.Add(new TrackedStop(stop.Name, stop.Scheduled, stop.Realtime, state, stop.Platform, stop.PlatformIsTrack));
 			}
 
 			segments.Add(
@@ -409,7 +433,8 @@ internal sealed class TripTimeline
 					episode.Direction,
 					stops,
 					passed,
-					isCurrent));
+					isCurrent,
+					episode.RequiredTime));
 		}
 
 		return new TrackedTrip(planId, segments, now);
@@ -472,16 +497,22 @@ internal sealed class TripTimeline
 
 			if (previous is { IsIndividual: false } && next is { IsIndividual: false })
 			{
-				// A change between two rides: the vehicles carry the real-time values,
-				// the footpath only knows planned ones.
+				// A change between two rides: the vehicles carry the real-time values, the stop names
+				// and the platforms (the footpath only knows planned times and may lack the platforms).
 				fromStop = fromStop with
 				{
+					Name = previous.To.Name.Length > 0 ? previous.To.Name : fromStop.Name,
+					Platform = previous.To.Platform ?? fromStop.Platform,
+					PlatformIsTrack = previous.To.Platform is not null ? previous.To.PlatformIsTrack : fromStop.PlatformIsTrack,
 					Scheduled = previous.To.Scheduled ?? fromStop.Scheduled,
 					Realtime = previous.To.Realtime
 				};
 
 				toStop = toStop with
 				{
+					Name = next.From.Name.Length > 0 ? next.From.Name : toStop.Name,
+					Platform = next.From.Platform ?? toStop.Platform,
+					PlatformIsTrack = next.From.Platform is not null ? next.From.PlatformIsTrack : toStop.PlatformIsTrack,
 					Scheduled = next.From.Scheduled ?? toStop.Scheduled,
 					Realtime = next.From.Realtime
 				};
@@ -649,15 +680,61 @@ internal sealed class TripTimeline
 			longitude = ReadDouble(coords, "lon");
 		}
 
+		(string? platform, bool isTrack) = ReadPlatform(element);
+
 		stop = new TripStop(
 			SchutzengelPlanList.ReadString(element, "name") ?? string.Empty,
 			SchutzengelTime.Read(scheduled),
 			SchutzengelTime.Read(realtime),
 			latitude ?? ReadDouble(element, "lat"),
-			longitude ?? ReadDouble(element, "lon"));
+			longitude ?? ReadDouble(element, "lon"),
+			platform,
+			isTrack);
 
 		return true;
 	}
+
+	/// <summary>
+	/// The platform of a stop: an object {type, name} ("Steig" = platform, "Gleis"/"Railtrack" = track,
+	/// or the numeric wire code 2 for a track) or, leniently, a plain string.
+	/// </summary>
+	private static (string? Name, bool IsTrack) ReadPlatform(JsonElement stop)
+	{
+		if (!stop.TryGetProperty("platform", out JsonElement platform))
+		{
+			return (null, false);
+		}
+
+		if (platform.ValueKind == JsonValueKind.String)
+		{
+			return (Clean(platform.GetString()), false);
+		}
+
+		if (platform.ValueKind != JsonValueKind.Object)
+		{
+			return (null, false);
+		}
+
+		string? name = Clean(SchutzengelPlanList.ReadString(platform, "name"));
+		bool isTrack = false;
+
+		if (platform.TryGetProperty("type", out JsonElement type))
+		{
+			isTrack =
+				type.ValueKind == JsonValueKind.Number
+					? type.TryGetInt32(out int code) && code == SchutzengelWireCodes.PlatformTypeRailtrack
+					: type.ValueKind == JsonValueKind.String
+						&& type.GetString() is { } text
+						&& (text.Contains("gleis", StringComparison.OrdinalIgnoreCase)
+							|| text.Contains("rail", StringComparison.OrdinalIgnoreCase)
+							|| text.Contains("track", StringComparison.OrdinalIgnoreCase));
+		}
+
+		return (name, isTrack);
+	}
+
+	private static string? Clean(string? value) =>
+		string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
 	private static List<TripPoint> ParsePolyline(JsonElement element)
 	{

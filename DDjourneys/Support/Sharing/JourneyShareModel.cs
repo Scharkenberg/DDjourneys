@@ -94,7 +94,14 @@ public sealed record JourneyShareModel
 	/// <summary>Plain-text notices, each at most once.</summary>
 	public required IReadOnlyList<string> Notices { get; init; }
 
+	/// <summary>The journey cannot take place (a ride cancelled, a stop skipped, a connection unreachable).</summary>
 	public bool IsCancelled { get; init; }
+
+	/// <summary>"Not possible · Schweriner Straße is not served"; empty when the journey is possible.</summary>
+	public string BlockText { get; init; } = string.Empty;
+
+	/// <summary>The reason alone ("Schweriner Straße is not served"); empty when the journey is possible.</summary>
+	public string BlockReason { get; init; } = string.Empty;
 
 	/// <summary>Lines in riding order, for chips ("11", "62").</summary>
 	public IEnumerable<ShareStep> Rides => Steps.Where(step => step.Kind == ShareStepKind.Ride);
@@ -191,7 +198,9 @@ public sealed record JourneyShareModel
 				},
 			Steps = steps,
 			Notices = CollectNotices(journey),
-			IsCancelled = journey.IsCancelled
+			IsCancelled = journey.IsImpossible,
+			BlockText = JourneyBlockText.Describe(journey.Block, text),
+			BlockReason = JourneyBlockText.Reason(journey.Block, text)
 		};
 	}
 

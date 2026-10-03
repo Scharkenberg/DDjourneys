@@ -31,13 +31,31 @@ public sealed class CourseRow
 	public bool IsNext { get; init; }
 	public bool IsWalk { get; init; }
 
+	/// <summary>Platform or track of a boarding/alighting stop; empty elsewhere.</summary>
+	public string Detail { get; init; } = string.Empty;
+
+	/// <summary>Countdown to the next stop ("in 3 min"); empty for every other row.</summary>
+	public string Eta { get; init; } = string.Empty;
+
 	public bool IsStop => !IsHeader;
+	public bool HasDetail => Detail.Length > 0;
+	public bool IsEmphasized => IsStop && (IsNext || IsCurrent);
+	public bool HasEta => Eta.Length > 0;
+	public bool IsRideHeader => IsHeader && !IsWalk;
+	public bool IsWalkHeader => IsHeader && IsWalk;
+	public bool IsCurrentRideHeader => IsRideHeader && IsCurrent;
+	public bool IsOtherRideHeader => IsRideHeader && !IsCurrent;
+	public bool IsCurrentStop => IsStop && IsCurrent;
+	public bool IsNextStop => IsStop && IsNext;
+	public bool IsPassedStop => IsStop && IsPassed && !IsCurrent && !IsNext;
+	public bool IsUpcomingStop => IsStop && !IsPassed && !IsCurrent && !IsNext;
+
+	/// <summary>The rail is drawn in the accent colour where the journey has already been.</summary>
+	public bool IsRailDone => IsPassed || IsCurrent;
+	public bool IsRailAhead => !IsRailDone;
 	public bool HasLiveTime => LiveTime.Length > 0;
 	public bool IsOnTimeLive => HasLiveTime && !IsLate;
-	public bool IsHighlightedStop => IsStop && (IsCurrent || IsNext);
-	public bool IsPlainStop => IsStop && !IsCurrent && !IsNext;
 	public double Fade => IsPassed ? 0.55 : 1.0;
-	public string NameFont => IsNext ? "OpenSansSemibold" : "OpenSansRegular";
 }
 
 /// <summary>One group of the overview: all followed journeys with the same status.</summary>
@@ -82,6 +100,8 @@ public sealed class TrackedRow
 	public bool HasLines => LinesText.Length > 0;
 	public bool HasNext => NextText.Length > 0;
 	public bool HasNotice => NoticeText.Length > 0;
+	public bool NoticeIsAlert => HasNotice && (IsProblem || IsCancelled);
+	public bool NoticeIsInfo => HasNotice && !IsProblem && !IsCancelled;
 	public bool HasCourse => Course.Count > 0;
 	public bool HasCourseHint => IsCourseVisible && Course.Count == 0;
 
@@ -614,6 +634,12 @@ public sealed class TrackedJourneysViewModel : DisposableViewModel, IQueryAttrib
 		{
 			if (segment.IsWalk)
 			{
+				// A change within the same stop and platform needs no walk row.
+				if (segment.IsInPlaceChange)
+				{
+					continue;
+				}
+
 				rows.Add(
 					new CourseRow
 					{
@@ -621,10 +647,7 @@ public sealed class TrackedJourneysViewModel : DisposableViewModel, IQueryAttrib
 						IsWalk = true,
 						IsPassed = segment.IsPassed,
 						IsCurrent = segment.IsCurrent,
-						Text = string.Format(
-							CultureInfo.CurrentCulture,
-							strings.CourseWalk,
-							segment.To?.Name ?? string.Empty)
+						Text = WalkText(segment, strings)
 					});
 
 				continue;
@@ -638,13 +661,15 @@ public sealed class TrackedJourneysViewModel : DisposableViewModel, IQueryAttrib
 					IsCurrent = segment.IsCurrent,
 					Text =
 						segment.Direction is { Length: > 0 } direction
-							? $"{segment.Line} → {direction}"
+							? $"{segment.Line} \u2192 {direction}"
 							: segment.Line ?? string.Empty
 				});
 
-			foreach (TrackedStop stop in segment.Stops)
+			for (int i = 0; i < segment.Stops.Count; i++)
 			{
+				TrackedStop stop = segment.Stops[i];
 				TimeSpan delay = stop.Delay ?? TimeSpan.Zero;
+				bool boardsOrAlights = i == 0 || i == segment.Stops.Count - 1;
 
 				rows.Add(
 					new CourseRow
@@ -659,12 +684,55 @@ public sealed class TrackedJourneysViewModel : DisposableViewModel, IQueryAttrib
 						IsLate = delay >= TimeSpan.FromMinutes(1),
 						IsPassed = stop.State == TrackedStopState.Passed,
 						IsCurrent = stop.State == TrackedStopState.Current,
-						IsNext = stop.State == TrackedStopState.Next
+						IsNext = stop.State == TrackedStopState.Next,
+						Detail = boardsOrAlights ? PlatformText(stop, strings) : string.Empty,
+						Eta = stop.State == TrackedStopState.Next ? EtaText(stop, trip.At, strings) : string.Empty
 					});
 			}
 		}
 
 		return rows;
+	}
+
+	private static string PlatformText(TrackedStop stop, TrackingStrings strings) =>
+		string.IsNullOrWhiteSpace(stop.Platform)
+			? string.Empty
+			: string.Format(
+				CultureInfo.CurrentCulture,
+				stop.PlatformIsTrack ? strings.CourseTrack : strings.CoursePlatform,
+				stop.Platform);
+
+	/// <summary>"Walk to Hauptbahnhof, Platform 3 · 4 min".</summary>
+	private static string WalkText(TrackedSegment segment, TrackingStrings strings)
+	{
+		CultureInfo culture = CultureInfo.CurrentCulture;
+		string text = string.Format(culture, strings.CourseWalk, segment.To?.Name ?? string.Empty);
+
+		if (segment.To is { } to && PlatformText(to, strings) is { Length: > 0 } platform)
+		{
+			text = $"{text}, {platform}";
+		}
+
+		if (segment.Duration is { } duration && duration >= TimeSpan.FromMinutes(1))
+		{
+			text = $"{text} \u00b7 {string.Format(culture, strings.CourseWalkMinutes, (int)Math.Round(duration.TotalMinutes))}";
+		}
+
+		return text;
+	}
+
+	private static string EtaText(TrackedStop stop, DateTimeOffset now, TrackingStrings strings)
+	{
+		if (stop.Effective is not { } time)
+		{
+			return string.Empty;
+		}
+
+		int minutes = (int)Math.Ceiling((time - now).TotalMinutes);
+
+		return minutes <= 0
+			? strings.CourseNow
+			: string.Format(CultureInfo.CurrentCulture, strings.CourseIn, minutes);
 	}
 
 	private static int NextLead(int current)

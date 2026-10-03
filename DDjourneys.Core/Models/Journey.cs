@@ -131,6 +131,15 @@ public sealed class Journey
 	public bool IsCancelled =>
 		Legs.Any(leg => leg.IsCancelled);
 
+	/// <summary>
+	/// Why the journey cannot be travelled as planned (a ride cancelled, a stop where one gets on or off is
+	/// not served, a connection that cannot be reached); null when nothing stands in the way.
+	/// </summary>
+	public JourneyBlock? Block => JourneyFeasibility.Assess(this);
+
+	/// <summary>The journey cannot take place as planned. Broader than <see cref="IsCancelled"/>.</summary>
+	public bool IsImpossible => Block is not null;
+
 	public IReadOnlyList<JourneyTransfer> Transfers { get; init; }
 		= Array.Empty<JourneyTransfer>();
 

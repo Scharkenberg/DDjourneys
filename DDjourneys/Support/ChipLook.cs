@@ -9,14 +9,55 @@ namespace DDjourneys.Support;
 /// stay distinguishable with colour-vision deficiencies or low contrast
 /// sensitivity.
 /// </summary>
-public sealed record ChipLook(
-	Color Fill,
-	Color Text,
-	Color Stroke,
-	double StrokeThickness,
-	CornerRadius Corners,
-	bool Dashed)
+public sealed class ChipLook : System.ComponentModel.INotifyPropertyChanged
 {
+	private readonly Color _text;
+	private readonly Color _stroke;
+	private readonly string? _themeKey;
+
+	public ChipLook(
+		Color fill,
+		Color text,
+		Color stroke,
+		double strokeThickness,
+		CornerRadius corners,
+		bool dashed,
+		string? themeKey = null)
+	{
+		Fill = fill;
+		_text = text;
+		_stroke = stroke;
+		StrokeThickness = strokeThickness;
+		Corners = corners;
+		Dashed = dashed;
+		_themeKey = themeKey;
+
+		if (themeKey is not null)
+		{
+			// Only a few long-lived instances are theme-aware, so the static subscription cannot leak.
+			Theme.Changed += (_, _) =>
+			{
+				PropertyChanged?.Invoke(this, new(nameof(Text)));
+				PropertyChanged?.Invoke(this, new(nameof(Stroke)));
+			};
+		}
+	}
+
+	public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
+
+	public Color Fill { get; }
+
+	/// <summary>Text colour; follows the theme for looks created with a theme key.</summary>
+	public Color Text => _themeKey is null ? _text : ThemeColor(_themeKey, _text);
+
+	public Color Stroke => _themeKey is null ? _stroke : ThemeColor(_themeKey, _stroke);
+
+	public double StrokeThickness { get; }
+
+	public CornerRadius Corners { get; }
+
+	public bool Dashed { get; }
+
 	/// <summary>A fresh shape per binding (shapes must not be shared between views).</summary>
 	public IShape Shape => new RoundRectangle { CornerRadius = Corners };
 
@@ -24,6 +65,12 @@ public sealed record ChipLook(
 		Dashed
 			? [3, 2]
 			: [];
+
+	internal static Color ThemeColor(string key, Color fallback) =>
+		Application.Current?.Resources.TryGetValue(key, out object? value) == true
+		&& value is Color color
+			? color
+			: fallback;
 }
 
 /// <summary>
@@ -40,6 +87,10 @@ public static class ModeChips
 	private static readonly CornerRadius Leaf = new(13, 2, 2, 13);
 	private static readonly CornerRadius LeafMirrored = new(2, 13, 13, 2);
 	private static readonly CornerRadius Block = new(2);
+
+	// One shared instance: its muted colours follow the theme through property-change notifications.
+	private static readonly ChipLook WalkLook =
+		new(Colors.Transparent, Colors.Gray, Colors.Gray, 1.5, Pill, true, "InkMuted");
 
 	public static ChipLook For(TransitMode mode)
 	{
@@ -69,13 +120,7 @@ public static class ModeChips
 					false),
 
 			TransitMode.Walk =>
-				new ChipLook(
-					Colors.Transparent,
-					ThemeColor("InkMuted", Colors.Gray),
-					ThemeColor("InkMuted", Colors.Gray),
-					1.5,
-					Pill,
-					true),
+				WalkLook,
 
 			// Trains and everything else
 			_ =>
@@ -91,10 +136,4 @@ public static class ModeChips
 
 	private static ChipLook Solid(Color fill, CornerRadius corners) =>
 		new(fill, Colors.White, Colors.Transparent, 0, corners, false);
-
-	private static Color ThemeColor(string key, Color fallback) =>
-		Application.Current?.Resources.TryGetValue(key, out object? value) == true
-		&& value is Color color
-			? color
-			: fallback;
 }

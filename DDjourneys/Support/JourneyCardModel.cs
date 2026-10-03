@@ -38,6 +38,8 @@ public sealed class JourneyCardModel : ObservableObject
 	private readonly LocalizationService _localization;
 
 	private string _transfersText = string.Empty;
+	private string _blockText = string.Empty;
+	private readonly JourneyBlock? _block;
 	private IReadOnlyList<LegChip> _chips = [];
 	private string _noticesText = string.Empty;
 	private bool _hasNotices;
@@ -90,9 +92,12 @@ public sealed class JourneyCardModel : ObservableObject
 		DepartureDelay = Format.Delay(firstRide?.DepartureDelay);
 		ArrivalDelay = Format.Delay(lastRide?.ArrivalDelay);
 
-		IsCancelled = journey.IsCancelled;
+		// "Cancelled" on the card means "cannot take place": also a skipped boarding/alighting stop
+		// or a connection the real-time data makes unreachable (see JourneyFeasibility).
+		_block = journey.Block;
+		IsCancelled = _block is not null;
 		IsOnTime =
-			!journey.IsCancelled
+			!IsCancelled
 			&& !journey.HasDelay
 			&& journey.Legs.Any(
 				l => l.RealtimeDeparture.HasValue
@@ -139,10 +144,13 @@ public sealed class JourneyCardModel : ObservableObject
 	public bool IsCancelled { get; }
 	public bool IsOnTime { get; }
 
+	/// <summary>Why the journey cannot take place ("Not possible · Schweriner Straße is not served").</summary>
+	public string BlockText => _blockText;
+
 	public string NoticesText => _noticesText;
 	public bool HasNotices { get; }
 	public bool HasStatusRow =>
-		IsCancelled || IsOnTime || HasNotices;
+		IsOnTime || HasNotices;
 
 	public string AccessibilityText =>
 		_accessibilityText;
@@ -217,6 +225,8 @@ public sealed class JourneyCardModel : ObservableObject
 				n)
 		};
 
+		_blockText = JourneyBlockText.Describe(_block, strings);
+
 		_noticesText = notices switch
 		{
 			1 => strings.OneNotice,
@@ -237,7 +247,7 @@ public sealed class JourneyCardModel : ObservableObject
 				DurationText,
 				TransfersText)
 			+ (IsCancelled
-				? strings.AccessibilityCancelled
+				? $", {_blockText}"
 				: string.Empty)
 			+ (ArrivalDelay is { } late
 				? string.Format(
@@ -252,6 +262,7 @@ public sealed class JourneyCardModel : ObservableObject
 					NoticesText)
 				: string.Empty);
 
+		OnPropertyChanged(nameof(BlockText));
 		OnPropertyChanged(nameof(TransfersText));
 		OnPropertyChanged(nameof(Chips));
 		OnPropertyChanged(nameof(NoticesText));

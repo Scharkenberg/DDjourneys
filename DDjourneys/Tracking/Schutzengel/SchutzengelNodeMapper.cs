@@ -2,6 +2,7 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using DDjourneys.Core.Models;
+using DDjourneys.Core.Providers.Vvo.Mapping;
 using DDjourneys.Core.Providers.Vvo.Models;
 using static DDjourneys.Tracking.Schutzengel.SchutzengelWireCodes;
 
@@ -109,8 +110,8 @@ internal static class SchutzengelNodeMapper
 					stop.Occupancy),
 
 			cancelled =
-				stop.ArrivalState == "Cancelled"
-				|| stop.DepartureState == "Cancelled",
+				VvoStopStates.IsCancelled(stop.ArrivalState)
+				|| VvoStopStates.IsCancelled(stop.DepartureState),
 
 			metaData =
 				new

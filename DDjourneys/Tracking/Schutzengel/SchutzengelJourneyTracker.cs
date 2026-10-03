@@ -45,7 +45,6 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 	private static readonly TimeSpan MonitorWindow = TimeSpan.FromHours(2);
 
 	/// <summary>A "connection endangered" notice only marks the journey while it is recent.</summary>
-	private static readonly TimeSpan RiskNoticeAge = TimeSpan.FromMinutes(45);
 
 	private readonly IJourneyProvider _provider;
 	private readonly SchutzengelApi _api;
@@ -80,6 +79,8 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 	private volatile IReadOnlyDictionary<string, TripTimeline> _timelines =
 		new Dictionary<string, TripTimeline>(StringComparer.Ordinal);
 
+	private readonly Func<int>? _defaultLeadMinutes;
+
 	private CancellationTokenSource? _loopCancellation;
 	private Task? _loop;
 	private bool _runWanted;
@@ -92,8 +93,10 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 		ILiveJourneySurface surface,
 		ITrackingRuntime runtime,
 		INotificationAccess access,
-		HttpClient? http = null)
+		HttpClient? http = null,
+		Func<int>? defaultLeadMinutes = null)
 	{
+		_defaultLeadMinutes = defaultLeadMinutes;
 		_provider = journeyProvider ?? throw new ArgumentNullException(nameof(journeyProvider));
 		_bridge = bridge ?? throw new ArgumentNullException(nameof(bridge));
 		_surface = surface ?? throw new ArgumentNullException(nameof(surface));
@@ -428,7 +431,13 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 				connection.Value.Status);
 
 		string plan =
-			SchutzengelPlanTranslator.Serialize(journey, rawData, SchutzengelOptions.Default);
+			SchutzengelPlanTranslator.Serialize(
+				journey,
+				rawData,
+				SchutzengelOptions.Default with
+				{
+					StartLeadSeconds = Math.Clamp(_defaultLeadMinutes?.Invoke() ?? 5, 1, 60) * 60
+				});
 
 		using JsonDocument created =
 			await _api.CreatePlanAsync(plan, cancellationToken).ConfigureAwait(false);
@@ -795,7 +804,7 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 	{
 		SchutzengelPlanInfo info = entry.Info;
 		TripSnapshot snapshot = entry.Timeline?.Calculate(now) ?? TripSnapshot.Empty;
-		SchutzengelNotice? latest = entry.Notices.Count > 0 ? entry.Notices[^1] : null;
+		SchutzengelNotice? newest = entry.Notices.Count > 0 ? entry.Notices[^1] : null;
 
 		DateTimeOffset? start = entry.Timeline?.Start ?? entry.Summary?.Departure;
 		DateTimeOffset? end = entry.Timeline?.End ?? entry.Summary?.Arrival;
@@ -826,9 +835,27 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 			status = WatchStatus.Planned;
 		}
 
-		bool freshRisk =
-			latest is { Time: { } time, Severity: SchutzengelNoticeSeverity.ConnectionRisk }
-			&& now - time <= RiskNoticeAge;
+		// Only the newest notice counts, and only while it is still relevant (see NoticePolicy);
+		// this runs on every render pass, so an outdated notice disappears within seconds.
+		bool journeyOver = status is WatchStatus.Recent or WatchStatus.Deactivated;
+
+		SchutzengelNotice? latest =
+			newest is not null
+			&& NoticePolicy.Evaluate(
+				newest.Severity switch
+				{
+					SchutzengelNoticeSeverity.Cancellation => NoticeKind.Cancellation,
+					SchutzengelNoticeSeverity.ConnectionRisk => NoticeKind.ConnectionRisk,
+					_ => NoticeKind.Information
+				},
+				newest.Time,
+				journeyOver,
+				snapshot.Risk is not null,
+				now).IsVisible
+				? newest
+				: null;
+
+		bool freshRisk = latest is { Severity: SchutzengelNoticeSeverity.ConnectionRisk };
 
 		TrackingPhase phase;
 
@@ -836,7 +863,7 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 		{
 			phase = TrackingPhase.Paused;
 		}
-		else if (latest?.Severity == SchutzengelNoticeSeverity.Cancellation)
+		else if (newest?.Severity == SchutzengelNoticeSeverity.Cancellation)
 		{
 			phase = TrackingPhase.Cancelled;
 		}

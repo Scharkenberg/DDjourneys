@@ -5,6 +5,7 @@
 	xmlns:controls="clr-namespace:DDjourneys.Controls"
 	xmlns:local="clr-namespace:DDjourneys.Pages"
 	xmlns:localization="clr-namespace:DDjourneys.Localization"
+	xmlns:support="clr-namespace:DDjourneys.Support"
 	Title="{localization:Tr Tracking.Title}"
 	x:DataType="local:TrackedJourneysViewModel">
 
@@ -46,7 +47,7 @@
 
 										<VerticalStackLayout Spacing="1" VerticalOptions="Center">
 											<Label
-												FontFamily="OpenSansSemibold"
+												FontFamily="{DynamicResource FontSemibold}"
 												LineBreakMode="TailTruncation"
 												Text="{Binding Title}" />
 											<Label
@@ -106,47 +107,33 @@
 											<Border
 												ClassId="{Binding PlanId}"
 												SemanticProperties.Description="{Binding AccessibilityText}"
-												StyleClass="Card">
+												StyleClass="Card"
+												support:Themed.IsOn="{Binding IsFocused}"
+												support:Themed.OnStroke="AccentBrush"
+												support:Themed.Stroke="OutlineBrush">
 
-												<!--  The journey opened from a notification is outlined  -->
+												<!--  The journey opened from a notification is outlined (colour via Themed, width here)  -->
 												<Border.Triggers>
 													<DataTrigger
 														Binding="{Binding IsFocused}"
 														TargetType="Border"
 														Value="True">
-														<Setter Property="Stroke" Value="{DynamicResource AccentBrush}" />
 														<Setter Property="StrokeThickness" Value="2" />
 													</DataTrigger>
 												</Border.Triggers>
 
 												<VerticalStackLayout Spacing="8">
 
-													<Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+													<Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
 
 														<VerticalStackLayout Spacing="2">
 
-															<HorizontalStackLayout Spacing="8">
-																<Label
-																	FontFamily="OpenSansSemibold"
-																	LineBreakMode="TailTruncation"
-																	Text="{Binding Title}"
-																	VerticalOptions="Center" />
-
-																<!--  This journey drives the live notification  -->
-																<Border
-																	Padding="8,1"
-																	BackgroundColor="{DynamicResource Accent}"
-																	IsVisible="{Binding IsLive}"
-																	StrokeShape="RoundRectangle 100"
-																	StrokeThickness="0"
-																	VerticalOptions="Center">
-																	<Label
-																		FontFamily="OpenSansSemibold"
-																		FontSize="{StaticResource FontCaption}"
-																		Text="{Binding LiveBadgeText}"
-																		TextColor="{DynamicResource OnAccent}" />
-																</Border>
-															</HorizontalStackLayout>
+															<!--  The title may wrap to two lines; pill and chevron keep their place in their own columns  -->
+															<Label
+																FontFamily="{DynamicResource FontSemibold}"
+																LineBreakMode="TailTruncation"
+																MaxLines="2"
+																Text="{Binding Title}" />
 
 															<Label StyleClass="Caption" Text="{Binding Subtitle}" />
 
@@ -156,8 +143,31 @@
 																Text="{Binding LinesText}" />
 														</VerticalStackLayout>
 
-														<controls:Icon
+														<!--  This journey drives the live notification  -->
+														<Border
 															Grid.Column="1"
+															Padding="8,2"
+															BackgroundColor="{DynamicResource Accent}"
+															IsVisible="{Binding IsLive}"
+															StrokeShape="RoundRectangle 100"
+															StrokeThickness="0"
+															VerticalOptions="Start">
+															<HorizontalStackLayout Spacing="5">
+																<Ellipse
+																	Fill="{DynamicResource OnAccentBrush}"
+																	HeightRequest="6"
+																	VerticalOptions="Center"
+																	WidthRequest="6" />
+																<Label
+																	FontFamily="{DynamicResource FontSemibold}"
+																	FontSize="{StaticResource FontCaption}"
+																	Text="{Binding LiveBadgeText}"
+																	TextColor="{DynamicResource OnAccent}" />
+															</HorizontalStackLayout>
+														</Border>
+
+														<controls:Icon
+															Grid.Column="2"
 															Glyph="{Binding ExpandIcon}"
 															Size="18"
 															VerticalOptions="Start"
@@ -169,7 +179,7 @@
 													</Grid>
 
 													<Label
-														FontFamily="OpenSansSemibold"
+														FontFamily="{DynamicResource FontSemibold}"
 														FontSize="{StaticResource FontCaption}"
 														IsVisible="{Binding IsNormalStatus}"
 														Text="{Binding StatusText}"
@@ -195,15 +205,37 @@
 														StyleClass="Caption"
 														Text="{Binding NextText}" />
 
-													<Label
+													<!--  Only the current notice; outdated or superseded ones are removed by the tracker  -->
+													<Border
+														Padding="10,8"
+														BackgroundColor="{DynamicResource Raised}"
 														IsVisible="{Binding HasNotice}"
-														LineBreakMode="WordWrap"
-														StyleClass="Caption"
-														Text="{Binding NoticeText}" />
+														StrokeShape="RoundRectangle 10"
+														StrokeThickness="0">
+														<Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+															<controls:Icon
+																Glyph="Info"
+																IsVisible="{Binding NoticeIsInfo}"
+																Size="16"
+																VerticalOptions="Start"
+																Color="{DynamicResource Accent}" />
+															<controls:Icon
+																Glyph="Warning"
+																IsVisible="{Binding NoticeIsAlert}"
+																Size="16"
+																VerticalOptions="Start"
+																Color="{DynamicResource Delay}" />
+															<Label
+																Grid.Column="1"
+																LineBreakMode="WordWrap"
+																StyleClass="Caption"
+																Text="{Binding NoticeText}" />
+														</Grid>
+													</Border>
 
 													<!--  Extended view: every stop, moving with the clock  -->
 													<Label
-														FontFamily="OpenSansSemibold"
+														FontFamily="{DynamicResource FontSemibold}"
 														FontSize="{StaticResource FontCaption}"
 														Text="{Binding CourseToggleText}"
 														TextColor="{DynamicResource Accent}">
@@ -221,29 +253,90 @@
 														<BindableLayout.ItemTemplate>
 															<DataTemplate x:DataType="local:CourseRow">
 																<Grid
-																	ColumnDefinitions="48,18,*"
-																	MinimumHeightRequest="26"
+																	ColumnDefinitions="52,22,*"
+																	MinimumHeightRequest="30"
 																	Opacity="{Binding Fade}">
 
-																	<!--  Rail: continuous line with a dot per stop  -->
+																	<!--  Rail: accent where the journey has been, outline where it still goes  -->
 																	<BoxView
 																		Grid.Column="1"
+																		CornerRadius="1.5"
 																		HorizontalOptions="Center"
+																		IsVisible="{Binding IsRailDone}"
 																		VerticalOptions="Fill"
-																		WidthRequest="2"
+																		WidthRequest="3"
+																		Color="{DynamicResource Accent}" />
+																	<BoxView
+																		Grid.Column="1"
+																		CornerRadius="1.5"
+																		HorizontalOptions="Center"
+																		IsVisible="{Binding IsRailAhead}"
+																		VerticalOptions="Fill"
+																		WidthRequest="3"
 																		Color="{DynamicResource Outline}" />
 
-																	<!--  Segment heading  -->
-																	<Label
+																	<!--  Ride heading: filled while that ride is under way  -->
+																	<Border
 																		Grid.Column="2"
-																		Padding="0,6,0,2"
-																		FontFamily="OpenSansSemibold"
-																		FontSize="{StaticResource FontCaption}"
-																		IsVisible="{Binding IsHeader}"
-																		Text="{Binding Text}"
-																		TextColor="{DynamicResource InkMuted}" />
+																		Margin="0,8,0,4"
+																		Padding="10,3"
+																		BackgroundColor="{DynamicResource AccentSoft}"
+																		HorizontalOptions="Start"
+																		IsVisible="{Binding IsOtherRideHeader}"
+																		StrokeShape="RoundRectangle 100"
+																		StrokeThickness="0">
+																		<Label
+																			FontFamily="{DynamicResource FontSemibold}"
+																			FontSize="{StaticResource FontCaption}"
+																			LineBreakMode="TailTruncation"
+																			Text="{Binding Text}"
+																			TextColor="{DynamicResource Accent}" />
+																	</Border>
 
-																	<!--  Stop  -->
+																	<Border
+																		Grid.Column="2"
+																		Margin="0,8,0,4"
+																		Padding="10,3"
+																		BackgroundColor="{DynamicResource Accent}"
+																		HorizontalOptions="Start"
+																		IsVisible="{Binding IsCurrentRideHeader}"
+																		StrokeShape="RoundRectangle 100"
+																		StrokeThickness="0">
+																		<Label
+																			FontFamily="{DynamicResource FontSemibold}"
+																			FontSize="{StaticResource FontCaption}"
+																			LineBreakMode="TailTruncation"
+																			Text="{Binding Text}"
+																			TextColor="{DynamicResource OnAccent}" />
+																	</Border>
+
+																	<!--  Walk heading: dashed outline, like the walking pill elsewhere  -->
+																	<Border
+																		Grid.Column="2"
+																		Margin="0,8,0,4"
+																		Padding="10,3"
+																		HorizontalOptions="Start"
+																		IsVisible="{Binding IsWalkHeader}"
+																		Stroke="{DynamicResource InkMuted}"
+																		StrokeDashArray="3,2"
+																		StrokeShape="RoundRectangle 100"
+																		StrokeThickness="1.5">
+																		<HorizontalStackLayout Spacing="6">
+																			<controls:Icon
+																				Glyph="Walk"
+																				Size="14"
+																				VerticalOptions="Center"
+																				Color="{DynamicResource InkMuted}" />
+																			<Label
+																				FontSize="{StaticResource FontCaption}"
+																				LineBreakMode="TailTruncation"
+																				Text="{Binding Text}"
+																				TextColor="{DynamicResource InkMuted}"
+																				VerticalOptions="Center" />
+																		</HorizontalStackLayout>
+																	</Border>
+
+																	<!--  Times  -->
 																	<VerticalStackLayout
 																		IsVisible="{Binding IsStop}"
 																		Spacing="0"
@@ -266,33 +359,81 @@
 																			Text="{Binding LiveTime}" />
 																	</VerticalStackLayout>
 
+																	<!--  Dots: halo + solid where the vehicle is, ring for the next stop, filled behind, hollow ahead  -->
+																	<Ellipse
+																		Grid.Column="1"
+																		Fill="{DynamicResource AccentSoftBrush}"
+																		HeightRequest="22"
+																		HorizontalOptions="Center"
+																		IsVisible="{Binding IsCurrentStop}"
+																		VerticalOptions="Center"
+																		WidthRequest="22" />
 																	<Ellipse
 																		Grid.Column="1"
 																		Fill="{DynamicResource AccentBrush}"
-																		HeightRequest="10"
+																		HeightRequest="12"
 																		HorizontalOptions="Center"
-																		IsVisible="{Binding IsHighlightedStop}"
+																		IsVisible="{Binding IsCurrentStop}"
 																		VerticalOptions="Center"
-																		WidthRequest="10" />
-
+																		WidthRequest="12" />
+																	<Ellipse
+																		Grid.Column="1"
+																		Fill="{DynamicResource SurfaceBrush}"
+																		HeightRequest="14"
+																		HorizontalOptions="Center"
+																		IsVisible="{Binding IsNextStop}"
+																		Stroke="{DynamicResource AccentBrush}"
+																		StrokeThickness="3"
+																		VerticalOptions="Center"
+																		WidthRequest="14" />
+																	<Ellipse
+																		Grid.Column="1"
+																		Fill="{DynamicResource AccentBrush}"
+																		HeightRequest="8"
+																		HorizontalOptions="Center"
+																		IsVisible="{Binding IsPassedStop}"
+																		VerticalOptions="Center"
+																		WidthRequest="8" />
 																	<Ellipse
 																		Grid.Column="1"
 																		Fill="{DynamicResource SurfaceBrush}"
 																		HeightRequest="8"
 																		HorizontalOptions="Center"
-																		IsVisible="{Binding IsPlainStop}"
+																		IsVisible="{Binding IsUpcomingStop}"
 																		Stroke="{DynamicResource OutlineBrush}"
 																		StrokeThickness="2"
 																		VerticalOptions="Center"
 																		WidthRequest="8" />
 
-																	<Label
+																	<!--  Stop name, platform/track, countdown  -->
+																	<Grid
 																		Grid.Column="2"
-																		FontFamily="{Binding NameFont}"
+																		ColumnDefinitions="*,Auto"
+																		ColumnSpacing="8"
 																		IsVisible="{Binding IsStop}"
-																		LineBreakMode="TailTruncation"
-																		Text="{Binding Text}"
-																		VerticalOptions="Center" />
+																		VerticalOptions="Center">
+																		<VerticalStackLayout Spacing="0" VerticalOptions="Center">
+																			<Label
+																				support:Themed.Font="FontRegular"
+																				support:Themed.IsOn="{Binding IsEmphasized}"
+																				support:Themed.OnFont="FontSemibold"
+																				LineBreakMode="TailTruncation"
+																				Text="{Binding Text}" />
+																			<Label
+																				IsVisible="{Binding HasDetail}"
+																				StyleClass="Faint"
+																				Text="{Binding Detail}" />
+																		</VerticalStackLayout>
+
+																		<Label
+																			Grid.Column="1"
+																			FontFamily="{DynamicResource FontSemibold}"
+																			FontSize="{StaticResource FontCaption}"
+																			IsVisible="{Binding HasEta}"
+																			Text="{Binding Eta}"
+																			TextColor="{DynamicResource Accent}"
+																			VerticalOptions="Center" />
+																	</Grid>
 																</Grid>
 															</DataTemplate>
 														</BindableLayout.ItemTemplate>

@@ -33,7 +33,7 @@
 					Padding="0,4,0,0"
 					Spacing="1">
 
-					<Label FontFamily="OpenSansSemibold" Text="{Binding Time}" />
+					<Label FontFamily="{DynamicResource FontSemibold}" Text="{Binding Time}" />
 
 					<controls:OccupancyIndicator IsVisible="{Binding HasOccupancy}" Level="{Binding Occupancy}" />
 
@@ -46,16 +46,10 @@
 					<Label
 						IsVisible="{Binding HasDelay}"
 						StyleClass="Delay"
-						Text="{Binding DelayText}">
-						<Label.Triggers>
-							<DataTrigger
-								Binding="{Binding IsEarly}"
-								TargetType="Label"
-								Value="True">
-								<Setter Property="TextColor" Value="{DynamicResource OnTime}" />
-							</DataTrigger>
-						</Label.Triggers>
-					</Label>
+						support:Themed.IsOn="{Binding IsEarly}"
+						support:Themed.OnText="OnTime"
+						support:Themed.Text="Delay"
+						Text="{Binding DelayText}" />
 				</VerticalStackLayout>
 
 				<Grid Grid.Column="1" RowDefinitions="16,*">
@@ -102,6 +96,12 @@
 						IsVisible="{Binding HasPlatform}"
 						StyleClass="Caption"
 						Text="{Binding PlatformText}" />
+
+					<!--  The vehicle skips this stop: nobody can get on (start) or off (end) here  -->
+					<Label
+						IsVisible="{Binding IsNotServed}"
+						StyleClass="Cancelled"
+						Text="{localization:Tr Journey.NotServed}" />
 				</VerticalStackLayout>
 
 			</Grid>
@@ -159,16 +159,10 @@
 						<Label
 							IsVisible="{Binding HasDelay}"
 							StyleClass="Delay"
-							Text="{Binding DelayText}">
-							<Label.Triggers>
-								<DataTrigger
-									Binding="{Binding IsEarly}"
-									TargetType="Label"
-									Value="True">
-									<Setter Property="TextColor" Value="{DynamicResource OnTime}" />
-								</DataTrigger>
-							</Label.Triggers>
-						</Label>
+							support:Themed.IsOn="{Binding IsEarly}"
+							support:Themed.OnText="OnTime"
+							support:Themed.Text="Delay"
+							Text="{Binding DelayText}" />
 
 						<Label
 							IsVisible="{Binding IsNotServed}"
@@ -214,7 +208,7 @@
 							VerticalOptions="Center">
 
 							<Label
-								FontFamily="OpenSansSemibold"
+								FontFamily="{DynamicResource FontSemibold}"
 								FontSize="{StaticResource FontCaption}"
 								StyleClass="ChipLabel"
 								Text="{Binding LineText}"
@@ -257,7 +251,7 @@
 						Text="{localization:Tr Journey.Cancelled}" />
 
 					<Label
-						FontFamily="OpenSansSemibold"
+						FontFamily="{DynamicResource FontSemibold}"
 						FontSize="{StaticResource FontCaption}"
 						IsVisible="{Binding IsActive}"
 						Text="{localization:Tr Journey.InProgress}"
@@ -271,7 +265,7 @@
 						VerticalOptions="Center">
 
 						<Label
-							FontFamily="OpenSansSemibold"
+							FontFamily="{DynamicResource FontSemibold}"
 							FontSize="{StaticResource FontBody}"
 							Text="{Binding StopsText}"
 							TextColor="{DynamicResource Accent}"
@@ -316,7 +310,7 @@
 					Padding="0,4,0,10"
 					Spacing="2">
 
-					<Label FontFamily="OpenSansSemibold" Text="{Binding Text}" />
+					<Label FontFamily="{DynamicResource FontSemibold}" Text="{Binding Text}" />
 
 					<controls:StopNameView
 						Compact="True"
@@ -355,21 +349,15 @@
 
 						<controls:OccupancyIndicator IsVisible="{Binding HasArrivalOccupancy}" Level="{Binding ArrivalOccupancy}" />
 
-						<Label FontFamily="OpenSansSemibold" Text="{Binding ArrivalTime}" />
+						<Label FontFamily="{DynamicResource FontSemibold}" Text="{Binding ArrivalTime}" />
 
 						<Label
 							IsVisible="{Binding HasArrivalDelay}"
 							StyleClass="Delay"
-							Text="{Binding ArrivalDelay}">
-							<Label.Triggers>
-								<DataTrigger
-									Binding="{Binding ArrivalIsEarly}"
-									TargetType="Label"
-									Value="True">
-									<Setter Property="TextColor" Value="{DynamicResource OnTime}" />
-								</DataTrigger>
-							</Label.Triggers>
-						</Label>
+							support:Themed.IsOn="{Binding ArrivalIsEarly}"
+							support:Themed.OnText="OnTime"
+							support:Themed.Text="Delay"
+							Text="{Binding ArrivalDelay}" />
 					</VerticalStackLayout>
 
 					<VerticalStackLayout
@@ -378,21 +366,15 @@
 						Spacing="1"
 						VerticalOptions="Start">
 
-						<Label FontFamily="OpenSansSemibold" Text="{Binding DepartureTime}" />
+						<Label FontFamily="{DynamicResource FontSemibold}" Text="{Binding DepartureTime}" />
 
 						<Label
 							IsVisible="{Binding HasDepartureDelay}"
 							StyleClass="Delay"
-							Text="{Binding DepartureDelay}">
-							<Label.Triggers>
-								<DataTrigger
-									Binding="{Binding DepartureIsEarly}"
-									TargetType="Label"
-									Value="True">
-									<Setter Property="TextColor" Value="{DynamicResource OnTime}" />
-								</DataTrigger>
-							</Label.Triggers>
-						</Label>
+							support:Themed.IsOn="{Binding DepartureIsEarly}"
+							support:Themed.OnText="OnTime"
+							support:Themed.Text="Delay"
+							Text="{Binding DepartureDelay}" />
 
 						<controls:OccupancyIndicator IsVisible="{Binding HasDepartureOccupancy}" Level="{Binding DepartureOccupancy}" />
 					</VerticalStackLayout>
@@ -463,6 +445,13 @@
 						IsVisible="{Binding HasRisk}"
 						StyleClass="Delay"
 						Text="{Binding RiskText}" />
+
+					<!--  The change cannot be made (stop skipped, or the next vehicle leaves first)  -->
+					<Label
+						IsVisible="{Binding HasBlock}"
+						LineBreakMode="WordWrap"
+						StyleClass="Cancelled"
+						Text="{Binding BlockText}" />
 
 				</VerticalStackLayout>
 			</Grid>

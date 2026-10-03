@@ -13,6 +13,11 @@ namespace DDjourneys.Tracking.Schutzengel;
 /// </summary>
 internal static class SchutzengelLiveContent
 {
+	/// <summary>
+	/// What the notification says is what the traveller has to DO next: board, get off, change, walk. It therefore
+	/// only changes when that changes (new ride or walk, a different time or platform, a delay, a notice, a risk),
+	/// never with the passing of intermediate stops. Countdowns run natively via <c>When</c> and need no updates.
+	/// </summary>
 	public static LiveJourneyContent Create(
 		string planId,
 		TripSnapshot snapshot,
@@ -41,6 +46,7 @@ internal static class SchutzengelLiveContent
 		string? shortText = null;
 		bool ongoing = true;
 		DateTimeOffset? when = null;
+		int position = snapshot.Position;
 
 		switch (phase)
 		{
@@ -68,22 +74,29 @@ internal static class SchutzengelLiveContent
 							? route
 							: notice;
 				shortText = "!";
+				position = snapshot.EpisodeStartPosition;
 				break;
 
 			case TrackingPhase.AtInterchange:
+			{
+				TripEpisode? ride = snapshot.NextRide;
+				string here = snapshot.CurrentStop ?? snapshot.NextStop ?? origin;
+				string? there = ride?.From.Name;
+
+				// A real walk to another stop is named as such; a change at the same stop is just "change".
 				title =
-					string.Format(
-						CultureInfo.CurrentCulture,
-						strings.NotifChangeTitle,
-						snapshot.CurrentStop ?? snapshot.NextStop ?? origin);
+					there is { Length: > 0 } && !string.Equals(there.Trim(), here.Trim(), StringComparison.OrdinalIgnoreCase)
+						? string.Format(CultureInfo.CurrentCulture, strings.CourseWalk, there)
+						: string.Format(CultureInfo.CurrentCulture, strings.NotifChangeTitle, here);
+
 				text =
-					string.Format(
-						CultureInfo.CurrentCulture,
-						strings.NotifChangeText,
-						Format.TimeOrDash(snapshot.NextStopTime));
-				shortText = Countdown(snapshot.NextStopTime, now, strings);
-				when = snapshot.NextStopTime;
+					ride is not null
+						? Boarding(ride, strings)
+						: string.Format(CultureInfo.CurrentCulture, strings.NotifChangeText, Format.TimeOrDash(snapshot.NextStopTime));
+				when = ride?.From.Effective ?? snapshot.NextStopTime;
+				position = snapshot.EpisodeStartPosition;
 				break;
+			}
 
 			case TrackingPhase.InProgress:
 				title =
@@ -92,15 +105,15 @@ internal static class SchutzengelLiveContent
 						? string.Format(CultureInfo.CurrentCulture, strings.NotifRiding, line, direction)
 						: route;
 				text =
-					snapshot.NextStop is { Length: > 0 } next
+					snapshot.EpisodeEnd is { Name.Length: > 0 } end
 						? string.Format(
 							CultureInfo.CurrentCulture,
-							strings.NotifNext,
-							next,
-							Format.TimeOrDash(snapshot.NextStopTime))
+							strings.NotifGetOff,
+							WithPlatform(end.Name, end.Platform, end.PlatformIsTrack, strings),
+							Format.TimeOrDash(end.Effective))
 						: route;
-				shortText = Countdown(snapshot.NextStopTime, now, strings);
-				when = snapshot.NextStopTime;
+				when = snapshot.EpisodeEnd?.Effective;
+				position = snapshot.EpisodeStartPosition;
 				break;
 
 			default:
@@ -110,7 +123,6 @@ internal static class SchutzengelLiveContent
 						strings.NotifStartsAt,
 						Format.TimeOrDash(snapshot.Start));
 				text = route;
-				shortText = Countdown(snapshot.Start, now, strings);
 				when = snapshot.Start;
 				break;
 		}
@@ -126,7 +138,7 @@ internal static class SchutzengelLiveContent
 			shortText,
 			segments,
 			snapshot.SegmentIndividual,
-			Math.Clamp(snapshot.Position, 0, total),
+			Math.Clamp(position, 0, total),
 			phase,
 			ongoing,
 			when);
@@ -172,22 +184,19 @@ internal static class SchutzengelLiveContent
 			TrackingPhase.Planned,
 			true);
 
-	private static string? Countdown(DateTimeOffset? target, DateTimeOffset now, TrackingStrings strings)
+	private static string Boarding(TripEpisode ride, TrackingStrings strings)
 	{
-		if (target is not { } time)
-		{
-			return null;
-		}
+		string line = ride.MotName is { Length: > 0 } name ? name : ride.From.Name;
 
-		double minutes = (time - now).TotalMinutes;
-
-		if (minutes <= 0)
-		{
-			return strings.NotifNow;
-		}
-
-		return minutes < 100
-			? string.Format(CultureInfo.CurrentCulture, strings.NotifMinutes, (int)Math.Ceiling(minutes))
-			: null;
+		return string.Format(
+			CultureInfo.CurrentCulture,
+			strings.NotifBoard,
+			WithPlatform(line, ride.From.Platform, ride.From.PlatformIsTrack, strings),
+			Format.TimeOrDash(ride.From.Effective));
 	}
+
+	private static string WithPlatform(string text, string? platform, bool isTrack, TrackingStrings strings) =>
+		string.IsNullOrWhiteSpace(platform)
+			? text
+			: $"{text}, {string.Format(CultureInfo.CurrentCulture, isTrack ? strings.CourseTrack : strings.CoursePlatform, platform)}";
 }

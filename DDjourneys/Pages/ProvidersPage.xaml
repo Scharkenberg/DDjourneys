@@ -41,7 +41,7 @@
 
 												<VerticalStackLayout Spacing="3" VerticalOptions="Center">
 
-													<Label FontFamily="OpenSansSemibold" Text="{Binding Name}" />
+													<Label FontFamily="{DynamicResource FontSemibold}" Text="{Binding Name}" />
 
 													<Label StyleClass="Caption" Text="{Binding FullName}" />
 

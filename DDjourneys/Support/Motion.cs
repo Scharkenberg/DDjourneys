@@ -126,6 +126,8 @@ public static class Motion
 	{
 		ArgumentNullException.ThrowIfNull(page);
 
+		Theme.Revalidate(page);
+
 		if (page.Content is not VisualElement content)
 		{
 			return;

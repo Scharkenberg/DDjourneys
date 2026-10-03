@@ -28,7 +28,7 @@
 									MinimumHeightRequest="52">
 
 									<VerticalStackLayout Spacing="1" VerticalOptions="Center">
-										<Label FontFamily="OpenSansSemibold" Text="{Binding Title}" />
+										<Label FontFamily="{DynamicResource FontSemibold}" Text="{Binding Title}" />
 										<Label
 											IsVisible="{Binding HasDescription}"
 											StyleClass="Caption"
@@ -60,7 +60,7 @@
 									MinimumHeightRequest="48">
 
 									<Label
-										FontFamily="OpenSansSemibold"
+										FontFamily="{DynamicResource FontSemibold}"
 										Text="{Binding Title}"
 										VerticalOptions="Center" />
 
@@ -95,7 +95,7 @@
 									MinimumHeightRequest="48">
 
 									<Label
-										FontFamily="OpenSansSemibold"
+										FontFamily="{DynamicResource FontSemibold}"
 										Text="{Binding Title}"
 										VerticalOptions="Center" />
 
@@ -116,7 +116,7 @@
 					</VerticalStackLayout>
 					<BoxView StyleClass="Divider" />
 					<VerticalStackLayout Padding="12,10" Spacing="4">
-						<Label FontFamily="OpenSansSemibold" Text="{localization:Tr Routing.Footpath}" />
+						<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Routing.Footpath}" />
 
 						<Label StyleClass="Caption" Text="{Binding FootpathText}" />
 
@@ -137,7 +137,7 @@
 									MinimumHeightRequest="52">
 
 									<VerticalStackLayout Spacing="1" VerticalOptions="Center">
-										<Label FontFamily="OpenSansSemibold" Text="{Binding Title}" />
+										<Label FontFamily="{DynamicResource FontSemibold}" Text="{Binding Title}" />
 										<Label
 											IsVisible="{Binding HasDescription}"
 											StyleClass="Caption"
@@ -169,7 +169,7 @@
 									MinimumHeightRequest="48">
 
 									<Label
-										FontFamily="OpenSansSemibold"
+										FontFamily="{DynamicResource FontSemibold}"
 										Text="{Binding Title}"
 										VerticalOptions="Center" />
 
@@ -205,7 +205,7 @@
 									MinimumHeightRequest="52">
 
 									<VerticalStackLayout Spacing="1" VerticalOptions="Center">
-										<Label FontFamily="OpenSansSemibold" Text="{Binding Title}" />
+										<Label FontFamily="{DynamicResource FontSemibold}" Text="{Binding Title}" />
 										<Label
 											IsVisible="{Binding HasDescription}"
 											StyleClass="Caption"

@@ -44,4 +44,6 @@
 	<x:Int32 x:Key="MotionBase">220</x:Int32>
 	<x:Int32 x:Key="MotionSlow">360</x:Int32>
 
+	<!--  Transparent as a resource key, for support:Themed  -->
+	<Color x:Key="Clear">Transparent</Color>
 </ResourceDictionary>

@@ -156,12 +156,14 @@ public sealed class StopNameView : ContentView
 		if (Compact)
 		{
 			_name.StyleClass = ["Caption"];
-			_name.ClearValue(Label.FontFamilyProperty);
+			// Never RemoveDynamicResource here: MAUI keeps one registration per property, so removing ours
+			// would also drop the implicit style's and freeze the font on theme changes.
+			_name.SetDynamicResource(Label.FontFamilyProperty, "FontRegular");
 		}
 		else
 		{
 			_name.StyleClass = [];
-			_name.FontFamily = "OpenSansSemibold";
+			_name.SetDynamicResource(Label.FontFamilyProperty, "FontSemibold");
 		}
 
 		if (NameFontSize > 0)

@@ -23,16 +23,14 @@ public sealed class SettingsViewModel : DisposableViewModel
 
 		ListenToLocalization(_localization, OnLocalizationChanged);
 
-		SelectSystemThemeCommand = new AsyncCommand(SelectSystemThemeAsync);
-		OpenThemesCommand = new AsyncCommand(OpenThemesAsync);
+		OpenAppearanceCommand = new AsyncCommand(OpenAppearanceAsync);
 		SelectLanguageCommand = new Command<string>(SelectLanguage);
 		ResetCommand = new Command(Reset);
 		OpenRoutingCommand = new AsyncCommand(OpenRoutingAsync);
 		OpenProvidersCommand = new AsyncCommand(OpenProvidersAsync);
 	}
 
-	public AsyncCommand SelectSystemThemeCommand { get; }
-	public AsyncCommand OpenThemesCommand { get; }
+	public AsyncCommand OpenAppearanceCommand { get; }
 	public Command<string> SelectLanguageCommand { get; }
 	public Command ResetCommand { get; }
 	public AsyncCommand OpenRoutingCommand { get; }
@@ -101,6 +99,29 @@ public sealed class SettingsViewModel : DisposableViewModel
 	public string MaxResultsText =>
 		$"{_settings.MaxResults} " +
 		_localization.CurrentStrings.Settings.ResultsDescription.ToLowerInvariant();
+
+	/// <summary>Lead time for newly followed journeys; existing ones keep their own (changeable per journey).</summary>
+	public double LeadMinutes
+	{
+		get => _settings.DefaultLeadMinutes;
+		set
+		{
+			int minutes = (int)Math.Round(value);
+
+			if (minutes != _settings.DefaultLeadMinutes)
+			{
+				_settings.DefaultLeadMinutes = minutes;
+			}
+
+			OnPropertyChanged();
+			OnPropertyChanged(nameof(LeadText));
+		}
+	}
+
+	public string LeadText =>
+		string.Format(
+			_localization.CurrentStrings.Settings.LeadMinutesDescription,
+			_settings.DefaultLeadMinutes);
 
 	public double TimeoutSeconds
 	{
@@ -274,59 +295,23 @@ public sealed class SettingsViewModel : DisposableViewModel
 		}
 	}
 
-	// ----- Theme: only "System" or "Other" is chosen here -----
+	// ----- Appearance: details live on their own page -----
 
-	public bool IsSystemTheme =>
-		Theme.Choice == ThemeCatalog.SystemId;
+	/// <summary>Current choice in one line, for example "System · Default · Open Sans".</summary>
+	public string AppearanceSummary => AppearanceViewModel.Summary(_localization);
 
-	public bool IsOtherTheme => !IsSystemTheme;
+	/// <summary>Called when the page (re)appears, e.g. after returning from the appearance page.</summary>
+	public void RefreshAppearance() => OnPropertyChanged(nameof(AppearanceSummary));
 
-	/// <summary>Shows which theme "Other" currently stands for.</summary>
-	public string OtherThemeText
-	{
-		get
-		{
-			SettingsStrings strings = _localization.CurrentStrings.Settings;
-
-			return IsSystemTheme
-				? strings.ThemeOtherDescription
-				: ThemeOption.NameOf(ThemeCatalog.Find(Theme.Choice), strings);
-		}
-	}
-
-	/// <summary>Called when the page (re)appears, e.g. after returning from the theme list.</summary>
-	public void RefreshTheme()
-	{
-		OnPropertyChanged(nameof(IsSystemTheme));
-		OnPropertyChanged(nameof(IsOtherTheme));
-		OnPropertyChanged(nameof(OtherThemeText));
-	}
-
-	private async Task SelectSystemThemeAsync()
+	private async Task OpenAppearanceAsync()
 	{
 		try
 		{
-			await Theme.SetAsync(ThemeCatalog.SystemId);
+			await Shell.Current.GoToAsync(Routes.Appearance);
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Theme change failed: {ex}");
-		}
-		finally
-		{
-			RefreshTheme();
-		}
-	}
-
-	private async Task OpenThemesAsync()
-	{
-		try
-		{
-			await Shell.Current.GoToAsync(Routes.Themes);
-		}
-		catch (Exception ex)
-		{
-			System.Diagnostics.Debug.WriteLine($"Opening themes failed: {ex}");
+			System.Diagnostics.Debug.WriteLine($"Opening appearance failed: {ex}");
 		}
 	}
 
@@ -366,7 +351,7 @@ public sealed class SettingsViewModel : DisposableViewModel
 
 	private void RefreshLocalizedProperties()
 	{
-		RefreshTheme();
+		RefreshAppearance();
 		OnPropertyChanged(nameof(AvailableLanguages));
 		OnPropertyChanged(nameof(LanguageCode));
 		OnPropertyChanged(nameof(MaxResultsText));
@@ -387,6 +372,8 @@ public sealed class SettingsViewModel : DisposableViewModel
 		OnPropertyChanged(nameof(ExpandNotices));
 		OnPropertyChanged(nameof(TimeoutSeconds));
 		OnPropertyChanged(nameof(TimeoutText));
+		OnPropertyChanged(nameof(LeadMinutes));
+		OnPropertyChanged(nameof(LeadText));
 		OnPropertyChanged(nameof(ShowOccupancy));
 		OnPropertyChanged(nameof(ShowPlatforms));
 		OnPropertyChanged(nameof(ExpandStops));

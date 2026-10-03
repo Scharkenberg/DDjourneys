@@ -14,7 +14,7 @@ public static class Routes
 	public const string Results = "results";
 	public const string Journey = "journey";
 	public const string Settings = "settings";
-	public const string Themes = "themes";
+	public const string Appearance = "appearance";
 	public const string Tracked = "tracked";
 
 	/// <summary>Query key: plan id of the followed journey to bring into view.</summary>

@@ -59,9 +59,34 @@ public sealed class StopTime
 
 
 	/// <summary>
-	/// Whether this stop has been cancelled.
+	/// Whether this stop has been cancelled (arrival, departure or both).
 	/// </summary>
 	public bool IsCancelled { get; init; }
+
+
+	/// <summary>
+	/// The vehicle does not arrive here (nobody can get off). Providers that only know
+	/// <see cref="IsCancelled"/> leave both directional flags false.
+	/// </summary>
+	public bool IsArrivalCancelled { get; init; }
+
+
+	/// <summary>
+	/// The vehicle does not depart from here (nobody can get on), e.g. a trip cut short at this stop.
+	/// </summary>
+	public bool IsDepartureCancelled { get; init; }
+
+
+	/// <summary>Nobody can get on here.</summary>
+	public bool CannotBoard =>
+		IsDepartureCancelled
+		|| (IsCancelled && !IsArrivalCancelled && !IsDepartureCancelled);
+
+
+	/// <summary>Nobody can get off here.</summary>
+	public bool CannotAlight =>
+		IsArrivalCancelled
+		|| (IsCancelled && !IsArrivalCancelled && !IsDepartureCancelled);
 
 
 	/// <summary>

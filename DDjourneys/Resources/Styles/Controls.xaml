@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<ResourceDictionary xmlns="http://schemas.microsoft.com/dotnet/2021/maui" xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
+<ResourceDictionary
+	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+	xmlns:support="clr-namespace:DDjourneys.Support">
 
 	<Style ApplyToDerivedTypes="True" TargetType="Page">
 		<Setter Property="BackgroundColor" Value="{DynamicResource Bg}" />
@@ -15,19 +18,19 @@
 	<!--  Text. Classes: Headline, Title, Time, Caption, OnTime, Delay, Cancelled  -->
 	<Style TargetType="Label">
 		<Setter Property="TextColor" Value="{DynamicResource Ink}" />
-		<Setter Property="FontFamily" Value="OpenSansRegular" />
+		<Setter Property="FontFamily" Value="{DynamicResource FontRegular}" />
 		<Setter Property="FontSize" Value="{StaticResource FontBody}" />
 	</Style>
 	<Style Class="Headline" TargetType="Label">
-		<Setter Property="FontFamily" Value="OpenSansSemibold" />
+		<Setter Property="FontFamily" Value="{DynamicResource FontSemibold}" />
 		<Setter Property="FontSize" Value="{StaticResource FontHeadline}" />
 	</Style>
 	<Style Class="Title" TargetType="Label">
-		<Setter Property="FontFamily" Value="OpenSansSemibold" />
+		<Setter Property="FontFamily" Value="{DynamicResource FontSemibold}" />
 		<Setter Property="FontSize" Value="{StaticResource FontTitle}" />
 	</Style>
 	<Style Class="Time" TargetType="Label">
-		<Setter Property="FontFamily" Value="OpenSansSemibold" />
+		<Setter Property="FontFamily" Value="{DynamicResource FontSemibold}" />
 		<Setter Property="FontSize" Value="{StaticResource FontTime}" />
 	</Style>
 	<Style Class="Caption" TargetType="Label">
@@ -40,17 +43,17 @@
 		<Setter Property="TextColor" Value="{DynamicResource InkMuted}" />
 	</Style>
 	<Style Class="OnTime" TargetType="Label">
-		<Setter Property="FontFamily" Value="OpenSansSemibold" />
+		<Setter Property="FontFamily" Value="{DynamicResource FontSemibold}" />
 		<Setter Property="FontSize" Value="{StaticResource FontCaption}" />
 		<Setter Property="TextColor" Value="{DynamicResource OnTime}" />
 	</Style>
 	<Style Class="Delay" TargetType="Label">
-		<Setter Property="FontFamily" Value="OpenSansSemibold" />
+		<Setter Property="FontFamily" Value="{DynamicResource FontSemibold}" />
 		<Setter Property="FontSize" Value="{StaticResource FontCaption}" />
 		<Setter Property="TextColor" Value="{DynamicResource Delay}" />
 	</Style>
 	<Style Class="Cancelled" TargetType="Label">
-		<Setter Property="FontFamily" Value="OpenSansSemibold" />
+		<Setter Property="FontFamily" Value="{DynamicResource FontSemibold}" />
 		<Setter Property="FontSize" Value="{StaticResource FontCaption}" />
 		<Setter Property="TextColor" Value="{DynamicResource Cancelled}" />
 	</Style>
@@ -81,10 +84,14 @@
 	</Style>
 
 	<!--  Buttons. Default filled; class Tonal for secondary actions.  -->
+	<!--  Colours go through support:Themed (local dynamic resources); see Themed.cs for why
+	      DynamicResource setters must not be used in VisualStates or Triggers here.  -->
 	<Style TargetType="Button">
-		<Setter Property="BackgroundColor" Value="{DynamicResource Accent}" />
-		<Setter Property="TextColor" Value="{DynamicResource OnAccent}" />
-		<Setter Property="FontFamily" Value="OpenSansSemibold" />
+		<Setter Property="support:Themed.Background" Value="Accent" />
+		<Setter Property="support:Themed.Text" Value="OnAccent" />
+		<Setter Property="support:Themed.DisabledBackground" Value="Raised" />
+		<Setter Property="support:Themed.DisabledText" Value="InkMuted" />
+		<Setter Property="FontFamily" Value="{DynamicResource FontSemibold}" />
 		<Setter Property="FontSize" Value="{StaticResource FontBody}" />
 		<Setter Property="CornerRadius" Value="6" />
 		<Setter Property="BorderWidth" Value="0" />
@@ -100,20 +107,17 @@
 							<Setter Property="Scale" Value="0.97" />
 						</VisualState.Setters>
 					</VisualState>
-					<!--  Explicit colours: opacity would wash the label out to unreadable  -->
-					<VisualState x:Name="Disabled">
-						<VisualState.Setters>
-							<Setter Property="BackgroundColor" Value="{DynamicResource Raised}" />
-							<Setter Property="TextColor" Value="{DynamicResource InkMuted}" />
-						</VisualState.Setters>
-					</VisualState>
+					<!--  Disabled colours: Themed.Disabled* (explicit colours; opacity would wash the label out)  -->
+					<VisualState x:Name="Disabled" />
 				</VisualStateGroup>
 			</VisualStateGroupList>
 		</Setter>
 	</Style>
 	<Style Class="IconButton" TargetType="Button">
-		<Setter Property="BackgroundColor" Value="Transparent" />
-		<Setter Property="TextColor" Value="{DynamicResource Accent}" />
+		<Setter Property="support:Themed.Background" Value="Clear" />
+		<Setter Property="support:Themed.Text" Value="Accent" />
+		<Setter Property="support:Themed.DisabledBackground" Value="Clear" />
+		<Setter Property="support:Themed.DisabledText" Value="InkMuted" />
 		<Setter Property="FontSize" Value="22" />
 		<Setter Property="Padding" Value="0" />
 		<Setter Property="MinimumHeightRequest" Value="44" />
@@ -124,22 +128,17 @@
 					<VisualState x:Name="Normal" />
 					<VisualState x:Name="Pressed">
 						<VisualState.Setters>
-							<Setter Property="BackgroundColor" Value="{DynamicResource AccentSoft}" />
+							<Setter Property="Scale" Value="0.94" />
 						</VisualState.Setters>
 					</VisualState>
-					<VisualState x:Name="Disabled">
-						<VisualState.Setters>
-							<Setter Property="BackgroundColor" Value="Transparent" />
-							<Setter Property="TextColor" Value="{DynamicResource InkMuted}" />
-						</VisualState.Setters>
-					</VisualState>
+					<VisualState x:Name="Disabled" />
 				</VisualStateGroup>
 			</VisualStateGroupList>
 		</Setter>
 	</Style>
 	<Style Class="Tonal" TargetType="Button">
-		<Setter Property="BackgroundColor" Value="{DynamicResource AccentSoft}" />
-		<Setter Property="TextColor" Value="{DynamicResource Accent}" />
+		<Setter Property="support:Themed.Background" Value="AccentSoft" />
+		<Setter Property="support:Themed.Text" Value="Accent" />
 	</Style>
 
 
@@ -156,7 +155,7 @@
 		<Setter Property="Color" Value="{DynamicResource Outline}" />
 	</Style>
 	<Style Class="Section" TargetType="Label">
-		<Setter Property="FontFamily" Value="OpenSansSemibold" />
+		<Setter Property="FontFamily" Value="{DynamicResource FontSemibold}" />
 		<Setter Property="FontSize" Value="{StaticResource FontCaption}" />
 		<Setter Property="TextColor" Value="{DynamicResource Accent}" />
 		<Setter Property="CharacterSpacing" Value="0.5" />
@@ -164,25 +163,25 @@
 		<Setter Property="Margin" Value="4,8,0,0" />
 	</Style>
 	<Style Class="Subtitle" TargetType="Label">
-		<Setter Property="FontFamily" Value="OpenSansSemibold" />
+		<Setter Property="FontFamily" Value="{DynamicResource FontSemibold}" />
 		<Setter Property="FontSize" Value="{StaticResource FontSubtitle}" />
 	</Style>
 
 	<!--  Native controls: themed, never wrapped in tight borders  -->
 	<Style TargetType="DatePicker">
 		<Setter Property="TextColor" Value="{DynamicResource Ink}" />
-		<Setter Property="FontFamily" Value="OpenSansSemibold" />
+		<Setter Property="FontFamily" Value="{DynamicResource FontSemibold}" />
 		<Setter Property="FontSize" Value="{StaticResource FontBody}" />
 	</Style>
 	<Style TargetType="TimePicker">
 		<Setter Property="TextColor" Value="{DynamicResource Ink}" />
-		<Setter Property="FontFamily" Value="OpenSansSemibold" />
+		<Setter Property="FontFamily" Value="{DynamicResource FontSemibold}" />
 		<Setter Property="FontSize" Value="{StaticResource FontBody}" />
 	</Style>
 	<Style TargetType="Picker">
 		<Setter Property="TextColor" Value="{DynamicResource Ink}" />
 		<Setter Property="TitleColor" Value="{DynamicResource InkMuted}" />
-		<Setter Property="FontFamily" Value="OpenSansRegular" />
+		<Setter Property="FontFamily" Value="{DynamicResource FontRegular}" />
 		<Setter Property="FontSize" Value="{StaticResource FontBody}" />
 	</Style>
 	<!--  Thumb contrasts with the track in both states (a dark thumb on the accent track was hard to see)  -->
@@ -217,7 +216,7 @@
 	<Style TargetType="Entry">
 		<Setter Property="TextColor" Value="{DynamicResource Ink}" />
 		<Setter Property="PlaceholderColor" Value="{DynamicResource InkMuted}" />
-		<Setter Property="FontFamily" Value="OpenSansRegular" />
+		<Setter Property="FontFamily" Value="{DynamicResource FontRegular}" />
 		<Setter Property="FontSize" Value="{StaticResource FontBody}" />
 	</Style>
 

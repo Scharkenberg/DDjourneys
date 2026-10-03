@@ -20,7 +20,9 @@ public sealed record TrackedStop(
 	string Name,
 	DateTimeOffset? Scheduled,
 	DateTimeOffset? Realtime,
-	TrackedStopState State)
+	TrackedStopState State,
+	string? Platform = null,
+	bool PlatformIsTrack = false)
 {
 	public DateTimeOffset? Effective => Realtime ?? Scheduled;
 
@@ -38,11 +40,29 @@ public sealed record TrackedSegment(
 	string? Direction,
 	IReadOnlyList<TrackedStop> Stops,
 	bool IsPassed,
-	bool IsCurrent)
+	bool IsCurrent,
+	TimeSpan? Duration = null)
 {
 	public TrackedStop? From => Stops.Count > 0 ? Stops[0] : null;
 
 	public TrackedStop? To => Stops.Count > 0 ? Stops[^1] : null;
+
+	/// <summary>
+	/// A walk that goes nowhere: it starts and ends at the same stop and the platforms are not known to differ.
+	/// Such a "change" is just waiting for the next vehicle and is not worth a row of its own.
+	/// </summary>
+	public bool IsInPlaceChange =>
+		IsWalk
+		&& From is { } from
+		&& To is { } to
+		&& from.Name.Trim().Length > 0
+		&& string.Equals(from.Name.Trim(), to.Name.Trim(), StringComparison.OrdinalIgnoreCase)
+		&& !PlatformsDiffer(from, to);
+
+	private static bool PlatformsDiffer(TrackedStop a, TrackedStop b) =>
+		!string.IsNullOrWhiteSpace(a.Platform)
+		&& !string.IsNullOrWhiteSpace(b.Platform)
+		&& !string.Equals(a.Platform.Trim(), b.Platform.Trim(), StringComparison.OrdinalIgnoreCase);
 }
 
 /// <summary>

@@ -88,7 +88,7 @@
 							StyleClass="Chip"
 							Stroke="{Binding Look.Stroke}">
 							<Label
-								FontFamily="OpenSansSemibold"
+								FontFamily="{DynamicResource FontSemibold}"
 								FontSize="{StaticResource FontCaption}"
 								StyleClass="ChipLabel"
 								Text="{Binding Text}"
@@ -98,13 +98,15 @@
 				</BindableLayout.ItemTemplate>
 			</FlexLayout>
 
+			<!--  Cannot take place: own row, so a long reason can wrap  -->
+			<Label
+				IsVisible="{Binding IsCancelled}"
+				LineBreakMode="WordWrap"
+				StyleClass="Cancelled"
+				Text="{Binding BlockText}" />
+
 			<!--  State  -->
 			<HorizontalStackLayout IsVisible="{Binding HasStatusRow}" Spacing="{StaticResource SpaceM}">
-				<Label IsVisible="{Binding IsCancelled}" StyleClass="Cancelled">
-					<Label.Text>
-						<localization:Tr Key="Journey.Cancelled" />
-					</Label.Text>
-				</Label>
 				<Label IsVisible="{Binding IsOnTime}" StyleClass="OnTime">
 					<Label.Text>
 						<localization:Tr Key="Journey.OnTime" />

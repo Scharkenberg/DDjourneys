@@ -24,6 +24,16 @@ public partial class App : Application
 		};
 	}
 
-	protected override Window CreateWindow(IActivationState? activationState) =>
-		new Window(_shellFactory());
+	protected override Window CreateWindow(IActivationState? activationState)
+	{
+		var window = new Window(_shellFactory());
+
+		// The OS accent colour can change while the app is in the background.
+		window.Resumed += (_, _) => Theme.Refresh();
+		window.Activated += (_, _) => Theme.Refresh();
+
+		WindowPlacement.Attach(window);
+
+		return window;
+	}
 }

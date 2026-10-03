@@ -29,6 +29,9 @@ public static class MauiProgram
 			{
 				fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
 				fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
+				// Inter Tight as two static instances (MAUI cannot select weights from a variable font).
+				fonts.AddFont("InterTight-Regular.ttf", "InterTightRegular");
+				fonts.AddFont("InterTight-SemiBold.ttf", "InterTightSemiBold");
 			});
 
 #if DEBUG
@@ -95,7 +98,8 @@ public static class MauiProgram
 				services.GetRequiredService<TrackingCallbackBridge>(),
 				services.GetRequiredService<ILiveJourneySurface>(),
 				services.GetRequiredService<ITrackingRuntime>(),
-				services.GetRequiredService<INotificationAccess>()));
+				services.GetRequiredService<INotificationAccess>(),
+				defaultLeadMinutes: () => services.GetRequiredService<AppSettings>().DefaultLeadMinutes));
 
 		// External contract (links, intents, protocol launches): see docs/EXTERNAL_CONTRACT.md.
 		builder.Services.AddSingleton<ICallbackLauncher, PlatformCallbackLauncher>();
@@ -128,8 +132,8 @@ public static class MauiProgram
 
 		builder.Services.AddTransient<SettingsPage>();
 		builder.Services.AddTransient<SettingsViewModel>();
-		builder.Services.AddTransient<ThemesPage>();
-		builder.Services.AddTransient<ThemesViewModel>();
+		builder.Services.AddTransient<AppearancePage>();
+		builder.Services.AddTransient<AppearanceViewModel>();
 
 		builder.Services.AddTransient<TrackedJourneysPage>();
 		builder.Services.AddTransient<TrackedJourneysViewModel>();

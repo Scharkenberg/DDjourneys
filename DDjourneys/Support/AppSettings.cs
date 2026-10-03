@@ -30,19 +30,66 @@ public sealed class AppSettings
 
 	// ----- App -----
 
-	/// <summary>Theme id from <see cref="ThemeCatalog"/>, or "system".</summary>
-	public string ThemeId
+	/// <summary>Light/dark mode: "system", "light" or "dark".</summary>
+	public string ThemeMode
 	{
-		get
-		{
-			string id = Read("themeId", string.Empty);
+		get => Read("themeMode", "system");
+		set => Write("themeMode", value);
+	}
 
-			// Older versions stored the enum name under "theme".
-			return id.Length > 0
-				? id
-				: Read("theme", "System").ToLowerInvariant();
+	/// <summary>Id of the colour set from <see cref="ColorCatalog"/>.</summary>
+	public string ThemeColor
+	{
+		get => Read("themeColor", ColorCatalog.DefaultId);
+		set => Write("themeColor", value);
+	}
+
+	/// <summary>Dark mode only: pure black surfaces.</summary>
+	public bool ThemePureBlack
+	{
+		get => Read("themePureBlack", true);
+		set => Write("themePureBlack", value);
+	}
+
+	/// <summary>Font face id from <see cref="FontCatalog"/>.</summary>
+	public string FontFace
+	{
+		get => Read("fontFace", FontCatalog.OpenSansId);
+		set => Write("fontFace", value);
+	}
+
+	/// <summary>
+	/// One-time migration of the former single "themeId" (or the even older "theme") into mode, colour set and pure black.
+	/// Does nothing once "themeMode" exists.
+	/// </summary>
+	public void MigrateAppearance()
+	{
+		try
+		{
+			if (_prefs.ContainsKey("themeMode"))
+			{
+				return;
+			}
+
+			string legacy = Read("themeId", string.Empty);
+
+			if (legacy.Length == 0)
+			{
+				legacy = Read("theme", "System");
+			}
+
+			(string mode, string color, bool black) = ColorCatalog.FromLegacy(legacy);
+
+			_prefs.Set("themeMode", mode);
+			_prefs.Set("themeColor", color);
+			_prefs.Set("themePureBlack", black);
+			_prefs.Remove("themeId");
+			_prefs.Remove("theme");
 		}
-		set => Write("themeId", value);
+		catch (Exception ex)
+		{
+			System.Diagnostics.Debug.WriteLine($"Appearance migration skipped: {ex.Message}");
+		}
 	}
 
 	/// <summary>UI language as an IETF culture code (for example "en" or "de-DE").</summary>
@@ -101,6 +148,13 @@ public sealed class AppSettings
 	{
 		get => Read("expandNotices", false);
 		set => Write("expandNotices", value);
+	}
+
+	/// <summary>Minutes before departure at which a newly followed journey starts to be monitored and alerted (1..60).</summary>
+	public int DefaultLeadMinutes
+	{
+		get => Math.Clamp(Read("leadMinutes", 5), 1, 60);
+		set => Write("leadMinutes", Math.Clamp(value, 1, 60));
 	}
 
 	/// <summary>Request timeout for provider calls, seconds (5..60).</summary>

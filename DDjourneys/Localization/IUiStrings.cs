@@ -130,6 +130,11 @@ public sealed class JourneyStrings
 	public required string WalkAbout { get; init; }
 	public required string BetweenStops { get; init; }
 	public required string ConnectionMayBeMissed { get; init; }
+	public required string NotPossible { get; init; }
+	public required string BlockRideCancelled { get; init; }
+	public required string BlockNotServed { get; init; }
+	public required string BlockConnection { get; init; }
+	public required string ConnectionUnreachable { get; init; }
 	public required string ChangeAt { get; init; }
 	public required string Platform { get; init; }
 	public required string WithinStop { get; init; }
@@ -166,18 +171,28 @@ public sealed class SettingsStrings
 	public required string JourneyOptions { get; init; }
 	public required string About { get; init; }
 	public required string ThemeSystem { get; init; }
-	public required string ThemeSystemDescription { get; init; }
 	public required string ThemeLight { get; init; }
-	public required string ThemeLightDescription { get; init; }
 	public required string ThemeDark { get; init; }
-	public required string ThemeDarkDescription { get; init; }
-	public required string ThemeAmoled { get; init; }
-	public required string ThemeAmoledDescription { get; init; }
-	public required string ThemeOther { get; init; }
-	public required string ThemeOtherDescription { get; init; }
-	public required string ThemesTitle { get; init; }
-	public required string ThemesLightHeader { get; init; }
-	public required string ThemesDarkHeader { get; init; }
+	public required string AppearanceTitle { get; init; }
+	public required string AppearanceHint { get; init; }
+	public required string ModeHeader { get; init; }
+	public required string ModeSystemDescription { get; init; }
+	public required string ModeLightDescription { get; init; }
+	public required string ModeDarkDescription { get; init; }
+	public required string PureBlack { get; init; }
+	public required string PureBlackDescription { get; init; }
+	public required string ColorsHeader { get; init; }
+	public required string ColorSystem { get; init; }
+	public required string ColorSystemDescription { get; init; }
+	public required string ColorSystemSolarized { get; init; }
+	public required string ColorSystemSolarizedDescription { get; init; }
+	public required string FontHeader { get; init; }
+	public required string FontSystem { get; init; }
+	public required string FontSystemDescription { get; init; }
+	public required string FontOpenSans { get; init; }
+	public required string FontOpenSansDescription { get; init; }
+	public required string FontInterTight { get; init; }
+	public required string FontInterTightDescription { get; init; }
 	public required string Animations { get; init; }
 	public required string AnimationsDescription { get; init; }
 	public required string TechnicalDetails { get; init; }
@@ -185,6 +200,8 @@ public sealed class SettingsStrings
 	public required string Results { get; init; }
 	public required string ResultsDescription { get; init; }
 	public required string RequestTimeout { get; init; }
+	public required string LeadMinutes { get; init; }
+	public required string LeadMinutesDescription { get; init; }
 	public required string RequestTimeoutDescription { get; init; }
 	public required string ArriveBy { get; init; }
 	public required string ArriveByDescription { get; init; }
@@ -317,6 +334,11 @@ public sealed class TrackingStrings
 	public required string CourseHide { get; init; }
 	public required string CourseNotYet { get; init; }
 	public required string CourseWalk { get; init; }
+	public required string CoursePlatform { get; init; }
+	public required string CourseTrack { get; init; }
+	public required string CourseWalkMinutes { get; init; }
+	public required string CourseIn { get; init; }
+	public required string CourseNow { get; init; }
 	public required string DeleteAll { get; init; }
 	public required string DeleteTitle { get; init; }
 	public required string DeleteMessage { get; init; }
@@ -347,6 +369,8 @@ public sealed class TrackingStrings
 	public required string NotifRoute { get; init; }
 	public required string NotifRiding { get; init; }
 	public required string NotifNext { get; init; }
+	public required string NotifGetOff { get; init; }
+	public required string NotifBoard { get; init; }
 	public required string NotifChangeTitle { get; init; }
 	public required string NotifChangeText { get; init; }
 	public required string NotifRiskTitle { get; init; }

@@ -524,9 +524,15 @@ public sealed partial class PlanViewModel : DisposableViewModel
 
 				OnPropertyChanged(
 					nameof(WhenText));
+
+				OnPropertyChanged(
+					nameof(IsDeparture));
 			}
 		}
 	}
+
+	/// <summary>Inverse of <see cref="IsArrival"/>, for the "Leave" toggle.</summary>
+	public bool IsDeparture => !IsArrival;
 
 
 	public bool IsNow

@@ -15,68 +15,30 @@
 			<Label StyleClass="Section" Text="{localization:Tr Settings.Theme}" />
 
 			<Border Padding="0" StyleClass="Card">
-				<VerticalStackLayout>
+				<Grid
+					Padding="12,10"
+					ColumnDefinitions="*,Auto"
+					ColumnSpacing="10"
+					MinimumHeightRequest="52">
+					<VerticalStackLayout Spacing="1" VerticalOptions="Center">
+						<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.AppearanceTitle}" />
+						<Label
+							LineBreakMode="TailTruncation"
+							StyleClass="Caption"
+							Text="{Binding AppearanceSummary}" />
+					</VerticalStackLayout>
 
-					<!--  System: follows the device; dark becomes AMOLED  -->
-					<Grid
-						Padding="12,10"
-						ColumnDefinitions="*,Auto"
-						MinimumHeightRequest="52">
-						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
-							<Label FontFamily="OpenSansSemibold" Text="{localization:Tr Settings.ThemeSystem}" />
-							<Label StyleClass="Caption" Text="{localization:Tr Settings.ThemeSystemDescription}" />
-						</VerticalStackLayout>
+					<controls:Icon
+						Grid.Column="1"
+						Glyph="ChevronRight"
+						Size="20"
+						VerticalOptions="Center"
+						Color="{DynamicResource InkMuted}" />
 
-						<controls:Icon
-							Grid.Column="1"
-							Glyph="Check"
-							IsVisible="{Binding IsSystemTheme}"
-							Size="20"
-							VerticalOptions="Center"
-							Color="{DynamicResource Accent}" />
-
-						<Grid.GestureRecognizers>
-							<TapGestureRecognizer Command="{Binding SelectSystemThemeCommand}" />
-						</Grid.GestureRecognizers>
-					</Grid>
-
-					<BoxView StyleClass="Divider" />
-
-					<!--  Other: opens the list of all colour themes  -->
-					<Grid
-						Padding="12,10"
-						ColumnDefinitions="*,Auto,Auto"
-						ColumnSpacing="10"
-						MinimumHeightRequest="52">
-						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
-							<Label FontFamily="OpenSansSemibold" Text="{localization:Tr Settings.ThemeOther}" />
-							<Label
-								LineBreakMode="TailTruncation"
-								StyleClass="Caption"
-								Text="{Binding OtherThemeText}" />
-						</VerticalStackLayout>
-
-						<controls:Icon
-							Grid.Column="1"
-							Glyph="Check"
-							IsVisible="{Binding IsOtherTheme}"
-							Size="20"
-							VerticalOptions="Center"
-							Color="{DynamicResource Accent}" />
-
-						<controls:Icon
-							Grid.Column="2"
-							Glyph="ChevronRight"
-							Size="20"
-							VerticalOptions="Center"
-							Color="{DynamicResource InkMuted}" />
-
-						<Grid.GestureRecognizers>
-							<TapGestureRecognizer Command="{Binding OpenThemesCommand}" />
-						</Grid.GestureRecognizers>
-					</Grid>
-
-				</VerticalStackLayout>
+					<Grid.GestureRecognizers>
+						<TapGestureRecognizer Command="{Binding OpenAppearanceCommand}" />
+					</Grid.GestureRecognizers>
+				</Grid>
 			</Border>
 
 			<Label StyleClass="Section" Text="{localization:Tr Settings.Language}" />
@@ -92,7 +54,7 @@
 								MinimumHeightRequest="52">
 
 								<Label
-									FontFamily="OpenSansSemibold"
+									FontFamily="{DynamicResource FontSemibold}"
 									Text="{Binding DisplayName}"
 									VerticalOptions="Center" />
 
@@ -126,7 +88,7 @@
 						MinimumHeightRequest="52">
 
 						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
-							<Label FontFamily="OpenSansSemibold" Text="{localization:Tr Settings.Animations}" />
+							<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.Animations}" />
 							<Label StyleClass="Caption" Text="{localization:Tr Settings.AnimationsDescription}" />
 						</VerticalStackLayout>
 
@@ -146,7 +108,7 @@
 						MinimumHeightRequest="52">
 
 						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
-							<Label FontFamily="OpenSansSemibold" Text="{localization:Tr Settings.TechnicalDetails}" />
+							<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.TechnicalDetails}" />
 							<Label StyleClass="Caption" Text="{localization:Tr Settings.TechnicalDetailsDescription}" />
 						</VerticalStackLayout>
 
@@ -172,7 +134,7 @@
 						ColumnSpacing="10"
 						MinimumHeightRequest="52">
 						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
-							<Label FontFamily="OpenSansSemibold" Text="{localization:Tr Provider.Title}" />
+							<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Provider.Title}" />
 							<Label
 								LineBreakMode="TailTruncation"
 								StyleClass="Caption"
@@ -194,7 +156,7 @@
 					<BoxView StyleClass="Divider" />
 
 					<VerticalStackLayout Padding="12,10" Spacing="4">
-						<Label FontFamily="OpenSansSemibold" Text="{localization:Tr Settings.Results}" />
+						<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.Results}" />
 
 						<Label StyleClass="Caption" Text="{Binding MaxResultsText}" />
 
@@ -208,7 +170,21 @@
 					<BoxView StyleClass="Divider" />
 
 					<VerticalStackLayout Padding="12,10" Spacing="4">
-						<Label FontFamily="OpenSansSemibold" Text="{localization:Tr Settings.RequestTimeout}" />
+						<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.LeadMinutes}" />
+
+						<Label StyleClass="Caption" Text="{Binding LeadText}" />
+
+						<Slider
+							Maximum="60"
+							Minimum="1"
+							SemanticProperties.Description="{localization:Tr Settings.LeadMinutes}"
+							Value="{Binding LeadMinutes}" />
+					</VerticalStackLayout>
+
+					<BoxView StyleClass="Divider" />
+
+					<VerticalStackLayout Padding="12,10" Spacing="4">
+						<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.RequestTimeout}" />
 
 						<Label StyleClass="Caption" Text="{Binding TimeoutText}" />
 
@@ -228,7 +204,7 @@
 						MinimumHeightRequest="52">
 
 						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
-							<Label FontFamily="OpenSansSemibold" Text="{localization:Tr Settings.ArriveBy}" />
+							<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.ArriveBy}" />
 							<Label StyleClass="Caption" Text="{localization:Tr Settings.ArriveByDescription}" />
 						</VerticalStackLayout>
 
@@ -248,7 +224,7 @@
 						MinimumHeightRequest="52">
 
 						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
-							<Label FontFamily="OpenSansSemibold" Text="{localization:Tr Settings.WalkingLegs}" />
+							<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.WalkingLegs}" />
 							<Label StyleClass="Caption" Text="{localization:Tr Settings.WalkingLegsDescription}" />
 						</VerticalStackLayout>
 
@@ -268,7 +244,7 @@
 						MinimumHeightRequest="52">
 
 						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
-							<Label FontFamily="OpenSansSemibold" Text="{localization:Tr Settings.ExpandNotices}" />
+							<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.ExpandNotices}" />
 							<Label StyleClass="Caption" Text="{localization:Tr Settings.ExpandNoticesDescription}" />
 						</VerticalStackLayout>
 
@@ -287,7 +263,7 @@
 						ColumnSpacing="10"
 						MinimumHeightRequest="52">
 						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
-							<Label FontFamily="OpenSansSemibold" Text="{localization:Tr Settings.RoutingEntry}" />
+							<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.RoutingEntry}" />
 							<Label StyleClass="Caption" Text="{localization:Tr Settings.RoutingEntryDescription}" />
 						</VerticalStackLayout>
 
@@ -320,7 +296,7 @@
 						MinimumHeightRequest="52">
 
 						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
-							<Label FontFamily="OpenSansSemibold" Text="{localization:Tr Settings.Occupancy}" />
+							<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.Occupancy}" />
 							<Label StyleClass="Caption" Text="{localization:Tr Settings.OccupancyDescription}" />
 						</VerticalStackLayout>
 
@@ -340,7 +316,7 @@
 						MinimumHeightRequest="52">
 
 						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
-							<Label FontFamily="OpenSansSemibold" Text="{localization:Tr Settings.Platforms}" />
+							<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.Platforms}" />
 							<Label StyleClass="Caption" Text="{localization:Tr Settings.PlatformsDescription}" />
 						</VerticalStackLayout>
 
@@ -360,7 +336,7 @@
 						MinimumHeightRequest="52">
 
 						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
-							<Label FontFamily="OpenSansSemibold" Text="{localization:Tr Settings.ExpandStops}" />
+							<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.ExpandStops}" />
 							<Label StyleClass="Caption" Text="{localization:Tr Settings.ExpandStopsDescription}" />
 						</VerticalStackLayout>
 
@@ -380,7 +356,7 @@
 						MinimumHeightRequest="52">
 
 						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
-							<Label FontFamily="OpenSansSemibold" Text="{localization:Tr Settings.ExpertView}" />
+							<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.ExpertView}" />
 							<Label StyleClass="Caption" Text="{localization:Tr Settings.ExpertViewDescription}" />
 						</VerticalStackLayout>
 
@@ -400,7 +376,7 @@
 				<VerticalStackLayout>
 
 					<VerticalStackLayout Padding="12,10" Spacing="4">
-						<Label FontFamily="OpenSansSemibold" Text="{localization:Tr Settings.SearchDelay}" />
+						<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.SearchDelay}" />
 
 						<Label StyleClass="Caption" Text="{Binding SearchDelayText}" />
 
@@ -414,7 +390,7 @@
 					<BoxView StyleClass="Divider" />
 
 					<VerticalStackLayout Padding="12,10" Spacing="4">
-						<Label FontFamily="OpenSansSemibold" Text="{localization:Tr Settings.MinQueryLength}" />
+						<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.MinQueryLength}" />
 
 						<Label StyleClass="Caption" Text="{Binding MinQueryLengthText}" />
 

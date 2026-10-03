@@ -39,7 +39,7 @@ public static class JourneyShareText
 
 		if (model.IsCancelled)
 		{
-			builder.AppendLine($"❌ {text.Cancelled}");
+			builder.AppendLine($"❌ {(model.BlockText.Length > 0 ? model.BlockText : text.Cancelled)}");
 		}
 
 		builder.AppendLine();

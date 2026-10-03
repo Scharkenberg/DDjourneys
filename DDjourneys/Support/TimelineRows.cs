@@ -64,6 +64,9 @@ public sealed class StopRow : TimelineRow
 
 	public bool HasOccupancy =>
 		Occupancy != OccupancyLevel.Unknown;
+
+	/// <summary>The vehicle skips this stop where the journey gets on (start) or off (end).</summary>
+	public bool IsNotServed { get; init; }
 }
 
 
@@ -256,6 +259,12 @@ public sealed class InterchangeRow : TimelineRow
 
 	public bool HasRisk =>
 		RiskText is not null;
+
+	/// <summary>Why this change cannot be made; null when it can.</summary>
+	public string? BlockText { get; init; }
+
+	public bool HasBlock =>
+		BlockText is not null;
 
 	public required Color NodeColor { get; init; }
 
@@ -588,6 +597,11 @@ public static class TimelineRowFactory
 								leg.DeparturePlatformKind)
 							: null,
 
+					IsNotServed =
+						leg.IsRide
+						&& leg.Stops.Count > 0
+						&& leg.Stops[0].CannotBoard,
+
 					NodeColor =
 						color,
 
@@ -824,6 +838,11 @@ public static class TimelineRowFactory
 								leg.ArrivalPlatformKind)
 							: null,
 
+					IsNotServed =
+						leg.IsRide
+						&& leg.Stops.Count > 1
+						&& leg.Stops[^1].CannotAlight,
+
 					NodeColor =
 						color,
 
@@ -987,10 +1006,15 @@ public static class TimelineRowFactory
 								$"{strings.BetweenStops}"
 							: null,
 
+					// A change that cannot be made says so instead of "may be missed".
 					RiskText =
 						boundary.Endangered
+						&& ChangeBlock(from, to, strings) is null
 							? strings.ConnectionMayBeMissed
 							: null,
+
+					BlockText =
+						ChangeBlock(from, to, strings),
 
 					NodeColor =
 						ModeColors.For(to.Mode),
@@ -1211,6 +1235,33 @@ public static class TimelineRowFactory
 			station.Name,
 			station.Place);
 
+
+	/// <summary>
+	/// Why a change between two rides cannot be made: the stop is skipped on the way in or out, or by
+	/// real time the next vehicle leaves before the first one arrives. Null when the change works.
+	/// </summary>
+	private static string? ChangeBlock(JourneyLeg from, JourneyLeg to, JourneyStrings strings)
+	{
+		if (from.Stops.Count > 1 && from.Stops[^1].CannotAlight)
+		{
+			return string.Format(System.Globalization.CultureInfo.CurrentCulture, strings.BlockNotServed, from.To.Name);
+		}
+
+		if (to.Stops.Count > 0 && to.Stops[0].CannotBoard)
+		{
+			return string.Format(System.Globalization.CultureInfo.CurrentCulture, strings.BlockNotServed, to.From.Name);
+		}
+
+		if ((from.RealtimeArrival.HasValue || to.RealtimeDeparture.HasValue)
+			&& from.EffectiveArrival is { } arrival
+			&& to.EffectiveDeparture is { } departure
+			&& departure < arrival)
+		{
+			return strings.ConnectionUnreachable;
+		}
+
+		return null;
+	}
 
 	/// <summary>Two stop references that mean the same place (same provider id, or same name and city).</summary>
 	private static bool SameStation(

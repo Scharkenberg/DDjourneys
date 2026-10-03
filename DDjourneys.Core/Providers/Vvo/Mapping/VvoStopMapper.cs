@@ -144,8 +144,14 @@ public static class VvoStopMapper
 				stop,
 
 			IsCancelled =
-				stop.ArrivalState == "Cancelled"
-				|| stop.DepartureState == "Cancelled",
+				VvoStopStates.IsCancelled(stop.ArrivalState)
+				|| VvoStopStates.IsCancelled(stop.DepartureState),
+
+			IsArrivalCancelled =
+				VvoStopStates.IsCancelled(stop.ArrivalState),
+
+			IsDepartureCancelled =
+				VvoStopStates.IsCancelled(stop.DepartureState),
 
 			Occupancy =
 				VvoModeMapper.MapOccupancy(

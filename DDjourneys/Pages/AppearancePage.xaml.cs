@@ -1,12 +1,12 @@
-﻿using DDjourneys.Support;
+using DDjourneys.Support;
 
 namespace DDjourneys.Pages;
 
-public partial class ThemesPage : ContentPage
+public partial class AppearancePage : ContentPage
 {
-	private readonly ThemesViewModel _vm;
+	private readonly AppearanceViewModel _vm;
 
-	public ThemesPage(ThemesViewModel vm)
+	public AppearancePage(AppearanceViewModel vm)
 	{
 		InitializeComponent();
 		Motion.Prepare(this);
