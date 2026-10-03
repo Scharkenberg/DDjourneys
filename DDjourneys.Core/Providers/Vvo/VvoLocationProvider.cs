@@ -1,5 +1,6 @@
-﻿using DDjourneys.Core.Models;
+using DDjourneys.Core.Models;
 using DDjourneys.Core.Providers.Abstractions;
+using DDjourneys.Core.Providers.Vvo.Mapping;
 using DDjourneys.Core.Providers.Vvo.Models;
 using Location = DDjourneys.Core.Models.Location;
 
@@ -44,28 +45,49 @@ public sealed class VvoLocationProvider : ILocationProvider, IProviderDescriptor
 			.ConfigureAwait(false);
 
 
-		if (response?.Points is null)
+		if (response is null)
 		{
 			return Array.Empty<Location>();
 		}
+
 		cancellationToken.ThrowIfCancellationRequested();
 
 
-		return response.Points
+		// Points parses its raw entries on every access.
+		IReadOnlyList<VvoPoint> points =
+			response.Points;
+
+
+		return points
 			.Where(point => !string.IsNullOrWhiteSpace(point.Id) && !string.IsNullOrWhiteSpace(point.Name))
 			.Select(Map)
 			.ToArray();
 	}
 
 
-	private static Location Map(
+	/// <summary>
+	/// Maps one PointFinder entry. The geometry the API returned is kept (converted to WGS84); a point
+	/// without usable coordinates (the API sends "0" for some entries) simply has none.
+	/// </summary>
+	public static Location Map(
 		VvoPoint point)
 	{
+		ArgumentNullException.ThrowIfNull(point);
+
+		bool hasCoordinates =
+			VvoCoordinateConverter.TryFromPointFields(
+				point.Coordinate1,
+				point.Coordinate2,
+				out (double Latitude, double Longitude) coordinates);
+
 		return new Location
 		{
 			Id = point.Id,
+			ProviderId = VvoProviderInfo.Id,
 			Name = point.Name ?? string.Empty,
-			Place = point.Place
+			Place = point.Place,
+			Latitude = hasCoordinates ? coordinates.Latitude : null,
+			Longitude = hasCoordinates ? coordinates.Longitude : null
 		};
 	}
 }

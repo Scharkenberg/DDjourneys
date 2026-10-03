@@ -9,7 +9,7 @@ using DDjourneys.Support;
 namespace DDjourneys.Pages;
 
 public sealed class ResultsViewModel :
-	ObservableObject,
+	DisposableViewModel,
 	IQueryAttributable
 {
 	private enum StatusKind
@@ -17,29 +17,49 @@ public sealed class ResultsViewModel :
 		None,
 		NoConnections,
 		JourneysCouldNotBeDisplayed,
-		SearchServiceUnavailable
+		SearchServiceUnavailable,
+		PlacesNotUsable
+	}
+
+	/// <summary>A search the provider did not answer; keeps the full result for the technical detail.</summary>
+	private sealed class SearchFailedException(
+		JourneyResult result) :
+		Exception(
+			string.IsNullOrWhiteSpace(result.ErrorDetail)
+				? result.ErrorMessage
+				: $"{result.ErrorMessage}: {result.ErrorDetail}")
+	{
+		public JourneyResult Result { get; } = result;
 	}
 
 	private readonly JourneyService _journeys;
+	private readonly AppSettings _settings;
 	private readonly LocalizationService _localization;
 
 	private JourneyQuery? _query;
 	private CancellationTokenSource? _load;
 	private CancellationTokenSource? _paging;
 	private StatusKind _statusKind;
+	private string? _statusDetail;
 	private bool _isPaging;
 
 	public ResultsViewModel(
-		JourneyService journeys)
+		JourneyService journeys,
+		AppSettings settings)
 	{
 		ArgumentNullException.ThrowIfNull(
 			journeys);
 
+		ArgumentNullException.ThrowIfNull(
+			settings);
+
 		_journeys = journeys;
+		_settings = settings;
 		_localization = LocalizationService.Current;
 
-		_localization.PropertyChanged +=
-			OnLocalizationChanged;
+		ListenToLocalization(
+			_localization,
+			OnLocalizationChanged);
 
 		RefreshCommand =
 			new Command(
@@ -274,6 +294,10 @@ public sealed class ResultsViewModel :
 	}
 
 
+	protected override void OnDisposing() =>
+		Cancel();
+
+
 	public void Cancel()
 	{
 		CancellationTokenSource? running =
@@ -358,8 +382,24 @@ public sealed class ResultsViewModel :
 			{
 				HasError = true;
 
-				SetStatus(
-					StatusKind.SearchServiceUnavailable);
+				Debug.WriteLine(
+					$"Journey search not answered: {result.Outcome} " +
+					$"{result.ErrorMessage} {result.ErrorDetail}");
+
+				// "Not suitable" is about the chosen places, not about the service: choosing them again
+				// helps, trying again does not.
+				if (result.Outcome == JourneyOutcome.NotSuitable)
+				{
+					SetStatus(
+						StatusKind.PlacesNotUsable,
+						result.ErrorMessage);
+				}
+				else
+				{
+					SetStatus(
+						StatusKind.SearchServiceUnavailable,
+						result.ErrorDetail);
+				}
 
 				return;
 			}
@@ -511,14 +551,8 @@ public sealed class ResultsViewModel :
 
 			if (!result.IsSuccessful)
 			{
-				throw new InvalidOperationException(
-					string.IsNullOrWhiteSpace(
-						result.ErrorMessage)
-						? _localization
-							.CurrentStrings
-							.Results
-							.SearchServiceUnavailable
-						: result.ErrorMessage);
+				throw new SearchFailedException(
+					result);
 			}
 
 			var replacement =
@@ -657,11 +691,23 @@ public sealed class ResultsViewModel :
 
 		try
 		{
-			ShowError?.Invoke(
+			string text =
 				_localization
 					.CurrentStrings
 					.Results
-					.SearchServiceUnavailable);
+					.SearchServiceUnavailable;
+
+			if (_settings.ShowTechnicalDetails
+				&& ex is SearchFailedException
+				{
+					Result.ErrorDetail: { Length: > 0 } detail
+				})
+			{
+				text += $"\n{detail}";
+			}
+
+			ShowError?.Invoke(
+				text);
 		}
 		catch (Exception inner)
 		{
@@ -678,6 +724,11 @@ public sealed class ResultsViewModel :
 		MainThread.BeginInvokeOnMainThread(
 			() =>
 			{
+				if (IsDisposed)
+				{
+					return;
+				}
+
 				if (_query is not null)
 				{
 					WhenText =
@@ -697,10 +748,14 @@ public sealed class ResultsViewModel :
 
 
 	private void SetStatus(
-		StatusKind kind)
+		StatusKind kind,
+		string? detail = null)
 	{
 		_statusKind =
 			kind;
+
+		_statusDetail =
+			detail;
 
 		StatusText =
 			GetStatusText(
@@ -717,30 +772,46 @@ public sealed class ResultsViewModel :
 
 
 	private string GetStatusText(
-		StatusKind kind) =>
-		kind switch
-		{
-			StatusKind.NoConnections =>
-				_localization
-					.CurrentStrings
-					.Results
-					.NoConnections,
+		StatusKind kind)
+	{
+		string text =
+			kind switch
+			{
+				StatusKind.NoConnections =>
+					_localization
+						.CurrentStrings
+						.Results
+						.NoConnections,
 
-			StatusKind.JourneysCouldNotBeDisplayed =>
-				_localization
-					.CurrentStrings
-					.Results
-					.JourneysCouldNotBeDisplayed,
+				StatusKind.JourneysCouldNotBeDisplayed =>
+					_localization
+						.CurrentStrings
+						.Results
+						.JourneysCouldNotBeDisplayed,
 
-			StatusKind.SearchServiceUnavailable =>
-				_localization
-					.CurrentStrings
-					.Results
-					.SearchServiceUnavailable,
+				StatusKind.SearchServiceUnavailable =>
+					_localization
+						.CurrentStrings
+						.Results
+						.SearchServiceUnavailable,
 
-			_ =>
-				string.Empty
-		};
+				StatusKind.PlacesNotUsable =>
+					_localization
+						.CurrentStrings
+						.Results
+						.PlacesNotUsable,
+
+				_ =>
+					string.Empty
+			};
+
+		// The technical cause (HTTP status, start of the answer) is for the technical-details mode.
+		return text.Length > 0
+			&& _settings.ShowTechnicalDetails
+			&& !string.IsNullOrWhiteSpace(_statusDetail)
+				? $"{text}\n{_statusDetail}"
+				: text;
+	}
 
 
 	private string DescribeWhen(

@@ -620,8 +620,8 @@ public static class TimelineRowFactory
 		}
 
 
-		DateTime now =
-			DateTime.Now;
+		DateTimeOffset now =
+			Format.Now();
 
 
 		var legRow =

@@ -1,5 +1,6 @@
 ﻿using System.Text.Json;
 using DDjourneys.Core.Models;
+using DDjourneys.Core.Providers.Vvo;
 using Location = DDjourneys.Core.Models.Location;
 
 namespace DDjourneys.Support;
@@ -25,6 +26,9 @@ public sealed class PlaceStore
 	private const string FavouritesKey = "places.favourites";
 	private const string RoutesKey = "places.routes";
 	private const int MaxRecents = 8;
+
+	/// <summary>Provider that stored stops without a provider id belong to (the app only knew VVO then).</summary>
+	private const string LegacyProviderId = VvoProviderInfo.Id;
 
 	/// <summary>How many searched connections are kept. Older ones drop off the end.</summary>
 	public const int MaxRoutes = 50;
@@ -314,8 +318,8 @@ public sealed class PlaceStore
 	}
 
 
-	// Stations are identified by provider ID;
-	// free-form places by name and position.
+	// Stations are identified by provider and provider ID (the same raw ID can mean different stops at
+	// different providers); free-form places by name and position.
 	private static string RouteKeyOf(
 		Location from,
 		Location to) =>
@@ -324,20 +328,22 @@ public sealed class PlaceStore
 
 	private static string KeyOf(
 		Location place) =>
-		place.IsStation
-			? $"id:{place.Id}"
+		place.StopKey is { } stopKey
+			? $"id:{stopKey}"
 			: FormattableString.Invariant(
 				$"{place.Name}|{place.Place}|{place.Latitude}|{place.Longitude}");
 
 
 	// Stored shape is independent of the domain model,
 	// so the model can evolve without invalidating stored data.
+	// ProviderId is optional: entries written before it existed have none (see ToLocation).
 	private sealed record Entry(
 		string? Id,
 		string Name,
 		string? Place,
 		double? Latitude,
-		double? Longitude);
+		double? Longitude,
+		string? ProviderId = null);
 
 
 	private static readonly System.Text.Json.JsonSerializerOptions JsonOptions =
@@ -424,14 +430,27 @@ public sealed class PlaceStore
 			place.Name,
 			place.Place,
 			place.Latitude,
-			place.Longitude);
+			place.Longitude,
+			string.IsNullOrWhiteSpace(place.ProviderId)
+				? null
+				: place.ProviderId);
 
 
+	/// <summary>
+	/// Before provider ids existed the app only spoke to VVO, so a stored stop without a provider
+	/// belongs to VVO. Free-form places have no provider.
+	/// </summary>
 	private static Location ToLocation(
 		Entry entry) =>
 		new()
 		{
 			Id = entry.Id,
+			ProviderId =
+				!string.IsNullOrWhiteSpace(entry.ProviderId)
+					? entry.ProviderId
+					: string.IsNullOrWhiteSpace(entry.Id)
+						? string.Empty
+						: LegacyProviderId,
 			Name = entry.Name,
 			Place = entry.Place,
 			Latitude = entry.Latitude,

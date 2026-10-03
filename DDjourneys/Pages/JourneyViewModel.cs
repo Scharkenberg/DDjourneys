@@ -11,7 +11,7 @@ using Microsoft.Maui.ApplicationModel.DataTransfer;
 namespace DDjourneys.Pages;
 
 public sealed class JourneyViewModel :
-	ObservableObject,
+	DisposableViewModel,
 	IQueryAttributable
 {
 	private readonly AppSettings _settings;
@@ -43,8 +43,9 @@ public sealed class JourneyViewModel :
 			LocalizationService.Current;
 
 
-		_localization.PropertyChanged +=
-			OnLocalizationChanged;
+		ListenToLocalization(
+			_localization,
+			OnLocalizationChanged);
 
 
 		ToggleStopsCommand =
@@ -144,6 +145,9 @@ public sealed class JourneyViewModel :
 
 		_ = LoadFollowStateAsync(_trackingObservation.Token);
 	}
+
+	protected override void OnDisposing() =>
+		StopObservingTracking();
 
 	public void StopObservingTracking()
 	{
@@ -546,7 +550,13 @@ public sealed class JourneyViewModel :
 		System.ComponentModel.PropertyChangedEventArgs e)
 	{
 		MainThread.BeginInvokeOnMainThread(
-			RefreshLocalizedDisplay);
+			() =>
+			{
+				if (!IsDisposed)
+				{
+					RefreshLocalizedDisplay();
+				}
+			});
 	}
 
 

@@ -33,10 +33,14 @@ namespace DDjourneys
 		{
 			try
 			{
-				if (IPlatformApplication.Current?.Services.GetService<IJourneyTracker>()
-					is SchutzengelJourneyTracker tracker)
+				IServiceProvider? services = IPlatformApplication.Current?.Services;
+
+				// Resolving the tracker creates it (and attaches it to the bridge) on a cold start.
+				_ = services?.GetService<IJourneyTracker>();
+
+				if (services?.GetService<SchutzengelCallbackBridge>() is { } bridge)
 				{
-					await tracker.ResumeAsync().ConfigureAwait(false);
+					await bridge.ResumeAsync().ConfigureAwait(false);
 				}
 			}
 			catch (Exception ex)

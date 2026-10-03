@@ -420,7 +420,7 @@ internal static class LiveJourneyNotification
 		}
 
 		if (content.When is { } when
-			&& when > DateTimeOffset.Now)
+			&& when > DateTimeOffset.UtcNow)
 		{
 			builder
 				.SetWhen(when.ToUnixTimeMilliseconds())!

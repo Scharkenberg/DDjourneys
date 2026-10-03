@@ -5,7 +5,7 @@ using DDjourneys.Support;
 namespace DDjourneys.Pages;
 
 /// <summary>Thin, two-way view over <see cref="AppSettings"/>. Persisting is AppSettings' job.</summary>
-public sealed class SettingsViewModel : ObservableObject
+public sealed class SettingsViewModel : DisposableViewModel
 {
 	private readonly AppSettings _settings;
 	private readonly LocalizationService _localization;
@@ -21,7 +21,7 @@ public sealed class SettingsViewModel : ObservableObject
 		_providers = providers;
 		_localization = LocalizationService.Current;
 
-		_localization.PropertyChanged += OnLocalizationChanged;
+		ListenToLocalization(_localization, OnLocalizationChanged);
 
 		SelectSystemThemeCommand = new AsyncCommand(SelectSystemThemeAsync);
 		OpenThemesCommand = new AsyncCommand(OpenThemesAsync);
@@ -354,7 +354,14 @@ public sealed class SettingsViewModel : ObservableObject
 		object? sender,
 		System.ComponentModel.PropertyChangedEventArgs e)
 	{
-		MainThread.BeginInvokeOnMainThread(RefreshLocalizedProperties);
+		MainThread.BeginInvokeOnMainThread(
+			() =>
+			{
+				if (!IsDisposed)
+				{
+					RefreshLocalizedProperties();
+				}
+			});
 	}
 
 	private void RefreshLocalizedProperties()

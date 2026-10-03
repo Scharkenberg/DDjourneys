@@ -13,6 +13,15 @@ public static class Format
 {
 	private static readonly TimeZoneInfo Zone = ResolveZone();
 
+	/// <summary>
+	/// The current moment with the provider-zone offset (Europe/Berlin), to the second. The one clock
+	/// for "is it active now", "is it today" and search times; never use the device's local zone.
+	/// </summary>
+	public static DateTimeOffset Now() =>
+		TimeZoneInfo.ConvertTime(
+			DateTimeOffset.UtcNow,
+			Zone);
+
 	/// <summary>Current wall-clock time in the provider zone (Europe/Berlin), floored to the minute.</summary>
 	public static DateTime NowLocal()
 	{

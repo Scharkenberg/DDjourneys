@@ -16,7 +16,7 @@ public sealed record PlaceRow(Location Place)
 	public bool HasDetail => !string.IsNullOrWhiteSpace(Place.Place);
 }
 
-public sealed class PlaceSearchViewModel : ObservableObject, IQueryAttributable
+public sealed class PlaceSearchViewModel : DisposableViewModel, IQueryAttributable
 {
 	private enum MessageKind
 	{
@@ -65,7 +65,7 @@ public sealed class PlaceSearchViewModel : ObservableObject, IQueryAttributable
 		_settings = settings;
 		_localization = LocalizationService.Current;
 
-		_localization.PropertyChanged += OnLocalizationChanged;
+		ListenToLocalization(_localization, OnLocalizationChanged);
 
 		SelectPlaceCommand =
 			new AsyncCommand<Location>(SelectPlaceAsync);
@@ -134,6 +134,9 @@ public sealed class PlaceSearchViewModel : ObservableObject, IQueryAttributable
 			_targetIsFrom = isFrom;
 		}
 	}
+
+	protected override void OnDisposing() =>
+		Cancel();
 
 	/// <summary>Stops a pending search (page left). Safe to call any time.</summary>
 	public void Cancel()
@@ -264,16 +267,31 @@ public sealed class PlaceSearchViewModel : ObservableObject, IQueryAttributable
 
 				if (ex is ApiException
 					{
+						StatusCode: null,
 						Message.Length: > 0
-					} api)
+					} provider)
 				{
-					// Keep provider-supplied text unchanged.
-					SetMessage(MessageKind.None, api.Message);
+					// A status message of the provider itself (not an HTTP failure): shown unchanged.
+					SetMessage(MessageKind.None, provider.Message);
 				}
 				else
 				{
+					// No answer or an HTTP error: localized text. The technical cause (status line, start
+					// of the response) is added in technical-details mode only.
+					string? detail =
+						_settings.ShowTechnicalDetails
+						&& ex is ApiException
+						{
+							Detail.Length: > 0
+						} api
+							? api.Detail
+							: null;
+
 					SetMessage(
-						MessageKind.ServiceUnavailable);
+						MessageKind.ServiceUnavailable,
+						detail is null
+							? null
+							: $"{_localization.CurrentStrings.PlaceSearch.CouldNotReachService}\n{detail}");
 				}
 			}
 		}
@@ -349,6 +367,11 @@ public sealed class PlaceSearchViewModel : ObservableObject, IQueryAttributable
 	{
 		MainThread.BeginInvokeOnMainThread(() =>
 		{
+			if (IsDisposed)
+			{
+				return;
+			}
+
 			ApplyLocalizedMessage();
 			RefreshState();
 		});

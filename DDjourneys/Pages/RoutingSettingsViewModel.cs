@@ -5,7 +5,7 @@ using DDjourneys.Support;
 namespace DDjourneys.Pages;
 
 /// <summary>Route preferences: what the planner has to respect on the next search.</summary>
-public sealed class RoutingSettingsViewModel : ObservableObject
+public sealed class RoutingSettingsViewModel : DisposableViewModel
 {
 	private readonly AppSettings _settings;
 	private readonly LocalizationService _localization;
@@ -17,7 +17,7 @@ public sealed class RoutingSettingsViewModel : ObservableObject
 		_settings = settings;
 		_localization = LocalizationService.Current;
 
-		_localization.PropertyChanged += OnLocalizationChanged;
+		ListenToLocalization(_localization, OnLocalizationChanged);
 
 		Modes =
 		[
@@ -187,7 +187,14 @@ public sealed class RoutingSettingsViewModel : ObservableObject
 	private void OnLocalizationChanged(
 		object? sender,
 		System.ComponentModel.PropertyChangedEventArgs e) =>
-		MainThread.BeginInvokeOnMainThread(RefreshAll);
+		MainThread.BeginInvokeOnMainThread(
+			() =>
+			{
+				if (!IsDisposed)
+				{
+					RefreshAll();
+				}
+			});
 
 	private void RefreshAll()
 	{

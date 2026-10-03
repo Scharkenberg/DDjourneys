@@ -79,6 +79,8 @@ public sealed class EnglishUiStrings : IUiStrings
 			"The journeys could not be displayed.",
 		SearchServiceUnavailable =
 			"Could not reach the timetable service.",
+		PlacesNotUsable =
+			"These places can't be used with the selected data provider. Please choose them again.",
 		Refresh = "Refresh",
 		Retry = "Try again",
 		Previous = "Earlier",

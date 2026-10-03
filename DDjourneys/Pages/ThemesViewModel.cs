@@ -4,7 +4,7 @@ using DDjourneys.Support;
 namespace DDjourneys.Pages;
 
 /// <summary>The full list of colour themes, grouped into light and dark.</summary>
-public sealed class ThemesViewModel : ObservableObject
+public sealed class ThemesViewModel : DisposableViewModel
 {
 	private readonly LocalizationService _localization = LocalizationService.Current;
 
@@ -22,11 +22,22 @@ public sealed class ThemesViewModel : ObservableObject
 
 		SelectThemeCommand = new AsyncCommand<string>(SelectThemeAsync);
 
-		_localization.PropertyChanged += (_, _) =>
-			MainThread.BeginInvokeOnMainThread(Refresh);
+		ListenToLocalization(_localization, OnLocalizationChanged);
 
 		Refresh();
 	}
+
+	private void OnLocalizationChanged(
+		object? sender,
+		System.ComponentModel.PropertyChangedEventArgs e) =>
+		MainThread.BeginInvokeOnMainThread(
+			() =>
+			{
+				if (!IsDisposed)
+				{
+					Refresh();
+				}
+			});
 
 	public List<ThemeOption> LightThemes { get; }
 

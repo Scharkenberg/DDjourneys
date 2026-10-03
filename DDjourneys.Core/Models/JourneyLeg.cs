@@ -114,6 +114,13 @@ public sealed class JourneyLeg
 
 
 	/// <summary>
+	/// True for a scheduled public-transport ride; false for walking, taxi and on-demand legs
+	/// (see <see cref="TransitModeExtensions.IsRide"/>).
+	/// </summary>
+	public bool IsRide => Mode.IsRide();
+
+
+	/// <summary>
 	/// Effective departure time using realtime data when available.
 	/// </summary>
 	public DateTimeOffset? EffectiveDeparture

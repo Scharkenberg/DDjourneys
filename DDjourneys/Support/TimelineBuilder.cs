@@ -125,8 +125,8 @@ public static class TimelineBuilder
 					nextLegIndex: i + 1);
 
 			bool isInterchange =
-				leg.Mode != TransitMode.Walk
-				&& next.Mode != TransitMode.Walk;
+				leg.IsRide
+				&& next.IsRide;
 
 			if (transfers.Length > 0
 				|| isInterchange)

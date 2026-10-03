@@ -26,6 +26,11 @@
     <Compile Include="..\DDjourneys\Platforms\Android\LiveJourney\Schutzengel\SchutzengelTripProgress.cs" Link="Schutzengel\SchutzengelTripProgress.cs" />
     <Compile Include="..\DDjourneys\Platforms\Windows\NoOpJourneyTracker.cs" Link="Platforms\Windows\NoOpJourneyTracker.cs" />
 	<Compile Include="..\DDjourneys\Platforms\Android\LiveJourney\Schutzengel\SchutzengelRawDataTranslator.cs" Link="Schutzengel\SchutzengelRawDataTranslator.cs" />
+	<Compile Include="..\DDjourneys\Platforms\Android\LiveJourney\Schutzengel\SchutzengelWireCodes.cs" Link="Schutzengel\SchutzengelWireCodes.cs" />
+	<Compile Include="..\DDjourneys\Platforms\Android\LiveJourney\Schutzengel\SchutzengelCallbackBridge.cs" Link="Schutzengel\SchutzengelCallbackBridge.cs" />
+	<Compile Include="..\DDjourneys\Platforms\Android\LiveJourney\Schutzengel\SchutzengelTariffMapper.cs" Link="Schutzengel\SchutzengelTariffMapper.cs" />
+	<Compile Include="..\DDjourneys\Platforms\Android\LiveJourney\Schutzengel\SchutzengelNodeMapper.cs" Link="Schutzengel\SchutzengelNodeMapper.cs" />
+	<Compile Include="..\DDjourneys\Platforms\Android\LiveJourney\Schutzengel\SchutzengelTransitionMapper.cs" Link="Schutzengel\SchutzengelTransitionMapper.cs" />
   </ItemGroup>
 
 </Project>

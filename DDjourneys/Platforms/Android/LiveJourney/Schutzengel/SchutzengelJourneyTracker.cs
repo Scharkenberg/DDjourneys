@@ -26,7 +26,7 @@ namespace DDjourneys.Platforms.Android.LiveJourney.Schutzengel;
 /// All state is guarded by <see cref="_gate"/>. Events, notifications and the foreground service are
 /// only touched after the gate has been released.
 /// </summary>
-internal sealed class SchutzengelJourneyTracker : IJourneyTracker
+internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ISchutzengelPlatformCallbacks, IDisposable
 {
 	private static readonly TimeSpan SyncInterval = TimeSpan.FromSeconds(60);
 	private static readonly TimeSpan RenderInterval = TimeSpan.FromSeconds(10);
@@ -44,6 +44,8 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker
 
 	private readonly IJourneyProvider _provider;
 	private readonly SchutzengelApi _api;
+	private readonly SchutzengelCallbackBridge _bridge;
+	private readonly HttpClient? _ownedHttp;
 	private readonly SchutzengelTokenStore _tokens = new();
 
 	private readonly SemaphoreSlim _gate = new(1, 1);
@@ -66,23 +68,29 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker
 	private Task? _loop;
 	private bool _runWanted;
 	private bool _serviceRunning;
+	private bool _disposed;
 
-	public SchutzengelJourneyTracker(IJourneyProvider journeyProvider, HttpClient? http = null)
+	public SchutzengelJourneyTracker(
+		IJourneyProvider journeyProvider,
+		SchutzengelCallbackBridge bridge,
+		HttpClient? http = null)
 	{
 		_provider = journeyProvider ?? throw new ArgumentNullException(nameof(journeyProvider));
+		_bridge = bridge ?? throw new ArgumentNullException(nameof(bridge));
+
+		// A client this class created is also this class's to dispose.
+		_ownedHttp = http is null ? new HttpClient() : null;
 
 		_api =
 			new SchutzengelApi(
-				http ?? new HttpClient(),
+				http ?? _ownedHttp!,
 				_tokens.GetAsync,
 				_tokens.SetAsync,
 				_tokens.RemoveToken);
 
-		Current = this;
+		// Android components that DI does not create reach the tracker through the bridge.
+		_bridge.Attach(this);
 	}
-
-	/// <summary>Reachable from Android components that DI does not create (receiver, service).</summary>
-	internal static SchutzengelJourneyTracker? Current { get; private set; }
 
 	public bool IsAvailable => true;
 
@@ -281,7 +289,7 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker
 			cancellationToken);
 
 	/// <summary>Entry point for the notification action buttons.</summary>
-	internal Task HandleNotificationActionAsync(string action, string planId)
+	public Task HandleNotificationActionAsync(string action, string planId)
 	{
 		switch (action)
 		{
@@ -310,7 +318,7 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker
 	}
 
 	/// <summary>Called when the app comes to the foreground: refreshes and resumes monitoring.</summary>
-	internal async Task ResumeAsync(CancellationToken cancellationToken = default)
+	public async Task ResumeAsync(CancellationToken cancellationToken = default)
 	{
 		try
 		{
@@ -326,7 +334,7 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker
 	}
 
 	/// <summary>The foreground service reports that the system ended it; monitoring resumes with the app.</summary>
-	internal void ServiceStopped()
+	public void ServiceStopped()
 	{
 		lock (_runtimeGate)
 		{
@@ -541,7 +549,7 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker
 
 		// Like the reference client: only plans of today, once their start is known.
 		if (entry.Timeline?.Start is { } start
-			&& start.ToLocalTime().Date != Now.ToLocalTime().Date)
+			&& Support.Format.ToWall(start).Date != Support.Format.ToWall(Now).Date)
 		{
 			return;
 		}
@@ -1095,6 +1103,11 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker
 	{
 		lock (_runtimeGate)
 		{
+			if (_disposed)
+			{
+				return;
+			}
+
 			_runWanted = run;
 
 			if (run)
@@ -1195,6 +1208,51 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker
 				_loopCancellation = null;
 			}
 		}
+	}
+
+	/// <summary>
+	/// Ends monitoring: detaches from the bridge, stops the polling loop and the foreground
+	/// service, completes every event subscription and releases an owned HTTP client. Idempotent.
+	/// The loop observes the cancellation on its own; the gate is deliberately not disposed so it
+	/// can finish an iteration that is already running.
+	/// </summary>
+	public void Dispose()
+	{
+		CancellationTokenSource? cancellation;
+		bool stopService;
+
+		lock (_runtimeGate)
+		{
+			if (_disposed)
+			{
+				return;
+			}
+
+			_disposed = true;
+			_runWanted = false;
+			cancellation = _loopCancellation;
+			stopService = _serviceRunning;
+			_serviceRunning = false;
+		}
+
+		_bridge.Detach(this);
+
+		try
+		{
+			// The loop's finally block disposes the source afterwards.
+			cancellation?.Cancel();
+		}
+		catch (ObjectDisposedException)
+		{
+		}
+
+		if (stopService)
+		{
+			Guarded(JourneyTrackingForegroundService.Stop);
+		}
+
+		_events.Dispose();
+		_ownedHttp?.Dispose();
 	}
 
 	[Conditional("DEBUG")]

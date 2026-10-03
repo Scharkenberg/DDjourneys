@@ -86,11 +86,16 @@ public sealed class ApiClient : IDisposable
 					requestToken)
 					.ConfigureAwait(false);
 			}
-			catch (OperationCanceledException)
+			catch (OperationCanceledException ex)
 				when (!cancellationToken.IsCancellationRequested)
 			{
+				// Our own time budget ran out. No message (callers show localized text), the cause stays for logs.
 				throw new ApiException(
-					string.Empty);
+					string.Empty,
+					null,
+					true,
+					null,
+					ex);
 			}
 			catch (HttpRequestException ex)
 			{
@@ -153,11 +158,15 @@ public sealed class ApiClient : IDisposable
 
 			return responseContent;
 		}
-		catch (OperationCanceledException)
+		catch (OperationCanceledException ex)
 			when (!cancellationToken.IsCancellationRequested)
 		{
 			throw new ApiException(
-				string.Empty);
+				string.Empty,
+				null,
+				true,
+				null,
+				ex);
 		}
 		catch (HttpRequestException ex)
 		{
@@ -222,13 +231,31 @@ public sealed class ApiClient : IDisposable
 				503 or
 				504;
 
-		throw new ApiException(
-			string.Empty,
+		throw ApiException.FromResponse(
 			statusCode,
-			transient,
+			response.ReasonPhrase,
 			responseBody,
-			retryAfter:
-				response.Headers.RetryAfter?.Delta);
+			transient,
+			ReadRetryAfter(response));
+	}
+
+	/// <summary>Retry-After comes either as seconds or as an absolute date.</summary>
+	private static TimeSpan? ReadRetryAfter(
+		HttpResponseMessage response)
+	{
+		if (response.Headers.RetryAfter is not { } header)
+		{
+			return null;
+		}
+
+		if (header.Delta is { } delta)
+		{
+			return delta;
+		}
+
+		return header.Date is { } date
+			? date - DateTimeOffset.UtcNow
+			: null;
 	}
 
 	private static HttpClient CreateHttpClient()

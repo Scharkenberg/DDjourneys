@@ -13,6 +13,14 @@ public partial class JourneyPage : ContentPage
 		BindingContext = _vm = vm;
 	}
 
+	protected override void OnNavigatedFrom(
+		NavigatedFromEventArgs args)
+	{
+		base.OnNavigatedFrom(args);
+
+		PageTeardown.DisposeIfLeft(args, BindingContext);
+	}
+
 	protected override void OnAppearing()
 	{
 		base.OnAppearing();

@@ -92,8 +92,7 @@ internal static class SchutzengelPlanTranslator
 	private static object MovementEpisode(
 		JourneyLeg leg)
 	{
-		return IsIndividualTransport(
-			leg.Mode)
+		return !leg.Mode.IsRide()
 			? IndividualEpisode(
 				leg)
 			: PublicEpisode(
@@ -641,13 +640,6 @@ internal static class SchutzengelPlanTranslator
 				"ANY"
 		};
 
-
-	private static bool IsIndividualTransport(
-		TransitMode mode) =>
-		mode is
-			TransitMode.Taxi
-			or TransitMode.OnDemand
-			or TransitMode.Walk;
 
 
 	private static int PlannedDurationSeconds(

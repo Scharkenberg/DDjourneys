@@ -82,17 +82,21 @@ internal sealed class JourneyTrackingForegroundService : Service
 	[System.Runtime.Versioning.SupportedOSPlatform("android35.0")]
 	public override void OnTimeout(int startId, global::Android.Content.PM.ForegroundService fgsType)
 	{
-		SchutzengelJourneyTracker.Current?.ServiceStopped();
+		Bridge()?.ServiceStopped();
 
 		StopSelf();
 	}
 
 	public override void OnDestroy()
 	{
-		SchutzengelJourneyTracker.Current?.ServiceStopped();
+		Bridge()?.ServiceStopped();
 
 		StopForeground(StopForegroundFlags.Remove);
 
 		base.OnDestroy();
 	}
+
+	/// <summary>The injected bridge; this component is created by the system, so DI is reached by lookup.</summary>
+	private static SchutzengelCallbackBridge? Bridge() =>
+		IPlatformApplication.Current?.Services.GetService<SchutzengelCallbackBridge>();
 }

@@ -52,7 +52,7 @@ public sealed record ProviderGroup(
 
 
 /// <summary>Provider picker. Lists whatever the registry holds, grouped by region, so new providers need no UI work.</summary>
-public sealed class ProvidersViewModel : ObservableObject
+public sealed class ProvidersViewModel : DisposableViewModel
 {
 	private static readonly (ProviderCapabilities Flag, Func<ProviderStrings, string> Label)[] Labels =
 	[
@@ -75,7 +75,7 @@ public sealed class ProvidersViewModel : ObservableObject
 		_registry = registry;
 		_localization = LocalizationService.Current;
 
-		_localization.PropertyChanged += OnLocalizationChanged;
+		ListenToLocalization(_localization, OnLocalizationChanged);
 
 		Build();
 	}
@@ -140,5 +140,12 @@ public sealed class ProvidersViewModel : ObservableObject
 	private void OnLocalizationChanged(
 		object? sender,
 		System.ComponentModel.PropertyChangedEventArgs e) =>
-		MainThread.BeginInvokeOnMainThread(Build);
+		MainThread.BeginInvokeOnMainThread(
+			() =>
+			{
+				if (!IsDisposed)
+				{
+					Build();
+				}
+			});
 }

@@ -63,13 +63,12 @@ public sealed class NoticeCard : ContentView
 
 	protected override void OnHandlerChanged()
 	{
+		// Detach first so a handler swap never subscribes twice.
+		_localization.PropertyChanged -= OnLocalizationChanged;
+
 		if (Handler is not null)
 		{
 			_localization.PropertyChanged += OnLocalizationChanged;
-		}
-		else
-		{
-			_localization.PropertyChanged -= OnLocalizationChanged;
 		}
 
 		base.OnHandlerChanged();

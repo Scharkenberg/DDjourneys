@@ -6,9 +6,20 @@
 public sealed class Station
 {
 	/// <summary>
-	/// Provider-specific identifier of the station.
+	/// Provider-specific identifier of the station. Only meaningful together with <see cref="ProviderId"/>.
 	/// </summary>
 	public required string Id { get; init; }
+
+	/// <summary>
+	/// Stable id of the provider that issued <see cref="Id"/> (see <c>ProviderInfo.Id</c>).
+	/// </summary>
+	public string ProviderId { get; init; } = string.Empty;
+
+	/// <summary>Provider-qualified stop key ("vvo:33000028"); null when the station has no id.</summary>
+	public string? StopKey =>
+		ProviderKey.Compose(
+			ProviderId,
+			Id);
 
 	/// <summary>
 	/// Human-readable stop name.

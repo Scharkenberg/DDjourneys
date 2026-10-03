@@ -44,7 +44,7 @@ public partial class MainPage : ContentPage
 							Name = "Bahnhof Mitte"
 						},
 
-						DateTime = DateTimeOffset.Now,
+						DateTime = Support.Format.Now(),
 
 						MaxResults = 3
 					});

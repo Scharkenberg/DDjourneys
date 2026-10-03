@@ -35,6 +35,9 @@ public sealed class Journey
 
 	public string? Id { get; init; }
 
+	/// <summary>Stable id of the provider this journey came from (see <c>ProviderInfo.Id</c>).</summary>
+	public string ProviderId { get; init; } = string.Empty;
+
 	public string? Context { get; init; }
 
 	/// <summary>
@@ -106,10 +109,15 @@ public sealed class Journey
 
 	public TimeSpan? PlannedDuration { get; init; }
 
+	/// <summary>The scheduled public-transport legs; everything else is part of a transfer.</summary>
+	public IEnumerable<JourneyLeg> Rides =>
+		Legs.Where(leg => leg.IsRide);
+
+	/// <summary>Changes between rides: rides minus one, however many walks lie between them.</summary>
 	public int TransferCount =>
 		Math.Max(
 			0,
-			Legs.Count(leg => IsPublicTransport(leg)) - 1);
+			Rides.Count() - 1);
 
 	public bool HasDelay =>
 		Legs.Any(
@@ -186,7 +194,4 @@ public sealed class Journey
 
 		return total;
 	}
-
-	private static bool IsPublicTransport(JourneyLeg leg) =>
-		leg.Mode != TransitMode.Walk;
 }

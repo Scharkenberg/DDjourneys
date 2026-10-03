@@ -36,7 +36,7 @@ public sealed record RouteRow(
 }
 
 
-public sealed partial class PlanViewModel : ObservableObject
+public sealed partial class PlanViewModel : DisposableViewModel
 {
 	/// <summary>How many searched connections the planner shows before "show all".</summary>
 	private const int CollapsedRoutes = 5;
@@ -79,9 +79,13 @@ public sealed partial class PlanViewModel : ObservableObject
 		_settings = settings;
 		_localization = LocalizationService.Current;
 
-		_store.Changed += OnStoreChanged;
-		_localization.PropertyChanged +=
-			OnLocalizationChanged;
+		Subscribe(
+			() => _store.Changed += OnStoreChanged,
+			() => _store.Changed -= OnStoreChanged);
+
+		ListenToLocalization(
+			_localization,
+			OnLocalizationChanged);
 
 		PickFromCommand =
 			new AsyncCommand(
@@ -650,7 +654,7 @@ public sealed partial class PlanViewModel : ObservableObject
 			To = To,
 			DateTime =
 				IsNow
-					? DateTimeOffset.Now
+					? Format.Now()
 					: Format.ToOffset(target),
 			SearchMode =
 				IsArrival
@@ -841,14 +845,26 @@ public sealed partial class PlanViewModel : ObservableObject
 		object? sender,
 		EventArgs e) =>
 		MainThread.BeginInvokeOnMainThread(
-			RefreshPlaces);
+			() =>
+			{
+				if (!IsDisposed)
+				{
+					RefreshPlaces();
+				}
+			});
 
 
 	private void OnLocalizationChanged(
 		object? sender,
 		System.ComponentModel.PropertyChangedEventArgs e) =>
 		MainThread.BeginInvokeOnMainThread(
-			RefreshLocalizedProperties);
+			() =>
+			{
+				if (!IsDisposed)
+				{
+					RefreshLocalizedProperties();
+				}
+			});
 
 
 	/// <summary>Rebuilds the list of searched connections, honouring the "show all" toggle.</summary>
@@ -982,7 +998,10 @@ public sealed partial class PlanViewModel : ObservableObject
 		Location b) =>
 		a.IsStation
 			&& b.IsStation
-			? a.Id == b.Id
+			? string.Equals(
+				a.StopKey,
+				b.StopKey,
+				StringComparison.OrdinalIgnoreCase)
 			: a.Name == b.Name
 				&& a.Place == b.Place;
 

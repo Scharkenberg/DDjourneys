@@ -14,6 +14,14 @@ public partial class ThemesPage : ContentPage
 		BindingContext = vm;
 	}
 
+	protected override void OnNavigatedFrom(
+		NavigatedFromEventArgs args)
+	{
+		base.OnNavigatedFrom(args);
+
+		PageTeardown.DisposeIfLeft(args, BindingContext);
+	}
+
 	protected override void OnAppearing()
 	{
 		base.OnAppearing();

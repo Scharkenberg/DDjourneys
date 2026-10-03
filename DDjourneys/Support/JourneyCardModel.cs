@@ -57,11 +57,11 @@ public sealed class JourneyCardModel : ObservableObject
 
 		JourneyLeg? firstRide =
 			journey.Legs.FirstOrDefault(
-				l => l.Mode != TransitMode.Walk);
+				l => l.IsRide);
 
 		JourneyLeg? lastRide =
 			journey.Legs.LastOrDefault(
-				l => l.Mode != TransitMode.Walk);
+				l => l.IsRide);
 
 		// The place shown under each time is where the passenger is at that moment: the searched
 		// origin/destination when a walk leads to/from the first/last vehicle, else the stop itself.

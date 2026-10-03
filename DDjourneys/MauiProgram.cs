@@ -70,9 +70,11 @@ public static class MauiProgram
 
 #if ANDROID
 		// Schutzengel is the DVB/VVO service, so it always requeries through the VVO provider.
+		builder.Services.AddSingleton<Platforms.Android.LiveJourney.Schutzengel.SchutzengelCallbackBridge>();
 		builder.Services.AddSingleton<IJourneyTracker>(
 			services => new Platforms.Android.LiveJourney.Schutzengel.SchutzengelJourneyTracker(
-				services.GetRequiredService<VvoJourneyProvider>()));
+				services.GetRequiredService<VvoJourneyProvider>(),
+				services.GetRequiredService<Platforms.Android.LiveJourney.Schutzengel.SchutzengelCallbackBridge>()));
 #elif WINDOWS
 		builder.Services.AddSingleton<IJourneyTracker, Platforms.Windows.NoOpJourneyTracker>();
 #endif

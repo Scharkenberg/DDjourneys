@@ -7,10 +7,11 @@ namespace DDjourneys.Core.Tracking;
 /// Fan-out of events to any number of independent async enumerations.
 /// A single shared channel would hand each event to only one of several readers.
 /// </summary>
-public sealed class TrackingEventBroadcaster<T>
+public sealed class TrackingEventBroadcaster<T> : IDisposable
 {
 	private readonly object _gate = new();
 	private readonly List<Channel<T>> _subscribers = [];
+	private bool _disposed;
 
 	public void Publish(T item)
 	{
@@ -18,6 +19,11 @@ public sealed class TrackingEventBroadcaster<T>
 
 		lock (_gate)
 		{
+			if (_disposed)
+			{
+				return;
+			}
+
 			snapshot = [.. _subscribers];
 		}
 
@@ -33,9 +39,22 @@ public sealed class TrackingEventBroadcaster<T>
 	{
 		var channel = Channel.CreateUnbounded<T>(new UnboundedChannelOptions { SingleReader = true });
 
+		bool closed;
+
 		lock (_gate)
 		{
-			_subscribers.Add(channel);
+			closed = _disposed;
+
+			if (!closed)
+			{
+				_subscribers.Add(channel);
+			}
+		}
+
+		if (closed)
+		{
+			// Nothing will ever be published again: end the enumeration at once.
+			yield break;
 		}
 
 		try
@@ -52,6 +71,32 @@ public sealed class TrackingEventBroadcaster<T>
 				_subscribers.Remove(channel);
 			}
 
+			channel.Writer.TryComplete();
+		}
+	}
+
+	/// <summary>
+	/// Completes every subscription (their enumerations end after the items already queued)
+	/// and ignores later publishes. Idempotent.
+	/// </summary>
+	public void Dispose()
+	{
+		Channel<T>[] snapshot;
+
+		lock (_gate)
+		{
+			if (_disposed)
+			{
+				return;
+			}
+
+			_disposed = true;
+			snapshot = [.. _subscribers];
+			_subscribers.Clear();
+		}
+
+		foreach (Channel<T> channel in snapshot)
+		{
 			channel.Writer.TryComplete();
 		}
 	}

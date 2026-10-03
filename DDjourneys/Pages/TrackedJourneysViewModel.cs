@@ -53,7 +53,7 @@ public sealed class TrackedRow
 }
 
 /// <summary>The overview of all journeys the user follows.</summary>
-public sealed class TrackedJourneysViewModel : ObservableObject
+public sealed class TrackedJourneysViewModel : DisposableViewModel
 {
 	private static readonly TimeSpan AutoRefreshInterval = TimeSpan.FromSeconds(60);
 
@@ -68,7 +68,7 @@ public sealed class TrackedJourneysViewModel : ObservableObject
 		_tracker = tracker ?? throw new ArgumentNullException(nameof(tracker));
 		_localization = LocalizationService.Current;
 
-		_localization.PropertyChanged += OnLocalizationChanged;
+		ListenToLocalization(_localization, OnLocalizationChanged);
 
 		RefreshCommand = new AsyncCommand(RefreshAsync, null, ShowError);
 		DeleteAllCommand = new AsyncCommand(DeleteAllAsync, () => HasItems, ShowError);
@@ -147,6 +147,9 @@ public sealed class TrackedJourneysViewModel : ObservableObject
 
 		_ = AutoRefreshAsync(_observation.Token);
 	}
+
+	protected override void OnDisposing() =>
+		StopObserving();
 
 	public void StopObserving()
 	{
@@ -256,10 +259,18 @@ public sealed class TrackedJourneysViewModel : ObservableObject
 	// ----- Display -----
 
 	private void OnWatchedChanged(object? sender, EventArgs e) =>
-		MainThread.BeginInvokeOnMainThread(Rebuild);
+		MainThread.BeginInvokeOnMainThread(RebuildIfAlive);
 
 	private void OnLocalizationChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e) =>
-		MainThread.BeginInvokeOnMainThread(Rebuild);
+		MainThread.BeginInvokeOnMainThread(RebuildIfAlive);
+
+	private void RebuildIfAlive()
+	{
+		if (!IsDisposed)
+		{
+			Rebuild();
+		}
+	}
 
 	private void Rebuild()
 	{

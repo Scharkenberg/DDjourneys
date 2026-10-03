@@ -84,6 +84,8 @@ public sealed class GermanUiStrings : IUiStrings
 		"Die Verbindungen konnten nicht angezeigt werden.",
 		SearchServiceUnavailable =
 		"Der Fahrplandienst ist nicht erreichbar.",
+		PlacesNotUsable =
+		"Diese Orte lassen sich mit dem gewählten Datenanbieter nicht verwenden. Wähle sie bitte neu aus.",
 		Refresh = "Aktualisieren",
 		Retry = "Erneut versuchen",
 		Previous = "Früher",

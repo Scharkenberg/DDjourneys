@@ -1,4 +1,4 @@
-﻿namespace DDjourneys.Core.Models;
+namespace DDjourneys.Core.Models;
 
 /// <summary>
 /// Represents a geographic or public transport location
@@ -9,9 +9,16 @@ public sealed class Location
 	/// <summary>
 	/// Provider-specific identifier.
 	///
-	/// Usually available for stations.
+	/// Usually available for stations. Only meaningful together with <see cref="ProviderId"/>.
 	/// </summary>
 	public string? Id { get; init; }
+
+
+	/// <summary>
+	/// Stable id of the provider that issued <see cref="Id"/> (see <c>ProviderInfo.Id</c>).
+	/// Empty for places that were not issued by a provider.
+	/// </summary>
+	public string ProviderId { get; init; } = string.Empty;
 
 
 	/// <summary>
@@ -48,6 +55,13 @@ public sealed class Location
 	/// </summary>
 	public bool IsStation =>
 		!string.IsNullOrWhiteSpace(Id);
+
+
+	/// <summary>Provider-qualified stop key ("vvo:33000028"); null for free-form places.</summary>
+	public string? StopKey =>
+		ProviderKey.Compose(
+			ProviderId,
+			Id);
 
 
 	public override string ToString()

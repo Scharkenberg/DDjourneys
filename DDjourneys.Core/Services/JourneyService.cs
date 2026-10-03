@@ -1,4 +1,4 @@
-﻿using DDjourneys.Core.Models;
+using DDjourneys.Core.Models;
 using DDjourneys.Core.Providers;
 using DDjourneys.Core.Providers.Abstractions;
 
@@ -19,6 +19,11 @@ namespace DDjourneys.Core.Services;
 ///
 /// Optional provider capabilities, such as adjacent-journey retrieval,
 /// are exposed through dedicated capability interfaces.
+///
+/// When several providers are eligible they are asked in order. Only an answer with journeys ends
+/// the search; an empty answer, a failure and a provider that is not suitable for the request all
+/// fall through to the next one. When nobody finds anything, a failure is reported before an empty
+/// answer, and an empty answer before "not suitable" (see the private Outcomes helper).
 ///
 /// This keeps the application independent from individual transport APIs.
 /// </remarks>
@@ -62,26 +67,39 @@ public sealed class JourneyService
 		ArgumentNullException.ThrowIfNull(
 			query);
 
-		JourneyResult? lastFailure = null;
+		var outcomes = new Outcomes();
 
 		foreach (IJourneyProvider provider
 			in _providers)
 		{
+			if (!IsSuitable(
+				provider,
+				query.From,
+				query.To))
+			{
+				outcomes.Add(
+					JourneyResult.NotSuitable(
+						"journey_endpoint_other_provider"));
+
+				continue;
+			}
+
 			JourneyResult result =
 				await provider.SearchAsync(
 					query,
 					cancellationToken)
 				.ConfigureAwait(false);
 
-			if (result.IsSuccessful)
+			if (result.Outcome == JourneyOutcome.Found)
 			{
 				return result;
 			}
 
-			lastFailure = result;
+			outcomes.Add(
+				result);
 		}
 
-		return lastFailure
+		return outcomes.Best()
 			?? JourneyResult.Failure(
 				"journey_no_providers");
 	}
@@ -142,15 +160,24 @@ public sealed class JourneyService
 		int count,
 		CancellationToken cancellationToken)
 	{
-		JourneyResult? lastFailure = null;
+		var outcomes = new Outcomes();
 
 
 		foreach (IJourneyProvider provider
 			in _providers)
 		{
+			// Continuation is an optional capability, and only the provider that produced the journey
+			// understands its context.
 			if (provider
-				is not IJourneyContinuationProvider continuationProvider)
+					is not IJourneyContinuationProvider continuationProvider
+				|| !IsSuitable(
+					provider,
+					currentJourney))
 			{
+				outcomes.Add(
+					JourneyResult.NotSuitable(
+						"journey_continuation_not_supported"));
+
 				continue;
 			}
 
@@ -171,18 +198,96 @@ public sealed class JourneyService
 						.ConfigureAwait(false);
 
 
-			if (result.IsSuccessful)
+			if (result.Outcome == JourneyOutcome.Found)
 			{
 				return result;
 			}
 
 
-			lastFailure = result;
+			outcomes.Add(
+				result);
 		}
 
 
-		return lastFailure
-			?? JourneyResult.Failure(
+		return outcomes.Best()
+			?? JourneyResult.NotSuitable(
 				"journey_continuation_not_supported");
+	}
+
+
+	/// <summary>
+	/// A provider that declares its id is only asked about places it issued. Places without a provider
+	/// id (hand-made or stored before ids existed) are not held against it, and neither are free-form
+	/// places without a stop id: the provider itself decides whether it can resolve those.
+	/// </summary>
+	private static bool IsSuitable(
+		IJourneyProvider provider,
+		Location from,
+		Location to) =>
+		provider is not IProviderDescriptor descriptor
+		|| IsOwnedBy(descriptor.Info.Id, from)
+			&& IsOwnedBy(descriptor.Info.Id, to);
+
+
+	private static bool IsSuitable(
+		IJourneyProvider provider,
+		Journey journey) =>
+		provider is not IProviderDescriptor descriptor
+		|| string.IsNullOrWhiteSpace(journey.ProviderId)
+		|| string.Equals(
+			descriptor.Info.Id,
+			journey.ProviderId,
+			StringComparison.OrdinalIgnoreCase);
+
+
+	private static bool IsOwnedBy(
+		string providerId,
+		Location location) =>
+		!location.IsStation
+		|| string.IsNullOrWhiteSpace(location.ProviderId)
+		|| string.Equals(
+			location.ProviderId,
+			providerId,
+			StringComparison.OrdinalIgnoreCase);
+
+
+	/// <summary>
+	/// Collects what the providers that did not find anything answered, and picks what to report.
+	/// </summary>
+	/// <remarks>
+	/// Priority: a failure, then an empty answer, then "not suitable".
+	/// A failure wins over an empty answer on purpose: if a provider that could have answered did not,
+	/// "no journeys" would present an unknown as a fact and the user would not try again.
+	/// "Not suitable" comes last because it says nothing about the timetable at all.
+	/// </remarks>
+	private sealed class Outcomes
+	{
+		private JourneyResult? _failed;
+		private JourneyResult? _empty;
+		private JourneyResult? _notSuitable;
+
+		public void Add(
+			JourneyResult result)
+		{
+			switch (result.Outcome)
+			{
+				case JourneyOutcome.Failed:
+					_failed ??= result;
+					break;
+
+				case JourneyOutcome.Empty:
+					_empty ??= result;
+					break;
+
+				case JourneyOutcome.NotSuitable:
+					_notSuitable ??= result;
+					break;
+			}
+		}
+
+		public JourneyResult? Best() =>
+			_failed
+			?? _empty
+			?? _notSuitable;
 	}
 }

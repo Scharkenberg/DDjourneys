@@ -47,6 +47,8 @@ public partial class ResultsPage : ContentPage
 		{
 			_vm.Cancel();
 		}
+
+		PageTeardown.DisposeIfLeft(args, BindingContext);
 	}
 
 	private void CardLoaded(

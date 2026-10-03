@@ -42,16 +42,11 @@ public sealed class VvoJourneyProvider :
 		ArgumentNullException.ThrowIfNull(
 			query);
 
-		if (string.IsNullOrWhiteSpace(query.From.Id))
+		if (CheckEndpoints(
+			query.From,
+			query.To) is { } unsuitable)
 		{
-			return JourneyResult.Failure(
-				"vvo_origin_missing_id");
-		}
-
-		if (string.IsNullOrWhiteSpace(query.To.Id))
-		{
-			return JourneyResult.Failure(
-				"vvo_destination_missing_id");
+			return unsuitable;
 		}
 
 
@@ -101,6 +96,8 @@ public sealed class VvoJourneyProvider :
 			}
 
 
+			// A successful answer without routes is a result in its own right (Outcome Empty),
+			// not a failure: the service was reached and has nothing for this query.
 			if (response.Routes.Count == 0)
 			{
 				return JourneyResult.Success(
@@ -126,8 +123,7 @@ public sealed class VvoJourneyProvider :
 		}
 		catch (DDjourneys.Core.Api.ApiException ex)
 		{
-			return JourneyResult.Failure(
-				ex.Message);
+			return Failed(ex);
 		}
 		catch (Exception ex)
 		{
@@ -135,7 +131,8 @@ public sealed class VvoJourneyProvider :
 				$"VVO journey request failed: {ex}");
 
 			return JourneyResult.Failure(
-				"vvo_response_unreadable");
+				"vvo_response_unreadable",
+				ex.Message);
 		}
 	}
 
@@ -344,24 +341,29 @@ public sealed class VvoJourneyProvider :
 		ArgumentNullException.ThrowIfNull(
 			currentJourney);
 
-		if (string.IsNullOrWhiteSpace(
-			query.From.Id))
+		if (CheckEndpoints(
+			query.From,
+			query.To) is { } unsuitable)
 		{
-			return JourneyResult.Failure(
-				"vvo_origin_missing_id");
+			return unsuitable;
 		}
 
-		if (string.IsNullOrWhiteSpace(
-			query.To.Id))
+		// The session id of the original search is the only way to continue it; a journey from
+		// another provider (or one without a session) cannot be continued here.
+		if (!string.IsNullOrWhiteSpace(currentJourney.ProviderId)
+			&& !string.Equals(
+				currentJourney.ProviderId,
+				VvoProviderInfo.Id,
+				StringComparison.OrdinalIgnoreCase))
 		{
-			return JourneyResult.Failure(
-				"vvo_destination_missing_id");
+			return JourneyResult.NotSuitable(
+				"vvo_continuation_other_provider");
 		}
 
 		if (string.IsNullOrWhiteSpace(
 			currentJourney.Context))
 		{
-			return JourneyResult.Failure(
+			return JourneyResult.NotSuitable(
 				"vvo_continuation_context_missing");
 		}
 
@@ -459,8 +461,7 @@ public sealed class VvoJourneyProvider :
 		}
 		catch (DDjourneys.Core.Api.ApiException ex)
 		{
-			return JourneyResult.Failure(
-				ex.Message);
+			return Failed(ex);
 		}
 		catch (Exception ex)
 		{
@@ -468,8 +469,68 @@ public sealed class VvoJourneyProvider :
 				$"VVO continuation request failed: {ex}");
 
 			return JourneyResult.Failure(
-				"vvo_response_unreadable");
+				"vvo_response_unreadable",
+				ex.Message);
 		}
+	}
+
+
+	/// <summary>
+	/// The provider only answers for places it issued. A place without a provider id (stored before
+	/// ids existed, or built by hand) is not held against it, but it needs a stop id: VVO routes
+	/// between stops only.
+	/// </summary>
+	private static JourneyResult? CheckEndpoints(
+		Location from,
+		Location to)
+	{
+		if (!IsIssuedByVvo(from)
+			|| !IsIssuedByVvo(to))
+		{
+			return JourneyResult.NotSuitable(
+				"vvo_endpoint_other_provider");
+		}
+
+		if (string.IsNullOrWhiteSpace(from.Id))
+		{
+			return JourneyResult.NotSuitable(
+				"vvo_origin_missing_id");
+		}
+
+		if (string.IsNullOrWhiteSpace(to.Id))
+		{
+			return JourneyResult.NotSuitable(
+				"vvo_destination_missing_id");
+		}
+
+		return null;
+	}
+
+
+	private static bool IsIssuedByVvo(
+		Location location) =>
+		string.IsNullOrWhiteSpace(location.ProviderId)
+		|| string.Equals(
+			location.ProviderId,
+			VvoProviderInfo.Id,
+			StringComparison.OrdinalIgnoreCase);
+
+
+	/// <summary>
+	/// A failed request. The code says what kind of failure it was; the detail carries what the
+	/// service answered (status line and start of the body), or the cause when there was no answer.
+	/// </summary>
+	private static JourneyResult Failed(
+		DDjourneys.Core.Api.ApiException ex)
+	{
+		System.Diagnostics.Debug.WriteLine(
+			$"VVO request failed: {ex}");
+
+		return JourneyResult.Failure(
+			string.IsNullOrWhiteSpace(ex.Message)
+				? "vvo_service_unreachable"
+				: "vvo_service_error",
+			ex.Detail);
 	}
 
 
@@ -627,6 +688,11 @@ public sealed class VvoJourneyProvider :
 				string.IsNullOrWhiteSpace(station.Id)
 					? null
 					: station.Id,
+
+			ProviderId =
+				string.IsNullOrWhiteSpace(station.ProviderId)
+					? VvoProviderInfo.Id
+					: station.ProviderId,
 
 			Name =
 				station.Name,

@@ -85,6 +85,7 @@ public sealed class ResultsStrings
 	public required string NoConnections { get; init; }
 	public required string JourneysCouldNotBeDisplayed { get; init; }
 	public required string SearchServiceUnavailable { get; init; }
+	public required string PlacesNotUsable { get; init; }
 	public required string Refresh { get; init; }
 	public required string Retry { get; init; }
 	public required string Previous { get; init; }
