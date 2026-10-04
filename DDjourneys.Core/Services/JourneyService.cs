@@ -233,6 +233,55 @@ public sealed class JourneyService
 
 
 	/// <summary>
+	/// The connection with one leg replaced by an earlier or later alternative, from the provider that
+	/// issued the journey. Not suitable when that provider offers no such thing.
+	/// </summary>
+	public async Task<JourneyResult> GetLegAlternativeAsync(
+		JourneyQuery query,
+		Journey journey,
+		int legIndex,
+		bool previous,
+		CancellationToken cancellationToken = default)
+	{
+		ArgumentNullException.ThrowIfNull(query);
+		ArgumentNullException.ThrowIfNull(journey);
+
+		IJourneyExtrasProvider? provider =
+			_all
+				.OfType<IJourneyExtrasProvider>()
+				.FirstOrDefault(
+					candidate => candidate is IJourneyProvider journeyProvider
+						&& (_registry?.IsSelected(journeyProvider) ?? true)
+						&& IsSuitable(journeyProvider, journey));
+
+		return provider is null
+			? JourneyResult.NotSuitable("no_leg_alternatives")
+			: await provider
+				.GetLegAlternativeAsync(query, journey, legIndex, previous, cancellationToken)
+				.ConfigureAwait(false);
+	}
+
+
+	/// <summary>Address of a printable version of the journey, or null when its provider has none.</summary>
+	public Uri? GetJourneyDocumentUri(
+		JourneyQuery query,
+		Journey journey)
+	{
+		ArgumentNullException.ThrowIfNull(query);
+		ArgumentNullException.ThrowIfNull(journey);
+
+		return _all
+			.OfType<IJourneyExtrasProvider>()
+			.Where(
+				candidate => candidate is IJourneyProvider journeyProvider
+					&& (_registry?.IsSelected(journeyProvider) ?? true)
+					&& IsSuitable(journeyProvider, journey))
+			.Select(provider => provider.GetJourneyDocumentUri(query, journey))
+			.FirstOrDefault(uri => uri is not null);
+	}
+
+
+	/// <summary>
 	/// A provider that declares its id is only asked about places it issued. Places without a provider
 	/// id (hand-made or stored before ids existed) are not held against it, and neither are free-form
 	/// places without a stop id: the provider itself decides whether it can resolve those.

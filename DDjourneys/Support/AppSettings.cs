@@ -305,6 +305,18 @@ public sealed class AppSettings
 		set => Write("fewestTransfers", value);
 	}
 
+	public EntranceNeed Entrance
+	{
+		get => Read("entrance", EntranceNeed.Any);
+		set => Write("entrance", value);
+	}
+
+	public ExtraChargeFilter ExtraCharge
+	{
+		get => Read("extraCharge", ExtraChargeFilter.Any);
+		set => Write("extraCharge", value);
+	}
+
 	/// <summary>The routing options as sent with every journey search.</summary>
 	public RoutingPreferences Routing =>
 		new()
@@ -317,7 +329,9 @@ public sealed class AppSettings
 			Accessibility = Accessibility,
 			AvoidStairs = AvoidStairs,
 			AvoidEscalators = AvoidEscalators,
-			FewestTransfers = FewestTransfers
+			FewestTransfers = FewestTransfers,
+			Entrance = Entrance,
+			ExtraCharge = ExtraCharge
 		};
 
 	public void ResetRoutingDefaults()
@@ -331,6 +345,8 @@ public sealed class AppSettings
 		AvoidStairs = false;
 		AvoidEscalators = false;
 		FewestTransfers = false;
+		Entrance = EntranceNeed.Any;
+		ExtraCharge = ExtraChargeFilter.Any;
 	}
 
 	public void ResetJourneyDefaults()

@@ -70,6 +70,14 @@ public static class VvoModeMapper
 		}
 
 
+		if (value.Contains("cableway")
+			|| value.Contains("cablecar")
+			|| value.Contains("cable car"))
+		{
+			return TransitMode.CableCar;
+		}
+
+
 		if (value.Contains("taxi"))
 		{
 			return TransitMode.Taxi;

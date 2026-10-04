@@ -26,6 +26,18 @@
 
 				<HorizontalStackLayout Grid.Column="1" Spacing="0">
 					<controls:IconButton
+						Clicked="DeparturesClicked"
+						Glyph="Clock"
+						IsVisible="{Binding HasDepartures}"
+						SemanticProperties.Description="{localization:Tr Departures.Title}" />
+
+					<controls:IconButton
+						Clicked="DisruptionsClicked"
+						Glyph="Warning"
+						IsVisible="{Binding HasDisruptions}"
+						SemanticProperties.Description="{localization:Tr Disruptions.Title}" />
+
+					<controls:IconButton
 						Clicked="TrackedClicked"
 						Glyph="Bell"
 						IsVisible="{Binding IsTrackingAvailable}"
@@ -47,7 +59,7 @@
 
 					<Grid
 						Grid.Row="0"
-						ColumnDefinitions="*,44"
+						ColumnDefinitions="*,44,44"
 						support:Dense.MinHeight="64">
 
 						<VerticalStackLayout support:Motion.Feedback="True" Spacing="2" VerticalOptions="Center">
@@ -65,6 +77,12 @@
 
 						<controls:IconButton
 							Grid.Column="1"
+							Command="{Binding UseLocationFromCommand}"
+							Glyph="Locate"
+							SemanticProperties.Description="{localization:Tr Plan.UseLocationFrom}" />
+
+						<controls:IconButton
+							Grid.Column="2"
 							Command="{Binding ToggleFromFavouriteCommand}"
 							Glyph="{Binding FromStar}"
 							InputTransparent="{Binding NoFrom}"
@@ -79,7 +97,7 @@
 
 					<Grid
 						Grid.Row="2"
-						ColumnDefinitions="*,44"
+						ColumnDefinitions="*,44,44"
 						support:Dense.MinHeight="64">
 
 						<VerticalStackLayout support:Motion.Feedback="True" Spacing="2" VerticalOptions="Center">
@@ -97,6 +115,12 @@
 
 						<controls:IconButton
 							Grid.Column="1"
+							Command="{Binding UseLocationToCommand}"
+							Glyph="Locate"
+							SemanticProperties.Description="{localization:Tr Plan.UseLocationTo}" />
+
+						<controls:IconButton
+							Grid.Column="2"
 							Command="{Binding ToggleToFavouriteCommand}"
 							Glyph="{Binding ToStar}"
 							InputTransparent="{Binding NoTo}"
@@ -114,6 +138,34 @@
 						Size="24"
 						VerticalOptions="Center" />
 
+				</Grid>
+			</Border>
+
+			<!--  Stop over  -->
+			<Border
+				Padding="0"
+				IsVisible="{Binding HasVia}"
+				StyleClass="Card">
+				<Grid
+					support:Dense.MinHeight="56"
+					support:Dense.Padding="14,6"
+					ColumnDefinitions="*,44">
+
+					<VerticalStackLayout support:Motion.Feedback="True" Spacing="2" VerticalOptions="Center">
+						<Label StyleClass="Caption" Text="{localization:Tr Plan.Via}" />
+
+						<controls:StopNameView Place="{Binding ViaPlace}" Stop="{Binding ViaName}" />
+
+						<VerticalStackLayout.GestureRecognizers>
+							<TapGestureRecognizer Command="{Binding PickViaCommand}" />
+						</VerticalStackLayout.GestureRecognizers>
+					</VerticalStackLayout>
+
+					<controls:IconButton
+						Grid.Column="1"
+						Command="{Binding ClearViaCommand}"
+						Glyph="Close"
+						SemanticProperties.Description="{localization:Tr Plan.ClearVia}" />
 				</Grid>
 			</Border>
 
@@ -271,6 +323,108 @@
 			</Border>
 
 			<Button Command="{Binding SearchCommand}" Text="{localization:Tr Plan.SearchJourneys}" />
+
+			<!--  Shortcuts: home, and keeping the connection on screen under a name  -->
+			<FlexLayout Wrap="Wrap">
+
+				<Button
+					Margin="0,0,8,8"
+					Padding="14,0"
+					Command="{Binding GoHomeCommand}"
+					FontSize="{StaticResource FontCaption}"
+					IsVisible="{Binding HasHome}"
+					support:Dense.MinHeight="40"
+					StyleClass="Tonal"
+					Text="{localization:Tr Plan.GoHome}" />
+
+				<Button
+					Margin="0,0,8,8"
+					Padding="14,0"
+					Command="{Binding SetHomeCommand}"
+					FontSize="{StaticResource FontCaption}"
+					support:Dense.MinHeight="40"
+					StyleClass="Tonal"
+					Text="{localization:Tr Plan.SetHome}" />
+
+				<Button
+					Margin="0,0,8,8"
+					Padding="14,0"
+					Command="{Binding PickViaCommand}"
+					FontSize="{StaticResource FontCaption}"
+					IsVisible="{Binding NoVia}"
+					support:Dense.MinHeight="40"
+					StyleClass="Tonal"
+					Text="{localization:Tr Plan.AddVia}" />
+
+				<Button
+					Margin="0,0,8,8"
+					Padding="14,0"
+					Command="{Binding SaveRouteCommand}"
+					FontSize="{StaticResource FontCaption}"
+					IsEnabled="{Binding CanSearch}"
+					support:Dense.MinHeight="40"
+					StyleClass="Tonal"
+					Text="{localization:Tr Plan.SaveRoute}" />
+			</FlexLayout>
+
+			<!--  Saved routes  -->
+			<VerticalStackLayout IsVisible="{Binding HasSavedRoutes}" Spacing="{DynamicResource SpaceS}">
+
+				<Label StyleClass="Title" Text="{localization:Tr Plan.SavedRoutes}" />
+
+				<Border Padding="0" StyleClass="Card">
+					<VerticalStackLayout BindableLayout.ItemsSource="{Binding SavedRoutes}">
+
+						<BindableLayout.ItemTemplate>
+							<DataTemplate x:DataType="core:SavedRoute">
+
+								<Grid RowDefinitions="Auto,Auto" RowSpacing="0">
+
+									<Grid
+										support:Motion.Feedback="True"
+										support:Dense.Padding="14,10"
+										ColumnDefinitions="Auto,*,Auto"
+										ColumnSpacing="10"
+										support:Dense.MinHeight="56"
+										SemanticProperties.Description="{Binding Name}">
+
+										<controls:Icon
+											Margin="0,2,0,0"
+											Glyph="Bookmark"
+											Size="18"
+											VerticalOptions="Start"
+											Color="{DynamicResource InkMuted}" />
+
+										<VerticalStackLayout Grid.Column="1" Spacing="3">
+
+											<Label FontFamily="{DynamicResource FontSemibold}" LineBreakMode="TailTruncation" Text="{Binding Name}" />
+
+											<Label StyleClass="Caption" Text="{Binding Description}" />
+										</VerticalStackLayout>
+
+										<controls:IconButton
+											Grid.Column="2"
+											Command="{Binding Source={RelativeSource AncestorType={x:Type local:PlanViewModel}}, Path=ForgetSavedRouteCommand}"
+											CommandParameter="{Binding .}"
+											Glyph="Close"
+											SemanticProperties.Description="{localization:Tr Plan.ForgetSavedRoute}"
+											Size="16"
+											VerticalOptions="Center" />
+
+										<Grid.GestureRecognizers>
+											<TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type local:PlanViewModel}}, Path=UseSavedRouteCommand}" CommandParameter="{Binding .}" />
+										</Grid.GestureRecognizers>
+									</Grid>
+
+									<BoxView Grid.Row="1" StyleClass="Divider" />
+								</Grid>
+
+							</DataTemplate>
+						</BindableLayout.ItemTemplate>
+
+					</VerticalStackLayout>
+				</Border>
+			</VerticalStackLayout>
 
 			<!--  Recent searches: tapping a row looks the same connection up again  -->
 			<VerticalStackLayout IsVisible="{Binding HasRecentRoutes}" Spacing="{DynamicResource SpaceS}">

@@ -1,15 +1,15 @@
-﻿using DDjourneys.Core.Models;
+using DDjourneys.Core.Models;
 using Location = DDjourneys.Core.Models.Location;
 
-namespace DDjourneys.Core.Providers.Abstractions;
+namespace DDjourneys.Core.Services;
 
 /// <summary>
-/// Provides location search functionality.
+/// Interface for location lookup and GPS functionality.
 /// </summary>
-public interface ILocationProvider
+public interface ILocationService
 {
 	/// <summary>
-	/// Searches for locations matching the supplied query.
+	/// Searches for locations matching user input.
 	/// </summary>
 	Task<IReadOnlyList<Location>> SearchAsync(
 		string query,
@@ -24,4 +24,9 @@ public interface ILocationProvider
 		double longitude,
 		CancellationToken cancellationToken = default,
 		TimeSpan? timeout = null);
+
+	/// <summary>
+	/// Gets the current device location using GPS.
+	/// </summary>
+	Task<Location?> GetCurrentLocationAsync();
 }

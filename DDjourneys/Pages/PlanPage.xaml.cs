@@ -30,6 +30,15 @@ public partial class PlanPage : ContentPage, IQueryAttributable
 					[Routes.TargetIsFrom] = isFrom
 				});
 
+		vm.OpenViaSearch = () =>
+			NavigateAsync(
+				Routes.PlaceSearch,
+				new ShellNavigationQueryParameters
+				{
+					[Routes.TargetIsFrom] = false,
+					[Routes.Target] = Routes.TargetVia
+				});
+
 		vm.OpenResults = query =>
 			NavigateAsync(
 				Routes.Results,
@@ -43,6 +52,15 @@ public partial class PlanPage : ContentPage, IQueryAttributable
 				_localization.CurrentStrings.Common.SomethingWentWrong,
 				message,
 				_localization.CurrentStrings.Common.Ok);
+
+		vm.AskName = (title, message, suggestion) =>
+			DisplayPromptAsync(
+				title,
+				message,
+				_localization.CurrentStrings.Common.Ok,
+				_localization.CurrentStrings.Common.Cancel,
+				maxLength: 40,
+				initialValue: suggestion);
 	}
 
 	private bool? _dateTimeStacked;
@@ -124,6 +142,21 @@ public partial class PlanPage : ContentPage, IQueryAttributable
 	{
 		if (query.TryGetValue(
 				Routes.SelectedPlace,
+				out object? picked)
+			&& picked is Location stopOver
+			&& query.TryGetValue(
+				Routes.Target,
+				out object? purpose)
+			&& purpose is string name
+			&& name == Routes.TargetVia)
+		{
+			_vm.Via = stopOver;
+
+			return;
+		}
+
+		if (query.TryGetValue(
+				Routes.SelectedPlace,
 				out object? chosen)
 			&& chosen is Location place
 			&& query.TryGetValue(
@@ -169,6 +202,20 @@ public partial class PlanPage : ContentPage, IQueryAttributable
 		EventArgs e) =>
 		await NavigateAsync(
 			Routes.Settings,
+			[]);
+
+	private async void DeparturesClicked(
+		object? sender,
+		EventArgs e) =>
+		await NavigateAsync(
+			Routes.Departures,
+			[]);
+
+	private async void DisruptionsClicked(
+		object? sender,
+		EventArgs e) =>
+		await NavigateAsync(
+			Routes.Disruptions,
 			[]);
 
 	private async void TrackedClicked(

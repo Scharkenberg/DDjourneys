@@ -37,7 +37,10 @@ public enum IconGlyph
 	Globe,
 	Code,
 	Walk,
-	History
+	History,
+	Locate,
+	Home,
+	Bookmark
 }
 
 /// <summary>One icon: path markup on the 24x24 grid, and whether it is drawn solid.</summary>
@@ -169,6 +172,17 @@ internal static class IconPaths
 					+ "M10.6 9.2 L7.4 11 L6 14 M13 15.5 L16.2 21"),
 
 			[IconGlyph.History] =
-				new("M4.4 8.6 A8 8 0 1 0 12 4 M4.4 8.6 H9.4 M4.4 8.6 V3.6 M12 7.6 V12.4 L15.6 14.6")
+				new("M4.4 8.6 A8 8 0 1 0 12 4 M4.4 8.6 H9.4 M4.4 8.6 V3.6 M12 7.6 V12.4 L15.6 14.6"),
+
+			// Crosshair: "where I am".
+			[IconGlyph.Locate] =
+				new("M5.5 12 A6.5 6.5 0 1 0 18.5 12 A6.5 6.5 0 1 0 5.5 12 Z "
+					+ "M12 2.5 V5.5 M12 18.5 V21.5 M2.5 12 H5.5 M18.5 12 H21.5 M12 12 L12 12"),
+
+			[IconGlyph.Home] =
+				new("M3.5 11.5 L12 4 L20.5 11.5 M5.5 10 V20.5 H18.5 V10 M10 20.5 V14.5 H14 V20.5"),
+
+			[IconGlyph.Bookmark] =
+				new("M7 3.5 H17 V20.5 L12 16.5 L7 20.5 Z")
 		};
 }

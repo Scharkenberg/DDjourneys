@@ -1,0 +1,123 @@
+<ContentPage
+	x:Class="DDjourneys.Pages.RunPage"
+	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+	xmlns:controls="clr-namespace:DDjourneys.Controls"
+	xmlns:local="clr-namespace:DDjourneys.Pages"
+	xmlns:localization="clr-namespace:DDjourneys.Localization"
+	xmlns:support="clr-namespace:DDjourneys.Support"
+	Title="{localization:Tr Departures.RunTitle}"
+	x:DataType="local:RunViewModel">
+
+	<RefreshView Command="{Binding RefreshCommand}" IsRefreshing="{Binding IsBusy}">
+		<ScrollView>
+			<VerticalStackLayout Padding="{DynamicResource PadPage}" Spacing="{DynamicResource SpaceM}">
+
+				<Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+					<Border
+						BackgroundColor="{Binding Look.Fill}"
+						StrokeDashArray="{Binding Look.Dashes}"
+						StrokeShape="{Binding Look.Shape}"
+						StrokeThickness="{Binding Look.StrokeThickness}"
+						StyleClass="Chip"
+						Stroke="{Binding Look.Stroke}"
+						VerticalOptions="Center">
+						<Label
+							FontFamily="{DynamicResource FontSemibold}"
+							FontSize="{StaticResource FontCaption}"
+							StyleClass="ChipLabel"
+							Text="{Binding Title}"
+							TextColor="{Binding Look.Text}" />
+					</Border>
+
+					<Label
+						Grid.Column="1"
+						IsVisible="{Binding HasDirection}"
+						LineBreakMode="TailTruncation"
+						Text="{Binding Direction}"
+						VerticalOptions="Center" />
+				</Grid>
+
+				<Label
+					HorizontalTextAlignment="Center"
+					IsVisible="{Binding HasMessage}"
+					StyleClass="Caption"
+					Text="{Binding Message}" />
+
+				<Border Padding="0" StyleClass="Card">
+					<Border.Triggers>
+						<DataTrigger
+							Binding="{Binding Rows.Count}"
+							TargetType="Border"
+							Value="0">
+							<Setter Property="IsVisible" Value="False" />
+						</DataTrigger>
+					</Border.Triggers>
+
+					<VerticalStackLayout BindableLayout.ItemsSource="{Binding Rows}">
+						<BindableLayout.ItemTemplate>
+							<DataTemplate x:DataType="local:RunRow">
+								<Grid RowDefinitions="Auto,Auto" RowSpacing="0">
+									<Grid
+										support:Dense.Padding="14,10"
+										support:Dense.MinHeight="52"
+										ColumnDefinitions="Auto,*,Auto"
+										ColumnSpacing="10"
+										Opacity="{Binding RowOpacity}"
+										SemanticProperties.Description="{Binding Description}">
+
+										<controls:Icon
+											Glyph="Locate"
+											IsVisible="{Binding IsCurrent}"
+											Size="18"
+											VerticalOptions="Center"
+											Color="{DynamicResource Accent}" />
+
+										<VerticalStackLayout
+											Grid.Column="1"
+											Spacing="1"
+											VerticalOptions="Center">
+											<controls:StopNameView Place="{Binding Place}" Stop="{Binding Name}" />
+											<Label
+												IsVisible="{Binding IsCurrent}"
+												StyleClass="Caption"
+												Text="{Binding CurrentText}" />
+											<Label
+												IsVisible="{Binding IsCancelled}"
+												StyleClass="Cancelled"
+												Text="{Binding CancelledText}" />
+										</VerticalStackLayout>
+
+										<HorizontalStackLayout
+											Grid.Column="2"
+											Spacing="8"
+											VerticalOptions="Center">
+											<controls:OccupancyIndicator
+												IsVisible="{Binding HasOccupancy}"
+												Level="{Binding Occupancy}"
+												VerticalOptions="Center" />
+											<VerticalStackLayout Spacing="0">
+												<Label
+													FontFamily="{DynamicResource FontSemibold}"
+													HorizontalTextAlignment="End"
+													Text="{Binding TimeText}" />
+												<Label
+													HorizontalTextAlignment="End"
+													IsVisible="{Binding HasDelay}"
+													StyleClass="Caption"
+													Text="{Binding DelayText}" />
+											</VerticalStackLayout>
+										</HorizontalStackLayout>
+									</Grid>
+
+									<BoxView Grid.Row="1" StyleClass="Divider" />
+								</Grid>
+							</DataTemplate>
+						</BindableLayout.ItemTemplate>
+					</VerticalStackLayout>
+				</Border>
+
+			</VerticalStackLayout>
+		</ScrollView>
+	</RefreshView>
+</ContentPage>

@@ -20,5 +20,9 @@ public static class VvoProviderInfo
 			| ProviderCapabilities.Tracking
 			| ProviderCapabilities.Occupancy
 			| ProviderCapabilities.Platforms
-			| ProviderCapabilities.RoutingPreferences);
+			| ProviderCapabilities.RoutingPreferences
+			| ProviderCapabilities.Departures
+			| ProviderCapabilities.Disruptions
+			| ProviderCapabilities.NetworkInfo
+			| ProviderCapabilities.JourneyExtras);
 }

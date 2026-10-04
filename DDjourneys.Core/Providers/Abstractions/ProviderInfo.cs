@@ -25,7 +25,19 @@ public enum ProviderCapabilities
 	Platforms = 32,
 
 	/// <summary>Routing preferences (modes, transfers, walking, accessibility) are honoured.</summary>
-	RoutingPreferences = 64
+	RoutingPreferences = 64,
+
+	/// <summary>Departure monitor and the course of a vehicle.</summary>
+	Departures = 128,
+
+	/// <summary>Route changes, disruptions and network notices.</summary>
+	Disruptions = 256,
+
+	/// <summary>Stops near a position, lines of a stop, tariff zones.</summary>
+	NetworkInfo = 512,
+
+	/// <summary>Alternatives for a single leg of a journey, and a printable journey.</summary>
+	JourneyExtras = 1024
 }
 
 /// <summary>

@@ -53,6 +53,7 @@ public sealed partial class PlaceSearchViewModel : DisposableViewModel, IQueryAt
 	// Everyone else may only Cancel() it (guarded), never Dispose() it.
 	private CancellationTokenSource? _search;
 	private bool _targetIsFrom;
+	private string? _target;
 	private bool _isNavigating;
 	private MessageKind _messageKind;
 
@@ -144,6 +145,14 @@ public sealed partial class PlaceSearchViewModel : DisposableViewModel, IQueryAt
 		{
 			_targetIsFrom = isFrom;
 		}
+
+		_target =
+			query.TryGetValue(
+				Routes.Target,
+				out object? target)
+			&& target is string name
+				? name
+				: null;
 	}
 
 	protected override void OnDisposing() =>
@@ -388,7 +397,8 @@ public sealed partial class PlaceSearchViewModel : DisposableViewModel, IQueryAt
 				new ShellNavigationQueryParameters
 				{
 					[Routes.SelectedPlace] = place,
-					[Routes.TargetIsFrom] = _targetIsFrom
+					[Routes.TargetIsFrom] = _targetIsFrom,
+					[Routes.Target] = _target ?? string.Empty
 				});
 		}
 		catch (Exception ex)

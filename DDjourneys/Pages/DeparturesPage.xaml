@@ -1,0 +1,330 @@
+<ContentPage
+	x:Class="DDjourneys.Pages.DeparturesPage"
+	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+	xmlns:controls="clr-namespace:DDjourneys.Controls"
+	xmlns:core="clr-namespace:DDjourneys.Core.Models;assembly=DDjourneys.Core"
+	xmlns:local="clr-namespace:DDjourneys.Pages"
+	xmlns:localization="clr-namespace:DDjourneys.Localization"
+	xmlns:support="clr-namespace:DDjourneys.Support"
+	Title="{localization:Tr Departures.Title}"
+	x:DataType="local:DeparturesViewModel">
+
+	<RefreshView Command="{Binding RefreshCommand}" IsRefreshing="{Binding IsBusy}">
+		<ScrollView>
+			<VerticalStackLayout Padding="{DynamicResource PadPage}" Spacing="{DynamicResource SpaceM}">
+
+				<!--  Stop  -->
+				<Border Padding="0" StyleClass="Card">
+					<Grid
+						support:Dense.Padding="14,10"
+						support:Dense.MinHeight="56"
+						ColumnDefinitions="*,Auto,Auto"
+						ColumnSpacing="{DynamicResource SpaceS}"
+						SemanticProperties.Description="{localization:Tr Departures.Stop}">
+
+						<controls:StopNameView
+							Place="{Binding StopPlace}"
+							Stop="{Binding StopName}"
+							VerticalOptions="Center" />
+
+						<controls:IconButton
+							Grid.Column="1"
+							Command="{Binding LocateCommand}"
+							Glyph="Locate"
+							SemanticProperties.Description="{localization:Tr Departures.UseMyLocation}" />
+
+						<controls:IconButton
+							Grid.Column="2"
+							Command="{Binding RefreshCommand}"
+							Glyph="Refresh"
+							IsVisible="{Binding HasStop}"
+							SemanticProperties.Description="{localization:Tr Departures.Refresh}" />
+
+						<Grid.GestureRecognizers>
+							<TapGestureRecognizer Command="{Binding PickStopCommand}" />
+						</Grid.GestureRecognizers>
+					</Grid>
+				</Border>
+
+				<Label
+					IsVisible="{Binding HasZone}"
+					StyleClass="Caption"
+					Text="{Binding ZoneText}" />
+
+				<!--  Departures / arrivals and the moment  -->
+				<VerticalStackLayout IsVisible="{Binding HasStop}" Spacing="{DynamicResource SpaceS}">
+
+					<Grid ColumnDefinitions="*,*,Auto" ColumnSpacing="{DynamicResource SpaceS}">
+						<Button
+							Command="{Binding DepartCommand}"
+							StyleClass="Tonal"
+							support:Themed.IsOn="{Binding IsDeparture}"
+							support:Themed.OnBackground="Accent"
+							support:Themed.OnText="OnAccent"
+							Text="{localization:Tr Departures.DeparturesTab}" />
+						<Button
+							Grid.Column="1"
+							Command="{Binding ArriveCommand}"
+							StyleClass="Tonal"
+							support:Themed.IsOn="{Binding IsArrival}"
+							support:Themed.OnBackground="Accent"
+							support:Themed.OnText="OnAccent"
+							Text="{localization:Tr Departures.ArrivalsTab}" />
+						<Button
+							Grid.Column="2"
+							Command="{Binding NowCommand}"
+							IsEnabled="{Binding IsNotNow}"
+							StyleClass="Tonal"
+							Text="{localization:Tr Departures.Now}" />
+					</Grid>
+
+					<Grid ColumnDefinitions="*,*" ColumnSpacing="{DynamicResource SpaceS}">
+						<DatePicker
+							Date="{Binding Date}"
+							Format="ddd, d MMM"
+							HorizontalOptions="Start" />
+						<TimePicker
+							Grid.Column="1"
+							Format="HH:mm"
+							HorizontalOptions="Start"
+							Time="{Binding Time}" />
+					</Grid>
+				</VerticalStackLayout>
+
+				<Label
+					HorizontalTextAlignment="Center"
+					IsVisible="{Binding HasMessage}"
+					StyleClass="Caption"
+					Text="{Binding Message}" />
+
+				<!--  Departure rows  -->
+				<Border Padding="0" StyleClass="Card">
+					<Border.Triggers>
+						<DataTrigger
+							Binding="{Binding Rows.Count}"
+							TargetType="Border"
+							Value="0">
+							<Setter Property="IsVisible" Value="False" />
+						</DataTrigger>
+					</Border.Triggers>
+
+					<VerticalStackLayout BindableLayout.ItemsSource="{Binding Rows}">
+						<BindableLayout.ItemTemplate>
+							<DataTemplate x:DataType="local:DepartureRow">
+								<Grid RowDefinitions="Auto,Auto" RowSpacing="0">
+									<Grid
+										support:Dense.Padding="14,10"
+										support:Dense.MinHeight="56"
+										support:Motion.Feedback="True"
+										ColumnDefinitions="68,*,Auto"
+										ColumnSpacing="10"
+										SemanticProperties.Description="{Binding Description}">
+
+										<Border
+											BackgroundColor="{Binding Look.Fill}"
+											StrokeDashArray="{Binding Look.Dashes}"
+											StrokeShape="{Binding Look.Shape}"
+											StrokeThickness="{Binding Look.StrokeThickness}"
+											StyleClass="Chip"
+											Stroke="{Binding Look.Stroke}"
+											HorizontalOptions="Start"
+											VerticalOptions="Center"
+											WidthRequest="68">
+											<support:PillScroll>
+												<Label
+													FontFamily="{DynamicResource FontSemibold}"
+													FontSize="{StaticResource FontCaption}"
+													StyleClass="ChipLabel"
+													Text="{Binding LineText}"
+													TextColor="{Binding Look.Text}" />
+											</support:PillScroll>
+										</Border>
+
+										<VerticalStackLayout
+											Grid.Column="1"
+											Spacing="1"
+											VerticalOptions="Center">
+											<Label
+												LineBreakMode="TailTruncation"
+												Text="{Binding Direction}" />
+											<HorizontalStackLayout Spacing="8">
+												<Label
+													IsVisible="{Binding HasPlatform}"
+													StyleClass="Caption"
+													Text="{Binding PlatformText}" />
+												<Label
+													IsVisible="{Binding IsCancelled}"
+													StyleClass="Cancelled"
+													Text="{Binding CancelledText}" />
+												<controls:OccupancyIndicator
+													IsVisible="{Binding HasOccupancy}"
+													Level="{Binding Occupancy}"
+													VerticalOptions="Center" />
+											</HorizontalStackLayout>
+										</VerticalStackLayout>
+
+										<HorizontalStackLayout
+											Grid.Column="2"
+											Spacing="4"
+											VerticalOptions="Center">
+
+											<VerticalStackLayout Spacing="0" HorizontalOptions="End">
+												<Label
+													FontFamily="{DynamicResource FontSemibold}"
+													HorizontalTextAlignment="End"
+													Text="{Binding TimeText}" />
+												<Label
+													HorizontalTextAlignment="End"
+													IsVisible="{Binding HasDelay}"
+													StyleClass="Caption"
+													Text="{Binding DelayText}" />
+												<Label
+													HorizontalTextAlignment="End"
+													IsVisible="{Binding HasIn}"
+													StyleClass="Caption"
+													Text="{Binding InText}" />
+											</VerticalStackLayout>
+
+											<controls:IconButton
+												Command="{Binding Source={RelativeSource AncestorType={x:Type local:DeparturesViewModel}}, x:DataType=local:DeparturesViewModel, Path=OpenChangesCommand}"
+												CommandParameter="{Binding .}"
+												Glyph="Warning"
+												IsVisible="{Binding HasChanges}"
+												SemanticProperties.Description="{localization:Tr Departures.RouteChanges}" />
+										</HorizontalStackLayout>
+
+										<Grid.GestureRecognizers>
+											<TapGestureRecognizer
+												Command="{Binding Source={RelativeSource AncestorType={x:Type local:DeparturesViewModel}}, x:DataType=local:DeparturesViewModel, Path=OpenRunCommand}"
+												CommandParameter="{Binding .}" />
+										</Grid.GestureRecognizers>
+									</Grid>
+
+									<BoxView Grid.Row="1" StyleClass="Divider" />
+								</Grid>
+							</DataTemplate>
+						</BindableLayout.ItemTemplate>
+					</VerticalStackLayout>
+				</Border>
+
+				<!--  Nearby stops  -->
+				<VerticalStackLayout IsVisible="{Binding HasNearby}" Spacing="{DynamicResource SpaceS}">
+					<Label StyleClass="Title" Text="{localization:Tr Departures.Nearby}" />
+					<Border Padding="0" StyleClass="Card">
+						<VerticalStackLayout BindableLayout.ItemsSource="{Binding Nearby}">
+							<BindableLayout.ItemTemplate>
+								<DataTemplate x:DataType="local:NearbyRow">
+									<Grid RowDefinitions="Auto,Auto" RowSpacing="0">
+										<Grid
+											support:Dense.Padding="14,10"
+											support:Dense.MinHeight="48"
+											support:Motion.Feedback="True"
+											ColumnDefinitions="*,Auto"
+											ColumnSpacing="10">
+											<controls:StopNameView
+												Place="{Binding Place}"
+												Stop="{Binding Name}"
+												VerticalOptions="Center" />
+											<Label
+												Grid.Column="1"
+												StyleClass="Caption"
+												Text="{Binding DistanceText}"
+												VerticalOptions="Center" />
+											<Grid.GestureRecognizers>
+												<TapGestureRecognizer
+													Command="{Binding Source={RelativeSource AncestorType={x:Type local:DeparturesViewModel}}, x:DataType=local:DeparturesViewModel, Path=SelectNearbyCommand}"
+													CommandParameter="{Binding .}" />
+											</Grid.GestureRecognizers>
+										</Grid>
+										<BoxView Grid.Row="1" StyleClass="Divider" />
+									</Grid>
+								</DataTemplate>
+							</BindableLayout.ItemTemplate>
+						</VerticalStackLayout>
+					</Border>
+				</VerticalStackLayout>
+
+				<!--  Lines serving the stop  -->
+				<VerticalStackLayout IsVisible="{Binding HasStop}" Spacing="{DynamicResource SpaceS}">
+					<Button Command="{Binding ToggleLinesCommand}" StyleClass="Tonal" Text="{Binding LinesToggleText}" />
+
+					<Border
+						Padding="0"
+						IsVisible="{Binding ShowLines}"
+						StyleClass="Card">
+						<VerticalStackLayout BindableLayout.ItemsSource="{Binding Lines}">
+							<BindableLayout.ItemTemplate>
+								<DataTemplate x:DataType="local:StopLineRow">
+									<Grid RowDefinitions="Auto,Auto" RowSpacing="0">
+										<Grid
+											support:Dense.Padding="14,10"
+											ColumnDefinitions="68,*"
+											ColumnSpacing="10">
+											<Border
+												BackgroundColor="{Binding Look.Fill}"
+												StrokeDashArray="{Binding Look.Dashes}"
+												StrokeShape="{Binding Look.Shape}"
+												StrokeThickness="{Binding Look.StrokeThickness}"
+												StyleClass="Chip"
+												Stroke="{Binding Look.Stroke}"
+												HorizontalOptions="Start"
+												VerticalOptions="Start"
+												WidthRequest="68">
+												<support:PillScroll>
+													<Label
+														FontFamily="{DynamicResource FontSemibold}"
+														FontSize="{StaticResource FontCaption}"
+														StyleClass="ChipLabel"
+														Text="{Binding LineText}"
+														TextColor="{Binding Look.Text}" />
+												</support:PillScroll>
+											</Border>
+											<Label
+												Grid.Column="1"
+												StyleClass="Caption"
+												Text="{Binding DirectionsText}" />
+										</Grid>
+										<BoxView Grid.Row="1" StyleClass="Divider" />
+									</Grid>
+								</DataTemplate>
+							</BindableLayout.ItemTemplate>
+						</VerticalStackLayout>
+					</Border>
+				</VerticalStackLayout>
+
+				<!--  Favourites and recent stops, until one is chosen  -->
+				<VerticalStackLayout IsVisible="{Binding ShowQuickPicks}" Spacing="{DynamicResource SpaceS}">
+					<Label StyleClass="Title" Text="{localization:Tr Plan.Recent}" />
+					<FlexLayout BindableLayout.ItemsSource="{Binding QuickPicks}" Wrap="Wrap">
+						<BindableLayout.ItemTemplate>
+							<DataTemplate x:DataType="core:Location">
+								<Border Margin="0,0,8,8" StyleClass="ChipButton">
+									<controls:StopNameView Place="{Binding Place}" Stop="{Binding Name}" />
+									<Border.GestureRecognizers>
+										<TapGestureRecognizer
+											Command="{Binding Source={RelativeSource AncestorType={x:Type local:DeparturesViewModel}}, x:DataType=local:DeparturesViewModel, Path=SelectStopCommand}"
+											CommandParameter="{Binding .}" />
+									</Border.GestureRecognizers>
+								</Border>
+							</DataTemplate>
+						</BindableLayout.ItemTemplate>
+					</FlexLayout>
+				</VerticalStackLayout>
+
+				<Label
+					HorizontalTextAlignment="Center"
+					IsVisible="{Binding ShowHint}"
+					StyleClass="Caption"
+					Text="{localization:Tr Departures.Hint}" />
+
+				<Label
+					HorizontalTextAlignment="Center"
+					IsVisible="{Binding HasStop}"
+					StyleClass="Caption"
+					Text="{Binding UpdatedText}" />
+
+			</VerticalStackLayout>
+		</ScrollView>
+	</RefreshView>
+</ContentPage>

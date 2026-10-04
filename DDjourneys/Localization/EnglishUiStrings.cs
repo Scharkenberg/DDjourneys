@@ -50,8 +50,68 @@ public sealed class EnglishUiStrings : IUiStrings
 		ForgetSearch = "Remove this search",
 		SearchAgain = "Search this connection again",
 		StartAndDestinationRequired = "Start and destination are required.",
+		UseLocationFrom = "Use my location as start",
+		UseLocationTo = "Use my location as destination",
+		GoHome = "Go home",
+		SetHome = "Set home here",
+		SaveRoute = "Save route",
+		RouteNamePrompt = "Name for this route",
+		SavedRoutes = "Saved routes",
+		ForgetSavedRoute = "Remove saved route",
+		LocationPermissionDenied = "Location access is needed to use your position.",
+		LocationUnavailable = "Your position could not be determined.",
+		NoStopNearby = "No stop found near your position.",
+		Via = "Via",
+		AddVia = "Add stop over",
+		ClearVia = "Remove stop over",
 		PlacesYouSearchForWillAppearHere =
 			"Places you search for will appear here."
+	};
+
+	public DeparturesStrings Departures { get; } = new()
+	{
+		Title = "Departures",
+		Stop = "Stop",
+		ChooseStop = "Choose a stop",
+		DeparturesTab = "Departures",
+		ArrivalsTab = "Arrivals",
+		Now = "Now",
+		NoDepartures = "No departures found.",
+		Lines = "Lines at this stop",
+		ShowLines = "Show lines",
+		HideLines = "Hide lines",
+		Nearby = "Stops near you",
+		UseMyLocation = "Use my location",
+		TariffZone = "Tariff zone {0}",
+		Metres = "{0} m",
+		Cancelled = "Cancelled",
+		RouteChanges = "Route changes affect this departure",
+		Refresh = "Refresh",
+		Updated = "Updated {0}",
+		Hint = "Choose a stop to see what leaves next.",
+		RunTitle = "Course",
+		NoRun = "No course available for this departure.",
+		VehicleHere = "Vehicle is here",
+		OpenDepartures = "Departures at this stop"
+	};
+
+	public DisruptionsStrings Disruptions { get; } = new()
+	{
+		Title = "Disruptions",
+		OnlyShortTerm = "Short-term only",
+		FilterPlaceholder = "Filter by line",
+		None = "No route changes.",
+		Planned = "Planned",
+		ShortTerm = "Short-term",
+		AffectsRouting = "Considered in journey planning",
+		From = "From {0}",
+		Until = "Until {0}",
+		Range = "{0} \u2013 {1}",
+		Notices = "Notices",
+		ShowAll = "Show all changes",
+		Selected = "Showing the changes of the selected departure.",
+		Refresh = "Refresh",
+		Details = "Details"
 	};
 
 	public PlaceSearchStrings PlaceSearch { get; } = new()
@@ -89,6 +149,11 @@ public sealed class EnglishUiStrings : IUiStrings
 
 	public JourneyStrings Journey { get; } = new()
 	{
+		LegEarlier = "Earlier alternative",
+		LegLater = "Later alternative",
+		LegNone = "No alternative found for this ride.",
+		OpenPdf = "Open as PDF",
+		AlternativeShown = "Showing an alternative connection. Search again to go back.",
 		Title = "Journey",
 		FollowJourney = "Follow journey",
 		DeactivateTracking = "Pause tracking",
@@ -299,7 +364,15 @@ public sealed class EnglishUiStrings : IUiStrings
 		AvoidEscalators = "Avoid escalators",
 		AvoidEscalatorsDescription = "Used when no accessibility level is set",
 		FewestTransfers = "Fewest transfers",
-		FewestTransfersDescription = "Prefer fewer changes over a faster trip"
+		FewestTransfersDescription = "Prefer fewer changes over a faster trip",
+		SectionEntrance = "Vehicle entrance",
+		EntranceAny = "Any entrance",
+		EntranceSmallStep = "Small step at most",
+		EntranceNoStep = "Step-free entrance",
+		SectionExtraCharge = "Supplements",
+		ExtraChargeAny = "No restriction",
+		ExtraChargeNone = "Without supplement",
+		ExtraChargeLocal = "Local transport only"
 	};
 
 	public ProviderStrings Provider { get; } = new()
@@ -313,6 +386,10 @@ public sealed class EnglishUiStrings : IUiStrings
 		CapTracking = "Live tracking",
 		CapOccupancy = "Occupancy",
 		CapPlatforms = "Platforms",
+		CapDepartures = "Departures",
+		CapDisruptions = "Disruptions",
+		CapNetwork = "Nearby stops, lines, zones",
+		CapExtras = "Leg alternatives, PDF",
 		CapRouting = "Route preferences",
 		Footer = "More providers can be added in future versions."
 	};

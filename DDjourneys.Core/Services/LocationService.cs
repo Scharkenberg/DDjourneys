@@ -47,4 +47,29 @@ public sealed class LocationService
 				cancellationToken,
 				timeout);
 	}
+
+
+	/// <summary>
+	/// Finds the stops around a position (e.g. the device's), nearest first. Routing needs a stop, so a
+	/// position is turned into one this way.
+	/// </summary>
+	public Task<IReadOnlyList<Location>> SearchByCoordinatesAsync(
+		double latitude,
+		double longitude,
+		CancellationToken cancellationToken = default,
+		TimeSpan? timeout = null)
+	{
+		ILocationProvider? provider =
+			_registry is null
+				? _providers.FirstOrDefault()
+				: _providers.FirstOrDefault(_registry.IsSelected);
+
+		return provider is null
+			? Task.FromResult<IReadOnlyList<Location>>([])
+			: provider.SearchByCoordinatesAsync(
+				latitude,
+				longitude,
+				cancellationToken,
+				timeout);
+	}
 }
