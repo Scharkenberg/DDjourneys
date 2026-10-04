@@ -68,40 +68,6 @@ public sealed class VvoNetworkProvider :
 			: VvoNetworkMapper.MapBoard(response, query.Stop, query.IsArrival);
 	}
 
-	private static readonly Lazy<TimeZoneInfo> VvoZone =
-		new(
-			() =>
-			{
-				foreach (string id in new[] { "Europe/Berlin", "W. Europe Standard Time" })
-				{
-					try
-					{
-						return TimeZoneInfo.FindSystemTimeZoneById(id);
-					}
-					catch (Exception ex) when (ex is TimeZoneNotFoundException or InvalidTimeZoneException)
-					{
-					}
-				}
-
-				return TimeZoneInfo.Local;
-			});
-
-	/// <summary>
-	/// "/Date(ms+0200)/" with the offset of the provider zone, as the API writes it itself. The server
-	/// compares the wall-clock time (milliseconds plus offset) with its own clock, so "+0000" made a time
-	/// two hours ahead look like it was in the past.
-	/// </summary>
-	private static string ToVvoDate(
-		DateTimeOffset value)
-	{
-		TimeSpan offset =
-			VvoZone.Value.GetUtcOffset(value);
-
-		return string.Create(
-			CultureInfo.InvariantCulture,
-			$"/Date({value.ToUnixTimeMilliseconds()}{(offset < TimeSpan.Zero ? '-' : '+')}{Math.Abs(offset.Hours):00}{Math.Abs(offset.Minutes):00})/");
-	}
-
 	/// <inheritdoc />
 	public async Task<IReadOnlyList<RunStop>> GetRunAsync(
 		Departure departure,
@@ -115,30 +81,47 @@ public sealed class VvoNetworkProvider :
 			return [];
 		}
 
-		// The server rejects a time that is not in the future ("time has to be a valid time in the future"),
-		// and it matches against the real-time departure. So: the real-time time, and for a vehicle that is
-		// already under way (its time at this stop has passed) the earliest accepted time; the trip id
-		// still selects the run.
-		DateTimeOffset now =
-			DateTimeOffset.UtcNow.AddSeconds(10);
-
-		DateTimeOffset time =
-			departure.Effective > now
-				? departure.Effective
-				: now;
+		// tripid names the line's course, not one run (kiliankoe's webapi.md, "Run identity"): the run is the
+		// next real-time departure at stopid at or after time. So the time is the run's own real-time
+		// departure here, a minute early, and the answer is checked against its scheduled time.
+		DateTimeOffset token =
+			departure.Effective.AddSeconds(-60);
 
 		DiagnosticLog.Write(
-			$"[VVO run] trip {departure.Id} stop {departure.StopId} shown {departure.Effective:O} sent {ToVvoDate(time)}");
+			$"[VVO run] departure trip '{departure.Id}' stop {departure.StopId} line {departure.Line.Name} "
+			+ $"scheduled {departure.Scheduled:O} realtime {departure.Realtime:O} arrival {departure.IsArrival} "
+			+ $"now {DateTimeOffset.UtcNow:O} token {token:O} ({(token < DateTimeOffset.UtcNow ? "past" : "future")})");
+
+		bool Matches(VvoRunResponse candidate)
+		{
+			VvoRunStop? current =
+				candidate.Stops.FirstOrDefault(
+					stop => string.Equals(stop.Position, "Current", StringComparison.OrdinalIgnoreCase));
+
+			if (current?.Time is not { } scheduled)
+			{
+				DiagnosticLog.Write($"[VVO run] no 'Current' stop with a time in the answer ({candidate.Stops.Count} stops); taken as is");
+
+				return candidate.Stops.Count > 0;
+			}
+
+			bool same =
+				Math.Abs((scheduled - departure.Scheduled).TotalSeconds) < 90;
+
+			DiagnosticLog.Write(
+				$"[VVO run] Current '{current.Name}' scheduled {scheduled:O}, wanted {departure.Scheduled:O}: {(same ? "same run" : "DIFFERENT run")}");
+
+			return same;
+		}
 
 		VvoRunResponse? response =
 			await _apiClient.GetDepartureRunAsync(
-				new VvoDepartureRunRequest
-				{
-					TripId = departure.Id,
-					StopId = departure.StopId,
-					IsArrival = departure.IsArrival,
-					Time = ToVvoDate(time)
-				},
+				_apiClient.BuildRunAttempts(
+					departure.Id,
+					departure.StopId,
+					departure.IsArrival,
+					token),
+				Matches,
 				cancellationToken,
 				Timeout(timeoutSeconds))
 				.ConfigureAwait(false);

@@ -38,13 +38,18 @@ public partial class DeparturesPage : ContentPage, IQueryAttributable
 					[Routes.DepartureData] = departure
 				});
 
-		vm.OpenChanges = ids =>
+		vm.OpenChanges = departure =>
 			NavigateAsync(
 				Routes.Disruptions,
-				new ShellNavigationQueryParameters
-				{
-					[Routes.ChangeIds] = string.Join(',', ids)
-				});
+				string.IsNullOrWhiteSpace(departure.Line.Name)
+					? new ShellNavigationQueryParameters
+					{
+						[Routes.ChangeIds] = string.Join(',', departure.RouteChangeIds)
+					}
+					: new ShellNavigationQueryParameters
+					{
+						[Routes.LineName] = departure.Line.Name
+					});
 	}
 
 	public void ApplyQueryAttributes(

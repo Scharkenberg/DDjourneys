@@ -160,7 +160,11 @@ public sealed class DisruptionsViewModel : DisposableViewModel, IQueryAttributab
 	private IReadOnlyList<Disruption> _changes = [];
 	private HashSet<string> _only = new(StringComparer.Ordinal);
 	private CancellationTokenSource? _load;
+	private CancellationTokenSource? _build;
 	private bool _loaded;
+
+	// Rows reach the screen in small batches: building dozens of cards in one go freezes the page.
+	private const int BatchSize = 10;
 
 	public DisruptionsViewModel(
 		NetworkService network)
@@ -180,7 +184,7 @@ public sealed class DisruptionsViewModel : DisposableViewModel, IQueryAttributab
 				{
 					_only = new HashSet<string>(StringComparer.Ordinal);
 					OnPropertyChanged(nameof(IsLimited));
-					Rebuild();
+					_ = RebuildAsync();
 				});
 	}
 
@@ -213,7 +217,7 @@ public sealed class DisruptionsViewModel : DisposableViewModel, IQueryAttributab
 		{
 			if (SetProperty(ref field, value ?? string.Empty))
 			{
-				Rebuild();
+				_ = RebuildAsync(true);
 			}
 		}
 	} = string.Empty;
@@ -249,6 +253,14 @@ public sealed class DisruptionsViewModel : DisposableViewModel, IQueryAttributab
 	public void ApplyQueryAttributes(
 		IDictionary<string, object> query)
 	{
+		// Opened from a departure: the disruptions of its line (shown in the filter, so it can be cleared).
+		if (query.TryGetValue(Routes.LineName, out object? line)
+			&& line is string lineName
+			&& lineName.Length > 0)
+		{
+			Filter = lineName;
+		}
+
 		if (query.TryGetValue(Routes.ChangeIds, out object? value)
 			&& value is string ids)
 		{
@@ -299,7 +311,7 @@ public sealed class DisruptionsViewModel : DisposableViewModel, IQueryAttributab
 			}
 
 			OnPropertyChanged(nameof(HasBanners));
-			Rebuild();
+			_ = RebuildAsync();
 		}
 		catch (OperationCanceledException)
 		{
@@ -322,40 +334,85 @@ public sealed class DisruptionsViewModel : DisposableViewModel, IQueryAttributab
 		}
 	}
 
-	private void Rebuild()
+	/// <summary>
+	/// Line filter: names separated by comma, semicolon or space. A name matches a line exactly ("7" is line 7, not
+	/// 17 or S7); letters alone match every line with that prefix and a number ("S" is S1, S2, ...).
+	/// </summary>
+	private static bool MatchesLines(
+		Disruption change,
+		string[] names) =>
+		change.Lines.Any(
+			line => names.Any(
+				name => string.Equals(line.Name, name, StringComparison.CurrentCultureIgnoreCase)
+					|| (name.All(char.IsLetter)
+						&& line.Name.Length > name.Length
+						&& line.Name.StartsWith(name, StringComparison.CurrentCultureIgnoreCase)
+						&& line.Name[name.Length..].All(char.IsDigit))));
+
+	private async Task RebuildAsync(
+		bool debounce = false)
 	{
-		string filter = Filter.Trim();
+		_build?.Cancel();
 
-		IEnumerable<Disruption> shown = _changes;
+		var cts = new CancellationTokenSource();
+		_build = cts;
 
-		if (_only.Count > 0)
+		try
 		{
-			shown = shown.Where(change => _only.Contains(change.Id));
-		}
+			if (debounce)
+			{
+				await Task.Delay(250, cts.Token);
+			}
 
-		if (filter.Length > 0)
+			string[] names =
+				Filter.Split(
+					[',', ';', ' '],
+					StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+			IEnumerable<Disruption> source = _changes;
+
+			if (_only.Count > 0)
+			{
+				source = source.Where(change => _only.Contains(change.Id));
+			}
+
+			if (names.Length > 0)
+			{
+				source = source.Where(change => MatchesLines(change, names));
+			}
+
+			Disruption[] shown = [.. source];
+
+			Rows.Clear();
+
+			for (int i = 0; i < shown.Length; i += BatchSize)
+			{
+				cts.Token.ThrowIfCancellationRequested();
+
+				foreach (Disruption change in shown.Skip(i).Take(BatchSize))
+				{
+					Rows.Add(new DisruptionRow(change));
+				}
+
+				if (i + BatchSize < shown.Length)
+				{
+					await Task.Delay(16, cts.Token);
+				}
+			}
+
+			Message =
+				shown.Length == 0 && _loaded
+					? _localization.CurrentStrings.Disruptions.None
+					: string.Empty;
+		}
+		catch (OperationCanceledException)
 		{
-			shown =
-				shown.Where(
-					change => change.Lines.Any(
-						line => line.Name.Contains(
-							filter,
-							StringComparison.CurrentCultureIgnoreCase)));
 		}
-
-		Rows.Clear();
-
-		foreach (Disruption change in shown)
-		{
-			Rows.Add(new DisruptionRow(change));
-		}
-
-		Message =
-			Rows.Count == 0 && _loaded
-				? _localization.CurrentStrings.Disruptions.None
-				: string.Empty;
 	}
 
-	protected override void OnDisposing() =>
+	protected override void OnDisposing()
+	{
 		_load?.Cancel();
+		_build?.Cancel();
+	}
 }

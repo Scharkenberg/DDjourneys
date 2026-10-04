@@ -1,39 +1,45 @@
 using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
 using DDjourneys.Core.Diagnostics;
 using DDjourneys.Core.Mapping;
 using DDjourneys.Localization;
+using DDjourneys.Support;
 
 namespace DDjourneys.Controls;
 
 /// <summary>
-/// A map: Leaflet (embedded in the app) running in a web view, with free OpenStreetMap-based tiles.
-/// Needs no API key and no native map package. Give it a <see cref="MapScene"/>; it keeps the scene and
-/// re-applies it when the page finished loading or the app theme changed.
+/// A map: MapLibre GL (vector tiles, embedded in the app under Resources/Raw/wwwroot) in a
+/// <see cref="HybridWebView"/>. C# calls the page's <c>ddMapCall</c> through InvokeJavaScriptAsync; the page
+/// reports back with raw messages ("ready", "open:url", "error:text"). The basemap is recoloured from the
+/// active app theme. Give it a <see cref="MapScene"/>; it keeps the scene and re-applies it when needed.
 /// </summary>
 public sealed class MapView : ContentView
 {
-	// A real https origin, so the page is not an anonymous "about:blank" document.
-	private const string Origin = "https://github.com/Scharkenberg/DDjourneys";
+	private static string? _cartoKey;
 
-	private static string? _html;
+	// Built by hand: a [JsonSerializable] context needs the System.Text.Json source generator, which does not
+	// run in this solution (same as [GeneratedRegex]). This is the AOT-safe metadata for a plain string.
+	private static readonly JsonTypeInfo<string> StringInfo =
+		JsonMetadataServices.CreateValueInfo<string>(
+			new JsonSerializerOptions { TypeInfoResolver = JsonTypeInfoResolver.Combine() },
+			JsonMetadataServices.StringConverter);
 
-	private readonly WebView _web;
+	private readonly HybridWebView _web;
 	private MapScene? _scene;
 	private string? _pendingFocus;
 	private bool _ready;
-	private bool _loading;
+	private bool _subscribed;
 
 	public MapView()
 	{
 		_web =
-			new WebView
+			new HybridWebView
 			{
 				HorizontalOptions = LayoutOptions.Fill,
 				VerticalOptions = LayoutOptions.Fill
 			};
 
-		_web.Navigating += OnNavigating;
-		_web.Navigated += OnNavigated;
+		_web.RawMessageReceived += OnRawMessage;
 
 		Content = _web;
 
@@ -44,20 +50,14 @@ public sealed class MapView : ContentView
 		HandlerChanged += OnHandlerChanged;
 	}
 
-	private static bool IsDark =>
-		Application.Current is { } app
-		&& (app.UserAppTheme != AppTheme.Unspecified
-			? app.UserAppTheme
-			: app.RequestedTheme) == AppTheme.Dark;
-
-	/// <summary>Shows the scene (replacing the previous one). Markers with the same id move instead of blinking.</summary>
+	/// <summary>Shows the scene (replacing the previous one). Markers with the same id stay in place.</summary>
 	public Task ShowAsync(MapScene scene)
 	{
 		ArgumentNullException.ThrowIfNull(scene);
 
 		_scene = scene;
 
-		return PushAsync();
+		return PushSceneAsync();
 	}
 
 	/// <summary>Centres the marker with this id and opens its popup.</summary>
@@ -70,82 +70,101 @@ public sealed class MapView : ContentView
 			return;
 		}
 
-		await EvaluateAsync($"ddMap.focus({System.Text.Json.JsonSerializer.Serialize(markerId)});");
+		await CallAsync("focus", JsonSerializer.Serialize(markerId));
 	}
 
-	private async void OnHandlerChanged(object? sender, EventArgs e)
+	private void OnHandlerChanged(object? sender, EventArgs e)
 	{
 		if (Handler is null)
 		{
-			if (Application.Current is { } old)
+			if (_subscribed)
 			{
-				old.RequestedThemeChanged -= OnThemeChanged;
+				Theme.Changed -= OnThemeChanged;
+				_subscribed = false;
 			}
 
 			return;
 		}
 
-		Application.Current!.RequestedThemeChanged -= OnThemeChanged;
-		Application.Current!.RequestedThemeChanged += OnThemeChanged;
-
-		if (_ready || _loading)
+		if (!_subscribed)
 		{
-			return;
+			Theme.Changed += OnThemeChanged;
+			_subscribed = true;
 		}
+	}
 
-		_loading = true;
+	private async void OnRawMessage(object? sender, HybridWebViewRawMessageReceivedEventArgs e)
+	{
+		string message = e.Message ?? string.Empty;
 
 		try
 		{
-			_web.Source =
-				new HtmlWebViewSource
-				{
-					Html = await BuildHtmlAsync(),
-					BaseUrl = Origin
-				};
+			if (message == "ready")
+			{
+				await InitializeAsync();
+			}
+			else if (message.StartsWith("open:", StringComparison.Ordinal)
+				&& Uri.TryCreate(message[5..], UriKind.Absolute, out Uri? uri)
+				&& uri.Scheme is "http" or "https")
+			{
+				await Launcher.Default.OpenAsync(uri);
+			}
+			else if (message.StartsWith("error:", StringComparison.Ordinal))
+			{
+				DiagnosticLog.Write($"[Map JS] {message[6..]}");
+			}
 		}
 		catch (Exception ex)
 		{
-			_loading = false;
-
-			System.Diagnostics.Debug.WriteLine($"Map page could not be built: {ex}");
+			DiagnosticLog.Write($"[Map] message '{message}' failed: {ex.Message}");
 		}
 	}
 
-	private static async Task<string> BuildHtmlAsync()
+	private async Task InitializeAsync()
 	{
-		if (_html is not null)
+		string key = _cartoKey ??= await ReadCartoKeyAsync();
+
+		await CallAsync("init", CurrentTheme().ToInitJson(key));
+
+		_ready = true;
+
+		await PushSceneAsync();
+
+		if (_pendingFocus is { } id)
 		{
-			return _html;
+			_pendingFocus = null;
+
+			await FocusAsync(id);
 		}
-
-		static async Task<string> ReadAsync(string name)
-		{
-			using Stream stream = await FileSystem.OpenAppPackageFileAsync(name);
-			using var reader = new StreamReader(stream);
-
-			return await reader.ReadToEndAsync();
-		}
-
-		string template = await ReadAsync("ddmap.html");
-		string css = await ReadAsync("leaflet.css");
-		string script = await ReadAsync("leaflet.js");
-		string key = await ReadCartoKeyAsync();
-
-		return _html =
-			template
-				.Replace("/*LEAFLET_CSS*/", css, StringComparison.Ordinal)
-				.Replace("/*LEAFLET_JS*/", script, StringComparison.Ordinal)
-				.Replace(
-					"/*CARTO_QUERY*/",
-					key.Length == 0
-						? string.Empty
-						: "?key=" + Uri.EscapeDataString(key),
-					StringComparison.Ordinal);
 	}
 
-	// The CARTO key lives in Resources/Raw/secrets.json, which is not in the repository (.gitignore).
-	// Without it the map still loads, but CARTO draws its "API KEY REQUIRED" watermark.
+	private static MapTheme CurrentTheme()
+	{
+		static string Hex(string key, string fallback)
+		{
+			Color color = Theme.ColorOf(key, Color.FromArgb(fallback));
+
+			return $"#{(int)Math.Round(color.Red * 255):X2}{(int)Math.Round(color.Green * 255):X2}{(int)Math.Round(color.Blue * 255):X2}";
+		}
+
+		bool dark = Theme.IsDark;
+
+		return
+			dark
+				? new MapTheme(
+					true,
+					Hex("Bg", "#0C1418"), Hex("Surface", "#16232A"), Hex("Raised", "#23343E"), Hex("Outline", "#456070"),
+					Hex("Ink", "#E9EFF1"), Hex("InkMuted", "#A2B3BC"), Hex("Accent", "#5CC0DA"), Hex("AccentSoft", "#1B3E4A"),
+					Hex("OnTime", "#4ADE80"))
+				: new MapTheme(
+					false,
+					Hex("Bg", "#F2F4F5"), Hex("Surface", "#FFFFFF"), Hex("Raised", "#DFE6E9"), Hex("Outline", "#B4C1C7"),
+					Hex("Ink", "#0F1A1F"), Hex("InkMuted", "#4A5960"), Hex("Accent", "#0B6E8A"), Hex("AccentSoft", "#D3E9F0"),
+					Hex("OnTime", "#15803D"));
+	}
+
+	// The CARTO key lives in Resources/Raw/secrets.json, which is not in the repository (.gitignore) and,
+	// being outside wwwroot, is never served to the page. Without it the map still tries CARTO's keyless access.
 	private static async Task<string> ReadCartoKeyAsync()
 	{
 		try
@@ -158,66 +177,32 @@ public sealed class MapView : ContentView
 				&& value.GetString()?.Trim() is { Length: > 0 } key
 				&& !key.StartsWith("PASTE", StringComparison.OrdinalIgnoreCase))
 			{
+				DiagnosticLog.Write("[Map] CARTO key loaded from secrets.json");
+
 				return key;
 			}
 
-			DiagnosticLog.Write("[Map] secrets.json has no CartoApiKey; tiles will be watermarked");
+			DiagnosticLog.Write("[Map] secrets.json has no CartoApiKey; trying CARTO without a key");
 		}
 		catch (Exception ex)
 		{
-			DiagnosticLog.Write($"[Map] no secrets.json ({ex.GetType().Name}); tiles will be watermarked");
+			DiagnosticLog.Write($"[Map] no secrets.json ({ex.GetType().Name}); trying CARTO without a key");
 		}
 
 		return string.Empty;
 	}
 
-	// Links in popups and the attribution must not replace the map: they go to the system browser.
-	private async void OnNavigating(object? sender, WebNavigatingEventArgs e)
+	private async void OnThemeChanged(object? sender, EventArgs e)
 	{
-		if (!_ready
-			|| !Uri.TryCreate(e.Url, UriKind.Absolute, out Uri? uri)
-			|| uri.Scheme is not ("http" or "https"))
+		if (!_ready)
 		{
 			return;
 		}
 
-		e.Cancel = true;
-
-		try
-		{
-			await Launcher.Default.OpenAsync(uri);
-		}
-		catch (Exception ex)
-		{
-			System.Diagnostics.Debug.WriteLine($"Opening a map link failed: {ex.Message}");
-		}
+		await CallAsync("theme", CurrentTheme().ToJson());
 	}
 
-	private async void OnNavigated(object? sender, WebNavigatedEventArgs e)
-	{
-		if (e.Result != WebNavigationResult.Success)
-		{
-			_loading = false;
-
-			return;
-		}
-
-		_ready = true;
-
-		await PushAsync();
-
-		if (_pendingFocus is { } id)
-		{
-			_pendingFocus = null;
-
-			await FocusAsync(id);
-		}
-	}
-
-	private async void OnThemeChanged(object? sender, AppThemeChangedEventArgs e) =>
-		await PushAsync();
-
-	private async Task PushAsync()
+	private async Task PushSceneAsync()
 	{
 		if (!_ready
 			|| _scene is not { } scene)
@@ -225,19 +210,23 @@ public sealed class MapView : ContentView
 			return;
 		}
 
-		await EvaluateAsync($"ddMap.set({scene.ToJson(IsDark)});");
+		await CallAsync("set", scene.ToJson(Theme.IsDark));
 	}
 
-	private async Task EvaluateAsync(string script)
+	private async Task CallAsync(string command, string? json)
 	{
 		try
 		{
 			await MainThread.InvokeOnMainThreadAsync(
-				() => _web.EvaluateJavaScriptAsync(script));
+				() => _web.InvokeJavaScriptAsync<string>(
+					"ddMapCall",
+					null,
+					[command, json],
+					[StringInfo, StringInfo]));
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Map script failed: {ex.Message}");
+			DiagnosticLog.Write($"[Map] '{command}' failed: {ex.Message}");
 		}
 	}
 }

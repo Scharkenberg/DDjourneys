@@ -348,7 +348,7 @@ public sealed class DeparturesViewModel : DisposableViewModel
 		OpenChangesCommand =
 			new AsyncCommand<DepartureRow>(
 				row => row is not null && OpenChanges is { } open
-					? open(row.Departure.RouteChangeIds)
+					? open(row.Departure)
 					: Task.CompletedTask);
 
 		ToggleLinesCommand =
@@ -378,7 +378,8 @@ public sealed class DeparturesViewModel : DisposableViewModel
 
 	public Func<Departure, Task>? OpenRun { get; set; }
 
-	public Func<IReadOnlyList<string>, Task>? OpenChanges { get; set; }
+	/// <summary>Opens the disruptions of the departure's line.</summary>
+	public Func<Departure, Task>? OpenChanges { get; set; }
 
 	public AsyncCommand PickStopCommand { get; }
 

@@ -243,6 +243,166 @@ public sealed class VvoApiClient
 			timeout);
 
 
+	/// <summary>One way of asking dm/trip; the wire format of "time" is what differs.</summary>
+	public sealed record VvoRunAttempt(string Label, HttpMethod Method, string Uri, string? Body);
+
+	// The attempt that worked last time goes first next time.
+	private string? _runLabel;
+
+	private static readonly Lazy<TimeZoneInfo> VvoZone =
+		new(
+			() =>
+			{
+				foreach (string id in new[] { "Europe/Berlin", "W. Europe Standard Time" })
+				{
+					try
+					{
+						return TimeZoneInfo.FindSystemTimeZoneById(id);
+					}
+					catch (Exception ex) when (ex is TimeZoneNotFoundException or InvalidTimeZoneException)
+					{
+					}
+				}
+
+				return TimeZoneInfo.Local;
+			});
+
+	/// <summary>"/Date(ms+0200)/" with the offset of the provider zone.</summary>
+	public static string ToVvoDate(
+		DateTimeOffset value,
+		bool providerOffset = true)
+	{
+		TimeSpan offset =
+			providerOffset
+				? VvoZone.Value.GetUtcOffset(value)
+				: TimeSpan.Zero;
+
+		return string.Create(
+			System.Globalization.CultureInfo.InvariantCulture,
+			$"/Date({value.ToUnixTimeMilliseconds()}{(offset < TimeSpan.Zero ? '-' : '+')}{Math.Abs(offset.Hours):00}{Math.Abs(offset.Minutes):00})/");
+	}
+
+	/// <summary>
+	/// The ways to ask for the course of a run, most promising first:
+	/// the GET form the dvb-fahrplan app uses (UTC milliseconds, "-0000"), then the documented POST with the
+	/// date as the server itself writes it (escaped slashes), as ISO 8601, and as plain "/Date()/".
+	/// </summary>
+	public IReadOnlyList<VvoRunAttempt> BuildRunAttempts(
+		string tripId,
+		string stopId,
+		bool isArrival,
+		DateTimeOffset time)
+	{
+		long ms = time.ToUnixTimeMilliseconds();
+
+		string Json(string timeJson) =>
+			"{\"tripid\":" + JsonSerializer.Serialize(tripId)
+			+ ",\"time\":" + timeJson
+			+ ",\"stopid\":" + JsonSerializer.Serialize(stopId)
+			+ ",\"isarrival\":" + (isArrival ? "true" : "false")
+			+ ",\"mapdata\":false,\"format\":\"json\"}";
+
+		string get =
+			$"{BaseUrl}/dm/trip?format=json"
+			+ $"&time={Uri.EscapeDataString($"/Date({ms}-0000)/")}"
+			+ $"&tripId={Uri.EscapeDataString(tripId)}"
+			+ $"&stopId={Uri.EscapeDataString(stopId)}"
+			+ $"&isarrival={(isArrival ? "true" : "false")}";
+
+		string post = $"{BaseUrl}/dm/trip";
+
+		VvoRunAttempt[] attempts =
+		[
+			new("get-utc", HttpMethod.Get, get, null),
+			new("post-escaped", HttpMethod.Post, post, Json($"\"\\/Date({ms}+0000)\\/\"")),
+			new("post-iso", HttpMethod.Post, post, Json(JsonSerializer.Serialize(time.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'", System.Globalization.CultureInfo.InvariantCulture)))),
+			new("post-plain", HttpMethod.Post, post, Json(JsonSerializer.Serialize(ToVvoDate(time))))
+		];
+
+		return
+			[.. attempts
+				.OrderBy(attempt => attempt.Label == _runLabel ? 0 : 1)];
+	}
+
+	/// <summary>
+	/// Tries the attempts until one returns a run that <paramref name="accept"/> takes, logging every
+	/// request and what came back.
+	/// </summary>
+	public async Task<VvoRunResponse?> GetDepartureRunAsync(
+		IReadOnlyList<VvoRunAttempt> attempts,
+		Func<VvoRunResponse, bool> accept,
+		CancellationToken cancellationToken = default,
+		TimeSpan? timeout = null)
+	{
+		ArgumentNullException.ThrowIfNull(attempts);
+		ArgumentNullException.ThrowIfNull(accept);
+
+		foreach (VvoRunAttempt attempt in attempts)
+		{
+			cancellationToken.ThrowIfCancellationRequested();
+
+			DiagnosticLog.Write(
+				$"[VVO run] try '{attempt.Label}': {attempt.Method} {attempt.Uri} {attempt.Body}");
+
+			try
+			{
+				string json =
+					attempt.Method == HttpMethod.Get
+						? await _apiClient.GetAsync(attempt.Uri, cancellationToken, timeout).ConfigureAwait(false)
+						: await _apiClient.PostJsonAsync(attempt.Uri, attempt.Body ?? "{}", cancellationToken, timeout).ConfigureAwait(false);
+
+				VvoRunResponse? response =
+					JsonSerializer.Deserialize<VvoRunResponse>(json, _jsonOptions);
+
+				if (response is null)
+				{
+					DiagnosticLog.Write($"[VVO run] '{attempt.Label}': empty answer: {Head(json)}");
+
+					continue;
+				}
+
+				EnsureProviderSuccess(response.Status);
+
+				DiagnosticLog.Write(
+					$"[VVO run] '{attempt.Label}': OK, {response.Stops.Count} stops, status {response.Status?.Code}");
+
+				if (accept(response))
+				{
+					_runLabel = attempt.Label;
+
+					return response;
+				}
+
+				DiagnosticLog.Write($"[VVO run] '{attempt.Label}': answered, but not the run we asked for");
+			}
+			catch (OperationCanceledException)
+			{
+				throw;
+			}
+			catch (Exception ex) when (ex is ApiException or InvalidOperationException)
+			{
+				string body =
+					ex is ApiException api
+						? api.ResponseBody ?? string.Empty
+						: ex.Message;
+
+				DiagnosticLog.Write(
+					$"[VVO run] '{attempt.Label}': failed, status {(ex as ApiException)?.StatusCode?.ToString() ?? "none"}: {Head(body)}");
+			}
+		}
+
+		return null;
+	}
+
+	private static string Head(
+		string text)
+	{
+		string flat = text.ReplaceLineEndings(" ");
+
+		return flat[..Math.Min(flat.Length, 400)];
+	}
+
+
 	/// <summary>The connection with one leg replaced by an earlier or later alternative.</summary>
 	public Task<VvoTripResponse?> GetLegAlternativeAsync(
 		VvoPrevNextMoveRequest request,

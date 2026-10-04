@@ -52,4 +52,7 @@ public static class Routes
 
 	/// <summary>Query key: ids of route changes the disruptions page is limited to (comma separated).</summary>
 	public const string ChangeIds = "ChangeIds";
+
+	/// <summary>Query key: line name the disruptions page is filtered to.</summary>
+	public const string LineName = "LineName";
 }

@@ -9,7 +9,9 @@ namespace DDjourneys.Pages;
 
 /// <summary>One stop of the vehicle's run.</summary>
 public sealed record RunRow(
-	RunStop Stop)
+	RunStop Stop,
+	bool IsPassed = false,
+	bool IsCurrent = false)
 {
 	public string Name =>
 		Stop.Station.Name;
@@ -37,12 +39,6 @@ public sealed record RunRow(
 
 	public string CancelledText =>
 		LocalizationService.Current.CurrentStrings.Departures.Cancelled;
-
-	public bool IsPassed =>
-		Stop.Position == RunPosition.Previous;
-
-	public bool IsCurrent =>
-		Stop.Position == RunPosition.Current;
 
 	public string? CurrentText =>
 		IsCurrent
@@ -209,7 +205,8 @@ public sealed class RunViewModel : DisposableViewModel, IQueryAttributable
 				await MapScenes.OpenAsync(
 					MapScenes.FromRun(
 						[.. Rows.Select(row => row.Stop)],
-						departure.Line.Mode),
+						departure.Line.Mode,
+						Rows.ToList().FindIndex(row => row.IsCurrent)),
 					Title);
 
 			if (!shown)
@@ -273,9 +270,20 @@ public sealed class RunViewModel : DisposableViewModel, IQueryAttributable
 
 			Rows.Clear();
 
-			foreach (RunStop stop in stops)
+			// One journey, and the vehicle where its times say it is (not at the stop the search started from).
+			IReadOnlyList<RunStop> course =
+				RunCourse.Isolate(
+					stops,
+					departure.Scheduled);
+
+			int here =
+				RunCourse.VehicleIndex(
+					course,
+					DateTimeOffset.UtcNow);
+
+			for (int i = 0; i < course.Count; i++)
 			{
-				Rows.Add(new RunRow(stop));
+				Rows.Add(new RunRow(course[i], i < here, i == here));
 			}
 
 			Message =

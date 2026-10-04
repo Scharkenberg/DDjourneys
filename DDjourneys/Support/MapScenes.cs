@@ -9,8 +9,14 @@ namespace DDjourneys.Support;
 /// <summary>Builds the maps of the app (journey, run, live vehicles, stops) and opens the map page.</summary>
 public static class MapScenes
 {
-	private const string WalkColor = "#757575";
-	private const string AccentColor = "#1565c0";
+	// The map uses the app's own colours: the mode tokens of the chips and the active theme's palette.
+	private static string WalkColor => Hex(ModeColors.For(TransitMode.Walk));
+
+	private static string AccentColor =>
+		Hex(Theme.ColorOf("Accent", Color.FromArgb("#0B6E8A")));
+
+	private static string Hex(Color color) =>
+		$"#{(int)Math.Round(color.Red * 255):X2}{(int)Math.Round(color.Green * 255):X2}{(int)Math.Round(color.Blue * 255):X2}";
 
 	private static ExtrasStrings Strings =>
 		LocalizationService.Current.CurrentStrings.Extras;
@@ -39,19 +45,7 @@ public static class MapScenes
 	}
 
 	public static string ModeColor(TransitMode mode) =>
-		mode switch
-		{
-			TransitMode.Tram => "#d32f2f",
-			TransitMode.Bus => "#7b1fa2",
-			TransitMode.Subway => "#1565c0",
-			TransitMode.SuburbanRail => "#2e7d32",
-			TransitMode.RegionalTrain => "#455a64",
-			TransitMode.LongDistanceTrain => "#263238",
-			TransitMode.Ferry => "#0277bd",
-			TransitMode.CableCar => "#ef6c00",
-			TransitMode.Walk => WalkColor,
-			_ => "#546e7a"
-		};
+		Hex(ModeColors.For(mode));
 
 	private static (double Latitude, double Longitude)? Position(
 		double? latitude,
@@ -212,7 +206,8 @@ public static class MapScenes
 
 	public static MapScene FromRun(
 		IReadOnlyList<RunStop> stops,
-		TransitMode mode)
+		TransitMode mode,
+		int vehicleIndex = -1)
 	{
 		ArgumentNullException.ThrowIfNull(stops);
 
@@ -220,7 +215,7 @@ public static class MapScenes
 
 		var located =
 			stops
-				.Select(stop => (Stop: stop, Position: Position(stop.Station)))
+				.Select((stop, index) => (Stop: stop, Index: index, Position: Position(stop.Station)))
 				.Where(item => item.Position is not null)
 				.ToArray();
 
@@ -242,7 +237,8 @@ public static class MapScenes
 			RunStop stop = located[index].Stop;
 			(double Latitude, double Longitude) position = located[index].Position!.Value;
 
-			bool current = stop.Position == RunPosition.Current;
+			bool current = located[index].Index == vehicleIndex;
+			bool passed = located[index].Index < vehicleIndex;
 
 			markers.Add(
 				new MapMarker(
@@ -251,7 +247,7 @@ public static class MapScenes
 					position.Longitude,
 					string.Empty,
 					current ? MapMarkerKind.Current : MapMarkerKind.Stop,
-					stop.Position == RunPosition.Previous ? "#9e9e9e" : color,
+					passed ? "#9e9e9e" : color,
 					stop.Station.Name,
 					stop.Effective is { } time
 						? $"{Format.Time(time)}{(Format.Delay(stop.Delay) is { } delay ? $" · {delay}" : string.Empty)}"
@@ -270,12 +266,12 @@ public static class MapScenes
 
 	public static string DelayColor(TimeSpan? delay) =>
 		delay is not { } value
-			? "#607d8b"
+			? Hex(Theme.ColorOf("InkMuted", Color.FromArgb("#607D8B")))
 			: value.TotalMinutes >= 5
-				? "#c62828"
+				? Hex(Theme.ColorOf("Cancelled", Color.FromArgb("#B91C1C")))
 				: value.TotalMinutes >= 1
-					? "#ef6c00"
-					: "#2e7d32";
+					? Hex(Theme.ColorOf("Delay", Color.FromArgb("#9A5B00")))
+					: Hex(Theme.ColorOf("OnTime", Color.FromArgb("#15803D")));
 
 	public static MapScene FromVehicles(
 		IEnumerable<LiveVehicle> vehicles,

@@ -50,7 +50,7 @@ public sealed record MapLine(
 
 
 /// <summary>
-/// Everything one map shows. The map itself (Leaflet in a web view) is told about it as JSON; this type
+/// Everything one map shows. The map itself (MapLibre GL in a HybridWebView) is told about it as JSON; this type
 /// knows nothing about the UI and is the only contract between the app and the map page.
 /// </summary>
 public sealed class MapScene
