@@ -2,6 +2,8 @@ using DDjourneys.Contract;
 using DDjourneys.Localization;
 using DDjourneys.Support;
 using Location = DDjourneys.Core.Models.Location;
+using SavedRoute = DDjourneys.Core.Models.SavedRoute;
+using Microsoft.Maui.ApplicationModel;
 
 namespace DDjourneys.Pages;
 
@@ -43,6 +45,14 @@ public partial class PlanPage : ContentPage, IQueryAttributable
 				_localization.CurrentStrings.Common.SomethingWentWrong,
 				message,
 				_localization.CurrentStrings.Common.Ok);
+
+		// Setup location permission callbacks
+		vm.CheckLocationPermission = HasLocationPermission;
+		vm.RequestLocationPermission = CheckAndRequestLocationPermission;
+
+		// Setup dialog callbacks
+		vm.ShowRouteNameDialog = ShowRouteNameDialog;
+		vm.ShowHomeLocationNameDialog = ShowHomeLocationNameDialog;
 	}
 
 	private bool? _dateTimeStacked;
@@ -225,4 +235,37 @@ public partial class PlanPage : ContentPage, IQueryAttributable
 		object? sender,
 		TappedEventArgs e) =>
 		_vm.PickToCommand.Execute(null);
-}
+
+	private async Task CheckAndRequestLocationPermission()
+	{
+		PermissionStatus status = await Permissions.CheckStatusAsync<Permissions.LocationWhenInUse>();
+
+		if (status != PermissionStatus.Granted)
+		{
+			status = await Permissions.RequestAsync<Permissions.LocationWhenInUse>();
+		}
+
+		return status == PermissionStatus.Granted;
+	}
+
+	private async Task<bool> HasLocationPermission()
+	{
+		PermissionStatus status = await Permissions.CheckStatusAsync<Permissions.LocationWhenInUse>();
+		return status == PermissionStatus.Granted;
+	}
+
+	private async Task<string> ShowRouteNameDialog(string defaultName)
+	{
+		return await DisplayPromptAsync(
+			_localization.CurrentStrings.Plan.SaveCurrentRoute,
+			_localization.CurrentStrings.Plan.EnterRouteName,
+			initialValue: defaultName);
+	}
+
+	private async Task<string> ShowHomeLocationNameDialog(string defaultName)
+	{
+		return await DisplayPromptAsync(
+			_localization.CurrentStrings.Plan.SetHomeLocation,
+			_localization.CurrentStrings.Plan.HomeLocationName,
+			initialValue: defaultName);
+	}
