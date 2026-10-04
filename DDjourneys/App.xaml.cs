@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using DDjourneys.Support;
 
 namespace DDjourneys;
@@ -15,12 +16,12 @@ public partial class App : Application
 		_shellFactory = () => new AppShell();
 
 		AppDomain.CurrentDomain.UnhandledException += (_, e) =>
-			System.Diagnostics.Debug.WriteLine($"Unhandled exception (terminating={e.IsTerminating}): {e.ExceptionObject}");
+			DiagnosticLog.Write($"Unhandled exception (terminating={e.IsTerminating}): {e.ExceptionObject}");
 
 		// Last line of defence: log instead of dying on unobserved task faults.
 		TaskScheduler.UnobservedTaskException += (_, e) =>
 		{
-			System.Diagnostics.Debug.WriteLine($"Unobserved task exception: {e.Exception}");
+			DiagnosticLog.Write($"Unobserved task exception: {e.Exception}");
 			e.SetObserved();
 		};
 	}

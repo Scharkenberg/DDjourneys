@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using DDjourneys.Support;
 using Microsoft.Maui.Controls.Shapes;
 
@@ -166,7 +167,7 @@ public sealed class Skeleton : ContentView
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Skeleton stopped: {ex.Message}");
+			DiagnosticLog.Write($"Skeleton stopped: {ex.Message}");
 		}
 		finally
 		{

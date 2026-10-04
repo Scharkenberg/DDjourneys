@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using DDjourneys.Core.Mapping;
@@ -551,7 +552,7 @@ public sealed class VehiclesViewModel : DisposableViewModel, IQueryAttributable
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Live vehicles failed: {ex}");
+			DiagnosticLog.Write($"Live vehicles failed: {ex}");
 
 			Status = strings.LiveError;
 		}

@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using DDjourneys.Core.Api;
@@ -120,7 +121,7 @@ public sealed partial class PlaceSearchViewModel : DisposableViewModel, IQueryAt
 		}
 		catch (Exception ex)
 		{
-			Debug.WriteLine(
+			DiagnosticLog.Write(
 				$"Recents unavailable: {ex.Message}");
 		}
 
@@ -336,7 +337,7 @@ public sealed partial class PlaceSearchViewModel : DisposableViewModel, IQueryAt
 		catch (Exception ex)
 		{
 			// Includes provider errors and HTTP timeouts (cancellation without our token).
-			Debug.WriteLine(
+			DiagnosticLog.Write(
 				$"Place search failed:\n{ex}");
 
 			if (ReferenceEquals(_search, cts))
@@ -418,7 +419,7 @@ public sealed partial class PlaceSearchViewModel : DisposableViewModel, IQueryAt
 			}
 			catch (Exception ex)
 			{
-				Debug.WriteLine(
+				DiagnosticLog.Write(
 					$"Remembering the place failed: {ex.Message}");
 			}
 
@@ -433,7 +434,7 @@ public sealed partial class PlaceSearchViewModel : DisposableViewModel, IQueryAt
 		}
 		catch (Exception ex)
 		{
-			Debug.WriteLine(
+			DiagnosticLog.Write(
 				$"Returning the chosen place failed:\n{ex}");
 		}
 		finally

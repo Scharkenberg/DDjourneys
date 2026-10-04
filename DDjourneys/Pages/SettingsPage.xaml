@@ -412,26 +412,6 @@
 							VerticalOptions="Center" />
 					</Grid>
 
-					<BoxView StyleClass="Divider" />
-
-					<Grid
-						support:Dense.Padding="12,8"
-						ColumnDefinitions="*,Auto"
-						ColumnSpacing="12"
-						support:Dense.MinHeight="52">
-
-						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
-							<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.ExpertView}" />
-							<Label StyleClass="Caption" Text="{localization:Tr Settings.ExpertViewDescription}" />
-						</VerticalStackLayout>
-
-						<Switch
-							Grid.Column="1"
-							IsToggled="{Binding ExpertView}"
-							SemanticProperties.Description="{localization:Tr Settings.ExpertView}"
-							VerticalOptions="Center" />
-					</Grid>
-
 				</VerticalStackLayout>
 			</Border>
 
@@ -474,6 +454,94 @@
 				Command="{Binding ResetCommand}"
 				StyleClass="Tonal"
 				Text="{localization:Tr Settings.ResetJourneySettings}" />
+
+			<Border Padding="0" StyleClass="Card">
+				<VerticalStackLayout>
+
+					<Grid
+						support:Dense.Padding="12,8"
+						ColumnDefinitions="*,Auto"
+						ColumnSpacing="12"
+						support:Dense.MinHeight="52">
+
+						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
+							<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.DeveloperOptions}" />
+							<Label StyleClass="Caption" Text="{localization:Tr Settings.DeveloperOptionsDescription}" />
+						</VerticalStackLayout>
+
+						<Switch
+							Grid.Column="1"
+							IsToggled="{Binding DeveloperOptions}"
+							SemanticProperties.Description="{localization:Tr Settings.DeveloperOptions}"
+							VerticalOptions="Center" />
+					</Grid>
+
+					<VerticalStackLayout IsVisible="{Binding DeveloperOptions}">
+
+						<BoxView StyleClass="Divider" />
+
+						<Grid
+							support:Dense.Padding="12,8"
+							ColumnDefinitions="*,Auto"
+							ColumnSpacing="12"
+							support:Dense.MinHeight="52">
+
+							<VerticalStackLayout Spacing="1" VerticalOptions="Center">
+								<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.ExpertView}" />
+								<Label StyleClass="Caption" Text="{localization:Tr Settings.ExpertViewDescription}" />
+							</VerticalStackLayout>
+
+							<Switch
+								Grid.Column="1"
+								IsToggled="{Binding ExpertView}"
+								SemanticProperties.Description="{localization:Tr Settings.ExpertView}"
+								VerticalOptions="Center" />
+						</Grid>
+
+						<BoxView StyleClass="Divider" />
+
+						<Grid
+							support:Dense.Padding="12,8"
+							ColumnDefinitions="*,Auto"
+							ColumnSpacing="12"
+							support:Dense.MinHeight="52">
+
+							<VerticalStackLayout Spacing="1" VerticalOptions="Center">
+								<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.LogToFile}" />
+								<Label StyleClass="Caption" Text="{localization:Tr Settings.LogToFileDescription}" />
+							</VerticalStackLayout>
+
+							<Switch
+								Grid.Column="1"
+								IsToggled="{Binding LogToFile}"
+								SemanticProperties.Description="{localization:Tr Settings.LogToFile}"
+								VerticalOptions="Center" />
+						</Grid>
+
+						<VerticalStackLayout IsVisible="{Binding HasLog}">
+							<BoxView StyleClass="Divider" />
+
+							<FlexLayout
+								AlignContent="Start"
+								AlignItems="Start"
+								support:Dense.Padding="12,8"
+								Wrap="Wrap">
+								<Button
+									Margin="0,0,8,0"
+									Command="{Binding ShareLogCommand}"
+									StyleClass="Tonal"
+									Text="{localization:Tr Settings.ShareLog}" />
+								<Button
+									Command="{Binding ClearLogCommand}"
+									StyleClass="Tonal"
+									Text="{localization:Tr Settings.ClearLog}" />
+							</FlexLayout>
+						</VerticalStackLayout>
+
+					</VerticalStackLayout>
+
+				</VerticalStackLayout>
+			</Border>
 
 			<Label
 				Margin="0,8"

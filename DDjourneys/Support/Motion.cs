@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using System.Runtime.CompilerServices;
 
 namespace DDjourneys.Support;
@@ -388,7 +389,7 @@ public static class Motion
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Entrance skipped: {ex.Message}");
+			DiagnosticLog.Write($"Entrance skipped: {ex.Message}");
 		}
 		finally
 		{
@@ -431,7 +432,7 @@ public static class Motion
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Cascade skipped: {ex.Message}");
+			DiagnosticLog.Write($"Cascade skipped: {ex.Message}");
 		}
 	}
 
@@ -475,7 +476,7 @@ public static class Motion
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Grow skipped: {ex.Message}");
+			DiagnosticLog.Write($"Grow skipped: {ex.Message}");
 		}
 		finally
 		{
@@ -506,7 +507,7 @@ public static class Motion
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Tick skipped: {ex.Message}");
+			DiagnosticLog.Write($"Tick skipped: {ex.Message}");
 		}
 		finally
 		{
@@ -542,7 +543,7 @@ public static class Motion
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Breathe stopped: {ex.Message}");
+			DiagnosticLog.Write($"Breathe stopped: {ex.Message}");
 		}
 		finally
 		{
@@ -559,7 +560,7 @@ public static class Motion
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Turn skipped: {ex.Message}");
+			DiagnosticLog.Write($"Turn skipped: {ex.Message}");
 		}
 		finally
 		{
@@ -580,7 +581,7 @@ public static class Motion
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Hover skipped: {ex.Message}");
+			DiagnosticLog.Write($"Hover skipped: {ex.Message}");
 		}
 	}
 
@@ -602,7 +603,7 @@ public static class Motion
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Spin skipped: {ex.Message}");
+			DiagnosticLog.Write($"Spin skipped: {ex.Message}");
 		}
 		finally
 		{
@@ -635,7 +636,7 @@ public static class Motion
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Tap feedback skipped: {ex.Message}");
+			DiagnosticLog.Write($"Tap feedback skipped: {ex.Message}");
 		}
 		finally
 		{
@@ -704,7 +705,7 @@ public static class Motion
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Page exit skipped: {ex.Message}");
+			DiagnosticLog.Write($"Page exit skipped: {ex.Message}");
 		}
 	}
 
@@ -787,7 +788,7 @@ public static class Motion
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Page entrance skipped: {ex.Message}");
+			DiagnosticLog.Write($"Page entrance skipped: {ex.Message}");
 		}
 		finally
 		{

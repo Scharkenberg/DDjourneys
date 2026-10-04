@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using DDjourneys.Contract;
@@ -1513,7 +1514,7 @@ public sealed partial class PlanViewModel : DisposableViewModel
 	private void Report(
 		Exception ex)
 	{
-		System.Diagnostics.Debug.WriteLine(
+		DiagnosticLog.Write(
 			$"Plan error:\n{ex}");
 
 		try
@@ -1523,7 +1524,7 @@ public sealed partial class PlanViewModel : DisposableViewModel
 		}
 		catch (Exception inner)
 		{
-			System.Diagnostics.Debug.WriteLine(
+			DiagnosticLog.Write(
 				$"Plan error reporting failed: " +
 				$"{inner.Message}");
 		}

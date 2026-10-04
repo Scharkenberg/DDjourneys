@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using Android.Content;
 using DDjourneys.Core.Contract;
 
@@ -47,7 +48,7 @@ internal static class ContractIntentReader
 		catch (Exception ex)
 		{
 			// A hostile bundle can throw while it is unparcelled.
-			System.Diagnostics.Debug.WriteLine($"Contract intent unreadable: {ex.Message}");
+			DiagnosticLog.Write($"Contract intent unreadable: {ex.Message}");
 
 			return ContractParseResult.Fail(
 				new ContractFailure(ContractErrorCode.Malformed, "The intent could not be read."));

@@ -1,8 +1,11 @@
+using DDjourneys.Core.Diagnostics;
 using System.Diagnostics;
 using System.Globalization;
 using System.Net;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
+using DDjourneys.Core.Serialization;
 
 namespace DDjourneys.Tracking.Schutzengel;
 
@@ -157,14 +160,14 @@ internal sealed class SchutzengelApi
 		SendJsonAsync(
 			HttpMethod.Post,
 			"activatePlan",
-			JsonSerializer.Serialize(new { plan_id = planId }),
+			Wire.Single("plan_id", planId),
 			cancellationToken);
 
 	public Task<JsonDocument> DeactivateAsync(string planId, CancellationToken cancellationToken) =>
 		SendJsonAsync(
 			HttpMethod.Post,
 			"deactivatePlan",
-			JsonSerializer.Serialize(new { plan_id = planId }),
+			Wire.Single("plan_id", planId),
 			cancellationToken);
 
 	/// <summary>
@@ -181,12 +184,11 @@ internal sealed class SchutzengelApi
 		return SendJsonAsync(
 			HttpMethod.Post,
 			"planSetOptions",
-			JsonSerializer.Serialize(
-				new
-				{
-					plan_id = planId,
-					newOptions = options.ToPayload()
-				}),
+			new JsonObject
+			{
+				["plan_id"] = planId,
+				["newOptions"] = options.ToPayload()
+			}.ToJsonString(),
 			cancellationToken);
 	}
 
@@ -194,7 +196,7 @@ internal sealed class SchutzengelApi
 		SendJsonAsync(
 			HttpMethod.Delete,
 			"plan",
-			JsonSerializer.Serialize(new { plan_id = planId }),
+			Wire.Single("plan_id", planId),
 			cancellationToken);
 
 	public Task<JsonDocument> DeleteAllPlansAsync(CancellationToken cancellationToken) =>
@@ -264,14 +266,14 @@ internal sealed class SchutzengelApi
 		SendJsonAsync(
 			HttpMethod.Post,
 			"register-firebase",
-			JsonSerializer.Serialize(new { token }),
+			Wire.Single("token", token),
 			cancellationToken);
 
 	public Task<JsonDocument> UnregisterFirebaseAsync(string token, CancellationToken cancellationToken) =>
 		SendJsonAsync(
 			HttpMethod.Post,
 			"unregister-firebase",
-			JsonSerializer.Serialize(new { token }),
+			Wire.Single("token", token),
 			cancellationToken);
 
 	// ----- Transport -----
@@ -394,7 +396,7 @@ internal sealed class SchutzengelApi
 		}
 		catch (JsonException)
 		{
-			return JsonDocument.Parse(JsonSerializer.Serialize(trimmed));
+			return JsonDocument.Parse(JsonValue.Create(trimmed)!.ToJsonString());
 		}
 	}
 
@@ -511,12 +513,12 @@ internal sealed class SchutzengelApi
 					? body
 					: body[..Limit] + $"... (+{body.Length - Limit} chars)";
 
-		Debug.WriteLine($"[SCHUTZENGEL] {method.Method} {path} {preview}");
+		DiagnosticLog.Write($"[SCHUTZENGEL] {method.Method} {path} {preview}");
 	}
 
 	[Conditional("DEBUG")]
 	private static void Log(string message) =>
-		Debug.WriteLine($"[SCHUTZENGEL] {message}");
+		DiagnosticLog.Write($"[SCHUTZENGEL] {message}");
 
 	private static HttpRequestMessage CreateRequest(HttpMethod method, string path)
 	{

@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using DDjourneys.Localization;
 using DDjourneys.Support;
 using Microsoft.Maui.Controls.Shapes;
@@ -113,7 +114,7 @@ public sealed class NoticeCard : ContentView
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine(
+			DiagnosticLog.Write(
 				$"NoticeCard fallback: {ex}");
 
 			Content = new Label
@@ -471,7 +472,7 @@ public sealed class NoticeCard : ContentView
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine(
+			DiagnosticLog.Write(
 				$"[NOTICE LINK] Failed to open {uri}: {ex.Message}");
 		}
 	}

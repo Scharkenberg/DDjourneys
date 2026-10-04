@@ -1,3 +1,5 @@
+using DDjourneys.Core.Diagnostics;
+
 namespace DDjourneys.Support;
 
 /// <summary>Why a device position could not be had.</summary>
@@ -31,7 +33,7 @@ public sealed class DeviceLocator
 			or PermissionException
 			or OperationCanceledException)
 		{
-			System.Diagnostics.Debug.WriteLine($"Device location failed: {ex.Message}");
+			DiagnosticLog.Write($"Device location failed: {ex.Message}");
 
 			Failure = ex is PermissionException
 				? DeviceLocationFailure.PermissionDenied

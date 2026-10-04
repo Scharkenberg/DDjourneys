@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using DDjourneys.Core.Storage;
 
 namespace DDjourneys.Support;
@@ -61,12 +62,12 @@ public static class AppStorage
 
 			if (ran.Count > 0)
 			{
-				System.Diagnostics.Debug.WriteLine($"Storage upgraded: {string.Join(", ", ran)}");
+				DiagnosticLog.Write($"Storage upgraded: {string.Join(", ", ran)}");
 			}
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Storage upgrade skipped: {ex.Message}");
+			DiagnosticLog.Write($"Storage upgrade skipped: {ex.Message}");
 		}
 	}
 }

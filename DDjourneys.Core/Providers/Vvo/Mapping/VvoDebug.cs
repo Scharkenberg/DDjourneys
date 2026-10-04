@@ -1,4 +1,5 @@
-﻿using DDjourneys.Core.Models;
+﻿using DDjourneys.Core.Diagnostics;
+using DDjourneys.Core.Models;
 using DDjourneys.Core.Providers.Vvo.Models;
 
 namespace DDjourneys.Core.Providers.Vvo.Mapping;
@@ -7,14 +8,19 @@ internal static class VvoDebug
 {
 	public static void DumpRoute(VvoRoute route)
 	{
-		System.Diagnostics.Debug.WriteLine(
+		if (!DiagnosticLog.Enabled)
+		{
+			return;
+		}
+
+		DiagnosticLog.Write(
 			$"========== VVO ROUTE Duration={route.Duration} ==========");
 
 		foreach (var pr in route.PartialRoutes)
 		{
 			var mot = pr.Mot;
 
-			System.Diagnostics.Debug.WriteLine(
+			DiagnosticLog.Write(
 				$"""
 				PARTIAL
 				  Id={pr.PartialRouteId}
@@ -30,7 +36,7 @@ internal static class VvoDebug
 				var first = stops[0];
 				var last = stops[^1];
 
-				System.Diagnostics.Debug.WriteLine(
+				DiagnosticLog.Write(
 					$"""
 					  FIRST:
 					    {first.Name}
@@ -47,7 +53,7 @@ internal static class VvoDebug
 			}
 			else
 			{
-				System.Diagnostics.Debug.WriteLine(
+				DiagnosticLog.Write(
 					"  NO STOPS");
 			}
 		}

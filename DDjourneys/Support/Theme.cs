@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using System.Runtime.CompilerServices;
 
 namespace DDjourneys.Support;
@@ -211,7 +212,7 @@ public static class Theme
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Theme revalidate failed: {ex.Message}");
+			DiagnosticLog.Write($"Theme revalidate failed: {ex.Message}");
 		}
 	}
 
@@ -247,7 +248,7 @@ public static class Theme
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Theme fade-out skipped: {ex.Message}");
+			DiagnosticLog.Write($"Theme fade-out skipped: {ex.Message}");
 		}
 
 		try
@@ -266,7 +267,7 @@ public static class Theme
 			}
 			catch (Exception ex)
 			{
-				System.Diagnostics.Debug.WriteLine($"Theme fade-in skipped: {ex.Message}");
+				DiagnosticLog.Write($"Theme fade-in skipped: {ex.Message}");
 
 				if (page is not null)
 				{
@@ -384,7 +385,7 @@ public static class Theme
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Theme apply failed: {ex}");
+			DiagnosticLog.Write($"Theme apply failed: {ex}");
 		}
 		finally
 		{

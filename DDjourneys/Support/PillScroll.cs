@@ -1,3 +1,5 @@
+using DDjourneys.Core.Diagnostics;
+
 namespace DDjourneys.Support;
 
 /// <summary>
@@ -213,7 +215,7 @@ public sealed class PillScroll : ScrollView
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Pill reveal skipped: {ex.Message}");
+			DiagnosticLog.Write($"Pill reveal skipped: {ex.Message}");
 		}
 		finally
 		{
@@ -253,7 +255,7 @@ public sealed class PillScroll : ScrollView
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Pill hint skipped: {ex.Message}");
+			DiagnosticLog.Write($"Pill hint skipped: {ex.Message}");
 		}
 	}
 

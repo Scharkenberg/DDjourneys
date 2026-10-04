@@ -20,6 +20,11 @@
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 		<MauiXamlInflator>SourceGen</MauiXamlInflator>
 
+		<!-- No runtime reflection for JSON: every serializer call goes through source-generated metadata
+		     (VvoJsonContext) or hand-built JsonNode trees, so trimming and AOT cannot break the APIs. -->
+		<JsonSerializerIsReflectionEnabledByDefault>false</JsonSerializerIsReflectionEnabledByDefault>
+		<EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+
 		<!-- Display name -->
 		<ApplicationTitle>DDjourneys</ApplicationTitle>
 
@@ -52,8 +57,7 @@
 	  <EmbedAssembliesIntoApk>True</EmbedAssembliesIntoApk>
 	  <AndroidUseAapt2>True</AndroidUseAapt2>
 	  <AndroidEnableMultiDex>True</AndroidEnableMultiDex>
-	  <TrimMode>link</TrimMode>
-	  <JsonSerializerIsReflectionEnabledByDefault>true</JsonSerializerIsReflectionEnabledByDefault>
+	  <TrimMode>partial</TrimMode>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net11.0-windows10.0.26100.0|AnyCPU'">
@@ -69,8 +73,7 @@
 	  <AndroidUseAapt2>True</AndroidUseAapt2>
 	  <AndroidEnableMultiDex>True</AndroidEnableMultiDex>
 	  <AndroidLinkTool>r8</AndroidLinkTool>
-	  <TrimMode>link</TrimMode>
-	  <JsonSerializerIsReflectionEnabledByDefault>true</JsonSerializerIsReflectionEnabledByDefault>
+	  <TrimMode>partial</TrimMode>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net11.0-windows10.0.26100.0|AnyCPU'">
@@ -130,7 +133,6 @@
 		<!-- Share image: MAUI Graphics on SkiaSharp, identical output on every platform -->
 		<PackageReference Include="Microsoft.Maui.Graphics.Skia" Version="$(MauiVersion)" />
 		<PackageReference Include="CommunityToolkit.Maui" Version="15.0.1" />
-		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="11.0.0-*" />
 	</ItemGroup>
 
 	<ItemGroup>

@@ -107,7 +107,7 @@ public sealed class MapView : ContentView
 			return;
 		}
 
-		await CallAsync("focus", JsonSerializer.Serialize(markerId));
+		await CallAsync("focus", System.Text.Json.Nodes.JsonValue.Create(markerId)!.ToJsonString());
 	}
 
 	private void OnHandlerChanged(object? sender, EventArgs e)

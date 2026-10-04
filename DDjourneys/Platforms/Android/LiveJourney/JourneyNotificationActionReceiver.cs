@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using Android.Content;
 using DDjourneys.Core.Tracking;
 using DDjourneys.Core.Tracking.Live;
@@ -43,7 +44,7 @@ internal sealed class JourneyNotificationActionReceiver : BroadcastReceiver
 				}
 				catch (Exception ex)
 				{
-					System.Diagnostics.Debug.WriteLine($"[SCHUTZENGEL] Notification action failed: {ex.Message}");
+					DiagnosticLog.Write($"[SCHUTZENGEL] Notification action failed: {ex.Message}");
 				}
 				finally
 				{

@@ -1,3 +1,6 @@
+using System.Diagnostics;
+using DDjourneys.Core.Diagnostics;
+
 namespace DDjourneys.Core.Api;
 
 /// <summary>Small HTTP client with bounded retries for idempotent GET requests.</summary>
@@ -48,6 +51,8 @@ public sealed class ApiClient : IDisposable
 
 		for (int attempt = 1; ; attempt++)
 		{
+			long started = Stopwatch.GetTimestamp();
+
 			try
 			{
 				using HttpResponseMessage response =
@@ -62,6 +67,8 @@ public sealed class ApiClient : IDisposable
 						.ReadAsStringAsync(requestToken)
 						.ConfigureAwait(false);
 
+				LogExchange("GET", requestUri, null, response, content, started, attempt);
+
 				EnsureSuccess(
 					response,
 					content);
@@ -71,15 +78,19 @@ public sealed class ApiClient : IDisposable
 			catch (ApiException ex)
 				when (ex.IsTransient && attempt < MaxRetries)
 			{
+				DiagnosticLog.Write($"[HTTP] GET {requestUri} transient failure, retry {attempt}: {ex.Message}");
+
 				await DelayRetryAsync(
 					ex.RetryAfter,
 					attempt,
 					requestToken)
 					.ConfigureAwait(false);
 			}
-			catch (HttpRequestException)
+			catch (HttpRequestException ex)
 				when (attempt < MaxRetries)
 			{
+				DiagnosticLog.Write($"[HTTP] GET {requestUri} network failure, retry {attempt}: {ex.Message}");
+
 				await DelayRetryAsync(
 					null,
 					attempt,
@@ -181,6 +192,9 @@ public sealed class ApiClient : IDisposable
 					.ReadAsByteArrayAsync(requestToken)
 					.ConfigureAwait(false);
 
+			DiagnosticLog.Write(
+				$"[HTTP] GET {requestUri} -> {(int)response.StatusCode} {response.Content.Headers.ContentType?.MediaType} {bytes.Length} bytes");
+
 			if (!response.IsSuccessStatusCode)
 			{
 				EnsureSuccess(
@@ -240,6 +254,8 @@ public sealed class ApiClient : IDisposable
 					System.Text.Encoding.UTF8,
 					mediaType);
 
+			long started = Stopwatch.GetTimestamp();
+
 			using HttpResponseMessage response =
 				await _httpClient
 					.PostAsync(
@@ -252,6 +268,8 @@ public sealed class ApiClient : IDisposable
 				await response.Content
 					.ReadAsStringAsync(requestToken)
 					.ConfigureAwait(false);
+
+			LogExchange("POST", requestUri, body, response, responseContent, started, 1);
 
 			EnsureSuccess(
 				response,
@@ -278,6 +296,31 @@ public sealed class ApiClient : IDisposable
 				null,
 				ex);
 		}
+	}
+
+	private static void LogExchange(
+		string method,
+		string requestUri,
+		string? requestBody,
+		HttpResponseMessage response,
+		string responseBody,
+		long started,
+		int attempt)
+	{
+		if (!DiagnosticLog.Enabled)
+		{
+			return;
+		}
+
+		DiagnosticLog.Write(
+			$"[HTTP] {method} {requestUri} attempt {attempt} -> {(int)response.StatusCode} in {Stopwatch.GetElapsedTime(started).TotalMilliseconds:0} ms");
+
+		if (requestBody is not null)
+		{
+			DiagnosticLog.Api("HTTP", "request body:", requestBody);
+		}
+
+		DiagnosticLog.Api("HTTP", "response body:", responseBody);
 	}
 
 	private static async Task DelayRetryAsync(

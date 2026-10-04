@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using DDjourneys.Contract;
@@ -322,7 +323,7 @@ public sealed class JourneyViewModel :
 		catch (Exception ex)
 		{
 			// Offline: the cached watchlist is still shown.
-			System.Diagnostics.Debug.WriteLine($"Watchlist refresh failed: {ex.Message}");
+			DiagnosticLog.Write($"Watchlist refresh failed: {ex.Message}");
 		}
 	}
 
@@ -620,7 +621,7 @@ public sealed class JourneyViewModel :
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Leg alternative failed: {ex}");
+			DiagnosticLog.Write($"Leg alternative failed: {ex}");
 
 			AlternativeStatus = ex.Message;
 		}
@@ -675,7 +676,7 @@ public sealed class JourneyViewModel :
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Opening the live page failed: {ex.Message}");
+			DiagnosticLog.Write($"Opening the live page failed: {ex.Message}");
 		}
 	}
 
@@ -700,7 +701,7 @@ public sealed class JourneyViewModel :
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Opening the map failed: {ex.Message}");
+			DiagnosticLog.Write($"Opening the map failed: {ex.Message}");
 
 			AlternativeStatus = ex.Message;
 		}
@@ -743,7 +744,7 @@ public sealed class JourneyViewModel :
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Opening the journey document failed: {ex.Message}");
+			DiagnosticLog.Write($"Opening the journey document failed: {ex.Message}");
 
 			AlternativeStatus = ex.Message;
 		}
@@ -802,7 +803,7 @@ public sealed class JourneyViewModel :
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine(
+			DiagnosticLog.Write(
 				$"Journey display failed:\n{ex}");
 
 
@@ -970,7 +971,7 @@ public sealed class JourneyViewModel :
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine(
+			DiagnosticLog.Write(
 				$"Localized journey refresh failed:\n{ex}");
 
 
@@ -1044,7 +1045,7 @@ public sealed class JourneyViewModel :
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine(
+			DiagnosticLog.Write(
 				$"Toggle stops failed:\n{ex}");
 		}
 	}
@@ -1102,7 +1103,7 @@ public sealed class JourneyViewModel :
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine(
+			DiagnosticLog.Write(
 				$"Share failed:\n{ex}");
 		}
 	}

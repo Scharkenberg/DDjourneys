@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using Android.App;
 using Android.Graphics.Drawables;
 using AndroidX.Core.View;
@@ -50,7 +51,7 @@ internal static class SystemBars
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Window background styling failed: {ex.Message}");
+			DiagnosticLog.Write($"Window background styling failed: {ex.Message}");
 		}
 
 		try
@@ -60,7 +61,7 @@ internal static class SystemBars
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Status bar styling failed: {ex.Message}");
+			DiagnosticLog.Write($"Status bar styling failed: {ex.Message}");
 		}
 
 		try
@@ -85,7 +86,7 @@ internal static class SystemBars
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"System bars styling failed: {ex.Message}");
+			DiagnosticLog.Write($"System bars styling failed: {ex.Message}");
 		}
 	}
 }

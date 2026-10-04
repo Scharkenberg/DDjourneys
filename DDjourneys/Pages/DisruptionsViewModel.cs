@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using DDjourneys.Core.Models;
@@ -342,7 +343,7 @@ public sealed class DisruptionsViewModel : DisposableViewModel, IQueryAttributab
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Disruptions failed: {ex}");
+			DiagnosticLog.Write($"Disruptions failed: {ex}");
 
 			Message =
 				string.IsNullOrWhiteSpace(ex.Message)
@@ -461,7 +462,7 @@ public sealed class DisruptionsViewModel : DisposableViewModel, IQueryAttributab
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Opening a disruption failed: {ex.Message}");
+			DiagnosticLog.Write($"Opening a disruption failed: {ex.Message}");
 		}
 	}
 

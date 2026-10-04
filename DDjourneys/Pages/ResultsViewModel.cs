@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Globalization;
@@ -393,7 +394,7 @@ public sealed class ResultsViewModel :
 			{
 				HasError = true;
 
-				Debug.WriteLine(
+				DiagnosticLog.Write(
 					$"Journey search not answered: {result.Outcome} " +
 					$"{result.ErrorMessage} {result.ErrorDetail}");
 
@@ -444,7 +445,7 @@ public sealed class ResultsViewModel :
 				{
 					skipped++;
 
-					Debug.WriteLine(
+					DiagnosticLog.Write(
 						$"Journey card failed:\n{ex}");
 				}
 			}
@@ -465,7 +466,7 @@ public sealed class ResultsViewModel :
 		}
 		catch (Exception ex)
 		{
-			Debug.WriteLine(
+			DiagnosticLog.Write(
 				$"Journey search failed:\n{ex}");
 
 			if (!cts.IsCancellationRequested)
@@ -580,7 +581,7 @@ public sealed class ResultsViewModel :
 				{
 					skipped++;
 
-					Debug.WriteLine(
+					DiagnosticLog.Write(
 						$"Adjacent journey card failed:\n{ex}");
 				}
 			}
@@ -683,7 +684,7 @@ public sealed class ResultsViewModel :
 		}
 		catch (Exception inner)
 		{
-			Debug.WriteLine(
+			DiagnosticLog.Write(
 				$"Reporting failed: {inner.Message}");
 		}
 	}
@@ -692,7 +693,7 @@ public sealed class ResultsViewModel :
 	private void ReportContinuationFailure(
 		Exception ex)
 	{
-		Debug.WriteLine(
+		DiagnosticLog.Write(
 			$"Journey continuation failed:\n{ex}");
 
 		try
@@ -717,7 +718,7 @@ public sealed class ResultsViewModel :
 		}
 		catch (Exception inner)
 		{
-			Debug.WriteLine(
+			DiagnosticLog.Write(
 				$"Reporting continuation failure failed: {inner.Message}");
 		}
 	}

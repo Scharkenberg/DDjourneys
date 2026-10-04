@@ -1,8 +1,9 @@
 using System.Collections;
 using System.Globalization;
-using System.Reflection;
+using System.Text.Json.Serialization.Metadata;
+using System.Xml.Linq;
+using DDjourneys.Core.Providers.Vvo.Serialization;
 using System.Text;
-using System.Text.Json.Serialization;
 using DDjourneys.Core.Models;
 using DDjourneys.Localization;
 
@@ -293,35 +294,41 @@ public static class ExpertReport
 			yield break;
 		}
 
-		foreach (PropertyInfo property in
-			data.GetType().GetProperties(
-				BindingFlags.Public | BindingFlags.Instance))
+		if (data is XElement element)
 		{
-			if (property.GetIndexParameters().Length > 0
-				|| property.GetMethod is null)
+			foreach (ExpertEntry entry in DumpXml(element))
+			{
+				yield return entry;
+			}
+
+			yield break;
+		}
+
+		// Source-generated metadata of the provider DTOs: names and getters without reflection.
+		if (VvoJson.TypeInfo(data.GetType()) is not { } typeInfo)
+		{
+			yield return new ExpertEntry(
+				prefix.Length == 0 ? data.GetType().Name : prefix,
+				Clip(data.ToString() ?? string.Empty));
+
+			yield break;
+		}
+
+		foreach (JsonPropertyInfo property in typeInfo.Properties)
+		{
+			if (property.Get is null)
 			{
 				continue;
 			}
 
-			string name =
-				property.GetCustomAttribute<JsonPropertyNameAttribute>()?.Name
-				?? property.Name;
+			string name = property.Name;
 
 			string key =
 				prefix.Length == 0
 					? name
 					: $"{prefix}.{name}";
 
-			object? value;
-
-			try
-			{
-				value = property.GetValue(data);
-			}
-			catch (TargetInvocationException)
-			{
-				continue;
-			}
+			object? value = property.Get(data);
 
 			switch (value)
 			{
@@ -381,6 +388,32 @@ public static class ExpertReport
 
 					break;
 			}
+		}
+	}
+
+
+	/// <summary>The leaf elements and attributes of a TRIAS element, as path = text.</summary>
+	private static IEnumerable<ExpertEntry> DumpXml(
+		XElement root)
+	{
+		foreach (XElement leaf in root.DescendantsAndSelf().Where(e => !e.HasElements))
+		{
+			string text = leaf.Value.Trim();
+
+			if (text.Length == 0)
+			{
+				continue;
+			}
+
+			string path =
+				string.Join(
+					".",
+					leaf.AncestorsAndSelf()
+						.Reverse()
+						.SkipWhile(e => e != root)
+						.Select(e => e.Name.LocalName));
+
+			yield return new ExpertEntry(path, Clip(text));
 		}
 	}
 

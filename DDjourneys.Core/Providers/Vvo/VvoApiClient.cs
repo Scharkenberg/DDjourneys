@@ -1,4 +1,5 @@
 ﻿using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
 using DDjourneys.Core.Api;
 using DDjourneys.Core.Diagnostics;
 using DDjourneys.Core.Providers.Vvo.Extensions;
@@ -17,7 +18,6 @@ public sealed class VvoApiClient
 		"https://webapi.vvo-online.de";
 
 	private readonly ApiClient _apiClient;
-	private readonly JsonSerializerOptions _jsonOptions;
 
 
 	public VvoApiClient(
@@ -27,20 +27,6 @@ public sealed class VvoApiClient
 			apiClient);
 
 		_apiClient = apiClient;
-
-		_jsonOptions =
-			new JsonSerializerOptions
-			{
-				PropertyNameCaseInsensitive = true,
-
-				DefaultIgnoreCondition =
-					System.Text.Json.Serialization
-						.JsonIgnoreCondition
-						.WhenWritingNull
-			};
-
-		_jsonOptions.Converters.Add(
-			new VvoDateTimeOffsetConverter());
 	}
 
 
@@ -123,9 +109,9 @@ public sealed class VvoApiClient
 				.ConfigureAwait(false);
 
 		VvoPointResponse? response =
-			JsonSerializer.Deserialize<VvoPointResponse>(
+			JsonSerializer.Deserialize(
 				json,
-				_jsonOptions);
+				VvoJsonContext.Default.VvoPointResponse);
 
 		EnsureProviderSuccess(
 			response?.Status);
@@ -156,7 +142,7 @@ public sealed class VvoApiClient
 		string jsonRequest =
 			JsonSerializer.Serialize(
 				request,
-				_jsonOptions);
+				VvoJsonContext.Default.VvoTripRequest);
 
 		string jsonResponse =
 			await _apiClient.PostJsonAsync(
@@ -167,11 +153,9 @@ public sealed class VvoApiClient
 				.ConfigureAwait(false);
 
 		VvoTripResponse? response =
-			JsonSerializer.Deserialize<VvoTripResponse>(
+			JsonSerializer.Deserialize(
 				jsonResponse,
-				_jsonOptions);
-
-		System.Diagnostics.Debug.WriteLine(jsonResponse);
+				VvoJsonContext.Default.VvoTripResponse);
 
 		EnsureProviderSuccess(
 			response?.Status);
@@ -197,7 +181,7 @@ public sealed class VvoApiClient
 		string jsonRequest =
 			JsonSerializer.Serialize(
 				request,
-				_jsonOptions);
+				VvoJsonContext.Default.VvoPrevNextRequest);
 
 		string jsonResponse =
 			await _apiClient.PostJsonAsync(
@@ -208,9 +192,9 @@ public sealed class VvoApiClient
 				.ConfigureAwait(false);
 
 		VvoTripResponse? response =
-			JsonSerializer.Deserialize<VvoTripResponse>(
+			JsonSerializer.Deserialize(
 				jsonResponse,
-				_jsonOptions);
+				VvoJsonContext.Default.VvoTripResponse);
 
 		EnsureProviderSuccess(
 			response?.Status);
@@ -224,9 +208,11 @@ public sealed class VvoApiClient
 		VvoDepartureRequest request,
 		CancellationToken cancellationToken = default,
 		TimeSpan? timeout = null) =>
-		PostAsync<VvoDepartureRequest, VvoDepartureResponse>(
+		PostAsync(
 			"dm",
 			request,
+			VvoJsonContext.Default.VvoDepartureRequest,
+			VvoJsonContext.Default.VvoDepartureResponse,
 			cancellationToken,
 			timeout);
 
@@ -236,9 +222,11 @@ public sealed class VvoApiClient
 		VvoDepartureRunRequest request,
 		CancellationToken cancellationToken = default,
 		TimeSpan? timeout = null) =>
-		PostAsync<VvoDepartureRunRequest, VvoRunResponse>(
+		PostAsync(
 			"dm/trip",
 			request,
+			VvoJsonContext.Default.VvoDepartureRunRequest,
+			VvoJsonContext.Default.VvoRunResponse,
 			cancellationToken,
 			timeout);
 
@@ -296,9 +284,9 @@ public sealed class VvoApiClient
 		long ms = time.ToUnixTimeMilliseconds();
 
 		string Json(string timeJson) =>
-			"{\"tripid\":" + JsonSerializer.Serialize(tripId)
+			"{\"tripid\":" + JsonSerializer.Serialize(tripId, VvoJsonContext.Default.String)
 			+ ",\"time\":" + timeJson
-			+ ",\"stopid\":" + JsonSerializer.Serialize(stopId)
+			+ ",\"stopid\":" + JsonSerializer.Serialize(stopId, VvoJsonContext.Default.String)
 			+ ",\"isarrival\":" + (isArrival ? "true" : "false")
 			+ ",\"mapdata\":false,\"format\":\"json\"}";
 
@@ -315,8 +303,8 @@ public sealed class VvoApiClient
 		[
 			new("get-utc", HttpMethod.Get, get, null),
 			new("post-escaped", HttpMethod.Post, post, Json($"\"\\/Date({ms}+0000)\\/\"")),
-			new("post-iso", HttpMethod.Post, post, Json(JsonSerializer.Serialize(time.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'", System.Globalization.CultureInfo.InvariantCulture)))),
-			new("post-plain", HttpMethod.Post, post, Json(JsonSerializer.Serialize(ToVvoDate(time))))
+			new("post-iso", HttpMethod.Post, post, Json(JsonSerializer.Serialize(time.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'", System.Globalization.CultureInfo.InvariantCulture), VvoJsonContext.Default.String))),
+			new("post-plain", HttpMethod.Post, post, Json(JsonSerializer.Serialize(ToVvoDate(time), VvoJsonContext.Default.String)))
 		];
 
 		return
@@ -352,7 +340,7 @@ public sealed class VvoApiClient
 						: await _apiClient.PostJsonAsync(attempt.Uri, attempt.Body ?? "{}", cancellationToken, timeout).ConfigureAwait(false);
 
 				VvoRunResponse? response =
-					JsonSerializer.Deserialize<VvoRunResponse>(json, _jsonOptions);
+					JsonSerializer.Deserialize(json, VvoJsonContext.Default.VvoRunResponse);
 
 				if (response is null)
 				{
@@ -408,9 +396,11 @@ public sealed class VvoApiClient
 		VvoPrevNextMoveRequest request,
 		CancellationToken cancellationToken = default,
 		TimeSpan? timeout = null) =>
-		PostAsync<VvoPrevNextMoveRequest, VvoTripResponse>(
+		PostAsync(
 			"tr/prevnextmove",
 			request,
+			VvoJsonContext.Default.VvoPrevNextMoveRequest,
+			VvoJsonContext.Default.VvoTripResponse,
 			cancellationToken,
 			timeout);
 
@@ -420,9 +410,11 @@ public sealed class VvoApiClient
 		VvoRouteChangesRequest request,
 		CancellationToken cancellationToken = default,
 		TimeSpan? timeout = null) =>
-		PostAsync<VvoRouteChangesRequest, VvoRouteChangesResponse>(
+		PostAsync(
 			"rc",
 			request,
+			VvoJsonContext.Default.VvoRouteChangesRequest,
+			VvoJsonContext.Default.VvoRouteChangesResponse,
 			cancellationToken,
 			timeout);
 
@@ -431,9 +423,11 @@ public sealed class VvoApiClient
 	public Task<VvoChangedLinesResponse?> GetChangedLinesAsync(
 		CancellationToken cancellationToken = default,
 		TimeSpan? timeout = null) =>
-		PostAsync<VvoChangedLinesRequest, VvoChangedLinesResponse>(
+		PostAsync(
 			"rc/lines",
 			new VvoChangedLinesRequest(),
+			VvoJsonContext.Default.VvoChangedLinesRequest,
+			VvoJsonContext.Default.VvoChangedLinesResponse,
 			cancellationToken,
 			timeout);
 
@@ -447,9 +441,11 @@ public sealed class VvoApiClient
 		ArgumentException.ThrowIfNullOrWhiteSpace(
 			stopId);
 
-		return PostAsync<VvoStopLinesRequest, VvoStopLinesResponse>(
+		return PostAsync(
 			"stt/lines",
 			new VvoStopLinesRequest { StopId = stopId },
+			VvoJsonContext.Default.VvoStopLinesRequest,
+			VvoJsonContext.Default.VvoStopLinesResponse,
 			cancellationToken,
 			timeout);
 	}
@@ -460,9 +456,11 @@ public sealed class VvoApiClient
 		VvoMapPinsRequest request,
 		CancellationToken cancellationToken = default,
 		TimeSpan? timeout = null) =>
-		PostAsync<VvoMapPinsRequest, VvoMapPinsResponse>(
+		PostAsync(
 			"map/pins",
 			request,
+			VvoJsonContext.Default.VvoMapPinsRequest,
+			VvoJsonContext.Default.VvoMapPinsResponse,
 			cancellationToken,
 			timeout);
 
@@ -471,9 +469,11 @@ public sealed class VvoApiClient
 	public Task<VvoMapPolygonsResponse?> GetTariffPolygonsAsync(
 		CancellationToken cancellationToken = default,
 		TimeSpan? timeout = null) =>
-		PostAsync<VvoMapPolygonsRequest, VvoMapPolygonsResponse>(
+		PostAsync(
 			"map/polygons",
 			new VvoMapPolygonsRequest(),
+			VvoJsonContext.Default.VvoMapPolygonsRequest,
+			VvoJsonContext.Default.VvoMapPolygonsResponse,
 			cancellationToken,
 			timeout);
 
@@ -545,8 +545,8 @@ public sealed class VvoApiClient
 			parameters.Add(("via", via));
 		}
 
-		parameters.Add(("mobilitysettings", JsonSerializer.Serialize(mobilitySettings, _jsonOptions)));
-		parameters.Add(("standardSettings", JsonSerializer.Serialize(standardSettings, _jsonOptions)));
+		parameters.Add(("mobilitysettings", JsonSerializer.Serialize(mobilitySettings, VvoJsonContext.Default.VvoMobilitySettings)));
+		parameters.Add(("standardSettings", JsonSerializer.Serialize(standardSettings, VvoJsonContext.Default.VvoStandardSettings)));
 		parameters.Add(("numberprev", "0"));
 		parameters.Add(("numbernext", "0"));
 		parameters.Add(("format", "json"));
@@ -652,6 +652,8 @@ public sealed class VvoApiClient
 	private async Task<TResponse?> PostAsync<TRequest, TResponse>(
 		string path,
 		TRequest request,
+		JsonTypeInfo<TRequest> requestInfo,
+		JsonTypeInfo<TResponse> responseInfo,
 		CancellationToken cancellationToken,
 		TimeSpan? timeout)
 		where TResponse : class
@@ -664,15 +666,15 @@ public sealed class VvoApiClient
 				$"{BaseUrl}/{path}",
 				JsonSerializer.Serialize(
 					request,
-					_jsonOptions),
+					requestInfo),
 				cancellationToken,
 				timeout)
 				.ConfigureAwait(false);
 
 		TResponse? response =
-			JsonSerializer.Deserialize<TResponse>(
+			JsonSerializer.Deserialize(
 				jsonResponse,
-				_jsonOptions);
+				responseInfo);
 
 		EnsureProviderSuccess(
 			StatusOf(response));

@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using DDjourneys.Core.Models;
 using DDjourneys.Localization;
 using DDjourneys.Support;
@@ -137,7 +138,7 @@ public partial class DeparturesPage : ContentPage, IQueryAttributable
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine(
+			DiagnosticLog.Write(
 				$"Navigation to '{route}' failed:\n{ex}");
 
 			await DisplayAlertAsync(

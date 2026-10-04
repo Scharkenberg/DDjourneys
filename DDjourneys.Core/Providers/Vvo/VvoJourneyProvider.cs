@@ -137,7 +137,7 @@ public sealed class VvoJourneyProvider :
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine(
+			DiagnosticLog.Write(
 				$"VVO journey request failed: {ex}");
 
 			return JourneyResult.Failure(
@@ -285,7 +285,7 @@ public sealed class VvoJourneyProvider :
 
 		if (candidates.Count == 0)
 		{
-			System.Diagnostics.Debug.WriteLine(
+			DiagnosticLog.Write(
 				$"[VVO SCHUTZENGEL] No match among {count} routes for {target.From.Id}->{target.To.Id} at {requestedTime:u} (legs={target.Legs.Count}).");
 
 			return null;
@@ -305,7 +305,7 @@ public sealed class VvoJourneyProvider :
 			response.Routes[best.Index];
 
 
-		System.Diagnostics.Debug.WriteLine(
+		DiagnosticLog.Write(
 			$"""
 			[VVO SCHUTZENGEL]
 			Matched RouteId={route.RouteId}
@@ -494,7 +494,7 @@ public sealed class VvoJourneyProvider :
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine(
+			DiagnosticLog.Write(
 				$"VVO continuation request failed: {ex}");
 
 			return JourneyResult.Failure(
@@ -602,7 +602,7 @@ public sealed class VvoJourneyProvider :
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine(
+			DiagnosticLog.Write(
 				$"VVO leg alternative request failed: {ex}");
 
 			return JourneyResult.Failure(
@@ -787,7 +787,7 @@ public sealed class VvoJourneyProvider :
 	private static JourneyResult Failed(
 		DDjourneys.Core.Api.ApiException ex)
 	{
-		System.Diagnostics.Debug.WriteLine(
+		DiagnosticLog.Write(
 			$"VVO request failed: {ex}");
 
 		return JourneyResult.Failure(

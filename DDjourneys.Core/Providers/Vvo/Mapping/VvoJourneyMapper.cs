@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using DDjourneys.Core.Models;
 using DDjourneys.Core.Providers.Vvo.Models;
 using DDjourneys.Core.Providers.Vvo.Parsing;
@@ -58,7 +59,7 @@ public static class VvoJourneyMapper
 		foreach (VvoPartialRoute partialRoute
 			in route.PartialRoutes)
 		{
-			System.Diagnostics.Debug.WriteLine(
+			DiagnosticLog.Write(
 				$"""
 				[VVO PARTIAL]
 				Type={partialRoute.Mot?.Type}
@@ -88,7 +89,7 @@ public static class VvoJourneyMapper
 			int legIndex =
 				legs.Count;
 
-			System.Diagnostics.Debug.WriteLine(
+			DiagnosticLog.Write(
 	$"""
 	[VVO LEG]
 	Index: {legIndex}
@@ -198,7 +199,7 @@ public static class VvoJourneyMapper
 			return null;
 		}
 
-		System.Diagnostics.Debug.WriteLine(
+		DiagnosticLog.Write(
 	$"""
 	[VVO JOURNEY PATHS]
 	Legs:

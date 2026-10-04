@@ -1,13 +1,14 @@
-using System.Text.Json;
+using System.Text.Json.Nodes;
+using DDjourneys.Core.Serialization;
 using DDjourneys.Core.Models;
 
 namespace DDjourneys.Tracking.Schutzengel;
 
 internal static class SchutzengelPlanTranslator
 {
-	public static object Translate(
+	public static JsonObject Translate(
 		Journey journey,
-		object rawData,
+		JsonNode rawData,
 		SchutzengelOptions? options = null)
 	{
 		ArgumentNullException.ThrowIfNull(
@@ -21,7 +22,7 @@ internal static class SchutzengelPlanTranslator
 			options ?? SchutzengelOptions.Default;
 
 		var episodes =
-			new List<object>();
+			new List<JsonObject>();
 
 
 		for (int i = 0;
@@ -48,48 +49,43 @@ internal static class SchutzengelPlanTranslator
 		}
 
 
-		return new
+		return new JsonObject
 		{
-			journey =
-				new
+			["journey"] =
+				new JsonObject
 				{
-					episodes
+					["episodes"] = Wire.Array(episodes.Select(episode => (JsonNode?)episode))
 				},
-
-			rawData,
-
-			attentions =
-				new
+			["rawData"] = rawData,
+			["attentions"] =
+				new JsonObject
 				{
-					start =
-						new
+					["start"] =
+						new JsonObject
 						{
-							timeBeforeSeconds = alerts.StartLeadSeconds,
-							active = alerts.StartActive
+							["timeBeforeSeconds"] = alerts.StartLeadSeconds,
+							["active"] = alerts.StartActive
 						},
-
-					change = alerts.Change,
-
-					problem = alerts.Problem
+					["change"] = alerts.Change,
+					["problem"] = alerts.Problem
 				},
-
-			type = "static"
+			["type"] = "static"
 		};
 	}
 
 
 	public static string Serialize(
 		Journey journey,
-		object rawData,
+		JsonNode rawData,
 		SchutzengelOptions? options = null) =>
-		JsonSerializer.Serialize(
-			Translate(
-				journey,
-				rawData,
-				options));
+		Translate(
+			journey,
+			rawData,
+			options)
+			.ToJsonString();
 
 
-	private static object MovementEpisode(
+	private static JsonObject MovementEpisode(
 		JourneyLeg leg)
 	{
 		return !leg.Mode.IsRide()
@@ -100,7 +96,7 @@ internal static class SchutzengelPlanTranslator
 	}
 
 
-	private static object PublicEpisode(
+	private static JsonObject PublicEpisode(
 		JourneyLeg leg)
 	{
 		StopTime[] stops =
@@ -115,52 +111,31 @@ internal static class SchutzengelPlanTranslator
 		}
 
 
-		return new
+		return new JsonObject
 		{
-			api = "vvo",
-
-			allStations =
-				stops.Select(
-					StopObject),
-
-			from =
-				StopObject(
-					stops[0]),
-
-			to =
-				StopObject(
-					stops[^1]),
-
-			type = "public",
-
-			mot =
-				new
+			["api"] = "vvo",
+			["allStations"] = Wire.Array(stops.Select(stop => (JsonNode?)StopObject(stop))),
+			["from"] = StopObject(stops[0]),
+			["to"] = StopObject(stops[^1]),
+			["type"] = "public",
+			["mot"] =
+				new JsonObject
 				{
-					type =
-						MotType(
-							leg.Mode),
-
-					name =
-						leg.Line?.Name
-						?? string.Empty,
-
-					direction =
-						leg.Line?.Destination
-						?? string.Empty
+					["type"] = MotType(leg.Mode),
+					["name"] = leg.Line?.Name ?? string.Empty,
+					["direction"] = leg.Line?.Destination ?? string.Empty
 				},
-
-			id =
-				leg.Id
-				?? string.Empty,
-
-			polyline =
-				BuildPolyline(
-					leg.Path)
+			["id"] = leg.Id ?? string.Empty,
+			["polyline"] = BuildPolyline(leg.Path)
 		};
 	}
 
 
-	private static object IndividualEpisode(
+	private static JsonObject IndividualEpisode		};
+	}
+
+
+	private static JsonObject IndividualEpisode(
 		JourneyLeg leg)
 	{
 		DateTimeOffset? fromTime =
@@ -178,66 +153,36 @@ internal static class SchutzengelPlanTranslator
 				leg);
 
 
-		return new
+		return new JsonObject
 		{
-			id =
-				leg.Id
-				?? string.Empty,
-
-			mot =
-				new
+			["id"] = leg.Id ?? string.Empty,
+			["mot"] =
+				new JsonObject
 				{
-					type =
-						MotType(
-							leg.Mode),
-
-					name =
-						leg.Line?.Name
-						?? string.Empty,
-
-					direction =
-						leg.Line?.Destination
-						?? string.Empty
+					["type"] = MotType(leg.Mode),
+					["name"] = leg.Line?.Name ?? string.Empty,
+					["direction"] = leg.Line?.Destination ?? string.Empty
 				},
-
-			from =
-				WalkingStationObject(
-					leg.From,
-					fromTime),
-
-			to =
-				WalkingStationObject(
-					leg.To,
-					toTime),
-
-			type = "individual",
-
-			allStations =
-				new[]
-				{
-					WalkingStationObject(
-						leg.From,
-						fromTime),
-
-					WalkingStationObject(
-						leg.To,
-						toTime)
-				},
-
-			requiredTimeMS =
-				durationSeconds * 1000,
-
-			durationSeconds,
-
-			polyline =
-				BuildPolyline(
-					leg.Path)
+			["from"] = WalkingStationObject(leg.From, fromTime),
+			["to"] = WalkingStationObject(leg.To, toTime),
+			["type"] = "individual",
+			["allStations"] =
+				Wire.Array(
+					WalkingStationObject(leg.From, fromTime),
+					WalkingStationObject(leg.To, toTime)),
+			["requiredTimeMS"] = durationSeconds * 1000,
+			["durationSeconds"] = durationSeconds,
+			["polyline"] = BuildPolyline(leg.Path)
 		};
 	}
 
 
+	private static void AddInterLegTransfer		};
+	}
+
+
 	private static void AddInterLegTransfer(
-		List<object> episodes,
+		List<JsonObject> episodes,
 		Journey journey,
 		int previousLegIndex,
 		int nextLegIndex)
@@ -347,7 +292,7 @@ internal static class SchutzengelPlanTranslator
 	}
 
 
-	private static object WalkingEpisode(
+	private static JsonObject WalkingEpisode(
 		Station from,
 		Station to,
 		DateTimeOffset? fromTime,
@@ -364,52 +309,31 @@ internal static class SchutzengelPlanTranslator
 						duration.TotalSeconds));
 
 
-		return new
+		return new JsonObject
 		{
-			id = string.Empty,
-
-			mot =
-				new
+			["id"] = string.Empty,
+			["mot"] =
+				new JsonObject
 				{
-					name = "Fussweg",
-					type = "WALKING",
-					direction = string.Empty
+					["name"] = "Fussweg",
+					["type"] = "WALKING",
+					["direction"] = string.Empty
 				},
-
-			from =
-				WalkingStationObject(
-					from,
-					fromTime),
-
-			to =
-				WalkingStationObject(
-					to,
-					toTime),
-
-			type = "individual",
-
-			allStations =
-				new[]
-				{
-					WalkingStationObject(
-						from,
-						fromTime),
-
-					WalkingStationObject(
-						to,
-						toTime)
-				},
-
-			requiredTimeMS =
-				seconds * 1000,
-
-			durationSeconds =
-				seconds,
-
-			polyline =
-				BuildPolyline(
-					path)
+			["from"] = WalkingStationObject(from, fromTime),
+			["to"] = WalkingStationObject(to, toTime),
+			["type"] = "individual",
+			["allStations"] =
+				Wire.Array(
+					WalkingStationObject(from, fromTime),
+					WalkingStationObject(to, toTime)),
+			["requiredTimeMS"] = seconds * 1000,
+			["durationSeconds"] = seconds,
+			["polyline"] = BuildPolyline(path)
 		};
+	}
+
+
+	private static StopTime[] BuildStops		};
 	}
 
 
@@ -483,29 +407,17 @@ internal static class SchutzengelPlanTranslator
 	}
 
 
-	private static object StopObject(
+	private static JsonObject StopObject(
 		StopTime stop)
 	{
 		var result =
-			new Dictionary<string, object?>
+			new JsonObject
 			{
-				["name"] =
-					stop.Station.Name,
-
-				["id"] =
-					stop.Station.Id,
-
-				["coords"] =
-					Coordinates(
-						stop.Station),
-
-				["scheduledTime"] =
-					ToUnixMilliseconds(
-						stop.ScheduledDeparture
-						?? stop.ScheduledArrival),
-
-				["api"] =
-					"vvo"
+				["name"] = stop.Station.Name,
+				["id"] = stop.Station.Id,
+				["coords"] = Coordinates(stop.Station),
+				["scheduledTime"] = ToUnixMilliseconds(stop.ScheduledDeparture ?? stop.ScheduledArrival),
+				["api"] = "vvo"
 			};
 
 
@@ -513,12 +425,10 @@ internal static class SchutzengelPlanTranslator
 			stop.Platform))
 		{
 			result["platform"] =
-				new
+				new JsonObject
 				{
-					type = "Steig",
-
-					name =
-						stop.Platform
+					["type"] = "Steig",
+					["name"] = stop.Platform
 				};
 		}
 
@@ -527,49 +437,27 @@ internal static class SchutzengelPlanTranslator
 	}
 
 
-	private static object WalkingStationObject(
+	private static JsonObject WalkingStationObject(
 		Station station,
-		DateTimeOffset? time)
-	{
-		return new
+		DateTimeOffset? time) =>
+		new()
 		{
-			id =
-				station.Id,
-
-			api =
-				"vvo",
-
-			name =
-				station.Name,
-
-			coords =
-				Coordinates(
-					station),
-
-			scheduledTime =
-				ToUnixMilliseconds(
-					time)
+			["id"] = station.Id,
+			["api"] = "vvo",
+			["name"] = station.Name,
+			["coords"] = Coordinates(station),
+			["scheduledTime"] = ToUnixMilliseconds(time)
 		};
-	}
 
 
-	private static object Coordinates(
-		Station station)
-	{
-		return new
+	private static JsonObject Coordinates(
+		Station station) =>
+		new()
 		{
-			lat =
-				station.Latitude
-				?? 0,
-
-			lon =
-				station.Longitude
-				?? 0,
-
-			projection =
-				"WGS84"
+			["lat"] = station.Latitude ?? 0,
+			["lon"] = station.Longitude ?? 0,
+			["projection"] = "WGS84"
 		};
-	}
 
 
 	private static long? ToUnixMilliseconds(
@@ -577,26 +465,18 @@ internal static class SchutzengelPlanTranslator
 		value?.ToUnixTimeMilliseconds();
 
 
-	private static object[] BuildPolyline(
+	private static JsonArray BuildPolyline(
 		IEnumerable<
-			(double Latitude, double Longitude)> path)
-	{
-		return path
-			.Select(
+			(double Latitude, double Longitude)> path) =>
+		Wire.Array(
+			path.Select(
 				point =>
-					new
+					(JsonNode?)new JsonObject
 					{
-						lat =
-							point.Latitude,
-
-						lon =
-							point.Longitude,
-
-						projection =
-							"WGS84"
-					})
-			.ToArray();
-	}
+						["lat"] = point.Latitude,
+						["lon"] = point.Longitude,
+						["projection"] = "WGS84"
+					}));
 
 
 	private static string MotType(

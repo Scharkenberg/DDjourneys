@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using DDjourneys.Pages;
 using DDjourneys.Support;
 
@@ -68,7 +69,7 @@ public partial class AppShell : Shell
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Page transition skipped: {ex.Message}");
+			DiagnosticLog.Write($"Page transition skipped: {ex.Message}");
 		}
 	}
 }

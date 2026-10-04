@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using DDjourneys.Contract;
 using DDjourneys.Localization;
 using DDjourneys.Support;
@@ -132,7 +133,7 @@ public partial class PlanPage : ContentPage, IQueryAttributable
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine(
+			DiagnosticLog.Write(
 				$"Navigation to '{route}' failed:\n{ex}");
 
 			await DisplayAlertAsync(
@@ -187,7 +188,7 @@ public partial class PlanPage : ContentPage, IQueryAttributable
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine(
+			DiagnosticLog.Write(
 				$"Swap animation skipped: {ex.Message}");
 		}
 	}

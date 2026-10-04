@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using DDjourneys.Core.Models;
@@ -715,7 +716,7 @@ public sealed class DeparturesViewModel : DisposableViewModel
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Remembering the place failed: {ex.Message}");
+			DiagnosticLog.Write($"Remembering the place failed: {ex.Message}");
 		}
 
 		Stop = stop;
@@ -811,7 +812,7 @@ public sealed class DeparturesViewModel : DisposableViewModel
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Departures failed: {ex}");
+			DiagnosticLog.Write($"Departures failed: {ex}");
 
 			if (!silent || Rows.Count == 0)
 			{
@@ -912,7 +913,7 @@ public sealed class DeparturesViewModel : DisposableViewModel
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Locating failed: {ex}");
+			DiagnosticLog.Write($"Locating failed: {ex}");
 
 			Message =
 				string.IsNullOrWhiteSpace(ex.Message)
@@ -968,7 +969,7 @@ public sealed class DeparturesViewModel : DisposableViewModel
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Accessibility failed: {ex.Message}");
+			DiagnosticLog.Write($"Accessibility failed: {ex.Message}");
 
 			AccessibilityMessage = _localization.CurrentStrings.Common.SomethingWentWrong;
 		}
@@ -1035,7 +1036,7 @@ public sealed class DeparturesViewModel : DisposableViewModel
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Service points failed: {ex.Message}");
+			DiagnosticLog.Write($"Service points failed: {ex.Message}");
 
 			ServicePointsMessage = _localization.CurrentStrings.Common.SomethingWentWrong;
 		}
@@ -1051,7 +1052,7 @@ public sealed class DeparturesViewModel : DisposableViewModel
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Opening the map failed: {ex.Message}");
+			DiagnosticLog.Write($"Opening the map failed: {ex.Message}");
 		}
 	}
 
@@ -1078,7 +1079,7 @@ public sealed class DeparturesViewModel : DisposableViewModel
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Opening the map failed: {ex.Message}");
+			DiagnosticLog.Write($"Opening the map failed: {ex.Message}");
 		}
 	}
 
@@ -1133,7 +1134,7 @@ public sealed class DeparturesViewModel : DisposableViewModel
 		catch (Exception ex)
 		{
 			// The zone is a nicety: the departures do not depend on it.
-			System.Diagnostics.Debug.WriteLine($"Tariff zone failed: {ex.Message}");
+			DiagnosticLog.Write($"Tariff zone failed: {ex.Message}");
 		}
 	}
 
@@ -1165,7 +1166,7 @@ public sealed class DeparturesViewModel : DisposableViewModel
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Stop lines failed: {ex.Message}");
+			DiagnosticLog.Write($"Stop lines failed: {ex.Message}");
 		}
 	}
 

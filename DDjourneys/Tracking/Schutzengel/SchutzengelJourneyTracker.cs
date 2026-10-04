@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using System.Diagnostics;
 using System.Globalization;
 using System.Net;
@@ -426,7 +427,7 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 				"The selected connection is no longer offered by the timetable service.");
 		}
 
-		object rawData =
+		System.Text.Json.Nodes.JsonObject rawData =
 			SchutzengelRawDataTranslator.Translate(
 				connection.Value.Route,
 				journey,
@@ -1508,7 +1509,7 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 
 	[Conditional("DEBUG")]
 	private static void Log(string message) =>
-		Debug.WriteLine($"[SCHUTZENGEL] {message}");
+		DiagnosticLog.Write($"[SCHUTZENGEL] {message}");
 
 	// ----- Types -----
 

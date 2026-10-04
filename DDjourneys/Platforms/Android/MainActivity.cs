@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using Android.App;
 using Android.Content;
 using Android.Content.PM;
@@ -127,7 +128,7 @@ namespace DDjourneys
 			}
 			catch (Exception ex)
 			{
-				System.Diagnostics.Debug.WriteLine($"Journey tracking resume failed: {ex.Message}");
+				DiagnosticLog.Write($"Journey tracking resume failed: {ex.Message}");
 			}
 		}
 	}

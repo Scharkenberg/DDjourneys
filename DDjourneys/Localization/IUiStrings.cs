@@ -315,6 +315,12 @@ public sealed class SettingsStrings
 	public required string ExpandStopsDescription { get; init; }
 	public required string ExpertView { get; init; }
 	public required string ExpertViewDescription { get; init; }
+	public required string DeveloperOptions { get; init; }
+	public required string DeveloperOptionsDescription { get; init; }
+	public required string LogToFile { get; init; }
+	public required string LogToFileDescription { get; init; }
+	public required string ShareLog { get; init; }
+	public required string ClearLog { get; init; }
 	public required string PlaceSearch { get; init; }
 	public required string SearchDelay { get; init; }
 	public required string SearchDelayDescription { get; init; }

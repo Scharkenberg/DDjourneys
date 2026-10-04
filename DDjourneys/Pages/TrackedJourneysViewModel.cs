@@ -1,4 +1,5 @@
-﻿using System.Globalization;
+﻿using DDjourneys.Core.Diagnostics;
+using System.Globalization;
 using System.Windows.Input;
 using DDjourneys.Core.Tracking;
 using DDjourneys.Controls;
@@ -452,7 +453,7 @@ public sealed class TrackedJourneysViewModel : DisposableViewModel, IQueryAttrib
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Followed journeys display failed:\n{ex}");
+			DiagnosticLog.Write($"Followed journeys display failed:\n{ex}");
 		}
 	}
 

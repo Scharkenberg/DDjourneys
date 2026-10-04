@@ -1,7 +1,10 @@
+using DDjourneys.Core.Diagnostics;
 using System.Net.WebSockets;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
+using DDjourneys.Core.Serialization;
 using DDjourneys.Core.Models;
 using DDjourneys.Core.Providers.Abstractions;
 
@@ -31,14 +34,14 @@ public sealed class TlmsVehicleProvider : ILiveVehicleProvider
 			.ConfigureAwait(false);
 
 		byte[] request =
-			JsonSerializer.SerializeToUtf8Bytes(
-				new
+			System.Text.Encoding.UTF8.GetBytes(
+				new JsonObject
 				{
-					lines = filter.Lines,
-					positions = Array.Empty<int>(),
-					regions = new[] { filter.Region },
-					enrich = false
-				});
+					["lines"] = Wire.Array(filter.Lines.Select(line => (JsonNode?)line)),
+					["positions"] = new JsonArray(),
+					["regions"] = Wire.Array(filter.Region),
+					["enrich"] = false
+				}.ToJsonString());
 
 		await socket
 			.SendAsync(
@@ -87,7 +90,7 @@ public sealed class TlmsVehicleProvider : ILiveVehicleProvider
 				}
 				catch (Exception ex)
 				{
-					System.Diagnostics.Debug.WriteLine($"TLMS close failed: {ex.Message}");
+					DiagnosticLog.Write($"TLMS close failed: {ex.Message}");
 				}
 			}
 		}

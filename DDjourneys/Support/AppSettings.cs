@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using System.Globalization;
 using DDjourneys.Core.Models;
 
@@ -109,7 +110,7 @@ public sealed class AppSettings
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Appearance migration skipped: {ex.Message}");
+			DiagnosticLog.Write($"Appearance migration skipped: {ex.Message}");
 		}
 	}
 
@@ -237,11 +238,45 @@ public sealed class AppSettings
 		set => Write("expandStops", value);
 	}
 
-	/// <summary>Offer the expert view (raw provider data) in the journey menu.</summary>
+	/// <summary>
+	/// Shows the developer options (expert view, log file). Everything diagnostic is hidden and inactive
+	/// while this is off.
+	/// </summary>
+	public bool DeveloperOptions
+	{
+		get => Read("developerOptions", false);
+		set
+		{
+			Write("developerOptions", value);
+
+			if (!value)
+			{
+				LogToFile = false;
+			}
+		}
+	}
+
+	/// <summary>Offer the expert view (raw provider data) in the journey menu; only with developer options.</summary>
 	public bool ExpertView
 	{
-		get => Read("expertView", true);
+		get => DeveloperOptions && Read("expertView", true);
 		set => Write("expertView", value);
+	}
+
+	/// <summary>Write provider traffic and diagnostics to the log file; only with developer options.</summary>
+	public bool LogToFile
+	{
+		get => DeveloperOptions && Read("logToFile", false);
+		set
+		{
+			Write("logToFile", value);
+			DiagnosticLog.Enabled = value && DeveloperOptions;
+
+			if (!DiagnosticLog.Enabled)
+			{
+				DiagnosticLog.Delete();
+			}
+		}
 	}
 
 	// ----- Place search -----
@@ -426,7 +461,7 @@ public sealed class AppSettings
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Settings read '{key}' failed: {ex.Message}");
+			DiagnosticLog.Write($"Settings read '{key}' failed: {ex.Message}");
 			return fallback;
 		}
 	}
@@ -440,7 +475,7 @@ public sealed class AppSettings
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Settings write '{key}' failed: {ex.Message}");
+			DiagnosticLog.Write($"Settings write '{key}' failed: {ex.Message}");
 		}
 	}
 

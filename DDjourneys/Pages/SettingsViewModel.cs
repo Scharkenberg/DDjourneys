@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using DDjourneys.Core.Providers;
 using DDjourneys.Localization;
 using DDjourneys.Support;
@@ -28,6 +29,8 @@ public sealed class SettingsViewModel : DisposableViewModel
 		ResetCommand = new Command(Reset);
 		OpenRoutingCommand = new AsyncCommand(OpenRoutingAsync);
 		OpenProvidersCommand = new AsyncCommand(OpenProvidersAsync);
+		ShareLogCommand = new AsyncCommand(ShareLogAsync);
+		ClearLogCommand = new Command(ClearLog);
 	}
 
 	public AsyncCommand OpenAppearanceCommand { get; }
@@ -35,6 +38,8 @@ public sealed class SettingsViewModel : DisposableViewModel
 	public Command ResetCommand { get; }
 	public AsyncCommand OpenRoutingCommand { get; }
 	public AsyncCommand OpenProvidersCommand { get; }
+	public AsyncCommand ShareLogCommand { get; }
+	public Command ClearLogCommand { get; }
 
 	/// <summary>Name of the selected provider, shown on the entry row.</summary>
 	public string ProviderText =>
@@ -253,6 +258,54 @@ public sealed class SettingsViewModel : DisposableViewModel
 		}
 	}
 
+	// ----- Developer options -----
+
+	public bool DeveloperOptions
+	{
+		get => _settings.DeveloperOptions;
+		set
+		{
+			_settings.DeveloperOptions = value;
+			OnPropertyChanged();
+			OnPropertyChanged(nameof(ExpertView));
+			OnPropertyChanged(nameof(LogToFile));
+			OnPropertyChanged(nameof(HasLog));
+		}
+	}
+
+	public bool LogToFile
+	{
+		get => _settings.LogToFile;
+		set
+		{
+			_settings.LogToFile = value;
+			OnPropertyChanged();
+			OnPropertyChanged(nameof(HasLog));
+		}
+	}
+
+	/// <summary>There is a log file to share or delete.</summary>
+	public bool HasLog => DiagnosticLog.Exists;
+
+	private async Task ShareLogAsync()
+	{
+		if (!DiagnosticLog.Exists || DiagnosticLog.FilePath is not { } path)
+		{
+			return;
+		}
+
+		await Share.Default.RequestAsync(
+			new ShareFileRequest(
+				_localization.CurrentStrings.Settings.LogToFile,
+				new ReadOnlyFile(path)));
+	}
+
+	private void ClearLog()
+	{
+		DiagnosticLog.Delete();
+		OnPropertyChanged(nameof(HasLog));
+	}
+
 	// ----- Place search -----
 
 	public double SearchDelayMs
@@ -347,7 +400,7 @@ public sealed class SettingsViewModel : DisposableViewModel
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Opening appearance failed: {ex}");
+			DiagnosticLog.Write($"Opening appearance failed: {ex}");
 		}
 	}
 
@@ -366,7 +419,7 @@ public sealed class SettingsViewModel : DisposableViewModel
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine(
+			DiagnosticLog.Write(
 				$"Language change failed: {ex}");
 		}
 	}
@@ -417,6 +470,7 @@ public sealed class SettingsViewModel : DisposableViewModel
 		OnPropertyChanged(nameof(ShowPlatforms));
 		OnPropertyChanged(nameof(ExpandStops));
 		OnPropertyChanged(nameof(ExpertView));
+		OnPropertyChanged(nameof(HasLog));
 		OnPropertyChanged(nameof(SearchDelayMs));
 		OnPropertyChanged(nameof(SearchDelayText));
 		OnPropertyChanged(nameof(MinQueryLength));

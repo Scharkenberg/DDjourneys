@@ -1,3 +1,5 @@
+using DDjourneys.Core.Diagnostics;
+
 namespace DDjourneys.Support;
 
 /// <summary>
@@ -34,7 +36,7 @@ public static class SystemAccent
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"System accent unavailable: {ex.Message}");
+			DiagnosticLog.Write($"System accent unavailable: {ex.Message}");
 		}
 
 		return null;

@@ -1,4 +1,6 @@
-﻿using System.Text.Json;
+﻿using DDjourneys.Core.Diagnostics;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using DDjourneys.Core.Models;
 using DDjourneys.Core.Storage;
 using DDjourneys.Core.Providers.Vvo;
@@ -517,7 +519,7 @@ public sealed class PlaceStore
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine(
+			DiagnosticLog.Write(
 				$"PlaceStore subscriber failed: {ex.Message}");
 		}
 	}
@@ -564,6 +566,41 @@ public sealed class PlaceStore
 		string Name,
 		Entry? From,
 		Entry? To);
+
+
+	private static JsonNode? EntryNode(
+		Entry? entry) =>
+		entry is null
+			? null
+			: new JsonObject
+			{
+				["Id"] = entry.Id,
+				["Name"] = entry.Name,
+				["Place"] = entry.Place,
+				["Latitude"] = entry.Latitude,
+				["Longitude"] = entry.Longitude,
+				["ProviderId"] = entry.ProviderId,
+				["Kind"] = entry.Kind
+			};
+
+
+	private static JsonNode? RouteNode(
+		RouteEntry entry) =>
+		new JsonObject
+		{
+			["From"] = EntryNode(entry.From),
+			["To"] = EntryNode(entry.To)
+		};
+
+
+	private static JsonNode? SavedRouteNode(
+		SavedRouteEntry entry) =>
+		new JsonObject
+		{
+			["Name"] = entry.Name,
+			["From"] = EntryNode(entry.From),
+			["To"] = EntryNode(entry.To)
+		};
 
 
 	private static Entry? ParseEntry(
@@ -637,7 +674,8 @@ public sealed class PlaceStore
 					new SavedRouteEntry(
 						route.Name,
 						ToEntry(route.From),
-						ToEntry(route.To))));
+						ToEntry(route.To))),
+			SavedRouteNode);
 
 
 	private List<RoutePair> LoadRoutes() =>
@@ -658,7 +696,8 @@ public sealed class PlaceStore
 				route =>
 					new RouteEntry(
 						ToEntry(route.From),
-						ToEntry(route.To))));
+						ToEntry(route.To))),
+			RouteNode);
 
 
 	private static Entry ToEntry(
@@ -715,7 +754,8 @@ public sealed class PlaceStore
 		List<Location> places) =>
 		SaveList(
 			key,
-			places.Select(ToEntry));
+			places.Select(ToEntry),
+			EntryNode);
 
 
 	/// <summary>
@@ -752,7 +792,7 @@ public sealed class PlaceStore
 
 				if (read.Dropped > 0)
 				{
-					System.Diagnostics.Debug.WriteLine(
+					DiagnosticLog.Write(
 						$"PlaceStore '{candidate}': {read.Dropped} unreadable entries skipped");
 				}
 
@@ -763,7 +803,7 @@ public sealed class PlaceStore
 			}
 			catch (Exception ex)
 			{
-				System.Diagnostics.Debug.WriteLine(
+				DiagnosticLog.Write(
 					$"PlaceStore load '{candidate}' failed: {ex.Message}");
 			}
 		}
@@ -774,7 +814,8 @@ public sealed class PlaceStore
 
 	private void SaveList<T>(
 		string key,
-		IEnumerable<T> entries)
+		IEnumerable<T> entries,
+		Func<T, JsonNode?> toNode)
 	{
 		try
 		{
@@ -788,11 +829,11 @@ public sealed class PlaceStore
 
 			_store.Set(
 				key,
-				StoredJson.Write(entries));
+				StoredJson.Write(entries, toNode));
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine(
+			DiagnosticLog.Write(
 				$"PlaceStore save '{key}' failed: {ex.Message}");
 		}
 	}

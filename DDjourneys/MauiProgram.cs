@@ -37,10 +37,6 @@ public static class MauiProgram
 				fonts.AddFont("InterTight-SemiBold.ttf", "InterTightSemiBold");
 			});
 
-#if DEBUG
-		builder.Logging.AddDebug();
-#endif
-
 #if WINDOWS && DEBUG
 		InstallLabelContainerDiagnostics();
 #endif
@@ -61,9 +57,17 @@ public static class MauiProgram
 					FileSystem.AppDataDirectory,
 					"diagnostics.log");
 		}
-		catch (Exception ex)
+		catch (Exception)
 		{
-			System.Diagnostics.Debug.WriteLine($"Diagnostic log file unavailable: {ex.Message}");
+			DiagnosticLog.FilePath = null;
+		}
+
+		// Opt-in only: without the developer option nothing is logged and a leftover file is removed.
+		DiagnosticLog.Enabled = settings.LogToFile;
+
+		if (!DiagnosticLog.Enabled)
+		{
+			DiagnosticLog.Delete();
 		}
 
 		LocalizationInitializer.Initialize(settings);
@@ -227,7 +231,7 @@ public static class MauiProgram
 						}
 						&& parent is not Microsoft.UI.Xaml.Controls.Panel)
 					{
-						System.Diagnostics.Debug.WriteLine(
+						DiagnosticLog.Write(
 							$"[DIAG] Label '{(view as Label)?.Text}': " +
 							$"{key} mapped while its TextBlock is parented by " +
 							$"{parent.GetType().Name}");

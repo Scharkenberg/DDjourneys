@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using Shapes = Microsoft.Maui.Controls.Shapes;
 
 namespace DDjourneys.Controls;
@@ -127,7 +128,7 @@ public sealed partial class Icon : ContentView
 		catch (Exception ex)
 		{
 			// A broken path must never take the page down with it.
-			System.Diagnostics.Debug.WriteLine($"Icon '{Glyph}' failed to parse: {ex.Message}");
+			DiagnosticLog.Write($"Icon '{Glyph}' failed to parse: {ex.Message}");
 
 			_path.Data = null;
 			return;

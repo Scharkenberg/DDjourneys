@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using DDjourneys.Core.Models;
@@ -216,7 +217,7 @@ public sealed class RunViewModel : DisposableViewModel, IQueryAttributable
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Opening the map failed: {ex.Message}");
+			DiagnosticLog.Write($"Opening the map failed: {ex.Message}");
 		}
 	}
 
@@ -264,7 +265,7 @@ public sealed class RunViewModel : DisposableViewModel, IQueryAttributable
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Opening the live page failed: {ex.Message}");
+			DiagnosticLog.Write($"Opening the live page failed: {ex.Message}");
 		}
 	}
 
@@ -326,7 +327,7 @@ public sealed class RunViewModel : DisposableViewModel, IQueryAttributable
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Run failed: {ex}");
+			DiagnosticLog.Write($"Run failed: {ex}");
 
 			Message =
 				string.IsNullOrWhiteSpace(ex.Message)

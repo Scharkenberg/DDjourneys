@@ -1,5 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
+using System.Text.Json.Nodes;
+using DDjourneys.Core.Serialization;
 using DDjourneys.Core.Tracking;
 
 namespace DDjourneys.Tracking.Schutzengel;
@@ -28,21 +30,26 @@ internal sealed record SchutzengelOptions(
 			? TimeSpan.FromSeconds(Math.Max(0, StartLeadSeconds))
 			: TimeSpan.Zero;
 
-	public object ToPayload() =>
-		new
+	public JsonObject ToPayload() =>
+		new()
 		{
-			attentions = new
-			{
-				start = new
+			["attentions"] =
+				new JsonObject
 				{
-					timeBeforeSeconds = StartLeadSeconds,
-					active = StartActive
+					["start"] =
+						new JsonObject
+						{
+							["timeBeforeSeconds"] = StartLeadSeconds,
+							["active"] = StartActive
+						},
+					["change"] = Change,
+					["problem"] = Problem
 				},
-				change = Change,
-				problem = Problem
-			},
-			type = Type,
-			weekdays = Weekdays
+			["type"] = Type,
+			["weekdays"] =
+				Weekdays is null
+					? null
+					: Wire.Array(Weekdays.Select(day => (JsonNode?)day))
 		};
 
 	public WatchOptions ToWatchOptions() =>
