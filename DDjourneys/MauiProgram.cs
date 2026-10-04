@@ -130,7 +130,8 @@ public static class MauiProgram
 		// Location service needs IGeolocation for GPS functionality
 		builder.Services.AddSingleton<ILocationService>(
 			services => new LocationService(
-				services.GetRequiredService<ILocationProvider>(),
+				[services.GetRequiredService<ILocationProvider>()],
+				services.GetService<ProviderRegistry>(),
 				services.GetRequiredService<IGeolocation>()));
 
 		// Pages are transient; view models are added with their pages.
