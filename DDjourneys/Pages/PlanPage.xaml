@@ -41,7 +41,7 @@
 			<!--  From / To  -->
 			<Border StyleClass="Card">
 				<Grid
-					ColumnDefinitions="*,Auto"
+					ColumnDefinitions="*,Auto,Auto,Auto"
 					ColumnSpacing="{DynamicResource SpaceS}"
 					RowDefinitions="Auto,Auto,Auto">
 
@@ -70,6 +70,20 @@
 							InputTransparent="{Binding NoFrom}"
 							Opacity="{Binding StarOpacityFrom}"
 							SemanticProperties.Description="{localization:Tr Plan.ToggleFavouriteFrom}" />
+
+						<controls:IconButton
+							Grid.Column="2"
+							Command="{Binding UseGpsFromCommand}"
+							Glyph="CrosshairsGps"
+							IsBusy="{Binding IsGettingLocation}"
+							SemanticProperties.Description="{Binding GpsFromText}" />
+
+						<controls:IconButton
+							Grid.Column="3"
+							Command="{Binding SetHomeLocationCommand}"
+							Glyph="Home"
+							IsBusy="{Binding IsGettingLocation}"
+							SemanticProperties.Description="{localization:Tr Plan.SetHomeLocation}" />
 					</Grid>
 
 					<BoxView
@@ -102,11 +116,25 @@
 							InputTransparent="{Binding NoTo}"
 							Opacity="{Binding StarOpacityTo}"
 							SemanticProperties.Description="{localization:Tr Plan.ToggleFavouriteTo}" />
+
+						<controls:IconButton
+							Grid.Column="2"
+							Command="{Binding UseGpsToCommand}"
+							Glyph="CrosshairsGps"
+							IsBusy="{Binding IsGettingLocation}"
+							SemanticProperties.Description="{Binding GpsToText}" />
+
+						<controls:IconButton
+							Grid.Column="3"
+							Command="{Binding SaveCurrentRouteCommand}"
+							Glyph="Save"
+							IsEnabled="{Binding CanSearch}"
+							SemanticProperties.Description="{Binding SaveCurrentRouteText}" />
 					</Grid>
 
 					<controls:IconButton
 						Grid.RowSpan="3"
-						Grid.Column="1"
+						Grid.Column="3"
 						Clicked="SwapClicked"
 						Command="{Binding SwapCommand}"
 						Glyph="SwapVertical"
@@ -272,6 +300,15 @@
 
 			<Button Command="{Binding SearchCommand}" Text="{localization:Tr Plan.SearchJourneys}" />
 
+			<!--  GPS and Take Me Home buttons  -->
+			<Border StyleClass="Card" IsVisible="{Binding HasHome}">
+				<Button
+					Command="{Binding TakeMeHomeCommand}"
+					Text="{Binding TakeMeHomeText}"
+					IsBusy="{Binding IsGettingLocation}"
+					SemanticProperties.Description="{localization:Tr Plan.TakeMeHome}" />
+			</Border>
+
 			<!--  Recent searches: tapping a row looks the same connection up again  -->
 			<VerticalStackLayout IsVisible="{Binding HasRecentRoutes}" Spacing="{DynamicResource SpaceS}">
 
@@ -420,6 +457,87 @@
 										<TapGestureRecognizer Tapped="PlaceTapped" />
 									</VerticalStackLayout.GestureRecognizers>
 								</VerticalStackLayout>
+
+							</DataTemplate>
+						</BindableLayout.ItemTemplate>
+
+					</VerticalStackLayout>
+				</Border>
+			</VerticalStackLayout>
+
+			<Label
+				IsVisible="{Binding IsPlacesEmpty}"
+				StyleClass="Caption"
+				Text="{localization:Tr Plan.PlacesYouSearchForWillAppearHere}" />
+
+			<!--  Saved Routes  -->
+			<VerticalStackLayout IsVisible="{Binding HasSavedRoutes}" Spacing="{DynamicResource SpaceS}">
+
+				<Grid ColumnDefinitions="*,Auto">
+
+					<Label
+						StyleClass="Title"
+						Text="{Binding SavedRoutesTitle}"
+						VerticalOptions="Center" />
+
+					<controls:IconButton
+						Grid.Column="1"
+						Command="{Binding ClearSavedRoutesCommand}"
+						Glyph="Trash"
+						SemanticProperties.Description="{localization:Tr Common.Clear}"
+						Size="20" />
+				</Grid>
+
+				<Border Padding="0" StyleClass="Card">
+					<VerticalStackLayout BindableLayout.ItemsSource="{Binding SavedRoutes}">
+
+						<BindableLayout.ItemTemplate>
+							<DataTemplate x:DataType="saved:SavedRoute">
+
+								<Grid RowDefinitions="Auto,Auto" RowSpacing="0">
+
+									<Grid
+										support:Motion.Feedback="True"
+										support:Dense.Padding="14,10"
+										ColumnDefinitions="Auto,*,Auto"
+										ColumnSpacing="10"
+										support:Dense.MinHeight="56"
+										SemanticProperties.Description="{Binding Name}">
+
+										<controls:Icon
+											Margin="0,2,0,0"
+											Glyph="Star"
+											Size="18"
+											VerticalOptions="Start"
+											Color="{DynamicResource InkMuted}" />
+
+										<VerticalStackLayout Grid.Column="1" Spacing="3">
+
+											<Label Text="{Binding Name}" StyleClass="Subtitle" />
+
+											<Label
+												Text="{Binding From.Name} \u2192 {Binding To.Name}"
+												StyleClass="Caption"
+												TextColor="{DynamicResource InkMuted}" />
+										</VerticalStackLayout>
+
+										<controls:IconButton
+											Grid.Column="2"
+											Command="{Binding Source={RelativeSource AncestorType={x:Type local:PlanViewModel}}, Path=LoadSavedRouteCommand}"
+											CommandParameter="{Binding .}"
+											Glyph="Play"
+											SemanticProperties.Description="{localization:Tr Plan.LoadRoute}"
+											Size="16"
+											VerticalOptions="Center" />
+
+										<Grid.GestureRecognizers>
+											<TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type local:PlanViewModel}}, Path=LoadSavedRouteCommand}" CommandParameter="{Binding .}" />
+										</Grid.GestureRecognizers>
+									</Grid>
+
+									<!--  Hairline between rows  -->
+									<BoxView Grid.Row="1" StyleClass="Divider" />
+								</Grid>
 
 							</DataTemplate>
 						</BindableLayout.ItemTemplate>
