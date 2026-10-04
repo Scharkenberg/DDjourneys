@@ -75,7 +75,6 @@ public static class MauiProgram
 		builder.Services.AddSingleton<JourneyService>();
 
 		builder.Services.AddSingleton<ILocationProvider, VvoLocationProvider>();
-		builder.Services.AddSingleton<LocationService>();
 		builder.Services.AddSingleton<IGeolocation, CommunityToolkit.Maui.Geolocation.Geolocation>();
 
 		// Journey tracking is platform-agnostic; a platform only contributes how live state is shown,
