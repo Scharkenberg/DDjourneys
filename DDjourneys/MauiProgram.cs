@@ -76,6 +76,7 @@ public static class MauiProgram
 
 		builder.Services.AddSingleton<ILocationProvider, VvoLocationProvider>();
 		builder.Services.AddSingleton<LocationService>();
+		builder.Services.AddSingleton<IGeolocation, GeolocationImplementation>();
 
 		// Journey tracking is platform-agnostic; a platform only contributes how live state is shown,
 		// how polling is kept alive and how notification permission works. Platforms without their
@@ -125,6 +126,12 @@ public static class MauiProgram
 #endif
 
 		builder.Services.AddSingleton<PlaceStore>();
+
+		// Location service needs IGeolocation for GPS functionality
+		builder.Services.AddSingleton<ILocationService>(
+			services => new LocationService(
+				services.GetRequiredService<ILocationProvider>(),
+				services.GetRequiredService<IGeolocation>()));
 
 		// Pages are transient; view models are added with their pages.
 		builder.Services.AddTransient<PlanPage>();
