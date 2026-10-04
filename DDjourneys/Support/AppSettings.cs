@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.Json;
 using DDjourneys.Core.Models;
 
 namespace DDjourneys.Support;
@@ -13,6 +14,9 @@ public sealed class AppSettings
 {
 	public const int MinResults = 3;
 	public const int MaxResultsLimit = 10;
+
+	private const string HomeLocationNameKey = "homeLocationName";
+	private const string HomeLocationDataKey = "homeLocationData";
 
 	private readonly IPreferences _prefs;
 
@@ -214,6 +218,104 @@ public sealed class AppSettings
 		get => Read("expertView", true);
 		set => Write("expertView", value);
 	}
+
+	// ----- Home Location -----
+
+	/// <summary>Display name for the home location.</summary>
+	public string HomeLocationName
+	{
+		get => Read(HomeLocationNameKey, string.Empty);
+		set => Write(HomeLocationNameKey, value);
+	}
+
+	/// <summary>Serialized location data for the home location.</summary>
+	public string HomeLocationData
+	{
+		get => Read(HomeLocationDataKey, string.Empty);
+		set => Write(HomeLocationDataKey, value);
+	}
+
+
+	/// <summary>
+	/// Gets the home location if one is set, otherwise null.
+	/// </summary>
+	public Location? GetHomeLocation()
+	{
+		try
+		{
+			if (string.IsNullOrWhiteSpace(HomeLocationData))
+			{
+				return null;
+			}
+
+			JsonDocument document = JsonDocument.Parse(HomeLocationData);
+			JsonElement root = document.RootElement;
+
+			string? id = StoredJson.String(root, "Id");
+			string? providerId = StoredJson.String(root, "ProviderId");
+			string name = StoredJson.String(root, "Name") ?? string.Empty;
+			string? place = StoredJson.String(root, "Place");
+			double? latitude = StoredJson.Number(root, "Latitude");
+			double? longitude = StoredJson.Number(root, "Longitude");
+
+			return new Location
+			{
+				Id = id,
+				ProviderId = providerId ?? string.Empty,
+				Name = name,
+				Place = place,
+				Latitude = latitude,
+				Longitude = longitude
+			};
+		}
+		catch (Exception ex)
+		{
+			System.Diagnostics.Debug.WriteLine($"AppSettings GetHomeLocation failed: {ex.Message}");
+			return null;
+		}
+	}
+
+
+	/// <summary>
+	/// Sets the home location with its display name.
+	/// </summary>
+	public void SetHomeLocation(Location location, string name)
+	{
+		ArgumentNullException.ThrowIfNull(location);
+		ArgumentException.ThrowIfNullOrWhiteSpace(name);
+
+		try
+		{
+			HomeLocationName = name;
+
+			var entry = new
+			{
+				Id = location.Id,
+				ProviderId = location.ProviderId,
+				Name = location.Name,
+				Place = location.Place,
+				Latitude = location.Latitude,
+				Longitude = location.Longitude
+			};
+
+			HomeLocationData = JsonSerializer.Serialize(entry);
+		}
+		catch (Exception ex)
+		{
+			System.Diagnostics.Debug.WriteLine($"AppSettings SetHomeLocation failed: {ex.Message}");
+		}
+	}
+
+
+	/// <summary>
+	/// Clears the home location.
+	/// </summary>
+	public void ClearHomeLocation()
+	{
+		HomeLocationName = string.Empty;
+		HomeLocationData = string.Empty;
+	}
+
 
 	// ----- Place search -----
 
