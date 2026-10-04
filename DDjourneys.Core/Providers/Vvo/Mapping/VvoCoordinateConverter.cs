@@ -40,6 +40,44 @@ public static class VvoCoordinateConverter
 	}
 
 	/// <summary>
+	/// Converts a WGS84 point to GK4 (the form the PointFinder coordinate query takes).
+	/// </summary>
+	/// <returns>False when the point is not finite or lies outside zone 4 (the result would be meaningless).</returns>
+	public static bool TryToGk4(
+		double latitude,
+		double longitude,
+		out (double Easting, double Northing) result)
+	{
+		result = default;
+
+		if (!double.IsFinite(latitude)
+			|| !double.IsFinite(longitude)
+			|| latitude is < 46 or > 56
+			|| longitude is < 9 or > 15)
+		{
+			return false;
+		}
+
+		double[] gk4 =
+			Gk4ToWgs84.Value.MathTransform.Inverse().Transform(
+				new[]
+				{
+					longitude,
+					latitude
+				});
+
+		if (gk4[0] is < MinEasting or >= MaxEasting
+			|| gk4[1] is < MinNorthing or >= MaxNorthing)
+		{
+			return false;
+		}
+
+		result = (gk4[0], gk4[1]);
+
+		return true;
+	}
+
+	/// <summary>
 	/// Converts the two raw coordinate fields of a VVO PointFinder entry. The API names the first field
 	/// like a latitude (northing) and the second like a longitude (easting); the values are told apart by
 	/// magnitude anyway, so a swapped pair does not produce a point in the wrong place.

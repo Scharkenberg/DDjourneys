@@ -3,8 +3,6 @@ using DDjourneys.Core.Models;
 using DDjourneys.Core.Storage;
 using DDjourneys.Core.Providers.Vvo;
 using Location = DDjourneys.Core.Models.Location;
-using SavedLocation = DDjourneys.Core.Models.SavedLocation;
-using SavedRoute = DDjourneys.Core.Models.SavedRoute;
 
 namespace DDjourneys.Support;
 
@@ -30,11 +28,9 @@ public sealed class PlaceStore
 	private const string RecentsKey = "places.recents";
 	private const string FavouritesKey = "places.favourites";
 	private const string RoutesKey = "places.routes";
-	private const string SavedLocationsKey = "places.savedLocations";
+	private const string HomeKey = "places.home";
 	private const string SavedRoutesKey = "places.savedRoutes";
 	private const int MaxRecents = 8;
-	private const int MaxSavedLocations = 20;
-	private const int MaxSavedRoutes = 20;
 	private const string PreviousSuffix = ".prev";
 	private const string CorruptSuffix = ".corrupt";
 
@@ -44,13 +40,16 @@ public sealed class PlaceStore
 	/// <summary>How many searched connections are kept. Older ones drop off the end.</summary>
 	public const int MaxRoutes = 50;
 
+	/// <summary>How many named connections are kept.</summary>
+	public const int MaxSavedRoutes = 20;
+
 	private readonly IKeyValueStore _store;
 	private readonly object _gate = new();
 	private readonly List<Location> _recents;
 	private readonly List<Location> _favourites;
 	private readonly List<RoutePair> _routes;
-	private readonly List<SavedLocation> _savedLocations;
 	private readonly List<SavedRoute> _savedRoutes;
+	private Location? _home;
 	private readonly WeakEventManager _weakEventManager = new();
 
 	/// <summary>
@@ -92,11 +91,11 @@ public sealed class PlaceStore
 		_routes =
 			LoadRoutes();
 
-		_savedLocations =
-			LoadSavedLocations();
-
 		_savedRoutes =
 			LoadSavedRoutes();
+
+		_home =
+			Load(HomeKey).FirstOrDefault();
 	}
 
 
@@ -130,58 +129,20 @@ public sealed class PlaceStore
 	}
 
 
-	/// <summary>Most recently searched first.</summary>
-	public IReadOnlyList<RoutePair> RecentRoutes
+	/// <summary>The place the passenger calls home, if one was set.</summary>
+	public Location? Home
 	{
 		get
 		{
 			lock (_gate)
 			{
-				return _routes.ToArray();
+				return _home;
 			}
 		}
 	}
 
 
-	/// <summary>
-	/// Saved locations (home, work, etc.) in the order they were added.
-	/// </summary>
-	public IReadOnlyList<SavedLocation> SavedLocations
-	{
-		get
-		{
-			lock (_gate)
-			{
-				return _savedLocations.ToArray();
-			}
-		}
-	}
-
-
-	/// <summary>
-	/// Returns the home location if one is set, otherwise null.
-	/// </summary>
-	public SavedLocation? Home
-	{
-		get
-		{
-			lock (_gate)
-			{
-				return _savedLocations.FirstOrDefault(loc => loc.IsHome);
-			}
-		}
-	}
-
-
-	/// <summary>
-	/// Returns true if a home location is set.
-	/// </summary>
-	public bool HasHome => Home is not null;
-
-
-	/// <summary>
-	/// Saved route presets in the order they were added.
-	/// </summary>
+	/// <summary>Named connections, newest first.</summary>
 	public IReadOnlyList<SavedRoute> SavedRoutes
 	{
 		get
@@ -194,16 +155,14 @@ public sealed class PlaceStore
 	}
 
 
-	/// <summary>
-	/// Returns true if there are any saved routes.
-	/// </summary>
-	public bool HasSavedRoutes
+	/// <summary>Most recently searched first.</summary>
+	public IReadOnlyList<RoutePair> RecentRoutes
 	{
 		get
 		{
 			lock (_gate)
 			{
-				return _savedRoutes.Count > 0;
+				return _routes.ToArray();
 			}
 		}
 	}
@@ -286,109 +245,60 @@ public sealed class PlaceStore
 	}
 
 
-	/// <summary>
-	/// Sets the home location. If a home location already exists, it is replaced.
-	/// </summary>
-	public void SetHome(SavedLocation homeLocation)
+	public void SetHome(
+		Location place)
 	{
-		ArgumentNullException.ThrowIfNull(homeLocation);
+		ArgumentNullException.ThrowIfNull(
+			place);
 
 		lock (_gate)
 		{
-			// Remove existing home location if any
-			_savedLocations.RemoveAll(loc => loc.IsHome);
+			_home = place;
 
-			// Add or update the new home location
-			var newHome = new SavedLocation(
-				homeLocation.Name,
-				homeLocation.Location,
-				true);
-
-			_savedLocations.RemoveAll(loc => loc.Name == homeLocation.Name);
-			_savedLocations.Insert(0, newHome);
-
-			if (_savedLocations.Count > MaxSavedLocations)
-			{
-				_savedLocations.RemoveRange(
-					MaxSavedLocations,
-					_savedLocations.Count - MaxSavedLocations);
-			}
-
-			SaveSavedLocations();
+			Save(
+				HomeKey,
+				[place]);
 		}
 
 		RaiseChanged();
 	}
 
 
-	/// <summary>
-	/// Adds a saved location (non-home).
-	/// </summary>
-	public void AddSavedLocation(SavedLocation location)
+	public void ClearHome()
 	{
-		ArgumentNullException.ThrowIfNull(location);
-
 		lock (_gate)
 		{
-			// Don't allow setting home this way
-			if (location.IsHome)
+			if (_home is null)
 			{
 				return;
 			}
 
-			// Check if location with same name already exists
-			_savedLocations.RemoveAll(loc => loc.Name == location.Name);
+			_home = null;
 
-			_savedLocations.Insert(0, location);
-
-			if (_savedLocations.Count > MaxSavedLocations)
-			{
-				_savedLocations.RemoveRange(
-					MaxSavedLocations,
-					_savedLocations.Count - MaxSavedLocations);
-			}
-
-			SaveSavedLocations();
+			Save(
+				HomeKey,
+				[]);
 		}
 
 		RaiseChanged();
 	}
 
 
-	/// <summary>
-	/// Removes a saved location.
-	/// </summary>
-	public void RemoveSavedLocation(SavedLocation location)
+	/// <summary>Keeps a named connection; a connection with the same name is replaced.</summary>
+	public void AddSavedRoute(
+		SavedRoute route)
 	{
-		ArgumentNullException.ThrowIfNull(location);
+		ArgumentNullException.ThrowIfNull(
+			route);
 
 		lock (_gate)
 		{
-			if (_savedLocations.RemoveAll(loc => loc.Name == location.Name) == 0)
-			{
-				return;
-			}
+			_savedRoutes.RemoveAll(
+				r => SameName(r, route));
 
-			SaveSavedLocations();
-		}
-
-		RaiseChanged();
-	}
-
-
-	/// <summary>
-	/// Adds a saved route preset.
-	/// </summary>
-	public void AddSavedRoute(SavedRoute route)
-	{
-		ArgumentNullException.ThrowIfNull(route);
-
-		lock (_gate)
-		{
-			// Check if route with same name already exists
-			_savedRoutes.RemoveAll(r => r.Name == route.Name);
-
-			_savedRoutes.Insert(0, route);
+			_savedRoutes.Insert(
+				0,
+				route);
 
 			if (_savedRoutes.Count > MaxSavedRoutes)
 			{
@@ -404,16 +314,30 @@ public sealed class PlaceStore
 	}
 
 
-	/// <summary>
-	/// Removes a saved route preset.
-	/// </summary>
-	public void RemoveSavedRoute(SavedRoute route)
+	public bool HasSavedRoute(
+		string name)
 	{
-		ArgumentNullException.ThrowIfNull(route);
+		lock (_gate)
+		{
+			return _savedRoutes.Any(
+				r => string.Equals(
+					r.Name,
+					name,
+					StringComparison.OrdinalIgnoreCase));
+		}
+	}
+
+
+	public void RemoveSavedRoute(
+		SavedRoute route)
+	{
+		ArgumentNullException.ThrowIfNull(
+			route);
 
 		lock (_gate)
 		{
-			if (_savedRoutes.RemoveAll(r => r.Name == route.Name) == 0)
+			if (_savedRoutes.RemoveAll(
+				r => SameName(r, route)) == 0)
 			{
 				return;
 			}
@@ -425,23 +349,13 @@ public sealed class PlaceStore
 	}
 
 
-	/// <summary>
-	/// Clears the home location if set.
-	/// </summary>
-	public void ClearHome()
-	{
-		lock (_gate)
-		{
-			if (_savedLocations.RemoveAll(loc => loc.IsHome) == 0)
-			{
-				return;
-			}
-
-			SaveSavedLocations();
-		}
-
-		RaiseChanged();
-	}
+	private static bool SameName(
+		SavedRoute a,
+		SavedRoute b) =>
+		string.Equals(
+			a.Name,
+			b.Name,
+			StringComparison.OrdinalIgnoreCase);
 
 
 	public void AddRecent(
@@ -579,14 +493,14 @@ public sealed class PlaceStore
 				SaveRoutes();
 			}
 
-			if (!string.IsNullOrWhiteSpace(_store.Get(SavedLocationsKey)))
-			{
-				SaveSavedLocations();
-			}
-
 			if (!string.IsNullOrWhiteSpace(_store.Get(SavedRoutesKey)))
 			{
 				SaveSavedRoutes();
+			}
+
+			if (_home is not null)
+			{
+				Save(HomeKey, [_home]);
 			}
 		}
 	}
@@ -617,101 +531,6 @@ public sealed class PlaceStore
 		$"{KeyOf(from)}>{KeyOf(to)}";
 
 
-	// Saved location entry for serialization
-	private sealed record SavedLocationEntry(
-		string Name,
-		Entry? Location,
-		bool IsHome);
-
-
-	// Saved route entry for serialization
-	private sealed record SavedRouteEntry(
-		string Name,
-		Entry? From,
-		Entry? To,
-		int? MaxChanges,
-		int? MaxDuration,
-		bool? UseElevator,
-		bool? UseEscalator,
-		bool? UseSolidStairs,
-		bool? UseMovingPlatform,
-		int? WalkSpeed,
-		int? MarginBefore,
-		int? MarginAfter,
-		DateTime? DefaultDateTime,
-		bool IsDeparture);
-
-
-	private static SavedLocationEntry? ParseSavedLocation(
-		JsonElement element)
-	{
-		string? name = StoredJson.String(element, "Name");
-		if (string.IsNullOrWhiteSpace(name))
-		{
-			return null;
-		}
-
-		bool isHome = StoredJson.Boolean(element, "IsHome");
-		Entry? location = null;
-		if (StoredJson.TryGet(element, "Location", out JsonElement locationElement))
-		{
-			location = ParseEntry(locationElement);
-		}
-
-		if (location is null)
-		{
-			return null;
-		}
-
-		return new SavedLocationEntry(name, location, isHome);
-	}
-
-
-	private static SavedRouteEntry? ParseSavedRoute(
-		JsonElement element)
-	{
-		string? name = StoredJson.String(element, "Name");
-		if (string.IsNullOrWhiteSpace(name))
-		{
-			return null;
-		}
-
-		Entry? from = null;
-		Entry? to = null;
-
-		if (StoredJson.TryGet(element, "From", out JsonElement fromElement))
-		{
-			from = ParseEntry(fromElement);
-		}
-
-		if (StoredJson.TryGet(element, "To", out JsonElement toElement))
-		{
-			to = ParseEntry(toElement);
-		}
-
-		if (from is null || to is null)
-		{
-			return null;
-		}
-
-		return new SavedRouteEntry(
-			name,
-			from,
-			to,
-			StoredJson.Int32(element, "MaxChanges"),
-			StoredJson.Int32(element, "MaxDuration"),
-			StoredJson.Boolean(element, "UseElevator"),
-			StoredJson.Boolean(element, "UseEscalator"),
-			StoredJson.Boolean(element, "UseSolidStairs"),
-			StoredJson.Boolean(element, "UseMovingPlatform"),
-			StoredJson.Int32(element, "WalkSpeed"),
-			StoredJson.Int32(element, "MarginBefore"),
-			StoredJson.Int32(element, "MarginAfter"),
-			StoredJson.DateTime(element, "DefaultDateTime"),
-			StoredJson.Boolean(element, "IsDeparture"));
-	}
-
-
 	private static string KeyOf(
 		Location place) =>
 		place.StopKey is { } stopKey
@@ -735,6 +554,13 @@ public sealed class PlaceStore
 
 	/// <summary>Stored shape of a connection: the two endpoints, nothing else.</summary>
 	private sealed record RouteEntry(
+		Entry? From,
+		Entry? To);
+
+
+	/// <summary>Stored shape of a named connection.</summary>
+	private sealed record SavedRouteEntry(
+		string Name,
 		Entry? From,
 		Entry? To);
 
@@ -775,6 +601,43 @@ public sealed class PlaceStore
 	}
 
 
+	private static SavedRouteEntry? ParseSavedRoute(
+		JsonElement element)
+	{
+		if (StoredJson.String(element, "Name") is not { } name
+			|| string.IsNullOrWhiteSpace(name)
+			|| ParseRoute(element) is not { } route)
+		{
+			return null;
+		}
+
+		return new SavedRouteEntry(name, route.From, route.To);
+	}
+
+
+	private List<SavedRoute> LoadSavedRoutes() =>
+		LoadList(SavedRoutesKey, ParseSavedRoute)
+			.Select(
+				entry =>
+					new SavedRoute(
+						entry.Name,
+						ToLocation(entry.From!),
+						ToLocation(entry.To!)))
+			.Take(MaxSavedRoutes)
+			.ToList();
+
+
+	private void SaveSavedRoutes() =>
+		SaveList(
+			SavedRoutesKey,
+			_savedRoutes.Select(
+				route =>
+					new SavedRouteEntry(
+						route.Name,
+						ToEntry(route.From),
+						ToEntry(route.To))));
+
+
 	private List<RoutePair> LoadRoutes() =>
 		LoadList(RoutesKey, ParseRoute)
 			.Select(
@@ -786,47 +649,6 @@ public sealed class PlaceStore
 			.ToList();
 
 
-	private List<SavedLocation> LoadSavedLocations() =>
-		LoadList(SavedLocationsKey, ParseSavedLocation)
-			.Select(
-				entry =>
-					new SavedLocation(
-						entry.Name,
-						ToLocation(entry.Location!),
-						entry.IsHome))
-			.Take(MaxSavedLocations)
-			.ToList();
-
-
-	private List<SavedRoute> LoadSavedRoutes() =>
-		LoadList(SavedRoutesKey, ParseSavedRoute)
-			.Select(
-				entry =>
-					new SavedRoute(
-						entry.Name,
-						ToLocation(entry.From!),
-						ToLocation(entry.To!),
-						new RoutingPreferences
-						{
-							MaxChanges = entry.MaxChanges,
-							MaxDuration = entry.MaxDuration,
-							Accessibility = new AccessibilityPreferences
-							{
-								UseElevator = entry.UseElevator,
-								UseEscalator = entry.UseEscalator,
-								UseSolidStairs = entry.UseSolidStairs,
-								UseMovingPlatform = entry.UseMovingPlatform
-							},
-							WalkSpeed = entry.WalkSpeed,
-							MarginBefore = entry.MarginBefore,
-							MarginAfter = entry.MarginAfter
-						},
-						entry.DefaultDateTime,
-						entry.IsDeparture))
-			.Take(MaxSavedRoutes)
-			.ToList();
-
-
 	private void SaveRoutes() =>
 		SaveList(
 			RoutesKey,
@@ -835,39 +657,6 @@ public sealed class PlaceStore
 					new RouteEntry(
 						ToEntry(route.From),
 						ToEntry(route.To))));
-
-
-	private void SaveSavedLocations() =>
-		SaveList(
-			SavedLocationsKey,
-			_savedLocations.Select(
-				location =>
-					new SavedLocationEntry(
-						location.Name,
-						ToEntry(location.Location),
-						location.IsHome)));
-
-
-	private void SaveSavedRoutes() =>
-		SaveList(
-			SavedRoutesKey,
-			_savedRoutes.Select(
-				route =>
-					new SavedRouteEntry(
-						route.Name,
-						ToEntry(route.From),
-						ToEntry(route.To),
-						route.Routing.MaxChanges,
-						route.Routing.MaxDuration,
-						route.Routing.Accessibility?.UseElevator,
-						route.Routing.Accessibility?.UseEscalator,
-						route.Routing.Accessibility?.UseSolidStairs,
-						route.Routing.Accessibility?.UseMovingPlatform,
-						route.Routing.WalkSpeed,
-						route.Routing.MarginBefore,
-						route.Routing.MarginAfter,
-						route.DefaultDateTime,
-						route.IsDeparture)));
 
 
 	private static Entry ToEntry(

@@ -54,6 +54,17 @@ public sealed class GermanUiStrings : IUiStrings
 		SearchAgain = "Diese Verbindung erneut suchen",
 		StartAndDestinationRequired =
 			"Start und Ziel sind erforderlich.",
+		UseLocationFrom = "Meinen Standort als Start verwenden",
+		UseLocationTo = "Meinen Standort als Ziel verwenden",
+		GoHome = "Nach Hause",
+		SetHome = "Zuhause hier festlegen",
+		SaveRoute = "Verbindung speichern",
+		RouteNamePrompt = "Name für diese Verbindung",
+		SavedRoutes = "Gespeicherte Verbindungen",
+		ForgetSavedRoute = "Gespeicherte Verbindung entfernen",
+		LocationPermissionDenied = "Für den Standort wird die Berechtigung benötigt.",
+		LocationUnavailable = "Der Standort konnte nicht bestimmt werden.",
+		NoStopNearby = "Keine Haltestelle in der Nähe gefunden.",
 		PlacesYouSearchForWillAppearHere =
 			"Gesuchte Orte erscheinen hier."
 	};

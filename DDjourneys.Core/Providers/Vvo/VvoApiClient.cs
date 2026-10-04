@@ -81,17 +81,18 @@ public sealed class VvoApiClient
 
 
 	/// <summary>
-	/// Searches for locations near the given coordinates using VVO PointFinder.
+	/// Finds the stops around a GK4 point (PointFinder "coord:" query; stops assigned to the point come first).
 	/// </summary>
 	public async Task<VvoPointResponse?> FindPointsByCoordinatesAsync(
-		double latitude,
-		double longitude,
+		double easting,
+		double northing,
 		CancellationToken cancellationToken = default,
 		TimeSpan? timeout = null)
 	{
 		string requestUri =
 			$"{BaseUrl}/tr/pointfinder" +
-			$"?coord={latitude:F6},{longitude:F6}" +
+			FormattableString.Invariant($"?query=coord:{Math.Round(easting):F0}:{Math.Round(northing):F0}") +
+			"&assignedstops=true" +
 			"&limit=10" +
 			"&format=json";
 

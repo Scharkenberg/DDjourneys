@@ -9,8 +9,6 @@ using DDjourneys.Core.Tracking;
 using DDjourneys.Localization;
 using DDjourneys.Support;
 using Location = DDjourneys.Core.Models.Location;
-using SavedLocation = DDjourneys.Core.Models.SavedLocation;
-using SavedRoute = DDjourneys.Core.Models.SavedRoute;
 
 namespace DDjourneys.Pages;
 
@@ -50,11 +48,12 @@ public sealed partial class PlanViewModel : DisposableViewModel
 	private readonly PlaceStore _store;
 	private readonly AppSettings _settings;
 	private readonly LocalizationService _localization;
-	private readonly ILocationService _locationService;
+	private readonly LocationService _locations;
+	private readonly DeviceLocator _locator;
 
 	private DateTime _when;
 	private bool _syncing;
-	private bool _isGettingLocation;
+	private bool _isLocating;
 
 	private readonly ProviderRegistry _providers;
 	private readonly Lazy<IJourneyTracker> _tracker;
@@ -70,13 +69,15 @@ public sealed partial class PlanViewModel : DisposableViewModel
 		AppSettings settings,
 		Lazy<IJourneyTracker> tracker,
 		ProviderRegistry providers,
-		ILocationService locationService)
+		LocationService locations,
+		DeviceLocator locator)
 	{
 		ArgumentNullException.ThrowIfNull(store);
 		ArgumentNullException.ThrowIfNull(settings);
 		ArgumentNullException.ThrowIfNull(tracker);
 		ArgumentNullException.ThrowIfNull(providers);
-		ArgumentNullException.ThrowIfNull(locationService);
+		ArgumentNullException.ThrowIfNull(locations);
+		ArgumentNullException.ThrowIfNull(locator);
 
 		// Resolved on first use: building the tracking graph must not delay the first frame.
 		_tracker = tracker;
@@ -86,7 +87,8 @@ public sealed partial class PlanViewModel : DisposableViewModel
 		_store = store;
 		_settings = settings;
 		_localization = LocalizationService.Current;
-		_locationService = locationService;
+		_locations = locations;
+		_locator = locator;
 
 		Subscribe(
 			() => _store.Changed += OnStoreChanged,
@@ -153,43 +155,6 @@ public sealed partial class PlanViewModel : DisposableViewModel
 				() => Safe(
 					_store.ClearRecentRoutes));
 
-		UseGpsFromCommand =
-			new AsyncCommand(
-				() => SafeAsync(
-					() => SetLocationFromGpsAsync(true)));
-
-		UseGpsToCommand =
-			new AsyncCommand(
-				() => SafeAsync(
-					() => SetLocationFromGpsAsync(false)));
-
-		TakeMeHomeCommand =
-			new AsyncCommand(
-				() => SafeAsync(TakeMeHomeAsync));
-
-		LoadSavedRouteCommand =
-			new AsyncCommand<SavedRoute>(
-				route => SafeAsync(
-					() => LoadSavedRouteAsync(route)));
-
-		SaveCurrentRouteCommand =
-			new AsyncCommand(
-				() => SafeAsync(SaveCurrentRouteAsync));
-
-		SetHomeLocationCommand =
-			new AsyncCommand(
-				() => SafeAsync(SetHomeLocationAsync));
-
-		ClearHomeCommand =
-			new Command(
-				() => Safe(
-					() => _store.ClearHome()));
-
-		ClearSavedRoutesCommand =
-			new Command(
-				() => Safe(
-					() => _store.SavedRoutes.ToList().ForEach(r => _store.RemoveSavedRoute(r))));
-
 		ToggleRoutesCommand =
 			new Command(
 				() => ShowAllRoutes = !ShowAllRoutes);
@@ -210,6 +175,47 @@ public sealed partial class PlanViewModel : DisposableViewModel
 						}
 					}));
 
+		UseLocationFromCommand =
+			new AsyncCommand(
+				() => SafeAsync(
+					() => UseLocationAsync(true)),
+				() => !IsLocating);
+
+		UseLocationToCommand =
+			new AsyncCommand(
+				() => SafeAsync(
+					() => UseLocationAsync(false)),
+				() => !IsLocating);
+
+		SetHomeCommand =
+			new AsyncCommand(
+				() => SafeAsync(SetHomeAsync),
+				() => !IsLocating);
+
+		GoHomeCommand =
+			new Command(
+				() => Safe(GoHome));
+
+		SaveRouteCommand =
+			new AsyncCommand(
+				() => SafeAsync(SaveRouteAsync));
+
+		UseSavedRouteCommand =
+			new AsyncCommand<SavedRoute>(
+				route => SafeAsync(
+					() => UseSavedRouteAsync(route)));
+
+		ForgetSavedRouteCommand =
+			new Command<SavedRoute>(
+				route => Safe(
+					() =>
+					{
+						if (route is not null)
+						{
+							_store.RemoveSavedRoute(route);
+						}
+					}));
+
 		SetNow();
 
 		if (_settings.DefaultArrival)
@@ -217,10 +223,7 @@ public sealed partial class PlanViewModel : DisposableViewModel
 			IsArrival = true;
 		}
 
-		IsGettingLocation = false;
-
 		RefreshPlaces();
-		RefreshSavedRoutes();
 	}
 
 
@@ -230,15 +233,8 @@ public sealed partial class PlanViewModel : DisposableViewModel
 
 	public Func<string, Task>? ShowError { get; set; }
 
-	public Func<string, Task<string>>? ShowRouteNameDialog { get; set; }
-
-	public Func<string, Task<string>>? ShowHomeLocationNameDialog { get; set; }
-
-	public Func<Task<bool>>? CheckLocationPermission { get; set; }
-
-	public Func<Task>? RequestLocationPermission { get; set; }
-
-	public Func<Task>? OpenRoutingSettings { get; set; }
+	/// <summary>Asks for a name (title, message, suggestion); null when the passenger cancels.</summary>
+	public Func<string, string, string, Task<string?>>? AskName { get; set; }
 
 
 	public AsyncCommand PickFromCommand { get; }
@@ -265,23 +261,19 @@ public sealed partial class PlanViewModel : DisposableViewModel
 
 	public Command ToggleRoutesCommand { get; }
 
-	public AsyncCommand UseGpsFromCommand { get; }
+	public AsyncCommand UseLocationFromCommand { get; }
 
-	public AsyncCommand UseGpsToCommand { get; }
+	public AsyncCommand UseLocationToCommand { get; }
 
-	public AsyncCommand TakeMeHomeCommand { get; }
+	public AsyncCommand SetHomeCommand { get; }
 
-	public AsyncCommand<SavedRoute> LoadSavedRouteCommand { get; }
+	public Command GoHomeCommand { get; }
 
-	public AsyncCommand SaveCurrentRouteCommand { get; }
+	public AsyncCommand SaveRouteCommand { get; }
 
-	public AsyncCommand SetHomeLocationCommand { get; }
+	public AsyncCommand<SavedRoute> UseSavedRouteCommand { get; }
 
-	public Command ClearHomeCommand { get; }
-
-	public Command ClearSavedRoutesCommand { get; }
-
-	public AsyncCommand OpenRoutingSettingsCommand { get; }
+	public Command<SavedRoute> ForgetSavedRouteCommand { get; }
 
 	/// <summary>Takes a remembered connection and searches it again straight away.</summary>
 	public AsyncCommand<RouteRow> UseRouteCommand { get; }
@@ -509,41 +501,6 @@ public sealed partial class PlanViewModel : DisposableViewModel
 		Star(To);
 
 
-	public string GpsFromText =>
-		_localization.CurrentStrings.Plan.UseCurrentLocationFrom;
-
-
-	public string GpsToText =>
-		_localization.CurrentStrings.Plan.UseCurrentLocationTo;
-
-
-	public string TakeMeHomeText =>
-		_localization.CurrentStrings.Plan.TakeMeHome;
-
-
-	public string SaveCurrentRouteText =>
-		_localization.CurrentStrings.Plan.SaveCurrentRoute;
-
-
-	public string SavedRoutesTitle =>
-		_localization.CurrentStrings.Plan.SavedRoutes;
-
-
-	public string LoadRouteText =>
-		_localization.CurrentStrings.Plan.LoadRoute;
-
-
-	public string CurrentLocationText =>
-		_localization.CurrentStrings.Plan.CurrentLocation;
-
-
-	public bool IsGettingLocation
-	{
-		get => _isGettingLocation;
-		private set => SetProperty(ref _isGettingLocation, value);
-	}
-
-
 	public DateTime Date
 	{
 		get => _when.Date;
@@ -685,7 +642,28 @@ public sealed partial class PlanViewModel : DisposableViewModel
 
 
 	public bool HasHome =>
-		_store.HasHome;
+		_store.Home is not null;
+
+
+	public bool NoHome =>
+		!HasHome;
+
+
+	/// <summary>True while the device position is being looked up.</summary>
+	public bool IsLocating
+	{
+		get => _isLocating;
+
+		private set
+		{
+			if (SetProperty(ref _isLocating, value))
+			{
+				UseLocationFromCommand.RaiseCanExecuteChanged();
+				UseLocationToCommand.RaiseCanExecuteChanged();
+				SetHomeCommand.RaiseCanExecuteChanged();
+			}
+		}
+	}
 
 
 	public bool IsPlacesEmpty =>
@@ -1053,7 +1031,6 @@ public sealed partial class PlanViewModel : DisposableViewModel
 				if (!IsDisposed)
 				{
 					RefreshPlaces();
-					RefreshSavedRoutes();
 				}
 			});
 
@@ -1126,105 +1103,135 @@ public sealed partial class PlanViewModel : DisposableViewModel
 	}
 
 
-	private async Task SetLocationFromGpsAsync(bool isFrom)
+	/// <summary>
+	/// The stop nearest to the device, or null (the passenger has been told why). Routing works between
+	/// stops only, so a position is always turned into one.
+	/// </summary>
+	private async Task<Location?> FindStopNearMeAsync()
 	{
-		if (IsGettingLocation)
+		if (IsLocating)
 		{
-			return;
+			return null;
 		}
 
-		// Check permission first
-		if (CheckLocationPermission is not null)
-		{
-			bool hasPermission = await CheckLocationPermission();
-			if (!hasPermission)
-			{
-				if (RequestLocationPermission is not null)
-				{
-					await RequestLocationPermission();
-					// Check again after requesting
-					hasPermission = await CheckLocationPermission();
-				}
-				if (!hasPermission)
-				{
-					ShowError?.Invoke(_localization.CurrentStrings.Plan.LocationUnavailable);
-					return;
-				}
-			}
-		}
-
-		IsGettingLocation = true;
+		IsLocating = true;
 
 		try
 		{
-			Location? location = await _locationService.GetCurrentLocationAsync();
+			(double Latitude, double Longitude)? position =
+				await _locator.LocateAsync();
 
-			if (location is not null)
+			if (position is not { } here)
 			{
-				if (isFrom)
-				{
-					From = location;
-				}
-				else
-				{
-					To = location;
-				}
+				await TellAsync(
+					_locator.Failure == DeviceLocationFailure.PermissionDenied
+						? _localization.CurrentStrings.Plan.LocationPermissionDenied
+						: _localization.CurrentStrings.Plan.LocationUnavailable);
 
-				if (CanSearch && OpenResults is not null && From is not null && To is not null)
-				{
-					if (!TryBuildQuery(out JourneyQuery query))
-					{
-						return;
-					}
-
-					_store.AddRecent(query.To);
-					_store.AddRecent(query.From);
-					_store.AddRecentRoute(query.From, query.To);
-
-					await OpenResults(query);
-				}
+				return null;
 			}
-			else
+
+			IReadOnlyList<Location> stops =
+				await _locations.SearchByCoordinatesAsync(
+					here.Latitude,
+					here.Longitude,
+					timeout: TimeSpan.FromSeconds(_settings.TimeoutSeconds));
+
+			if (stops.Count == 0)
 			{
-				ShowError?.Invoke(_localization.CurrentStrings.Plan.LocationUnavailable);
+				await TellAsync(
+					_localization.CurrentStrings.Plan.NoStopNearby);
+
+				return null;
 			}
+
+			return stops[0];
 		}
 		finally
 		{
-			IsGettingLocation = false;
+			IsLocating = false;
 		}
 	}
 
 
-	private async Task TakeMeHomeAsync()
+	private async Task UseLocationAsync(
+		bool isFrom)
 	{
-		SavedLocation? home = _store.Home;
-
-		if (home is null)
+		if (await FindStopNearMeAsync() is not { } stop)
 		{
-			ShowError?.Invoke(_localization.CurrentStrings.Plan.SetHomeLocation);
 			return;
 		}
 
-		From = home.Location;
-
-		if (CanSearch && OpenResults is not null && To is not null)
+		if (isFrom)
 		{
-			if (!TryBuildQuery(out JourneyQuery query))
-			{
-				return;
-			}
-
-			_store.AddRecent(query.To);
-			_store.AddRecent(query.From);
-			_store.AddRecentRoute(query.From, query.To);
-
-			await OpenResults(query);
+			From = stop;
+		}
+		else
+		{
+			To = stop;
 		}
 	}
 
 
-	private async Task LoadSavedRouteAsync(SavedRoute? route)
+	private async Task SetHomeAsync()
+	{
+		if (await FindStopNearMeAsync() is { } stop)
+		{
+			_store.SetHome(stop);
+		}
+	}
+
+
+	private void GoHome()
+	{
+		if (_store.Home is { } home)
+		{
+			To = home;
+		}
+	}
+
+
+	private async Task SaveRouteAsync()
+	{
+		if (From is not { } origin
+			|| To is not { } destination)
+		{
+			await TellAsync(
+				_localization.CurrentStrings.Plan.StartAndDestinationRequired);
+
+			return;
+		}
+
+		if (AskName is null)
+		{
+			return;
+		}
+
+		PlanStrings strings =
+			_localization.CurrentStrings.Plan;
+
+		string? name =
+			(await AskName(
+				strings.SaveRoute,
+				strings.RouteNamePrompt,
+				$"{origin.Name} \u2192 {destination.Name}"))?.Trim();
+
+		if (string.IsNullOrEmpty(name))
+		{
+			return;
+		}
+
+		// Same name: replaced (see PlaceStore.AddSavedRoute).
+		_store.AddSavedRoute(
+			new SavedRoute(
+				name,
+				origin,
+				destination));
+	}
+
+
+	private async Task UseSavedRouteAsync(
+		SavedRoute? route)
 	{
 		if (route is null)
 		{
@@ -1233,13 +1240,6 @@ public sealed partial class PlanViewModel : DisposableViewModel
 
 		From = route.From;
 		To = route.To;
-		IsArrival = !route.IsDeparture;
-
-		if (route.DefaultDateTime.HasValue)
-		{
-			IsNow = false;
-			Apply(route.DefaultDateTime.Value);
-		}
 
 		if (CanSearch)
 		{
@@ -1248,96 +1248,11 @@ public sealed partial class PlanViewModel : DisposableViewModel
 	}
 
 
-	private async Task SaveCurrentRouteAsync()
-	{
-		if (From is null || To is null)
-		{
-			ShowError?.Invoke(_localization.CurrentStrings.Plan.StartAndDestinationRequired);
-			return;
-		}
-
-		string routeName = await ShowRouteNameDialogAsync();
-
-		if (string.IsNullOrWhiteSpace(routeName))
-		{
-			return;
-		}
-
-		if (_store.SavedRoutes.Any(r => r.Name == routeName))
-		{
-			ShowError?.Invoke(_localization.CurrentStrings.Plan.RouteNameExists);
-			return;
-		}
-
-		var savedRoute = new SavedRoute(
-			routeName,
-			From,
-			To,
-			_settings.Routing,
-			IsNow ? Format.NowLocal() : _when,
-			!IsArrival);
-
-		_store.AddSavedRoute(savedRoute);
-	}
-
-
-	private async Task SetHomeLocationAsync()
-	{
-		if (IsGettingLocation)
-		{
-			return;
-		}
-
-		IsGettingLocation = true;
-
-		try
-		{
-			Location? location = await _locationService.GetCurrentLocationAsync();
-
-			if (location is not null)
-			{
-				string name = await ShowHomeLocationNameDialogAsync();
-
-				if (string.IsNullOrWhiteSpace(name))
-				{
-					name = _localization.CurrentStrings.Plan.HomeLocationName;
-				}
-
-				var savedLocation = new SavedLocation(name, location, true);
-				_store.SetHome(savedLocation);
-
-				_settings.SetHomeLocation(location, name);
-			}
-			else
-			{
-				ShowError?.Invoke(_localization.CurrentStrings.Plan.LocationUnavailable);
-			}
-		}
-		finally
-		{
-			IsGettingLocation = false;
-		}
-	}
-
-
-	private async Task<string> ShowRouteNameDialogAsync()
-	{
-		if (ShowRouteNameDialog is not null)
-		{
-			return await ShowRouteNameDialog(_localization.CurrentStrings.Plan.EnterRouteName);
-		}
-		return _localization.CurrentStrings.Plan.EnterRouteName;
-	}
-
-
-	private async Task<string> ShowHomeLocationNameDialogAsync()
-	{
-		if (ShowHomeLocationNameDialog is not null)
-		{
-			return await ShowHomeLocationNameDialog(_localization.CurrentStrings.Plan.HomeLocationName);
-		}
-		return _localization.CurrentStrings.Plan.HomeLocationName;
-	}
+	private Task TellAsync(
+		string message) =>
+		ShowError is { } show
+			? show(message)
+			: Task.CompletedTask;
 
 
 	private void RefreshPlaces()
@@ -1355,8 +1270,24 @@ public sealed partial class PlanViewModel : DisposableViewModel
 					Favourites,
 					_store.Favourites);
 
+				SavedRoutes.Clear();
+
+				foreach (SavedRoute route in _store.SavedRoutes)
+				{
+					SavedRoutes.Add(route);
+				}
+
 				OnPropertyChanged(
 					nameof(HasFavourites));
+
+				OnPropertyChanged(
+					nameof(HasSavedRoutes));
+
+				OnPropertyChanged(
+					nameof(HasHome));
+
+				OnPropertyChanged(
+					nameof(NoHome));
 
 				OnPropertyChanged(
 					nameof(HasRecents));
@@ -1369,24 +1300,6 @@ public sealed partial class PlanViewModel : DisposableViewModel
 
 				OnPropertyChanged(
 					nameof(ToStar));
-			});
-	}
-
-
-	private void RefreshSavedRoutes()
-	{
-		Safe(
-			() =>
-			{
-				Replace(
-					SavedRoutes,
-					_store.SavedRoutes);
-
-				OnPropertyChanged(
-					nameof(HasSavedRoutes));
-
-				OnPropertyChanged(
-					nameof(HasHome));
 			});
 	}
 
@@ -1425,19 +1338,6 @@ public sealed partial class PlanViewModel : DisposableViewModel
 		foreach (Location place in source)
 		{
 			target.Add(place);
-		}
-	}
-
-
-	private static void Replace(
-		ObservableCollection<SavedRoute> target,
-		IReadOnlyList<SavedRoute> source)
-	{
-		target.Clear();
-
-		foreach (SavedRoute route in source)
-		{
-			target.Add(route);
 		}
 	}
 

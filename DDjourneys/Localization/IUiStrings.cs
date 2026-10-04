@@ -64,6 +64,17 @@ public sealed class PlanStrings
 	public required string SearchAgain { get; init; }
 	public required string PlacesYouSearchForWillAppearHere { get; init; }
 	public required string StartAndDestinationRequired { get; init; }
+	public required string UseLocationFrom { get; init; }
+	public required string UseLocationTo { get; init; }
+	public required string GoHome { get; init; }
+	public required string SetHome { get; init; }
+	public required string SaveRoute { get; init; }
+	public required string RouteNamePrompt { get; init; }
+	public required string SavedRoutes { get; init; }
+	public required string ForgetSavedRoute { get; init; }
+	public required string LocationPermissionDenied { get; init; }
+	public required string LocationUnavailable { get; init; }
+	public required string NoStopNearby { get; init; }
 }
 
 public sealed class PlaceSearchStrings

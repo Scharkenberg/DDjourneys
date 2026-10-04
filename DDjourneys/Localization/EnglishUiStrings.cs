@@ -50,6 +50,17 @@ public sealed class EnglishUiStrings : IUiStrings
 		ForgetSearch = "Remove this search",
 		SearchAgain = "Search this connection again",
 		StartAndDestinationRequired = "Start and destination are required.",
+		UseLocationFrom = "Use my location as start",
+		UseLocationTo = "Use my location as destination",
+		GoHome = "Go home",
+		SetHome = "Set home here",
+		SaveRoute = "Save route",
+		RouteNamePrompt = "Name for this route",
+		SavedRoutes = "Saved routes",
+		ForgetSavedRoute = "Remove saved route",
+		LocationPermissionDenied = "Location access is needed to use your position.",
+		LocationUnavailable = "Your position could not be determined.",
+		NoStopNearby = "No stop found near your position.",
 		PlacesYouSearchForWillAppearHere =
 			"Places you search for will appear here."
 	};

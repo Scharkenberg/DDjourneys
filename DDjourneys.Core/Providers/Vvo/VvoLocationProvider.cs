@@ -65,19 +65,25 @@ public sealed class VvoLocationProvider : ILocationProvider, IProviderDescriptor
 	}
 
 
-	/// <summary>
-	/// Searches for locations near the given coordinates using the VVO WebAPI.
-	/// </summary>
+	/// <inheritdoc />
 	public async Task<IReadOnlyList<Location>> SearchByCoordinatesAsync(
 		double latitude,
 		double longitude,
 		CancellationToken cancellationToken = default,
 		TimeSpan? timeout = null)
 	{
+		if (!VvoCoordinateConverter.TryToGk4(
+			latitude,
+			longitude,
+			out (double Easting, double Northing) gk4))
+		{
+			return Array.Empty<Location>();
+		}
+
 		VvoPointResponse? response =
 			await _apiClient.FindPointsByCoordinatesAsync(
-				latitude,
-				longitude,
+				gk4.Easting,
+				gk4.Northing,
 				cancellationToken,
 				timeout)
 				.ConfigureAwait(false);
@@ -89,12 +95,32 @@ public sealed class VvoLocationProvider : ILocationProvider, IProviderDescriptor
 
 		cancellationToken.ThrowIfCancellationRequested();
 
-		IReadOnlyList<VvoPoint> points = response.Points;
-
-		return points
-			.Where(point => !string.IsNullOrWhiteSpace(point.Name))
+		// Stops only (the VVO router has no use for a bare coordinate), nearest first; a stop
+		// without coordinates cannot be ranked and goes last.
+		return response.Points
+			.Where(point => point.IsStop && !string.IsNullOrWhiteSpace(point.Name))
 			.Select(Map)
+			.OrderBy(stop => DistanceSquared(stop, latitude, longitude))
 			.ToArray();
+	}
+
+
+	// Equirectangular approximation: only the order matters, and distances here are a few hundred metres.
+	private static double DistanceSquared(
+		Location stop,
+		double latitude,
+		double longitude)
+	{
+		if (stop.Latitude is not { } stopLatitude
+			|| stop.Longitude is not { } stopLongitude)
+		{
+			return double.MaxValue;
+		}
+
+		double dy = stopLatitude - latitude;
+		double dx = (stopLongitude - longitude) * Math.Cos(latitude * Math.PI / 180);
+
+		return (dx * dx) + (dy * dy);
 	}
 
 
