@@ -98,6 +98,10 @@ public sealed class ResultsViewModel :
 
 	public Func<Journey, Task>? OpenJourney { get; set; }
 
+	/// <summary>The search these results answer (handed on so a ride can ask for alternatives).</summary>
+	public JourneyQuery? Query =>
+		_query;
+
 	public Func<string, Task>? ShowError { get; set; }
 
 	public Command RefreshCommand { get; }

@@ -28,6 +28,31 @@ public enum AccessibilityNeed
 }
 
 /// <summary>Modes of transport a journey may use.</summary>
+/// <summary>Step height at the vehicle entrance a passenger can manage.</summary>
+public enum EntranceNeed
+{
+	Any = 0,
+
+	SmallStep,
+
+	NoStep
+}
+
+
+/// <summary>Fare supplements the passenger wants to avoid.</summary>
+public enum ExtraChargeFilter
+{
+	/// <summary>No restriction.</summary>
+	Any = 0,
+
+	/// <summary>No journeys with a supplement.</summary>
+	None,
+
+	/// <summary>Only local transport (no supplement-bearing long-distance trains).</summary>
+	LocalTraffic
+}
+
+
 [Flags]
 public enum ModeFilter
 {
@@ -71,4 +96,10 @@ public sealed record RoutingPreferences
 
 	/// <summary>Prefer the journey with the fewest transfers over the fastest one.</summary>
 	public bool FewestTransfers { get; init; }
+
+	/// <summary>Required vehicle entrance (VVO <c>entrance</c>).</summary>
+	public EntranceNeed Entrance { get; init; } = EntranceNeed.Any;
+
+	/// <summary>Fare supplement filter (VVO <c>extraCharge</c>).</summary>
+	public ExtraChargeFilter ExtraCharge { get; init; } = ExtraChargeFilter.Any;
 }

@@ -18,6 +18,12 @@ public sealed class JourneyQuery
 
 
 	/// <summary>
+	/// Optional stop the journey has to pass through. It needs a stop id, like the endpoints.
+	/// </summary>
+	public Location? Via { get; init; }
+
+
+	/// <summary>
 	/// Requested date and time.
 	/// 
 	/// Interpretation depends on SearchMode.

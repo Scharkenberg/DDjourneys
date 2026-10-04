@@ -105,6 +105,9 @@ public sealed class LegRow : TimelineRow
 {
 	public required string LineText { get; init; }
 
+	/// <summary>The ride this row shows (the journey view model asks for alternatives to it).</summary>
+	public JourneyLeg? Source { get; init; }
+
 	public required Color ModeColor { get; init; }
 
 	public required ChipLook Look { get; init; }
@@ -647,6 +650,9 @@ public static class TimelineRowFactory
 		var legRow =
 			new LegRow
 			{
+				Source =
+					leg,
+
 				LineText =
 					leg.Line?.Name
 					?? Format.TransportMode(

@@ -64,6 +64,26 @@ public sealed class RoutingSettingsViewModel : DisposableViewModel
 				() => (int)_settings.Accessibility,
 				value => _settings.Accessibility = (AccessibilityNeed)value);
 
+		Entrance =
+			new ChoiceGroup(
+				[
+					((int)EntranceNeed.Any, () => Strings.EntranceAny),
+					((int)EntranceNeed.SmallStep, () => Strings.EntranceSmallStep),
+					((int)EntranceNeed.NoStep, () => Strings.EntranceNoStep)
+				],
+				() => (int)_settings.Entrance,
+				value => _settings.Entrance = (EntranceNeed)value);
+
+		ExtraCharge =
+			new ChoiceGroup(
+				[
+					((int)ExtraChargeFilter.Any, () => Strings.ExtraChargeAny),
+					((int)ExtraChargeFilter.None, () => Strings.ExtraChargeNone),
+					((int)ExtraChargeFilter.LocalTraffic, () => Strings.ExtraChargeLocal)
+				],
+				() => (int)_settings.ExtraCharge,
+				value => _settings.ExtraCharge = (ExtraChargeFilter)value);
+
 		Walking =
 		[
 			new ToggleOption(
@@ -118,6 +138,12 @@ public sealed class RoutingSettingsViewModel : DisposableViewModel
 	public ChoiceGroup Pace { get; }
 
 	public ChoiceGroup Accessibility { get; }
+
+	/// <summary>Required vehicle entrance.</summary>
+	public ChoiceGroup Entrance { get; }
+
+	/// <summary>Fare supplements to avoid.</summary>
+	public ChoiceGroup ExtraCharge { get; }
 
 	/// <summary>Switches for the walking section (below the pace list).</summary>
 	public IReadOnlyList<ToggleOption> Walking { get; }
@@ -206,6 +232,8 @@ public sealed class RoutingSettingsViewModel : DisposableViewModel
 		Transfers.Refresh();
 		Pace.Refresh();
 		Accessibility.Refresh();
+		Entrance.Refresh();
+		ExtraCharge.Refresh();
 
 		OnPropertyChanged(nameof(FootpathMinutes));
 		OnPropertyChanged(nameof(FootpathText));

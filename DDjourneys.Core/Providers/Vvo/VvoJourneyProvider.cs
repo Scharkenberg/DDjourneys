@@ -12,6 +12,7 @@ namespace DDjourneys.Core.Providers.Vvo;
 public sealed class VvoJourneyProvider :
 	IJourneyProvider,
 	IJourneyContinuationProvider,
+	IJourneyExtrasProvider,
 	IProviderDescriptor
 {
 	private const int MaxContinuationResults = 10;
@@ -44,7 +45,8 @@ public sealed class VvoJourneyProvider :
 
 		if (CheckEndpoints(
 			query.From,
-			query.To) is { } unsuitable)
+			query.To,
+			query.Via) is { } unsuitable)
 		{
 			return unsuitable;
 		}
@@ -66,6 +68,9 @@ public sealed class VvoJourneyProvider :
 					query.SearchMode == JourneySearchMode.Arrival,
 
 				ShortTermChanges = true,
+
+				Via =
+					query.Via?.Id,
 
 				StandardSettings =
 					CreateStandardSettings(query.Routing),
@@ -357,7 +362,8 @@ public sealed class VvoJourneyProvider :
 
 		if (CheckEndpoints(
 			query.From,
-			query.To) is { } unsuitable)
+			query.To,
+			query.Via) is { } unsuitable)
 		{
 			return unsuitable;
 		}
@@ -407,6 +413,9 @@ public sealed class VvoJourneyProvider :
 					query.SearchMode == JourneySearchMode.Arrival,
 
 				ShortTermChanges = true,
+
+				Via =
+					query.Via?.Id,
 
 				StandardSettings =
 					CreateStandardSettings(query.Routing),
@@ -490,6 +499,153 @@ public sealed class VvoJourneyProvider :
 	}
 
 
+	/// <inheritdoc />
+	public async Task<JourneyResult> GetLegAlternativeAsync(
+		JourneyQuery query,
+		Journey journey,
+		int legIndex,
+		bool previous,
+		CancellationToken cancellationToken = default)
+	{
+		ArgumentNullException.ThrowIfNull(query);
+		ArgumentNullException.ThrowIfNull(journey);
+
+		if (CheckEndpoints(
+			query.From,
+			query.To,
+			query.Via) is { } unsuitable)
+		{
+			return unsuitable;
+		}
+
+		if (!IsVvoJourney(journey)
+			|| string.IsNullOrWhiteSpace(journey.Context)
+			|| string.IsNullOrWhiteSpace(journey.Id))
+		{
+			return JourneyResult.NotSuitable(
+				"vvo_continuation_context_missing");
+		}
+
+		if (legIndex < 0
+			|| legIndex >= journey.Legs.Count
+			|| string.IsNullOrWhiteSpace(journey.Legs[legIndex].Id))
+		{
+			return JourneyResult.NotSuitable(
+				"vvo_leg_missing_id");
+		}
+
+		var request =
+			new VvoPrevNextMoveRequest
+			{
+				Origin = query.From.Id!,
+				Destination = query.To.Id!,
+				SessionId = journey.Context,
+				RouteId = journey.Id,
+				PartialRouteId = journey.Legs[legIndex].Id!,
+				Time = query.DateTime,
+				Via = query.Via?.Id,
+				StandardSettings = CreateStandardSettings(query.Routing),
+				MobilitySettings = CreateMobilitySettings(query.Routing),
+				Previous = previous
+			};
+
+		try
+		{
+			VvoTripResponse? response =
+				await _apiClient.GetLegAlternativeAsync(
+					request,
+					cancellationToken,
+					TimeSpan.FromSeconds(
+						Math.Clamp(
+							query.TimeoutSeconds,
+							5,
+							60)))
+				.ConfigureAwait(false);
+
+			if (response is null)
+			{
+				return JourneyResult.Failure(
+					"vvo_no_response");
+			}
+
+			if (response.Routes.Count == 0)
+			{
+				return JourneyResult.Success(
+					Array.Empty<Journey>());
+			}
+
+			IReadOnlyList<Journey> journeys =
+				VvoJourneyMapper.Map(
+					response,
+					query.From,
+					query.To);
+
+			RememberRouting(journeys, query.Routing);
+
+			return JourneyResult.Success(
+				journeys);
+		}
+		catch (OperationCanceledException)
+		{
+			throw;
+		}
+		catch (DDjourneys.Core.Api.ApiException ex)
+		{
+			return Failed(ex);
+		}
+		catch (Exception ex)
+		{
+			System.Diagnostics.Debug.WriteLine(
+				$"VVO leg alternative request failed: {ex}");
+
+			return JourneyResult.Failure(
+				"vvo_response_unreadable",
+				ex.Message);
+		}
+	}
+
+
+	/// <inheritdoc />
+	public Uri? GetJourneyDocumentUri(
+		JourneyQuery query,
+		Journey journey)
+	{
+		ArgumentNullException.ThrowIfNull(query);
+		ArgumentNullException.ThrowIfNull(journey);
+
+		if (CheckEndpoints(
+			query.From,
+			query.To,
+			query.Via) is not null
+			|| !IsVvoJourney(journey)
+			|| string.IsNullOrWhiteSpace(journey.Context)
+			|| string.IsNullOrWhiteSpace(journey.Id))
+		{
+			return null;
+		}
+
+		return _apiClient.BuildTripPdfUri(
+			journey.Id,
+			journey.Context,
+			query.From.Id!,
+			query.To.Id!,
+			query.DateTime,
+			query.SearchMode == JourneySearchMode.Arrival,
+			query.Via?.Id,
+			CreateStandardSettings(query.Routing),
+			CreateMobilitySettings(query.Routing));
+	}
+
+
+	private static bool IsVvoJourney(
+		Journey journey) =>
+		string.IsNullOrWhiteSpace(journey.ProviderId)
+		|| string.Equals(
+			journey.ProviderId,
+			VvoProviderInfo.Id,
+			StringComparison.OrdinalIgnoreCase);
+
+
 	/// <summary>
 	/// The provider only answers for places it issued. A place without a provider id (stored before
 	/// ids existed, or built by hand) is not held against it, but it needs a stop id: VVO routes
@@ -497,8 +653,24 @@ public sealed class VvoJourneyProvider :
 	/// </summary>
 	private static JourneyResult? CheckEndpoints(
 		Location from,
-		Location to)
+		Location to,
+		Location? via = null)
 	{
+		if (via is not null)
+		{
+			if (!IsIssuedByVvo(via))
+			{
+				return JourneyResult.NotSuitable(
+					"vvo_endpoint_other_provider");
+			}
+
+			if (string.IsNullOrWhiteSpace(via.Id))
+			{
+				return JourneyResult.NotSuitable(
+					"vvo_via_missing_id");
+			}
+		}
+
 		if (!IsIssuedByVvo(from)
 			|| !IsIssuedByVvo(to))
 		{
@@ -755,6 +927,13 @@ public sealed class VvoJourneyProvider :
 			WalkingSpeed = routing.Pace.ToString(),
 			FootpathToStop = Math.Clamp(routing.FootpathMinutes, 0, 30),
 			IncludeAlternativeStops = routing.AlternativeStops,
+			ExtraCharge =
+				routing.ExtraCharge switch
+				{
+					ExtraChargeFilter.None => "None",
+					ExtraChargeFilter.LocalTraffic => "LocalTraffic",
+					_ => string.Empty
+				},
 			ModesOfTransport =
 				[.. Enum.GetValues<ModeFilter>()
 					.Where(
@@ -776,7 +955,8 @@ public sealed class VvoJourneyProvider :
 			routing.Accessibility == AccessibilityNeed.None
 			&& (routing.AvoidStairs
 				|| routing.AvoidEscalators
-				|| routing.FewestTransfers);
+				|| routing.FewestTransfers
+				|| routing.Entrance != EntranceNeed.Any);
 
 		return new VvoMobilitySettings
 		{
@@ -787,7 +967,7 @@ public sealed class VvoJourneyProvider :
 			SolidStairs = !routing.AvoidStairs,
 			Escalators = !routing.AvoidEscalators,
 			LeastChange = routing.FewestTransfers,
-			Entrance = "Any"
+			Entrance = routing.Entrance.ToString()
 		};
 	}
 

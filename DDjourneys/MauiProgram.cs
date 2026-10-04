@@ -71,6 +71,14 @@ public static class MauiProgram
 		builder.Services.AddSingleton<IJourneyProvider>(
 			services => services.GetRequiredService<VvoJourneyProvider>());
 
+		builder.Services.AddSingleton<VvoNetworkProvider>();
+		builder.Services.AddSingleton<IDepartureProvider>(
+			services => services.GetRequiredService<VvoNetworkProvider>());
+		builder.Services.AddSingleton<INetworkInfoProvider>(
+			services => services.GetRequiredService<VvoNetworkProvider>());
+		builder.Services.AddSingleton<DepartureService>();
+		builder.Services.AddSingleton<NetworkService>();
+
 		builder.Services.AddSingleton<JourneyProviderDiagnostics>();
 		builder.Services.AddSingleton<JourneyService>();
 
@@ -153,6 +161,13 @@ public static class MauiProgram
 
 		builder.Services.AddTransient<ProvidersPage>();
 		builder.Services.AddTransient<ProvidersViewModel>();
+
+		builder.Services.AddTransient<DeparturesPage>();
+		builder.Services.AddTransient<DeparturesViewModel>();
+		builder.Services.AddTransient<RunPage>();
+		builder.Services.AddTransient<RunViewModel>();
+		builder.Services.AddTransient<DisruptionsPage>();
+		builder.Services.AddTransient<DisruptionsViewModel>();
 
 		builder.Services.AddTransient<RoutingSettingsPage>();
 		builder.Services.AddTransient<RoutingSettingsViewModel>();

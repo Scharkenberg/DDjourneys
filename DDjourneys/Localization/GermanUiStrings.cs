@@ -65,8 +65,57 @@ public sealed class GermanUiStrings : IUiStrings
 		LocationPermissionDenied = "Für den Standort wird die Berechtigung benötigt.",
 		LocationUnavailable = "Der Standort konnte nicht bestimmt werden.",
 		NoStopNearby = "Keine Haltestelle in der Nähe gefunden.",
+		Via = "Über",
+		AddVia = "Zwischenhalt hinzufügen",
+		ClearVia = "Zwischenhalt entfernen",
 		PlacesYouSearchForWillAppearHere =
 			"Gesuchte Orte erscheinen hier."
+	};
+
+	public DeparturesStrings Departures { get; } = new()
+	{
+		Title = "Abfahrten",
+		Stop = "Haltestelle",
+		ChooseStop = "Haltestelle wählen",
+		DeparturesTab = "Abfahrten",
+		ArrivalsTab = "Ankünfte",
+		Now = "Jetzt",
+		NoDepartures = "Keine Abfahrten gefunden.",
+		Lines = "Linien an dieser Haltestelle",
+		ShowLines = "Linien anzeigen",
+		HideLines = "Linien ausblenden",
+		Nearby = "Haltestellen in der Nähe",
+		UseMyLocation = "Meinen Standort verwenden",
+		TariffZone = "Tarifzone {0}",
+		Metres = "{0} m",
+		Cancelled = "Fällt aus",
+		RouteChanges = "Für diese Fahrt gibt es Änderungen",
+		Refresh = "Aktualisieren",
+		Updated = "Aktualisiert {0}",
+		Hint = "Wähle eine Haltestelle, um die nächsten Abfahrten zu sehen.",
+		RunTitle = "Fahrtverlauf",
+		NoRun = "Für diese Fahrt ist kein Verlauf verfügbar.",
+		VehicleHere = "Fahrzeug ist hier",
+		OpenDepartures = "Abfahrten an dieser Haltestelle"
+	};
+
+	public DisruptionsStrings Disruptions { get; } = new()
+	{
+		Title = "Störungen",
+		OnlyShortTerm = "Nur kurzfristige",
+		FilterPlaceholder = "Nach Linie filtern",
+		None = "Keine Änderungen im Fahrplan.",
+		Planned = "Geplant",
+		ShortTerm = "Kurzfristig",
+		AffectsRouting = "In der Verbindungssuche berücksichtigt",
+		From = "Ab {0}",
+		Until = "Bis {0}",
+		Range = "{0} \u2013 {1}",
+		Notices = "Hinweise",
+		ShowAll = "Alle Änderungen anzeigen",
+		Selected = "Es werden die Änderungen der gewählten Fahrt angezeigt.",
+		Refresh = "Aktualisieren",
+		Details = "Details"
 	};
 
 	public PlaceSearchStrings PlaceSearch { get; } = new()
@@ -105,6 +154,11 @@ public sealed class GermanUiStrings : IUiStrings
 
 	public JourneyStrings Journey { get; } = new()
 	{
+		LegEarlier = "Früher",
+		LegLater = "Später",
+		LegNone = "Keine Alternative für diese Fahrt gefunden.",
+		OpenPdf = "Als PDF öffnen",
+		AlternativeShown = "Eine alternative Verbindung wird angezeigt. Neu suchen, um zurückzukehren.",
 		Title = "Verbindung",
 		FollowJourney = "Verbindung verfolgen",
 		DeactivateTracking = "Verfolgung pausieren",
@@ -320,7 +374,15 @@ public sealed class GermanUiStrings : IUiStrings
 		AvoidEscalators = "Rolltreppen meiden",
 		AvoidEscalatorsDescription = "Gilt, wenn keine Barrierefreiheitsstufe gewählt ist",
 		FewestTransfers = "Wenigste Umstiege",
-		FewestTransfersDescription = "Weniger Umstiege vor schnellerer Fahrt"
+		FewestTransfersDescription = "Weniger Umstiege vor schnellerer Fahrt",
+		SectionEntrance = "Fahrzeugeinstieg",
+		EntranceAny = "Beliebiger Einstieg",
+		EntranceSmallStep = "Höchstens kleine Stufe",
+		EntranceNoStep = "Stufenloser Einstieg",
+		SectionExtraCharge = "Zuschläge",
+		ExtraChargeAny = "Keine Einschränkung",
+		ExtraChargeNone = "Ohne Zuschlag",
+		ExtraChargeLocal = "Nur Nahverkehr"
 	};
 
 	public ProviderStrings Provider { get; } = new()
@@ -334,6 +396,10 @@ public sealed class GermanUiStrings : IUiStrings
 		CapTracking = "Live-Verfolgung",
 		CapOccupancy = "Auslastung",
 		CapPlatforms = "Steige und Gleise",
+		CapDepartures = "Abfahrten",
+		CapDisruptions = "Störungen",
+		CapNetwork = "Haltestellen, Linien, Zonen",
+		CapExtras = "Alternativen, PDF",
 		CapRouting = "Routenpräferenzen",
 		Footer = "Weitere Anbieter können in künftigen Versionen folgen."
 	};

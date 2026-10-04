@@ -5,6 +5,8 @@ public interface IUiStrings
 	CommonStrings Common { get; }
 	PlanStrings Plan { get; }
 	PlaceSearchStrings PlaceSearch { get; }
+	DeparturesStrings Departures { get; }
+	DisruptionsStrings Disruptions { get; }
 	ResultsStrings Results { get; }
 	JourneyStrings Journey { get; }
 	TrackingStrings Tracking { get; }
@@ -64,6 +66,9 @@ public sealed class PlanStrings
 	public required string SearchAgain { get; init; }
 	public required string PlacesYouSearchForWillAppearHere { get; init; }
 	public required string StartAndDestinationRequired { get; init; }
+	public required string Via { get; init; }
+	public required string AddVia { get; init; }
+	public required string ClearVia { get; init; }
 	public required string UseLocationFrom { get; init; }
 	public required string UseLocationTo { get; init; }
 	public required string GoHome { get; init; }
@@ -76,6 +81,54 @@ public sealed class PlanStrings
 	public required string LocationUnavailable { get; init; }
 	public required string NoStopNearby { get; init; }
 }
+
+public sealed class DeparturesStrings
+{
+	public required string Title { get; init; }
+	public required string Stop { get; init; }
+	public required string ChooseStop { get; init; }
+	public required string DeparturesTab { get; init; }
+	public required string ArrivalsTab { get; init; }
+	public required string Now { get; init; }
+	public required string NoDepartures { get; init; }
+	public required string Lines { get; init; }
+	public required string ShowLines { get; init; }
+	public required string HideLines { get; init; }
+	public required string Nearby { get; init; }
+	public required string UseMyLocation { get; init; }
+	public required string TariffZone { get; init; }
+	public required string Metres { get; init; }
+	public required string Cancelled { get; init; }
+	public required string RouteChanges { get; init; }
+	public required string Refresh { get; init; }
+	public required string Updated { get; init; }
+	public required string Hint { get; init; }
+	public required string RunTitle { get; init; }
+	public required string NoRun { get; init; }
+	public required string VehicleHere { get; init; }
+	public required string OpenDepartures { get; init; }
+}
+
+
+public sealed class DisruptionsStrings
+{
+	public required string Title { get; init; }
+	public required string OnlyShortTerm { get; init; }
+	public required string FilterPlaceholder { get; init; }
+	public required string None { get; init; }
+	public required string Planned { get; init; }
+	public required string ShortTerm { get; init; }
+	public required string AffectsRouting { get; init; }
+	public required string From { get; init; }
+	public required string Until { get; init; }
+	public required string Range { get; init; }
+	public required string Notices { get; init; }
+	public required string ShowAll { get; init; }
+	public required string Selected { get; init; }
+	public required string Refresh { get; init; }
+	public required string Details { get; init; }
+}
+
 
 public sealed class PlaceSearchStrings
 {
@@ -104,6 +157,11 @@ public sealed class ResultsStrings
 }
 public sealed class JourneyStrings
 {
+	public required string LegEarlier { get; init; }
+	public required string LegLater { get; init; }
+	public required string LegNone { get; init; }
+	public required string OpenPdf { get; init; }
+	public required string AlternativeShown { get; init; }
 	public required string Title { get; init; }
 	public required string FollowJourney { get; init; }
 	public required string DeactivateTracking { get; init; }
@@ -321,6 +379,14 @@ public sealed class RoutingStrings
 	public required string AvoidEscalatorsDescription { get; init; }
 	public required string FewestTransfers { get; init; }
 	public required string FewestTransfersDescription { get; init; }
+	public required string SectionEntrance { get; init; }
+	public required string EntranceAny { get; init; }
+	public required string EntranceSmallStep { get; init; }
+	public required string EntranceNoStep { get; init; }
+	public required string SectionExtraCharge { get; init; }
+	public required string ExtraChargeAny { get; init; }
+	public required string ExtraChargeNone { get; init; }
+	public required string ExtraChargeLocal { get; init; }
 }
 
 public sealed class ProviderStrings
@@ -335,6 +401,10 @@ public sealed class ProviderStrings
 	public required string CapOccupancy { get; init; }
 	public required string CapPlatforms { get; init; }
 	public required string CapRouting { get; init; }
+	public required string CapDepartures { get; init; }
+	public required string CapDisruptions { get; init; }
+	public required string CapNetwork { get; init; }
+	public required string CapExtras { get; init; }
 	public required string Footer { get; init; }
 }
 

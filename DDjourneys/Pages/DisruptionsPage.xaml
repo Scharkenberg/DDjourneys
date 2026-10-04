@@ -1,0 +1,122 @@
+<ContentPage
+	x:Class="DDjourneys.Pages.DisruptionsPage"
+	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+	xmlns:controls="clr-namespace:DDjourneys.Controls"
+	xmlns:local="clr-namespace:DDjourneys.Pages"
+	xmlns:localization="clr-namespace:DDjourneys.Localization"
+	xmlns:support="clr-namespace:DDjourneys.Support"
+	Title="{localization:Tr Disruptions.Title}"
+	x:DataType="local:DisruptionsViewModel">
+
+	<RefreshView Command="{Binding RefreshCommand}" IsRefreshing="{Binding IsBusy}">
+		<ScrollView>
+			<VerticalStackLayout Padding="{DynamicResource PadPage}" Spacing="{DynamicResource SpaceM}">
+
+				<!--  Limited to the changes of one departure  -->
+				<Border IsVisible="{Binding IsLimited}" StyleClass="Card">
+					<VerticalStackLayout Spacing="{DynamicResource SpaceS}">
+						<Label StyleClass="Caption" Text="{localization:Tr Disruptions.Selected}" />
+						<Button Command="{Binding ShowAllCommand}" Text="{localization:Tr Disruptions.ShowAll}" />
+					</VerticalStackLayout>
+				</Border>
+
+				<Border Padding="10,0" StyleClass="Card">
+					<Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource SpaceS}">
+						<Entry
+							ClearButtonVisibility="WhileEditing"
+							Placeholder="{localization:Tr Disruptions.FilterPlaceholder}"
+							SemanticProperties.Description="{localization:Tr Disruptions.FilterPlaceholder}"
+							Text="{Binding Filter}" />
+					</Grid>
+				</Border>
+
+				<Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource SpaceS}">
+					<Label Text="{localization:Tr Disruptions.OnlyShortTerm}" VerticalOptions="Center" />
+					<Switch Grid.Column="1" IsToggled="{Binding ShortTermOnly}" />
+				</Grid>
+
+				<Label
+					HorizontalTextAlignment="Center"
+					IsVisible="{Binding HasMessage}"
+					StyleClass="Caption"
+					Text="{Binding Message}" />
+
+				<!--  Network notices  -->
+				<VerticalStackLayout IsVisible="{Binding HasBanners}" Spacing="{DynamicResource SpaceS}">
+					<Label StyleClass="Title" Text="{localization:Tr Disruptions.Notices}" />
+					<VerticalStackLayout BindableLayout.ItemsSource="{Binding Banners}" Spacing="{DynamicResource SpaceS}">
+						<BindableLayout.ItemTemplate>
+							<DataTemplate x:DataType="local:BannerRow">
+								<Border StyleClass="Card">
+									<VerticalStackLayout Spacing="2">
+										<Label FontFamily="{DynamicResource FontSemibold}" Text="{Binding Title}" />
+										<Label
+											IsVisible="{Binding HasDescription}"
+											StyleClass="Caption"
+											Text="{Binding Description}" />
+									</VerticalStackLayout>
+								</Border>
+							</DataTemplate>
+						</BindableLayout.ItemTemplate>
+					</VerticalStackLayout>
+				</VerticalStackLayout>
+
+				<!--  Route changes  -->
+				<VerticalStackLayout BindableLayout.ItemsSource="{Binding Rows}" Spacing="{DynamicResource SpaceS}">
+					<BindableLayout.ItemTemplate>
+						<DataTemplate x:DataType="local:DisruptionRow">
+							<Border support:Motion.Feedback="True" StyleClass="Card">
+								<VerticalStackLayout Spacing="6">
+
+									<FlexLayout BindableLayout.ItemsSource="{Binding Lines}" IsVisible="{Binding HasLines}" Wrap="Wrap">
+										<BindableLayout.ItemTemplate>
+											<DataTemplate x:DataType="local:DisruptionLineRow">
+												<Border
+													Margin="0,0,6,6"
+													BackgroundColor="{Binding Look.Fill}"
+													StrokeDashArray="{Binding Look.Dashes}"
+													StrokeShape="{Binding Look.Shape}"
+													StrokeThickness="{Binding Look.StrokeThickness}"
+													StyleClass="Chip"
+													Stroke="{Binding Look.Stroke}">
+													<Label
+														FontFamily="{DynamicResource FontSemibold}"
+														FontSize="{StaticResource FontCaption}"
+														StyleClass="ChipLabel"
+														Text="{Binding Name}"
+														TextColor="{Binding Look.Text}" />
+												</Border>
+											</DataTemplate>
+										</BindableLayout.ItemTemplate>
+									</FlexLayout>
+
+									<Label FontFamily="{DynamicResource FontSemibold}" Text="{Binding Title}" />
+
+									<Label StyleClass="Caption" Text="{Binding KindText}" />
+
+									<Label
+										IsVisible="{Binding HasPeriod}"
+										StyleClass="Caption"
+										Text="{Binding PeriodText}" />
+
+									<Label
+										IsVisible="{Binding AffectsRouting}"
+										StyleClass="Caption"
+										Text="{Binding AffectsRoutingText}" />
+
+									<Label IsVisible="{Binding ShowDescription}" Text="{Binding Description}" />
+
+									<VerticalStackLayout.GestureRecognizers>
+										<TapGestureRecognizer Command="{Binding ToggleCommand}" />
+									</VerticalStackLayout.GestureRecognizers>
+								</VerticalStackLayout>
+							</Border>
+						</DataTemplate>
+					</BindableLayout.ItemTemplate>
+				</VerticalStackLayout>
+
+			</VerticalStackLayout>
+		</ScrollView>
+	</RefreshView>
+</ContentPage>

@@ -123,6 +123,17 @@ public sealed partial class PlanViewModel : DisposableViewModel
 			new Command(
 				() => Safe(Swap));
 
+		PickViaCommand =
+			new AsyncCommand(
+				() => SafeAsync(
+					() => OpenViaSearch is { } open
+						? open()
+						: Task.CompletedTask));
+
+		ClearViaCommand =
+			new Command(
+				() => Via = null);
+
 		DepartCommand =
 			new Command(
 				() => IsArrival = false);
@@ -234,6 +245,9 @@ public sealed partial class PlanViewModel : DisposableViewModel
 
 	public Func<string, Task>? ShowError { get; set; }
 
+	/// <summary>Opens the place search for the stop-over.</summary>
+	public Func<Task>? OpenViaSearch { get; set; }
+
 	/// <summary>Asks for a name (title, message, suggestion); null when the passenger cancels.</summary>
 	public Func<string, string, string, Task<string?>>? AskName { get; set; }
 
@@ -247,6 +261,10 @@ public sealed partial class PlanViewModel : DisposableViewModel
 	public Command ToggleToFavouriteCommand { get; }
 
 	public Command SwapCommand { get; }
+
+	public AsyncCommand PickViaCommand { get; }
+
+	public Command ClearViaCommand { get; }
 
 	public Command DepartCommand { get; }
 
@@ -326,6 +344,57 @@ public sealed partial class PlanViewModel : DisposableViewModel
 			}
 		}
 	}
+
+
+	/// <summary>Stop the journey has to pass through (optional).</summary>
+	public Location? Via
+	{
+		get => field;
+
+		set
+		{
+			if (SetProperty(
+				ref field,
+				value))
+			{
+				OnPropertyChanged(nameof(HasVia));
+				OnPropertyChanged(nameof(NoVia));
+				OnPropertyChanged(nameof(ViaName));
+				OnPropertyChanged(nameof(ViaPlace));
+			}
+		}
+	}
+
+
+	public bool HasVia =>
+		Via is not null;
+
+
+	public bool NoVia =>
+		Via is null;
+
+
+	public string ViaName =>
+		Via?.Name
+		?? string.Empty;
+
+
+	public string? ViaPlace =>
+		Via is null
+			? null
+			: StopLabel.PlaceFor(
+				Via.Name,
+				Via.Place);
+
+
+	/// <summary>The selected provider offers a departure monitor.</summary>
+	public bool HasDepartures =>
+		_providers.Supports(ProviderCapabilities.Departures);
+
+
+	/// <summary>The selected provider publishes route changes.</summary>
+	public bool HasDisruptions =>
+		_providers.Supports(ProviderCapabilities.Disruptions);
 
 
 	public Location? To
@@ -696,7 +765,10 @@ public sealed partial class PlanViewModel : DisposableViewModel
 					_providerId = _providers.SelectedId;
 					From = null;
 					To = null;
+					Via = null;
 					OnPropertyChanged(nameof(IsTrackingAvailable));
+					OnPropertyChanged(nameof(HasDepartures));
+					OnPropertyChanged(nameof(HasDisruptions));
 				}
 
 				MinDate =
@@ -971,6 +1043,7 @@ public sealed partial class PlanViewModel : DisposableViewModel
 		{
 			From = From,
 			To = To,
+			Via = Via,
 			DateTime = IsNow ? Format.Now() : Format.ToOffset(target),
 			SearchMode = IsArrival ? JourneySearchMode.Arrival : JourneySearchMode.Departure,
 			MaxResults = _settings.MaxResults,
@@ -1096,6 +1169,7 @@ public sealed partial class PlanViewModel : DisposableViewModel
 
 		From = row.Route.From;
 		To = row.Route.To;
+		Via = null;
 
 		if (CanSearch)
 		{
@@ -1241,6 +1315,7 @@ public sealed partial class PlanViewModel : DisposableViewModel
 
 		From = route.From;
 		To = route.To;
+		Via = null;
 
 		if (CanSearch)
 		{

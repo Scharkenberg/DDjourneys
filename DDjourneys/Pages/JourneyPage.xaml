@@ -260,6 +260,25 @@
 						support:Motion.Breathe="True"
 						TextColor="{DynamicResource Accent}" />
 
+					<HorizontalStackLayout IsVisible="{Binding Source={RelativeSource AncestorType={x:Type local:JourneyViewModel}}, x:DataType=local:JourneyViewModel, Path=HasLegAlternatives}" Spacing="8">
+						<Button
+							Padding="12,0"
+							Command="{Binding Source={RelativeSource AncestorType={x:Type local:JourneyViewModel}}, x:DataType=local:JourneyViewModel, Path=LegEarlierCommand}"
+							CommandParameter="{Binding .}"
+							FontSize="{StaticResource FontCaption}"
+							support:Dense.MinHeight="36"
+							StyleClass="Tonal"
+							Text="{localization:Tr Journey.LegEarlier}" />
+						<Button
+							Padding="12,0"
+							Command="{Binding Source={RelativeSource AncestorType={x:Type local:JourneyViewModel}}, x:DataType=local:JourneyViewModel, Path=LegLaterCommand}"
+							CommandParameter="{Binding .}"
+							FontSize="{StaticResource FontCaption}"
+							support:Dense.MinHeight="36"
+							StyleClass="Tonal"
+							Text="{localization:Tr Journey.LegLater}" />
+					</HorizontalStackLayout>
+
 					<HorizontalStackLayout support:Motion.Feedback="True"
 						IsVisible="{Binding HasIntermediates}"
 						support:Dense.MinHeight="36"
@@ -523,6 +542,17 @@
 					ToPlace="{Binding ToPlace}" />
 
 				<controls:JourneyCard BindingContext="{Binding Summary}" />
+
+				<Label
+					IsVisible="{Binding HasAlternativeStatus}"
+					StyleClass="Caption"
+					Text="{Binding AlternativeStatus}" />
+
+				<Button
+					Command="{Binding OpenDocumentCommand}"
+					IsVisible="{Binding HasDocument}"
+					StyleClass="Tonal"
+					Text="{localization:Tr Journey.OpenPdf}" />
 
 				<VerticalStackLayout IsVisible="{Binding IsHandOffAvailable}" Spacing="8">
 					<Button Command="{Binding HandOffCommand}" Text="{localization:Tr Journey.HandOff}" />

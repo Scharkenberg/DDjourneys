@@ -4,6 +4,7 @@ using DDjourneys.Contract;
 using DDjourneys.Core.Models;
 using DDjourneys.Core.Providers;
 using DDjourneys.Core.Providers.Abstractions;
+using DDjourneys.Core.Services;
 using DDjourneys.Core.Tracking;
 using DDjourneys.Localization;
 using DDjourneys.Support;
@@ -23,6 +24,9 @@ public sealed class JourneyViewModel :
 	private CancellationTokenSource? _trackingObservation;
 
 	private Journey? _journey;
+	private JourneyQuery? _query;
+	private readonly JourneyService _journeys;
+	private CancellationTokenSource? _alternative;
 
 
 	private readonly ProviderRegistry _providers;
@@ -32,8 +36,11 @@ public sealed class JourneyViewModel :
 		AppSettings settings,
 		IJourneyTracker tracker,
 		ProviderRegistry providers,
-		ContractSession contract)
+		ContractSession contract,
+		JourneyService journeys)
 	{
+		_journeys = journeys ?? throw new ArgumentNullException(nameof(journeys));
+
 		_providers = providers ?? throw new ArgumentNullException(nameof(providers));
 
 		ArgumentNullException.ThrowIfNull(
@@ -68,6 +75,18 @@ public sealed class JourneyViewModel :
 		OpenFollowedCommand = new AsyncCommand(OpenFollowedAsync, null, ShowTrackingError);
 		OpenExpertCommand = new AsyncCommand(OpenExpertAsync);
 		HandOffCommand = new AsyncCommand(HandOffAsync);
+
+		LegEarlierCommand =
+			new AsyncCommand<LegRow>(
+				row => ShowAlternativeAsync(row, previous: true));
+
+		LegLaterCommand =
+			new AsyncCommand<LegRow>(
+				row => ShowAlternativeAsync(row, previous: false));
+
+		OpenDocumentCommand =
+			new AsyncCommand(
+				OpenDocumentAsync);
 
 		Subscribe(
 			() => _contract.Changed += OnContractChanged,
@@ -118,6 +137,43 @@ public sealed class JourneyViewModel :
 
 	/// <summary>Hands this journey back to the app that asked for a pick (contract).</summary>
 	public AsyncCommand HandOffCommand { get; }
+
+	/// <summary>Replaces a ride by the previous alternative the provider knows (tr/prevnextmove).</summary>
+	public AsyncCommand<LegRow> LegEarlierCommand { get; }
+
+	public AsyncCommand<LegRow> LegLaterCommand { get; }
+
+	/// <summary>Opens the printable version of the journey (tr/trippdf).</summary>
+	public AsyncCommand OpenDocumentCommand { get; }
+
+	/// <summary>The provider can swap a single ride and this journey carries what it needs.</summary>
+	public bool HasLegAlternatives =>
+		_query is not null
+		&& _journey is { Context.Length: > 0 }
+		&& _providers.Supports(ProviderCapabilities.JourneyExtras);
+
+	public bool HasDocument =>
+		_query is not null
+		&& _journey is not null
+		&& _providers.Supports(ProviderCapabilities.JourneyExtras)
+		&& _journeys.GetJourneyDocumentUri(_query, _journey) is not null;
+
+	/// <summary>Result of the last alternative lookup ("shown", "none found"); empty otherwise.</summary>
+	public string AlternativeStatus
+	{
+		get => field;
+
+		private set
+		{
+			if (SetProperty(ref field, value))
+			{
+				OnPropertyChanged(nameof(HasAlternativeStatus));
+			}
+		}
+	} = string.Empty;
+
+	public bool HasAlternativeStatus =>
+		AlternativeStatus.Length > 0;
 
 	/// <summary>True while another app waits for the user to choose a journey.</summary>
 	public bool IsHandOffAvailable =>
@@ -222,8 +278,11 @@ public sealed class JourneyViewModel :
 		_ = LoadFollowStateAsync(_trackingObservation.Token);
 	}
 
-	protected override void OnDisposing() =>
+	protected override void OnDisposing()
+	{
+		_alternative?.Cancel();
 		StopObservingTracking();
+	}
 
 	public void StopObservingTracking()
 	{
@@ -449,7 +508,103 @@ public sealed class JourneyViewModel :
 				out object? value)
 			&& value is Journey journey)
 		{
+			if (query.TryGetValue(Routes.Query, out object? asked)
+				&& asked is JourneyQuery journeyQuery)
+			{
+				_query = journeyQuery;
+			}
+
 			Load(journey);
+		}
+	}
+
+
+	private async Task ShowAlternativeAsync(
+		LegRow row,
+		bool previous)
+	{
+		if (row?.Source is not { } leg
+			|| _journey is not { } journey
+			|| _query is not { } query)
+		{
+			return;
+		}
+
+		int index = journey.Legs.ToList().IndexOf(leg);
+
+		if (index < 0)
+		{
+			return;
+		}
+
+		_alternative?.Cancel();
+
+		var cts = new CancellationTokenSource();
+		_alternative = cts;
+
+		JourneyStrings strings =
+			_localization.CurrentStrings.Journey;
+
+		try
+		{
+			JourneyResult result =
+				await _journeys.GetLegAlternativeAsync(
+					query,
+					journey,
+					index,
+					previous,
+					cts.Token);
+
+			if (cts.IsCancellationRequested || IsDisposed)
+			{
+				return;
+			}
+
+			Journey? next =
+				result.Journeys.FirstOrDefault(
+					candidate => candidate.Id == journey.Id)
+				?? result.Journeys.FirstOrDefault();
+
+			if (next is null)
+			{
+				AlternativeStatus = strings.LegNone;
+
+				return;
+			}
+
+			Load(next);
+			AlternativeStatus = strings.AlternativeShown;
+		}
+		catch (OperationCanceledException)
+		{
+		}
+		catch (Exception ex)
+		{
+			System.Diagnostics.Debug.WriteLine($"Leg alternative failed: {ex}");
+
+			AlternativeStatus = ex.Message;
+		}
+	}
+
+
+	private async Task OpenDocumentAsync()
+	{
+		if (_query is not { } query
+			|| _journey is not { } journey
+			|| _journeys.GetJourneyDocumentUri(query, journey) is not { } uri)
+		{
+			return;
+		}
+
+		try
+		{
+			await Launcher.Default.OpenAsync(uri);
+		}
+		catch (Exception ex)
+		{
+			System.Diagnostics.Debug.WriteLine($"Opening the journey document failed: {ex.Message}");
+
+			AlternativeStatus = ex.Message;
 		}
 	}
 
@@ -494,6 +649,9 @@ public sealed class JourneyViewModel :
 
 			OnPropertyChanged(
 				nameof(IsHandOffAvailable));
+
+			OnPropertyChanged(nameof(HasLegAlternatives));
+			OnPropertyChanged(nameof(HasDocument));
 
 			LoadError =
 				null;

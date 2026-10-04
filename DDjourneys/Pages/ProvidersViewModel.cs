@@ -62,7 +62,11 @@ public sealed class ProvidersViewModel : DisposableViewModel
 		(ProviderCapabilities.RoutingPreferences, s => s.CapRouting),
 		(ProviderCapabilities.Platforms, s => s.CapPlatforms),
 		(ProviderCapabilities.Occupancy, s => s.CapOccupancy),
-		(ProviderCapabilities.Tracking, s => s.CapTracking)
+		(ProviderCapabilities.Tracking, s => s.CapTracking),
+		(ProviderCapabilities.Departures, s => s.CapDepartures),
+		(ProviderCapabilities.Disruptions, s => s.CapDisruptions),
+		(ProviderCapabilities.NetworkInfo, s => s.CapNetwork),
+		(ProviderCapabilities.JourneyExtras, s => s.CapExtras)
 	];
 
 	private readonly ProviderRegistry _registry;

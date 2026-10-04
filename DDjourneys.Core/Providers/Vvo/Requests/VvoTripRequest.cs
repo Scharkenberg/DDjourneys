@@ -44,6 +44,13 @@ public sealed class VvoTripRequest
 
 
 	/// <summary>
+	/// Intermediate stop the journey has to pass through (stop id); omitted when there is none.
+	/// </summary>
+	[JsonPropertyName("via")]
+	public string? Via { get; init; }
+
+
+	/// <summary>
 	/// General routing preferences.
 	/// </summary>
 	[JsonPropertyName("standardSettings")]

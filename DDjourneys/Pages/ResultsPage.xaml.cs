@@ -18,12 +18,22 @@ public partial class ResultsPage : ContentPage
 		BindingContext = _vm = vm;
 
 		vm.OpenJourney = journey =>
-			Shell.Current.GoToAsync(
-				Routes.Journey,
+		{
+			var parameters =
 				new ShellNavigationQueryParameters
 				{
 					[Routes.JourneyData] = journey
-				});
+				};
+
+			if (vm.Query is { } query)
+			{
+				parameters[Routes.Query] = query;
+			}
+
+			return Shell.Current.GoToAsync(
+				Routes.Journey,
+				parameters);
+		};
 
 		vm.ShowError = message =>
 			DisplayAlertAsync(

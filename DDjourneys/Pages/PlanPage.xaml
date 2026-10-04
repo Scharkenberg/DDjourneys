@@ -26,6 +26,18 @@
 
 				<HorizontalStackLayout Grid.Column="1" Spacing="0">
 					<controls:IconButton
+						Clicked="DeparturesClicked"
+						Glyph="Clock"
+						IsVisible="{Binding HasDepartures}"
+						SemanticProperties.Description="{localization:Tr Departures.Title}" />
+
+					<controls:IconButton
+						Clicked="DisruptionsClicked"
+						Glyph="Warning"
+						IsVisible="{Binding HasDisruptions}"
+						SemanticProperties.Description="{localization:Tr Disruptions.Title}" />
+
+					<controls:IconButton
 						Clicked="TrackedClicked"
 						Glyph="Bell"
 						IsVisible="{Binding IsTrackingAvailable}"
@@ -126,6 +138,34 @@
 						Size="24"
 						VerticalOptions="Center" />
 
+				</Grid>
+			</Border>
+
+			<!--  Stop over  -->
+			<Border
+				Padding="0"
+				IsVisible="{Binding HasVia}"
+				StyleClass="Card">
+				<Grid
+					support:Dense.MinHeight="56"
+					support:Dense.Padding="14,6"
+					ColumnDefinitions="*,44">
+
+					<VerticalStackLayout support:Motion.Feedback="True" Spacing="2" VerticalOptions="Center">
+						<Label StyleClass="Caption" Text="{localization:Tr Plan.Via}" />
+
+						<controls:StopNameView Place="{Binding ViaPlace}" Stop="{Binding ViaName}" />
+
+						<VerticalStackLayout.GestureRecognizers>
+							<TapGestureRecognizer Command="{Binding PickViaCommand}" />
+						</VerticalStackLayout.GestureRecognizers>
+					</VerticalStackLayout>
+
+					<controls:IconButton
+						Grid.Column="1"
+						Command="{Binding ClearViaCommand}"
+						Glyph="Close"
+						SemanticProperties.Description="{localization:Tr Plan.ClearVia}" />
 				</Grid>
 			</Border>
 
@@ -305,6 +345,16 @@
 					support:Dense.MinHeight="40"
 					StyleClass="Tonal"
 					Text="{localization:Tr Plan.SetHome}" />
+
+				<Button
+					Margin="0,0,8,8"
+					Padding="14,0"
+					Command="{Binding PickViaCommand}"
+					FontSize="{StaticResource FontCaption}"
+					IsVisible="{Binding NoVia}"
+					support:Dense.MinHeight="40"
+					StyleClass="Tonal"
+					Text="{localization:Tr Plan.AddVia}" />
 
 				<Button
 					Margin="0,0,8,8"
