@@ -569,5 +569,27 @@ public sealed class ExtrasStrings
 	public required string MapStart { get; init; }
 	public required string MapEnd { get; init; }
 	public required string RunDeparted { get; init; }
+	public required string MapAutoFit { get; init; }
+	public required string MapFitNow { get; init; }
+	public required string MapInfo { get; init; }
+	public required string TrackFollowing { get; init; }
+	public required string TrackNotFound { get; init; }
+	public required string TrackShowAll { get; init; }
+	public required string TrackOnlyThisRun { get; init; }
+	public required string NoticeClose { get; init; }
+	public required string NoticeImageFailed { get; init; }
+	public required string NoticeEmpty { get; init; }
+	public required string NoticeLinkFailed { get; init; }
+	public required string AroundTitle { get; init; }
+	public required string LinesTitle { get; init; }
+	public required string LinesCount { get; init; }
+	public required string ServiceTitle { get; init; }
+	public required string ServiceHint { get; init; }
+	public required string ServiceCount { get; init; }
+	public required string AccessHint { get; init; }
+	public required string MapSummary { get; init; }
+	public required string LiveSummary { get; init; }
+	public required string HomeTitle { get; init; }
+	public required string HomeNotSet { get; init; }
 }
 // </extras>

@@ -215,7 +215,9 @@ public sealed class JourneyCardModel : ObservableObject
 
 		_chips = chips;
 
-		_transfersText = Journey.TransferCount switch
+		_transfersText = !Journey.Rides.Any()
+			? strings.Walk
+			: Journey.TransferCount switch
 		{
 			0 => strings.Direct,
 			1 => strings.OneTransfer,

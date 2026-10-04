@@ -229,12 +229,38 @@ public sealed class RunViewModel : DisposableViewModel, IQueryAttributable
 
 		try
 		{
-			await Shell.Current.GoToAsync(
-				Routes.Vehicles,
+			var parameters =
 				new ShellNavigationQueryParameters
 				{
 					[Routes.Line] = Title.Trim()
-				});
+				};
+
+			// This run, not the whole line: the live page picks its vehicle out of the line's by the course.
+			TrackTarget target =
+				new()
+				{
+					Line = Title.Trim(),
+					Mode = _departure?.Line.Mode ?? TransitMode.Unknown,
+					Direction = Direction,
+					Course =
+						[.. Rows
+							.Where(row => row.Stop.Station.Latitude is not null && row.Stop.Station.Longitude is not null)
+							.Select(
+								row => new CoursePoint(
+									row.Stop.Station.Latitude!.Value,
+									row.Stop.Station.Longitude!.Value,
+									row.Stop.Effective,
+									row.Name))]
+				};
+
+			if (target.IsUsable)
+			{
+				parameters[Routes.Track] = target;
+			}
+
+			await Shell.Current.GoToAsync(
+				Routes.Vehicles,
+				parameters);
 		}
 		catch (Exception ex)
 		{

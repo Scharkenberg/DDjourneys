@@ -98,12 +98,44 @@ public static class MapScenes
 
 	// ----- Journey -----
 
+	/// <summary>
+	/// The place the start (or end) marker belongs at. When the passenger starts at a stop, that is the stop and
+	/// platform the provider names for the first (last) leg, not the stop's centre point the search returned;
+	/// when it is an address or a point of interest, it is that place and the walk leads from there.
+	/// </summary>
+	private static (double Latitude, double Longitude)? Terminal(
+		Station? searched,
+		Station? legStation,
+		(double Latitude, double Longitude)? fallback)
+	{
+		bool isStop =
+			searched is null
+			|| (legStation is not null
+				&& string.Equals(searched.Id, legStation.Id, StringComparison.OrdinalIgnoreCase));
+
+		return isStop
+			? Position(legStation) ?? Position(searched) ?? fallback
+			: Position(searched) ?? Position(legStation) ?? fallback;
+	}
+
 	public static MapScene FromJourney(Journey journey)
 	{
 		ArgumentNullException.ThrowIfNull(journey);
 
 		var lines = new List<MapLine>();
 		var markers = new List<MapMarker>();
+
+		JourneyLeg? first = journey.Legs.FirstOrDefault();
+		JourneyLeg? last = journey.Legs.LastOrDefault();
+
+		Station? origin = journey.Origin ?? journey.From;
+		Station? destination = journey.Destination ?? journey.To;
+
+		(double Latitude, double Longitude)? startPoint =
+			Terminal(origin, first?.From, first is not null ? FirstOf(LegPoints(first)) : null);
+
+		(double Latitude, double Longitude)? endPoint =
+			Terminal(destination, last?.To, last is not null ? LastOf(LegPoints(last)) : null);
 
 		for (int index = 0; index < journey.Legs.Count; index++)
 		{
@@ -112,7 +144,12 @@ public static class MapScenes
 
 			if (points.Count >= 2)
 			{
-				lines.Add(new MapLine(points, ModeColor(leg.Mode), false, 6));
+				lines.Add(
+					new MapLine(
+						points,
+						ModeColor(leg.Mode),
+						leg.Mode == TransitMode.Walk,
+						leg.Mode == TransitMode.Walk ? 5 : 6));
 			}
 
 			string lineName =
@@ -120,13 +157,15 @@ public static class MapScenes
 					? name
 					: Format.TransportMode(leg.Mode);
 
-			if ((Position(leg.From) ?? FirstOf(points)) is { } start)
+			// Boarding and alighting stops; the start and end markers stand for the first and the last of them.
+			if (index > 0
+				&& (Position(leg.From) ?? FirstOf(points)) is { } board)
 			{
 				markers.Add(
 					new MapMarker(
 						$"leg{index}-from",
-						start.Latitude,
-						start.Longitude,
+						board.Latitude,
+						board.Longitude,
 						string.Empty,
 						MapMarkerKind.Stop,
 						ModeColor(leg.Mode),
@@ -134,14 +173,14 @@ public static class MapScenes
 						$"{lineName} · {Format.TimeOrDash(leg.EffectiveDeparture)}"));
 			}
 
-			if (index == journey.Legs.Count - 1
-				&& (Position(leg.To) ?? LastOf(points)) is { } end)
+			if (index < journey.Legs.Count - 1
+				&& (Position(leg.To) ?? LastOf(points)) is { } alight)
 			{
 				markers.Add(
 					new MapMarker(
 						$"leg{index}-to",
-						end.Latitude,
-						end.Longitude,
+						alight.Latitude,
+						alight.Longitude,
 						string.Empty,
 						MapMarkerKind.Stop,
 						ModeColor(leg.Mode),
@@ -158,40 +197,32 @@ public static class MapScenes
 			}
 		}
 
-		Station? origin = journey.Origin ?? journey.From;
-		Station? destination = journey.Destination ?? journey.To;
-
-		JourneyLeg? first = journey.Legs.FirstOrDefault();
-		JourneyLeg? last = journey.Legs.LastOrDefault();
-
-		if ((Position(origin)
-				?? (first is not null ? FirstOf(LegPoints(first)) : null)) is { } startPoint)
+		if (startPoint is { } startAt)
 		{
 			markers.Add(
 				new MapMarker(
 					"start",
-					startPoint.Latitude,
-					startPoint.Longitude,
+					startAt.Latitude,
+					startAt.Longitude,
 					string.Empty,
 					MapMarkerKind.Start,
 					null,
-					origin?.Name,
-					Strings.MapStart));
+					origin?.Name ?? first?.From.Name,
+					$"{Strings.MapStart} · {Format.TimeOrDash(journey.Departure)}"));
 		}
 
-		if ((Position(destination)
-				?? (last is not null ? LastOf(LegPoints(last)) : null)) is { } endPoint)
+		if (endPoint is { } endAt)
 		{
 			markers.Add(
 				new MapMarker(
 					"end",
-					endPoint.Latitude,
-					endPoint.Longitude,
+					endAt.Latitude,
+					endAt.Longitude,
 					string.Empty,
 					MapMarkerKind.End,
 					null,
-					destination?.Name,
-					Strings.MapEnd));
+					destination?.Name ?? last?.To.Name,
+					$"{Strings.MapEnd} · {Format.TimeOrDash(journey.Arrival)}"));
 		}
 
 		return new MapScene
@@ -310,6 +341,90 @@ public static class MapScenes
 										delay
 									}.Where(part => part.Length > 0)));
 						})]
+		};
+	}
+
+	/// <summary>
+	/// One followed run: its whole course drawn faintly, its stops, and the matched vehicle (when one was found)
+	/// on top, in the colour of its delay.
+	/// </summary>
+	public static MapScene FromTrack(
+		TrackTarget target,
+		LiveVehicle? vehicle,
+		bool fit)
+	{
+		ArgumentNullException.ThrowIfNull(target);
+
+		string color = ModeColor(target.Mode);
+		ExtrasStrings strings = Strings;
+
+		var points =
+			target.Course
+				.Where(point => Position(point.Latitude, point.Longitude) is not null)
+				.ToArray();
+
+		var markers = new List<MapMarker>();
+		var lines = new List<MapLine>();
+
+		if (points.Length >= 2)
+		{
+			lines.Add(
+				new MapLine(
+					[.. points.Select(point => (point.Latitude, point.Longitude))],
+					color,
+					false,
+					5,
+					0.4));
+		}
+
+		for (int index = 0; index < points.Length; index++)
+		{
+			CoursePoint point = points[index];
+
+			markers.Add(
+				new MapMarker(
+					$"trk{index}",
+					point.Latitude,
+					point.Longitude,
+					string.Empty,
+					MapMarkerKind.Stop,
+					color,
+					point.Name,
+					point.Time is { } time
+						? Format.Time(time)
+						: null));
+		}
+
+		if (vehicle is not null)
+		{
+			string delay =
+				vehicle.Delay is null
+					? string.Empty
+					: Format.Delay(vehicle.Delay) ?? strings.LiveOnTime;
+
+			markers.Add(
+				new MapMarker(
+					vehicle.Key,
+					vehicle.Latitude,
+					vehicle.Longitude,
+					vehicle.Line.ToString(CultureInfo.InvariantCulture),
+					MapMarkerKind.Vehicle,
+					DelayColor(vehicle.Delay),
+					string.Format(CultureInfo.CurrentCulture, strings.LiveLine, vehicle.Line),
+					string.Join(
+						" · ",
+						new[]
+						{
+							string.Format(CultureInfo.CurrentCulture, strings.LiveRun, vehicle.Run),
+							delay
+						}.Where(part => part.Length > 0))));
+		}
+
+		return new MapScene
+		{
+			Lines = lines,
+			Markers = markers,
+			Fit = fit
 		};
 	}
 

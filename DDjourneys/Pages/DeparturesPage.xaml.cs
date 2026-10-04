@@ -21,6 +21,12 @@ public partial class DeparturesPage : ContentPage, IQueryAttributable
 		_localization = LocalizationService.Current;
 		BindingContext = _vm = vm;
 
+		LiveRow.Command =
+			new Command(
+				() => _ = NavigateAsync(
+					Routes.Vehicles,
+					[]));
+
 		vm.OpenPlaceSearch = () =>
 			NavigateAsync(
 				Routes.PlaceSearch,
@@ -118,13 +124,6 @@ public partial class DeparturesPage : ContentPage, IQueryAttributable
 
 		return timer;
 	}
-
-	private async void LiveClicked(
-		object? sender,
-		EventArgs e) =>
-		await NavigateAsync(
-			Routes.Vehicles,
-			[]);
 
 	private async Task NavigateAsync(
 		string route,

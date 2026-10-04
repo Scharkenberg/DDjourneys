@@ -33,6 +33,9 @@ public static class Routes
 	public const string MapScene = "MapScene";
 	public const string MapTitle = "MapTitle";
 
+	/// <summary>Query key: a <c>TrackTarget</c>, the one run the live vehicles page follows.</summary>
+	public const string Track = "Track";
+
 	/// <summary>Query key: line number(s) the live vehicles page opens with.</summary>
 	public const string Line = "Line";
 
@@ -55,4 +58,8 @@ public static class Routes
 
 	/// <summary>Query key: line name the disruptions page is filtered to.</summary>
 	public const string LineName = "LineName";
+
+	/// <summary>The detail page of one disruption or network notice, and its query key.</summary>
+	public const string Disruption = "disruption";
+	public const string DisruptionData = "DisruptionData";
 }

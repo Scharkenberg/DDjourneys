@@ -256,6 +256,7 @@ public sealed class DeparturesViewModel : DisposableViewModel
 	private bool _isNow = true;
 	private bool _linesLoaded;
 	private Location? _accessibilityFor;
+	private bool _servicePointsLoaded;
 	private (double Latitude, double Longitude)? _here;
 	private IReadOnlyList<Departure> _current = [];
 	private CancellationTokenSource? _refresh;
@@ -631,6 +632,23 @@ public sealed class DeparturesViewModel : DisposableViewModel
 			? _localization.CurrentStrings.Extras.AccessHide
 			: _localization.CurrentStrings.Extras.AccessTitle;
 
+	/// <summary>What the lines section holds: how many lines serve the stop (once known).</summary>
+	public string LinesSummary =>
+		Lines.Count == 0
+			? string.Empty
+			: string.Format(
+				CultureInfo.CurrentCulture,
+				_localization.CurrentStrings.Extras.LinesCount,
+				Lines.Count);
+
+	public string ServicePointsSummary =>
+		_servicePointsLoaded && ServicePoints.Count > 0
+			? string.Format(
+				CultureInfo.CurrentCulture,
+				_localization.CurrentStrings.Extras.ServiceCount,
+				ServicePoints.Count)
+			: _localization.CurrentStrings.Extras.ServiceHint;
+
 	public string AccessibilityMessage
 	{
 		get => field;
@@ -708,12 +726,28 @@ public sealed class DeparturesViewModel : DisposableViewModel
 		Accessibility.Clear();
 		AccessibilityMessage = string.Empty;
 		_accessibilityFor = null;
+		ServicePoints.Clear();
+		ServicePointsMessage = string.Empty;
+		_servicePointsLoaded = false;
 		ZoneText = null;
 		Message = string.Empty;
 		OnPropertyChanged(nameof(HasLines));
+		OnPropertyChanged(nameof(LinesSummary));
+		OnPropertyChanged(nameof(ServicePointsSummary));
 
 		_ = RefreshAsync();
 		_ = LoadStopInfoAsync(stop);
+
+		// Sections the passenger left open follow the new stop.
+		if (ShowAccessibility)
+		{
+			_ = LoadAccessibilityAsync(stop);
+		}
+
+		if (ShowServicePoints)
+		{
+			_ = LoadServicePointsAsync();
+		}
 	}
 
 	/// <summary>Reloads the departures. <paramref name="silent"/>: no busy indicator, and an error keeps what is shown.</summary>
@@ -895,12 +929,17 @@ public sealed class DeparturesViewModel : DisposableViewModel
 	{
 		ShowAccessibility = !ShowAccessibility;
 
-		if (!ShowAccessibility
-			|| Stop is not { } stop
-			|| ReferenceEquals(_accessibilityFor, stop))
+		if (ShowAccessibility
+			&& Stop is { } stop
+			&& !ReferenceEquals(_accessibilityFor, stop))
 		{
-			return;
+			await LoadAccessibilityAsync(stop);
 		}
+	}
+
+	private async Task LoadAccessibilityAsync(Location stop)
+	{
+		AccessibilityMessage = _localization.CurrentStrings.Common.Loading;
 
 		try
 		{
@@ -939,11 +978,15 @@ public sealed class DeparturesViewModel : DisposableViewModel
 	{
 		ShowServicePoints = !ShowServicePoints;
 
-		if (!ShowServicePoints)
+		if (ShowServicePoints
+			&& !_servicePointsLoaded)
 		{
-			return;
+			await LoadServicePointsAsync();
 		}
+	}
 
+	private async Task LoadServicePointsAsync()
+	{
 		(double Latitude, double Longitude)? around =
 			Stop is { Latitude: { } latitude, Longitude: { } longitude }
 				? (latitude, longitude)
@@ -956,6 +999,10 @@ public sealed class DeparturesViewModel : DisposableViewModel
 			return;
 		}
 
+		ServicePointsMessage = _localization.CurrentStrings.Common.Loading;
+
+		Location? forStop = Stop;
+
 		try
 		{
 			IReadOnlyList<ServicePoint> points =
@@ -964,7 +1011,8 @@ public sealed class DeparturesViewModel : DisposableViewModel
 					center.Longitude,
 					timeout: TimeSpan.FromSeconds(_settings.TimeoutSeconds));
 
-			if (IsDisposed)
+			if (IsDisposed
+				|| !ReferenceEquals(Stop, forStop))
 			{
 				return;
 			}
@@ -976,10 +1024,14 @@ public sealed class DeparturesViewModel : DisposableViewModel
 				ServicePoints.Add(new ServicePointRow(point));
 			}
 
+			_servicePointsLoaded = true;
+
 			ServicePointsMessage =
 				points.Count == 0
 					? _localization.CurrentStrings.Extras.ServiceNone
 					: string.Empty;
+
+			OnPropertyChanged(nameof(ServicePointsSummary));
 		}
 		catch (Exception ex)
 		{
@@ -1106,6 +1158,7 @@ public sealed class DeparturesViewModel : DisposableViewModel
 
 			_linesLoaded = true;
 			OnPropertyChanged(nameof(HasLines));
+			OnPropertyChanged(nameof(LinesSummary));
 		}
 		catch (OperationCanceledException)
 		{
@@ -1209,6 +1262,8 @@ public sealed class DeparturesViewModel : DisposableViewModel
 				OnPropertyChanged(nameof(LinesToggleText));
 				OnPropertyChanged(nameof(AccessibilityToggleText));
 				OnPropertyChanged(nameof(ServicePointsToggleText));
+				OnPropertyChanged(nameof(LinesSummary));
+				OnPropertyChanged(nameof(ServicePointsSummary));
 				RebuildRows();
 			});
 

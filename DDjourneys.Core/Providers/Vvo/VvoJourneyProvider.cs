@@ -115,7 +115,9 @@ public sealed class VvoJourneyProvider :
 				VvoJourneyMapper.Map(
 					response,
 					query.From,
-					query.To);
+					query.To,
+					query.DateTime,
+					query.SearchMode == JourneySearchMode.Arrival);
 
 			RememberRouting(journeys, query.Routing);
 
@@ -471,7 +473,9 @@ public sealed class VvoJourneyProvider :
 				VvoJourneyMapper.Map(
 					response,
 					query.From,
-					query.To);
+					query.To,
+					query.DateTime,
+					query.SearchMode == JourneySearchMode.Arrival);
 
 			RememberRouting(journeys, query.Routing);
 
@@ -579,7 +583,9 @@ public sealed class VvoJourneyProvider :
 				VvoJourneyMapper.Map(
 					response,
 					query.From,
-					query.To);
+					query.To,
+					query.DateTime,
+					query.SearchMode == JourneySearchMode.Arrival);
 
 			RememberRouting(journeys, query.Routing);
 

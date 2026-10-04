@@ -49,7 +49,7 @@
 													<Label StyleClass="Faint" Text="{Binding Coverage}" />
 
 													<!--  What it supports: informative, not tappable, so pill-shaped chips are fine  -->
-													<FlexLayout
+													<FlexLayout AlignContent="Start" AlignItems="Start"
 														Margin="0,4,0,0"
 														BindableLayout.ItemsSource="{Binding Capabilities}"
 														Wrap="Wrap">

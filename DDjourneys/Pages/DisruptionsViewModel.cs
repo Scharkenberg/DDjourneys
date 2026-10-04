@@ -19,10 +19,16 @@ public sealed record DisruptionLineRow(
 }
 
 
-/// <summary>A route change as the list shows it; the description opens on tap.</summary>
+/// <summary>
+/// One entry of the list: a route change or a general notice of the network. The list shows the title, the lines,
+/// the period and a short excerpt; the full text opens on its own page, so nothing in the list changes height or
+/// moves when an entry is tapped.
+/// </summary>
 public sealed class DisruptionRow : ObservableObject
 {
-	private readonly Disruption _change;
+	private const int ExcerptLength = 160;
+
+	private readonly Disruption? _change;
 
 	public DisruptionRow(Disruption change)
 	{
@@ -30,25 +36,38 @@ public sealed class DisruptionRow : ObservableObject
 
 		_change = change;
 
+		Id = change.Id;
+		Title = change.Title;
+		Description = change.Description;
+		Html = HtmlOf(change.DescriptionHtml, change.Description);
+
 		Lines =
 			[.. change.Lines.Select(line => new DisruptionLineRow(line))];
-
-		ToggleCommand =
-			new Command(
-				() => IsExpanded = !IsExpanded);
 	}
 
-	public string Id =>
-		_change.Id;
+	public DisruptionRow(NetworkBanner banner)
+	{
+		ArgumentNullException.ThrowIfNull(banner);
 
-	public string Title =>
-		_change.Title;
+		Id = string.Empty;
+		Title = banner.Title;
+		Description = banner.Description;
+		Html = HtmlOf(banner.DescriptionHtml, banner.Description);
+		Lines = [];
+		IsBanner = true;
+	}
 
-	public string Description =>
-		_change.Description;
+	public string Id { get; }
 
-	public bool HasDescription =>
-		Description.Length > 0;
+	public string Title { get; }
+
+	/// <summary>Plain text of the description.</summary>
+	public string Description { get; }
+
+	/// <summary>The description as HTML for the detail page (the provider's markup, or the plain text in paragraphs).</summary>
+	public string Html { get; }
+
+	public bool IsBanner { get; }
 
 	public IReadOnlyList<DisruptionLineRow> Lines { get; }
 
@@ -56,7 +75,7 @@ public sealed class DisruptionRow : ObservableObject
 		Lines.Count > 0;
 
 	public bool AffectsRouting =>
-		_change.AffectsRouting;
+		_change?.AffectsRouting == true;
 
 	public string KindText
 	{
@@ -65,14 +84,37 @@ public sealed class DisruptionRow : ObservableObject
 			DisruptionsStrings strings =
 				LocalizationService.Current.CurrentStrings.Disruptions;
 
-			return _change.IsPlanned
-				? strings.Planned
-				: strings.ShortTerm;
+			return IsBanner
+				? strings.Notices
+				: _change!.IsPlanned
+					? strings.Planned
+					: strings.ShortTerm;
 		}
 	}
 
 	public string AffectsRoutingText =>
 		LocalizationService.Current.CurrentStrings.Disruptions.AffectsRouting;
+
+	/// <summary>First part of the description on one line, for the list.</summary>
+	public string Excerpt
+	{
+		get
+		{
+			string text =
+				string.Join(
+					" ",
+					Description.Split(
+						['\r', '\n', '\t', ' '],
+						StringSplitOptions.RemoveEmptyEntries));
+
+			return text.Length <= ExcerptLength
+				? text
+				: text[..ExcerptLength].TrimEnd() + "…";
+		}
+	}
+
+	public bool HasExcerpt =>
+		Excerpt.Length > 0;
 
 	/// <summary>The first validity period, as "from – until".</summary>
 	public string? PeriodText
@@ -80,7 +122,7 @@ public sealed class DisruptionRow : ObservableObject
 		get
 		{
 			DisruptionPeriod? period =
-				_change.Periods.FirstOrDefault();
+				_change?.Periods.FirstOrDefault();
 
 			if (period is null)
 			{
@@ -109,43 +151,28 @@ public sealed class DisruptionRow : ObservableObject
 	public bool HasPeriod =>
 		PeriodText is not null;
 
-	public bool IsExpanded
+	public string Summary =>
+		string.Join(
+			", ",
+			new[] { KindText, Title, PeriodText }.Where(part => !string.IsNullOrEmpty(part)));
+
+	private static string HtmlOf(string html, string plain)
 	{
-		get => field;
-
-		private set
+		if (!string.IsNullOrWhiteSpace(html))
 		{
-			if (SetProperty(ref field, value))
-			{
-				OnPropertyChanged(nameof(ShowDescription));
-			}
+			return html;
 		}
+
+		return string.Concat(
+			plain
+				.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+				.Select(line => $"<p>{System.Net.WebUtility.HtmlEncode(line)}</p>"));
 	}
-
-	public bool ShowDescription =>
-		IsExpanded && HasDescription;
-
-	public Command ToggleCommand { get; }
 
 	private static string? Stamp(DateTimeOffset? value) =>
 		value is { } moment
 			? moment.ToLocalTime().ToString("g", CultureInfo.CurrentCulture)
 			: null;
-}
-
-
-/// <summary>A general notice of the network.</summary>
-public sealed record BannerRow(
-	NetworkBanner Banner)
-{
-	public string Title =>
-		Banner.Title;
-
-	public string Description =>
-		Banner.Description;
-
-	public bool HasDescription =>
-		Description.Length > 0;
 }
 
 
@@ -158,6 +185,7 @@ public sealed class DisruptionsViewModel : DisposableViewModel, IQueryAttributab
 	private readonly NetworkService _network;
 	private readonly LocalizationService _localization;
 	private IReadOnlyList<Disruption> _changes = [];
+	private IReadOnlyList<NetworkBanner> _banners = [];
 	private HashSet<string> _only = new(StringComparer.Ordinal);
 	private CancellationTokenSource? _load;
 	private CancellationTokenSource? _build;
@@ -186,15 +214,20 @@ public sealed class DisruptionsViewModel : DisposableViewModel, IQueryAttributab
 					OnPropertyChanged(nameof(IsLimited));
 					_ = RebuildAsync();
 				});
+
+		OpenCommand =
+			new AsyncCommand<DisruptionRow>(
+				OpenAsync);
 	}
 
 	public AsyncCommand RefreshCommand { get; }
 
 	public Command ShowAllCommand { get; }
 
-	public ObservableCollection<DisruptionRow> Rows { get; } = [];
+	/// <summary>Opens the full text of an entry on its own page.</summary>
+	public AsyncCommand<DisruptionRow> OpenCommand { get; }
 
-	public ObservableCollection<BannerRow> Banners { get; } = [];
+	public ObservableCollection<DisruptionRow> Rows { get; } = [];
 
 	public bool ShortTermOnly
 	{
@@ -230,9 +263,6 @@ public sealed class DisruptionsViewModel : DisposableViewModel, IQueryAttributab
 		get => field;
 		private set => SetProperty(ref field, value);
 	}
-
-	public bool HasBanners =>
-		Banners.Count > 0;
 
 	public string Message
 	{
@@ -303,14 +333,8 @@ public sealed class DisruptionsViewModel : DisposableViewModel, IQueryAttributab
 			_changes = report.Changes;
 			_loaded = true;
 
-			Banners.Clear();
+			_banners = report.Banners;
 
-			foreach (NetworkBanner banner in report.Banners)
-			{
-				Banners.Add(new BannerRow(banner));
-			}
-
-			OnPropertyChanged(nameof(HasBanners));
 			_ = RebuildAsync();
 		}
 		catch (OperationCanceledException)
@@ -383,30 +407,61 @@ public sealed class DisruptionsViewModel : DisposableViewModel, IQueryAttributab
 
 			Disruption[] shown = [.. source];
 
+			// General notices of the network lead the list, unless the list is narrowed down.
+			DisruptionRow[] entries =
+				[
+					.. names.Length == 0 && _only.Count == 0
+						? _banners.Select(banner => new DisruptionRow(banner))
+						: [],
+					.. shown.Select(change => new DisruptionRow(change))
+				];
+
 			Rows.Clear();
 
-			for (int i = 0; i < shown.Length; i += BatchSize)
+			for (int i = 0; i < entries.Length; i += BatchSize)
 			{
 				cts.Token.ThrowIfCancellationRequested();
 
-				foreach (Disruption change in shown.Skip(i).Take(BatchSize))
+				foreach (DisruptionRow row in entries.Skip(i).Take(BatchSize))
 				{
-					Rows.Add(new DisruptionRow(change));
+					Rows.Add(row);
 				}
 
-				if (i + BatchSize < shown.Length)
+				if (i + BatchSize < entries.Length)
 				{
 					await Task.Delay(16, cts.Token);
 				}
 			}
 
 			Message =
-				shown.Length == 0 && _loaded
+				entries.Length == 0 && _loaded
 					? _localization.CurrentStrings.Disruptions.None
 					: string.Empty;
 		}
 		catch (OperationCanceledException)
 		{
+		}
+	}
+
+	private async Task OpenAsync(DisruptionRow row)
+	{
+		if (row is null)
+		{
+			return;
+		}
+
+		try
+		{
+			await Shell.Current.GoToAsync(
+				Routes.Disruption,
+				new ShellNavigationQueryParameters
+				{
+					[Routes.DisruptionData] = row
+				});
+		}
+		catch (Exception ex)
+		{
+			System.Diagnostics.Debug.WriteLine($"Opening a disruption failed: {ex.Message}");
 		}
 	}
 

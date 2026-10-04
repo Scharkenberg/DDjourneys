@@ -23,10 +23,21 @@ body.dark .maplibregl-ctrl-group button .maplibregl-ctrl-icon { filter: invert(1
 .maplibregl-ctrl-group:not(:empty) { box-shadow: none; }
 .maplibregl-ctrl-group button + button { border-top: 1px solid var(--outline); }
 .maplibregl-ctrl-group button:not(:disabled):hover { background: var(--accent-soft); }
-.maplibregl-ctrl-attrib { background: color-mix(in srgb, var(--surface) 82%, transparent) !important; color: var(--ink-muted); border-radius: var(--radius) 0 0 0; }
-.maplibregl-ctrl-attrib a { color: var(--ink-muted); }
-.maplibregl-ctrl-attrib-button { background-color: transparent; }
-body.dark .maplibregl-ctrl-attrib-button { filter: invert(1); }
+.dd-attr { position: relative; margin: 0 6px 6px 0; }
+.dd-attr > button { width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--outline); background: color-mix(in srgb, var(--surface) 88%, transparent); color: var(--ink-muted);
+	font: 700 12px/1 Georgia, serif; font-style: italic; cursor: pointer; padding: 0; display: block; margin-left: auto; }
+.dd-attr > div { display: none; position: absolute; right: 0; bottom: 28px; white-space: nowrap; background: var(--surface); color: var(--ink-muted); border: 1px solid var(--outline);
+	border-radius: var(--radius); padding: 4px 8px; font-size: 11px; line-height: 1.3; }
+.dd-attr.open > div { display: block; }
+.dd-attr a { color: var(--ink); text-decoration: underline; }
+.dd-fit { margin: 10px 0 0 10px; }
+.dd-fit button { display: flex; align-items: center; gap: 6px; height: 32px; padding: 0 10px 0 8px; border: 1px solid var(--outline); border-radius: var(--radius); background: var(--surface);
+	color: var(--ink); font-family: inherit; font-weight: 600; font-size: 12px; line-height: 1; cursor: pointer; }
+.dd-fit button i { width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--ink-muted); box-sizing: border-box; display: block; }
+.dd-fit button.on { background: var(--accent-soft); border-color: var(--accent); }
+.dd-fit button.on i { background: var(--accent); border-color: var(--accent); }
+.dd-fitnow button { width: 30px; height: 30px; padding: 0; display: flex; align-items: center; justify-content: center; }
+.dd-fitnow svg { width: 18px; height: 18px; stroke: var(--ink); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .maplibregl-popup-content { background: var(--surface); color: var(--ink); border: 1px solid var(--outline); border-radius: var(--radius-card); box-shadow: 0 2px 10px rgba(0,0,0,.25); padding: 8px 12px; font: inherit; }
 .maplibregl-popup-anchor-top .maplibregl-popup-tip { border-bottom-color: var(--surface); }
 .maplibregl-popup-anchor-bottom .maplibregl-popup-tip { border-top-color: var(--surface); }
@@ -57,7 +68,8 @@ body.dark .maplibregl-ctrl-attrib-button { filter: invert(1); }
 (function () {
 	'use strict';
 
-	var map = null, key = '', theme = null, styleName = null, styleReady = false, attribAdded = false;
+	var map = null, key = '', theme = null, styleName = null, styleReady = false;
+	var autoFit = true, labels = { autoFit: 'Auto-fit', fitNow: 'Fit', info: 'Map data' }, autoButton = null;
 	var scene = { markers: [], lines: [] }, wantFit = false;
 	var markers = {};
 	var errors = 0;
@@ -198,7 +210,7 @@ body.dark .maplibregl-ctrl-attrib-button { filter: invert(1); }
 		var features = (scene.lines || []).map(function (line) {
 			return {
 				type: 'Feature',
-				properties: { color: line.color, weight: line.weight || 5, dashed: !!line.dashed },
+				properties: { color: line.color, weight: line.weight || 5, dashed: !!line.dashed, opacity: line.opacity == null ? 1 : line.opacity },
 				geometry: { type: 'LineString', coordinates: line.points.map(function (pt) { return [pt[1], pt[0]]; }) }
 			};
 		});
@@ -213,13 +225,13 @@ body.dark .maplibregl-ctrl-attrib-button { filter: invert(1); }
 
 		map.addLayer({ id: 'dd-casing', type: 'line', source: 'dd-lines', layout: layout,
 			filter: ['!', ['get', 'dashed']],
-			paint: { 'line-color': caseColor, 'line-width': ['+', ['get', 'weight'], 4] } }, before);
+			paint: { 'line-color': caseColor, 'line-width': ['+', ['get', 'weight'], 4], 'line-opacity': ['get', 'opacity'] } }, before);
 		map.addLayer({ id: 'dd-line', type: 'line', source: 'dd-lines', layout: layout,
 			filter: ['!', ['get', 'dashed']],
-			paint: { 'line-color': ['get', 'color'], 'line-width': ['get', 'weight'] } }, before);
+			paint: { 'line-color': ['get', 'color'], 'line-width': ['get', 'weight'], 'line-opacity': ['get', 'opacity'] } }, before);
 		map.addLayer({ id: 'dd-line-dash', type: 'line', source: 'dd-lines', layout: { 'line-join': 'round' },
 			filter: ['get', 'dashed'],
-			paint: { 'line-color': ['get', 'color'], 'line-width': ['get', 'weight'], 'line-dasharray': [1.2, 1.6] } }, before);
+			paint: { 'line-color': ['get', 'color'], 'line-width': ['get', 'weight'], 'line-opacity': ['get', 'opacity'], 'line-dasharray': [1.2, 1.6] } }, before);
 	}
 
 	// ---- markers ----
@@ -328,6 +340,29 @@ body.dark .maplibregl-ctrl-attrib-button { filter: invert(1); }
 		document.body.classList.toggle('zl', map.getZoom() >= 14.2);
 	}
 
+	// A minimal MapLibre control built from a class name and a function that fills its box.
+	function control(className, build) {
+		var box = null;
+
+		return {
+			onAdd: function () { box = document.createElement('div'); box.className = className; build(box); return box; },
+			onRemove: function () { if (box && box.parentNode) { box.parentNode.removeChild(box); } box = null; }
+		};
+	}
+
+	function refreshAuto() {
+		if (!autoButton) { return; }
+
+		autoButton.className = autoFit ? 'on' : '';
+		autoButton.setAttribute('aria-pressed', autoFit ? 'true' : 'false');
+		autoButton.lastChild.textContent = labels.autoFit;
+	}
+
+	function setAuto(on) {
+		autoFit = !!on;
+		refreshAuto();
+	}
+
 	// ---- map lifecycle ----
 	function createMap() {
 		styleName = theme.dark ? 'dark-matter' : 'voyager';
@@ -338,7 +373,7 @@ body.dark .maplibregl-ctrl-attrib-button { filter: invert(1); }
 			center: [13.7373, 51.0504],
 			zoom: 12,
 			maxZoom: 19,
-			attributionControl: { compact: true },
+			attributionControl: false,
 			dragRotate: false,
 			pitchWithRotate: false,
 			touchPitch: false,
@@ -354,24 +389,53 @@ body.dark .maplibregl-ctrl-attrib-button { filter: invert(1); }
 
 		map.touchZoomRotate.disableRotation();
 		map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
+		map.addControl(control('maplibregl-ctrl maplibregl-ctrl-group dd-fitnow', function (box) {
+			var b = document.createElement('button');
+			b.type = 'button';
+			b.title = labels.fitNow;
+			b.setAttribute('aria-label', labels.fitNow);
+			b.innerHTML = '<svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>';
+			b.addEventListener('click', function () { fit(); });
+			box.appendChild(b);
+		}), 'top-right');
+		map.addControl(control('maplibregl-ctrl dd-fit', function (box) {
+			autoButton = document.createElement('button');
+			autoButton.type = 'button';
+			autoButton.innerHTML = '<i></i><span></span>';
+			autoButton.addEventListener('click', function () {
+				setAuto(!autoFit);
+				send('auto:' + autoFit);
+				if (autoFit) { fit(); }
+			});
+			box.appendChild(autoButton);
+			refreshAuto();
+		}), 'top-left');
+		map.addControl(control('maplibregl-ctrl dd-attr', function (box) {
+			var b = document.createElement('button');
+			b.type = 'button';
+			b.textContent = 'i';
+			b.title = labels.info;
+			b.setAttribute('aria-label', labels.info);
+			var d = document.createElement('div');
+			d.innerHTML = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a> &middot; <a href="https://maplibre.org">MapLibre</a>';
+			b.addEventListener('click', function (e) { e.stopPropagation(); box.classList.toggle('open'); });
+			box.appendChild(d);
+			box.appendChild(b);
+			map.on('movestart', function () { box.classList.remove('open'); });
+			document.addEventListener('click', function () { box.classList.remove('open'); });
+		}), 'bottom-right');
+
+		// Moving the map by hand ends automatic fitting (a fixed view is what the person asked for by moving it).
+		['dragstart', 'zoomstart'].forEach(function (name) {
+			map.on(name, function (e) {
+				if (e && e.originalEvent && autoFit) { setAuto(false); }
+			});
+		});
+
 		map.on('zoom', updateLabelZoom);
 
 		map.on('style.load', function () {
 			styleReady = true;
-
-			// If the style carries no attribution of its own, say whose data this is.
-			if (!attribAdded) {
-				var sources = (map.getStyle() || {}).sources || {};
-				var has = Object.keys(sources).some(function (k) { return sources[k].attribution; });
-
-				if (!has) {
-					attribAdded = true;
-					map.addControl(new maplibregl.AttributionControl({
-						compact: true,
-						customAttribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-					}));
-				}
-			}
 
 			recolor();
 			drawLines();
@@ -422,6 +486,8 @@ body.dark .maplibregl-ctrl-attrib-button { filter: invert(1); }
 			case 'init':
 				key = arg.key || '';
 				theme = arg.theme;
+				if (arg.labels) { labels = arg.labels; }
+				autoFit = arg.autoFit !== false;
 				document.body.classList.toggle('dark', !!theme.dark);
 				if (!map) { createMap(); setTheme(theme); applyMarkers(); }
 				break;
@@ -434,7 +500,10 @@ body.dark .maplibregl-ctrl-attrib-button { filter: invert(1); }
 				scene = arg;
 				applyMarkers();
 
-				if (styleReady) { drawLines(); if (scene.fit) { fit(); } } else { wantFit = !!scene.fit; }
+				// A scene that asks for it (first showing) is fitted; with Auto-fit on, every update is.
+				var doFit = !!scene.fit || autoFit;
+
+				if (styleReady) { drawLines(); if (doFit) { fit(); } } else { wantFit = doFit; }
 				break;
 
 			case 'focus':

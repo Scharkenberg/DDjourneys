@@ -157,6 +157,13 @@ public sealed class VehiclesViewModel : DisposableViewModel, IQueryAttributable
 	private bool _dirty;
 	private bool _fitNext;
 
+	// Following one run: the target, the vehicle matched to it and what the match is based on.
+	private TrackTarget? _target;
+	private LiveVehicle? _matched;
+	private double _matchedScore;
+	private DateTimeOffset _matchedSeen;
+	private readonly Dictionary<string, LiveVehicle> _previous = [];
+
 	public VehiclesViewModel(
 		VehicleService vehicles)
 	{
@@ -188,6 +195,18 @@ public sealed class VehiclesViewModel : DisposableViewModel, IQueryAttributable
 		ToggleChipCommand =
 			new AsyncCommand<LineChip>(
 				ToggleChipAsync);
+
+		ShowAllCommand =
+			new AsyncCommand(
+				async () =>
+				{
+					_target = null;
+					OnPropertyChanged(nameof(IsTracking));
+					OnPropertyChanged(nameof(IsNotTracking));
+					OnPropertyChanged(nameof(IsIdle));
+
+					await StartAsync();
+				});
 
 		AllLinesCommand =
 			new AsyncCommand(
@@ -222,6 +241,24 @@ public sealed class VehiclesViewModel : DisposableViewModel, IQueryAttributable
 	public AsyncCommand<LineChip> ToggleChipCommand { get; }
 
 	public AsyncCommand AllLinesCommand { get; }
+
+	/// <summary>Leaves the followed run and shows every vehicle of its line.</summary>
+	public AsyncCommand ShowAllCommand { get; }
+
+	/// <summary>One run is followed (opened from a journey or a departure), not a whole line.</summary>
+	public bool IsNotTracking => !IsTracking;
+
+	public bool IsTracking =>
+		_target is not null;
+
+	public string TrackText =>
+		_target is { } target
+			? string.Format(
+				CultureInfo.CurrentCulture,
+				_localization.CurrentStrings.Extras.TrackFollowing,
+				target.Line,
+				target.Direction ?? string.Empty).Trim()
+			: string.Empty;
 
 	public IReadOnlyList<LineChip> Chips { get; }
 
@@ -282,7 +319,8 @@ public sealed class VehiclesViewModel : DisposableViewModel, IQueryAttributable
 	}
 
 	public bool IsIdle =>
-		!IsStreaming;
+		!IsStreaming
+		&& _target is null;
 
 	public string Status
 	{
@@ -303,6 +341,24 @@ public sealed class VehiclesViewModel : DisposableViewModel, IQueryAttributable
 	public void ApplyQueryAttributes(
 		IDictionary<string, object> query)
 	{
+		if (query.TryGetValue(Routes.Track, out object? tracked)
+			&& tracked is TrackTarget target
+			&& target.IsUsable)
+		{
+			_target = target;
+			LineFilter = target.Line;
+
+			OnPropertyChanged(nameof(LineFilter));
+			OnPropertyChanged(nameof(IsTracking));
+					OnPropertyChanged(nameof(IsNotTracking));
+			OnPropertyChanged(nameof(TrackText));
+			OnPropertyChanged(nameof(IsIdle));
+
+			_ = StartAsync();
+
+			return;
+		}
+
 		if (query.TryGetValue(Routes.Line, out object? value)
 			&& value is string line
 			&& !string.IsNullOrWhiteSpace(line))
@@ -332,7 +388,10 @@ public sealed class VehiclesViewModel : DisposableViewModel, IQueryAttributable
 			&& HasStatus
 			&& DateTimeOffset.UtcNow - _startedAt > EmptyAfter)
 		{
-			Status = _localization.CurrentStrings.Extras.LiveEmpty;
+			Status =
+				_target is null
+					? _localization.CurrentStrings.Extras.LiveEmpty
+					: _localization.CurrentStrings.Extras.TrackNotFound;
 		}
 	}
 
@@ -349,9 +408,11 @@ public sealed class VehiclesViewModel : DisposableViewModel, IQueryAttributable
 
 		SceneChanged?.Invoke(
 			this,
-			MapScenes.FromVehicles(
-				Rows.Select(row => row.Vehicle),
-				fit));
+			_target is { } target
+				? MapScenes.FromTrack(target, _matched, false)
+				: MapScenes.FromVehicles(
+					Rows.Select(row => row.Vehicle),
+					fit));
 	}
 
 	private static (IReadOnlyList<int> Lines, IReadOnlyList<string> Ignored) ParseLines(string text)
@@ -426,6 +487,9 @@ public sealed class VehiclesViewModel : DisposableViewModel, IQueryAttributable
 
 		Rows.Clear();
 		_byKey.Clear();
+		_previous.Clear();
+		_matched = null;
+		_matchedScore = double.MaxValue;
 
 		(IReadOnlyList<int> lines, IReadOnlyList<string> ignored) = ParseLines(LineFilter);
 
@@ -440,7 +504,12 @@ public sealed class VehiclesViewModel : DisposableViewModel, IQueryAttributable
 		_fitNext = true;
 		_dirty = false;
 
-		SceneChanged?.Invoke(this, new MapScene { Fit = false });
+		// Following a run: its course is on the map from the start, before any position arrives.
+		SceneChanged?.Invoke(
+			this,
+			_target is { } followed
+				? MapScenes.FromTrack(followed, null, true)
+				: new MapScene { Fit = false });
 
 		IsStreaming = true;
 		Status = strings.LiveConnecting;
@@ -455,6 +524,13 @@ public sealed class VehiclesViewModel : DisposableViewModel, IQueryAttributable
 				if (cts.IsCancellationRequested || IsDisposed)
 				{
 					return;
+				}
+
+				if (_target is { } trackedTarget)
+				{
+					ApplyTracked(trackedTarget, vehicle);
+
+					continue;
 				}
 
 				if (HasStatus)
@@ -486,6 +562,102 @@ public sealed class VehiclesViewModel : DisposableViewModel, IQueryAttributable
 				IsStreaming = false;
 			}
 		}
+	}
+
+	/// <summary>
+	/// Following one run: every position of the line is scored against the course; the best fit is shown and kept
+	/// until another vehicle fits clearly better or the shown one stops reporting.
+	/// </summary>
+	private void ApplyTracked(
+		TrackTarget target,
+		LiveVehicle vehicle)
+	{
+		if (_matched is null
+			&& Status == _localization.CurrentStrings.Extras.LiveConnecting)
+		{
+			Status = _localization.CurrentStrings.Extras.LiveWaiting;
+		}
+
+		_previous.TryGetValue(vehicle.Key, out LiveVehicle? before);
+
+		// Keep the older position as the reference for the direction of travel until it is far enough away.
+		if (before is null
+			|| RunMatcherMoved(before, vehicle))
+		{
+			_previous[vehicle.Key] = vehicle;
+		}
+
+		double? score = RunMatcher.Score(target, vehicle, before);
+
+		bool isMatched = _matched is not null && _matched.Key == vehicle.Key;
+
+		if (isMatched)
+		{
+			if (score is null)
+			{
+				// The shown vehicle no longer fits (its run ended, or noise): let another one take over.
+				_matchedScore = double.MaxValue;
+			}
+			else
+			{
+				_matchedScore = score.Value;
+				_matched = vehicle;
+				_matchedSeen = DateTimeOffset.UtcNow;
+				ShowMatched(vehicle);
+			}
+
+			return;
+		}
+
+		if (score is not { } value)
+		{
+			return;
+		}
+
+		bool stale =
+			_matched is null
+			|| DateTimeOffset.UtcNow - _matchedSeen > TimeSpan.FromSeconds(150)
+			|| _matchedScore == double.MaxValue;
+
+		if (stale
+			|| value + 45 < _matchedScore)
+		{
+			_matched = vehicle;
+			_matchedScore = value;
+			_matchedSeen = DateTimeOffset.UtcNow;
+
+			Rows.Clear();
+			_byKey.Clear();
+
+			ShowMatched(vehicle);
+		}
+	}
+
+	private static bool RunMatcherMoved(
+		LiveVehicle from,
+		LiveVehicle to) =>
+		Math.Abs(from.Latitude - to.Latitude) * 110_540 > 25
+		|| Math.Abs(from.Longitude - to.Longitude) * 70_000 > 25;
+
+	private void ShowMatched(LiveVehicle vehicle)
+	{
+		if (HasStatus)
+		{
+			Status = string.Empty;
+		}
+
+		_dirty = true;
+
+		if (_byKey.TryGetValue(vehicle.Key, out VehicleRow? row))
+		{
+			row.Update(vehicle);
+
+			return;
+		}
+
+		row = new VehicleRow(vehicle);
+		_byKey[row.Key] = row;
+		Rows.Add(row);
 	}
 
 	private void Apply(LiveVehicle vehicle)

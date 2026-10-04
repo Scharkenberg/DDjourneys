@@ -208,6 +208,22 @@ public sealed partial class PlanViewModel : DisposableViewModel
 			new Command(
 				() => Safe(GoHome));
 
+		HomeCommand =
+			new AsyncCommand(
+				() => SafeAsync(
+					() =>
+					{
+						if (HasHome)
+						{
+							GoHome();
+
+							return Task.CompletedTask;
+						}
+
+						return SetHomeAsync();
+					}),
+				() => !IsLocating);
+
 		SaveRouteCommand =
 			new AsyncCommand(
 				() => SafeAsync(SaveRouteAsync));
@@ -285,6 +301,9 @@ public sealed partial class PlanViewModel : DisposableViewModel
 	public AsyncCommand UseLocationToCommand { get; }
 
 	public AsyncCommand SetHomeCommand { get; }
+
+	/// <summary>The home row: goes home when home is set, otherwise sets it to the stop nearest to the passenger.</summary>
+	public AsyncCommand HomeCommand { get; }
 
 	public Command GoHomeCommand { get; }
 
@@ -719,6 +738,15 @@ public sealed partial class PlanViewModel : DisposableViewModel
 		!HasHome;
 
 
+	public string HomeName =>
+		_store.Home?.Name
+		?? _localization.CurrentStrings.Extras.HomeNotSet;
+
+
+	public string? HomePlace =>
+		_store.Home?.Place;
+
+
 	/// <summary>True while the device position is being looked up.</summary>
 	public bool IsLocating
 	{
@@ -731,6 +759,7 @@ public sealed partial class PlanViewModel : DisposableViewModel
 				UseLocationFromCommand.RaiseCanExecuteChanged();
 				UseLocationToCommand.RaiseCanExecuteChanged();
 				SetHomeCommand.RaiseCanExecuteChanged();
+				HomeCommand.RaiseCanExecuteChanged();
 			}
 		}
 	}
@@ -1377,6 +1406,12 @@ public sealed partial class PlanViewModel : DisposableViewModel
 
 				OnPropertyChanged(
 					nameof(NoHome));
+
+				OnPropertyChanged(
+					nameof(HomeName));
+
+				OnPropertyChanged(
+					nameof(HomePlace));
 
 				OnPropertyChanged(
 					nameof(HasRecents));

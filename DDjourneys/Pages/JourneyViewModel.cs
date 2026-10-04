@@ -637,12 +637,41 @@ public sealed class JourneyViewModel :
 
 		try
 		{
-			await Shell.Current.GoToAsync(
-				Routes.Vehicles,
+			var parameters =
 				new ShellNavigationQueryParameters
 				{
 					[Routes.Line] = row.LineNumber
-				});
+				};
+
+			// The leg that was tapped is the run to follow: line, direction and the stops with their times.
+			if (row.Source is { } leg)
+			{
+				TrackTarget target =
+					new()
+					{
+						Line = row.LineNumber,
+						Mode = leg.Mode,
+						Direction = leg.Line?.Destination,
+						Course =
+							[.. leg.Stops
+								.Where(stop => stop.Station.Latitude is not null && stop.Station.Longitude is not null)
+								.Select(
+									stop => new CoursePoint(
+										stop.Station.Latitude!.Value,
+										stop.Station.Longitude!.Value,
+										stop.EffectiveDeparture ?? stop.EffectiveArrival,
+										stop.Station.Name))]
+					};
+
+				if (target.IsUsable)
+				{
+					parameters[Routes.Track] = target;
+				}
+			}
+
+			await Shell.Current.GoToAsync(
+				Routes.Vehicles,
+				parameters);
 		}
 		catch (Exception ex)
 		{

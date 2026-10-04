@@ -260,35 +260,38 @@
 						support:Motion.Breathe="True"
 						TextColor="{DynamicResource Accent}" />
 
-					<Button
-						Padding="12,0"
-						Command="{Binding Source={RelativeSource AncestorType={x:Type local:JourneyViewModel}}, x:DataType=local:JourneyViewModel, Path=ShowLiveCommand}"
-						CommandParameter="{Binding .}"
-						FontSize="{StaticResource FontCaption}"
-						HorizontalOptions="Start"
-						IsVisible="{Binding CanShowLive}"
-						support:Dense.MinHeight="36"
-						StyleClass="Tonal"
-						Text="{localization:Tr Extras.LiveShow}" />
-
-					<HorizontalStackLayout IsVisible="{Binding Source={RelativeSource AncestorType={x:Type local:JourneyViewModel}}, x:DataType=local:JourneyViewModel, Path=HasLegAlternatives}" Spacing="8">
+					<FlexLayout AlignContent="Start" AlignItems="Start" Wrap="Wrap">
 						<Button
+							Margin="0,0,8,8"
+							Padding="12,0"
+							Command="{Binding Source={RelativeSource AncestorType={x:Type local:JourneyViewModel}}, x:DataType=local:JourneyViewModel, Path=ShowLiveCommand}"
+							CommandParameter="{Binding .}"
+							FontSize="{StaticResource FontCaption}"
+							IsVisible="{Binding CanShowLive}"
+							support:Dense.MinHeight="36"
+							StyleClass="Tonal"
+							Text="{localization:Tr Extras.LiveShow}" />
+						<Button
+							Margin="0,0,8,8"
 							Padding="12,0"
 							Command="{Binding Source={RelativeSource AncestorType={x:Type local:JourneyViewModel}}, x:DataType=local:JourneyViewModel, Path=LegEarlierCommand}"
 							CommandParameter="{Binding .}"
 							FontSize="{StaticResource FontCaption}"
+							IsVisible="{Binding Source={RelativeSource AncestorType={x:Type local:JourneyViewModel}}, x:DataType=local:JourneyViewModel, Path=HasLegAlternatives}"
 							support:Dense.MinHeight="36"
 							StyleClass="Tonal"
 							Text="{localization:Tr Journey.LegEarlier}" />
 						<Button
+							Margin="0,0,8,8"
 							Padding="12,0"
 							Command="{Binding Source={RelativeSource AncestorType={x:Type local:JourneyViewModel}}, x:DataType=local:JourneyViewModel, Path=LegLaterCommand}"
 							CommandParameter="{Binding .}"
 							FontSize="{StaticResource FontCaption}"
+							IsVisible="{Binding Source={RelativeSource AncestorType={x:Type local:JourneyViewModel}}, x:DataType=local:JourneyViewModel, Path=HasLegAlternatives}"
 							support:Dense.MinHeight="36"
 							StyleClass="Tonal"
 							Text="{localization:Tr Journey.LegLater}" />
-					</HorizontalStackLayout>
+					</FlexLayout>
 
 					<HorizontalStackLayout support:Motion.Feedback="True"
 						IsVisible="{Binding HasIntermediates}"
@@ -559,16 +562,23 @@
 					StyleClass="Caption"
 					Text="{Binding AlternativeStatus}" />
 
-				<Button
-					Command="{Binding OpenMapCommand}"
-					StyleClass="Tonal"
-					Text="{localization:Tr Extras.MapShow}" />
-
-				<Button
-					Command="{Binding OpenDocumentCommand}"
-					IsVisible="{Binding HasDocument}"
-					StyleClass="Tonal"
-					Text="{localization:Tr Journey.OpenPdf}" />
+				<FlexLayout AlignContent="Start" AlignItems="Start" Wrap="Wrap">
+					<Button
+						Margin="0,0,8,8"
+						Command="{Binding OpenMapCommand}"
+						FlexLayout.Grow="1"
+						FlexLayout.Basis="140"
+						StyleClass="Tonal"
+						Text="{localization:Tr Extras.MapShow}" />
+					<Button
+						Margin="0,0,8,8"
+						Command="{Binding OpenDocumentCommand}"
+						FlexLayout.Grow="1"
+						FlexLayout.Basis="140"
+						IsVisible="{Binding HasDocument}"
+						StyleClass="Tonal"
+						Text="{localization:Tr Journey.OpenPdf}" />
+				</FlexLayout>
 
 				<VerticalStackLayout IsVisible="{Binding IsHandOffAvailable}" Spacing="8">
 					<Button Command="{Binding HandOffCommand}" Text="{localization:Tr Journey.HandOff}" />

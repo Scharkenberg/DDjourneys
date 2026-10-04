@@ -187,7 +187,29 @@ public sealed class GermanUiStrings : IUiStrings
 		MapNoData = "Dafür liegen keine Positionen für eine Karte vor.",
 		MapStart = "Start",
 		MapEnd = "Ziel",
-		RunDeparted = "Dieses Fahrzeug ist bereits abgefahren; der Verlauf ist nicht mehr verfügbar."
+		RunDeparted = "Dieses Fahrzeug ist bereits abgefahren; der Verlauf ist nicht mehr verfügbar.",
+		MapAutoFit = "Auto-Ausschnitt",
+		MapFitNow = "Alles anzeigen",
+		MapInfo = "Kartendaten",
+		TrackFollowing = "Folge Linie {0} {1}",
+		TrackNotFound = "Diese Fahrt meldet gerade keine Position. Vielleicht ist sie noch nicht gestartet oder das Fahrzeug sendet keine Funktelegramme.",
+		TrackShowAll = "Alle Fahrzeuge der Linie zeigen",
+		TrackOnlyThisRun = "Nur diese Fahrt wird gezeigt, mit ihrem gesamten Verlauf.",
+		NoticeClose = "Schließen",
+		NoticeImageFailed = "Das Bild konnte nicht geladen werden.",
+		NoticeEmpty = "Diese Meldung enthält keinen weiteren Text.",
+		NoticeLinkFailed = "Dieser Link konnte nicht geöffnet werden.",
+		AroundTitle = "Rund um die Haltestelle",
+		LinesTitle = "Linien an dieser Haltestelle",
+		LinesCount = "{0} Linien",
+		ServiceTitle = "Servicestellen",
+		ServiceHint = "Fahrkartenautomaten und Kundenzentren in der Nähe",
+		ServiceCount = "{0} in der Nähe",
+		AccessHint = "Einstiegshöhe, Blindenleitsystem, Sprachansage",
+		MapSummary = "Haltestelle, Haltestellen in der Nähe und geöffnete Bereiche auf der Karte",
+		LiveSummary = "Wo die Fahrzeuge einer Linie gerade sind",
+		HomeTitle = "Zuhause",
+		HomeNotSet = "Nicht festgelegt: Tippen, um die nächste Haltestelle zu verwenden"
 	};
 	// </extras>
 

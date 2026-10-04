@@ -32,8 +32,16 @@ public sealed record MapTheme(
 		return Encoding.UTF8.GetString(stream.ToArray());
 	}
 
-	/// <summary>The JSON for <c>ddMapCall('init', ...)</c>: the CARTO key (may be empty) and the theme.</summary>
-	public string ToInitJson(string cartoKey)
+	/// <summary>
+	/// The JSON for <c>ddMapCall('init', ...)</c>: the CARTO key (may be empty), the theme, whether the view
+	/// follows the scene, and the texts of the map's own controls.
+	/// </summary>
+	public string ToInitJson(
+		string cartoKey,
+		bool autoFit,
+		string autoFitLabel,
+		string fitNowLabel,
+		string infoLabel)
 	{
 		using var stream = new MemoryStream();
 
@@ -41,6 +49,13 @@ public sealed record MapTheme(
 		{
 			writer.WriteStartObject();
 			writer.WriteString("key", cartoKey);
+			writer.WriteBoolean("autoFit", autoFit);
+			writer.WritePropertyName("labels");
+			writer.WriteStartObject();
+			writer.WriteString("autoFit", autoFitLabel);
+			writer.WriteString("fitNow", fitNowLabel);
+			writer.WriteString("info", infoLabel);
+			writer.WriteEndObject();
 			writer.WritePropertyName("theme");
 			Write(writer);
 			writer.WriteEndObject();

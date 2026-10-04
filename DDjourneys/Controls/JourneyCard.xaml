@@ -75,7 +75,7 @@
 			</Grid>
 
 			<!--  Legs  -->
-			<FlexLayout BindableLayout.ItemsSource="{Binding Chips}" Wrap="Wrap">
+			<FlexLayout AlignContent="Start" AlignItems="Start" BindableLayout.ItemsSource="{Binding Chips}" Wrap="Wrap">
 				<BindableLayout.ItemTemplate>
 					<DataTemplate x:DataType="support:LegChip">
 						<Border

@@ -198,6 +198,7 @@ public static class MauiProgram
 		builder.Services.AddTransient<RunPage>();
 		builder.Services.AddTransient<RunViewModel>();
 		builder.Services.AddTransient<DisruptionsPage>();
+		builder.Services.AddTransient<DisruptionPage>();
 		builder.Services.AddTransient<DisruptionsViewModel>();
 
 		builder.Services.AddTransient<RoutingSettingsPage>();

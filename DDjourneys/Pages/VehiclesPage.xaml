@@ -30,13 +30,37 @@
 				</Grid>
 			</Border>
 
+			<!--  Following one run: what is shown and the way back to the whole line  -->
+			<Border
+				Padding="14,12"
+				IsVisible="{Binding IsTracking}"
+				StyleClass="Card">
+				<VerticalStackLayout Spacing="8">
+					<Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+						<controls:Icon
+							Glyph="Bus"
+							Size="20"
+							VerticalOptions="Start"
+							Color="{DynamicResource Accent}" />
+						<VerticalStackLayout Grid.Column="1" Spacing="2">
+							<Label FontFamily="{DynamicResource FontSemibold}" Text="{Binding TrackText}" />
+							<Label StyleClass="Caption" Text="{localization:Tr Extras.TrackOnlyThisRun}" />
+						</VerticalStackLayout>
+					</Grid>
+					<Button
+						Command="{Binding ShowAllCommand}"
+						StyleClass="Tonal"
+						Text="{localization:Tr Extras.TrackShowAll}" />
+				</VerticalStackLayout>
+			</Border>
+
 			<!--  The map  -->
 			<Border Padding="0" StyleClass="Card">
 				<controls:MapView x:Name="Map" HeightRequest="320" />
 			</Border>
 
 			<!--  Which lines  -->
-			<VerticalStackLayout Spacing="6">
+			<VerticalStackLayout IsVisible="{Binding IsNotTracking}" Spacing="6">
 				<Label StyleClass="Caption" Text="{localization:Tr Extras.LineFilterLabel}" />
 
 				<Border Padding="10,0" StyleClass="Card">
@@ -57,7 +81,7 @@
 
 				<Label StyleClass="Caption" Text="{localization:Tr Extras.LiveQuickLines}" />
 
-				<FlexLayout BindableLayout.ItemsSource="{Binding Chips}" Wrap="Wrap">
+				<FlexLayout AlignContent="Start" AlignItems="Start" BindableLayout.ItemsSource="{Binding Chips}" Wrap="Wrap">
 					<BindableLayout.ItemTemplate>
 						<DataTemplate x:DataType="local:LineChip">
 							<Border
@@ -114,7 +138,7 @@
 				</Border>
 			</VerticalStackLayout>
 
-			<Grid ColumnDefinitions="*,*" ColumnSpacing="{DynamicResource SpaceS}">
+			<Grid ColumnDefinitions="*,*" ColumnSpacing="{DynamicResource SpaceS}" IsVisible="{Binding IsNotTracking}">
 				<Button
 					Command="{Binding StartCommand}"
 					Text="{localization:Tr Extras.LiveStart}" />

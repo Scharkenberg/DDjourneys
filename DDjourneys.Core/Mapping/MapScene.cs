@@ -46,7 +46,8 @@ public sealed record MapLine(
 	IReadOnlyList<(double Latitude, double Longitude)> Points,
 	string Color,
 	bool Dashed = false,
-	int Weight = 5);
+	int Weight = 5,
+	double Opacity = 1);
 
 
 /// <summary>
@@ -147,6 +148,7 @@ public sealed class MapScene
 				writer.WriteString("color", line.Color);
 				writer.WriteBoolean("dashed", line.Dashed);
 				writer.WriteNumber("weight", line.Weight);
+				writer.WriteNumber("opacity", Math.Clamp(line.Opacity, 0.05, 1));
 				writer.WriteStartArray("points");
 
 				foreach ((double latitude, double longitude) in points)

@@ -183,7 +183,29 @@ public sealed class EnglishUiStrings : IUiStrings
 		MapNoData = "There are no positions to show on a map for this item.",
 		MapStart = "Start",
 		MapEnd = "Destination",
-		RunDeparted = "This vehicle has already left; its course is no longer available."
+		RunDeparted = "This vehicle has already left; its course is no longer available.",
+		MapAutoFit = "Auto-fit",
+		MapFitNow = "Show everything",
+		MapInfo = "Map data",
+		TrackFollowing = "Following line {0} {1}",
+		TrackNotFound = "This run reports no position right now. It may not have started yet, or its vehicle sends no radio telegrams.",
+		TrackShowAll = "Show all vehicles of the line",
+		TrackOnlyThisRun = "Only this run is shown, with its whole course.",
+		NoticeClose = "Close",
+		NoticeImageFailed = "The image could not be loaded.",
+		NoticeEmpty = "This notice has no further text.",
+		NoticeLinkFailed = "This link could not be opened.",
+		AroundTitle = "Around this stop",
+		LinesTitle = "Lines at this stop",
+		LinesCount = "{0} lines",
+		ServiceTitle = "Service points",
+		ServiceHint = "Ticket machines and customer centres near here",
+		ServiceCount = "{0} nearby",
+		AccessHint = "Boarding height, tactile guidance, audio information",
+		MapSummary = "Stop, stops nearby and open sections on a map",
+		LiveSummary = "Where the vehicles of a line are right now",
+		HomeTitle = "Home",
+		HomeNotSet = "Not set: tap to use the stop nearest to you"
 	};
 	// </extras>
 

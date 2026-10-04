@@ -48,11 +48,24 @@ public static class JourneyShareText
 		{
 			switch (step.Kind)
 			{
-				case ShareStepKind.Walk:
-					builder.AppendLine(
-						$"{Symbol(TransitMode.Walk)} {Time(step.Time)}  " +
-						$"{text.Walk} {Duration(step.Duration)} {text.To} {step.To}".TrimEnd());
+				case ShareStepKind.Depart:
+					builder.AppendLine($"\U0001F4CD {Time(step.Time)}  {text.Depart} {step.To}");
 					break;
+
+				case ShareStepKind.Walk:
+					{
+						string walk = $"{text.Walk} {Duration(step.Duration)} {text.To} {step.To}".Replace("  ", " ");
+
+						string wait =
+							step.WaitTime is { } left && left >= TimeSpan.FromMinutes(1)
+								? $" · {Format.Duration(left)} {text.ToChange}"
+								: string.Empty;
+
+						string risk = step.IsEndangered ? $" ⚠ {text.ConnectionMayBeMissed}" : string.Empty;
+
+						builder.AppendLine($"{Symbol(TransitMode.Walk)} {Time(step.Time)}  {walk}{wait}{risk}");
+						break;
+					}
 
 				case ShareStepKind.Ride:
 					AppendRide(builder, step, text);

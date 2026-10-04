@@ -446,7 +446,7 @@
 
 														<Label StyleClass="Section" Text="{localization:Tr Tracking.Alerts}" />
 
-														<FlexLayout Wrap="Wrap">
+														<FlexLayout AlignContent="Start" AlignItems="Start" Wrap="Wrap">
 
 															<Border support:Motion.Feedback="True" Margin="0,0,8,8" StyleClass="ChipButton">
 																<HorizontalStackLayout Spacing="6">
