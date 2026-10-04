@@ -171,7 +171,23 @@ public sealed class GermanUiStrings : IUiStrings
 		OptLowestFare = "Niedrigster Preis",
 		OptNote = "Nur der Anbieter VVO (TRIAS) berücksichtigt diese Auswahl; andere Anbieter suchen immer die schnellste Verbindung.",
 		FaresTitle = "Tickets und Preise",
-		PdfFailed = "Das PDF konnte nicht geladen werden. Details stehen in der Protokolldatei diagnostics.log."
+		PdfFailed = "Das PDF konnte nicht geladen werden. Details stehen in der Protokolldatei diagnostics.log.",
+		LiveHowTitle = "So funktioniert's",
+		LiveHowText = "Eine oder mehrere Liniennummern durch Komma getrennt eingeben (zum Beispiel 3, 11) oder unten Linien antippen; leer lassen, um alle Fahrzeuge zu sehen. Dann auf Anzeigen tippen: Die Fahrzeuge erscheinen auf der Karte und in der Liste und bewegen sich mit jeder neuen Position. Ein Fahrzeug in der Liste antippen, um es auf der Karte zu finden.",
+		LineFilterLabel = "Liniennummern (optional)",
+		LiveQuickLines = "Straßenbahnlinien",
+		LiveAllLines = "Alle Linien",
+		LiveInvalid = "Ignoriert, keine Liniennummer: {0}",
+		LiveEmpty = "Noch keine Positionen empfangen. Nicht jedes Fahrzeug meldet seine Position; andere Linien probieren oder das Feld leer lassen.",
+		LiveCount = "{0} Fahrzeuge",
+		MapTitle = "Karte",
+		MapShow = "Auf der Karte zeigen",
+		MapJourneyTitle = "Karte der Verbindung",
+		MapStopTitle = "Haltestellen in der Nähe",
+		MapNoData = "Dafür liegen keine Positionen für eine Karte vor.",
+		MapStart = "Start",
+		MapEnd = "Ziel",
+		RunDeparted = "Dieses Fahrzeug ist bereits abgefahren; der Verlauf ist nicht mehr verfügbar."
 	};
 	// </extras>
 

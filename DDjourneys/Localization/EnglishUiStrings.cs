@@ -167,7 +167,23 @@ public sealed class EnglishUiStrings : IUiStrings
 		OptLowestFare = "Lowest fare",
 		OptNote = "Only the VVO (TRIAS) provider honours this choice; other providers always search for the fastest route.",
 		FaresTitle = "Tickets and prices",
-		PdfFailed = "The PDF could not be loaded. Details are in the log file diagnostics.log."
+		PdfFailed = "The PDF could not be loaded. Details are in the log file diagnostics.log.",
+		LiveHowTitle = "How it works",
+		LiveHowText = "Type one or more line numbers separated by commas (for example 3, 11) or tap the lines below; leave the field empty to see every vehicle. Then tap Show: the vehicles appear on the map and in the list and move as new positions arrive. Tap a vehicle in the list to find it on the map.",
+		LineFilterLabel = "Line numbers (optional)",
+		LiveQuickLines = "Tram lines",
+		LiveAllLines = "All lines",
+		LiveInvalid = "Ignored, not a line number: {0}",
+		LiveEmpty = "No positions received yet. Not every vehicle reports its position; try other lines or leave the field empty.",
+		LiveCount = "{0} vehicles",
+		MapTitle = "Map",
+		MapShow = "Show on map",
+		MapJourneyTitle = "Journey map",
+		MapStopTitle = "Stops nearby",
+		MapNoData = "There are no positions to show on a map for this item.",
+		MapStart = "Start",
+		MapEnd = "Destination",
+		RunDeparted = "This vehicle has already left; its course is no longer available."
 	};
 	// </extras>
 

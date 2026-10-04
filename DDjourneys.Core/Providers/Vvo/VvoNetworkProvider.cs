@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using System.Globalization;
 using DDjourneys.Core.Models;
 using DDjourneys.Core.Providers.Abstractions;
@@ -67,6 +68,40 @@ public sealed class VvoNetworkProvider :
 			: VvoNetworkMapper.MapBoard(response, query.Stop, query.IsArrival);
 	}
 
+	private static readonly Lazy<TimeZoneInfo> VvoZone =
+		new(
+			() =>
+			{
+				foreach (string id in new[] { "Europe/Berlin", "W. Europe Standard Time" })
+				{
+					try
+					{
+						return TimeZoneInfo.FindSystemTimeZoneById(id);
+					}
+					catch (Exception ex) when (ex is TimeZoneNotFoundException or InvalidTimeZoneException)
+					{
+					}
+				}
+
+				return TimeZoneInfo.Local;
+			});
+
+	/// <summary>
+	/// "/Date(ms+0200)/" with the offset of the provider zone, as the API writes it itself. The server
+	/// compares the wall-clock time (milliseconds plus offset) with its own clock, so "+0000" made a time
+	/// two hours ahead look like it was in the past.
+	/// </summary>
+	private static string ToVvoDate(
+		DateTimeOffset value)
+	{
+		TimeSpan offset =
+			VvoZone.Value.GetUtcOffset(value);
+
+		return string.Create(
+			CultureInfo.InvariantCulture,
+			$"/Date({value.ToUnixTimeMilliseconds()}{(offset < TimeSpan.Zero ? '-' : '+')}{Math.Abs(offset.Hours):00}{Math.Abs(offset.Minutes):00})/");
+	}
+
 	/// <inheritdoc />
 	public async Task<IReadOnlyList<RunStop>> GetRunAsync(
 		Departure departure,
@@ -80,7 +115,21 @@ public sealed class VvoNetworkProvider :
 			return [];
 		}
 
-		// The run is the one that is next at this stop at this time: stop and time stay as the monitor gave them.
+		// The server rejects a time that is not in the future ("time has to be a valid time in the future"),
+		// and it matches against the real-time departure. So: the real-time time, and for a vehicle that is
+		// already under way (its time at this stop has passed) the earliest accepted time; the trip id
+		// still selects the run.
+		DateTimeOffset now =
+			DateTimeOffset.UtcNow.AddSeconds(10);
+
+		DateTimeOffset time =
+			departure.Effective > now
+				? departure.Effective
+				: now;
+
+		DiagnosticLog.Write(
+			$"[VVO run] trip {departure.Id} stop {departure.StopId} shown {departure.Effective:O} sent {ToVvoDate(time)}");
+
 		VvoRunResponse? response =
 			await _apiClient.GetDepartureRunAsync(
 				new VvoDepartureRunRequest
@@ -88,10 +137,7 @@ public sealed class VvoNetworkProvider :
 					TripId = departure.Id,
 					StopId = departure.StopId,
 					IsArrival = departure.IsArrival,
-					Time =
-						string.Create(
-							CultureInfo.InvariantCulture,
-							$"/Date({departure.Scheduled.ToUnixTimeMilliseconds()}+0000)/")
+					Time = ToVvoDate(time)
 				},
 				cancellationToken,
 				Timeout(timeoutSeconds))

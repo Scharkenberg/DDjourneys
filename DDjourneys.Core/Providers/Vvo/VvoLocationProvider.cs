@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using DDjourneys.Core.Models;
 using DDjourneys.Core.Providers.Abstractions;
 using DDjourneys.Core.Providers.Vvo.Mapping;
@@ -154,11 +155,34 @@ public sealed class VvoLocationProvider : ILocationProvider, IProviderDescriptor
 
 		cancellationToken.ThrowIfCancellationRequested();
 
-		return response?.Points
-			.Where(point => point.Kind == PlaceKind.Address && !string.IsNullOrWhiteSpace(point.Name))
-			.Select(Map)
-			.OrderBy(address => DistanceSquared(address, latitude, longitude))
-			.FirstOrDefault();
+		if (response is null)
+		{
+			DiagnosticLog.Write("[VVO position] no PointFinder response");
+
+			return null;
+		}
+
+		IReadOnlyList<VvoPoint> points =
+			response.Points;
+
+		DiagnosticLog.Write(
+			$"[VVO position] {points.Count} entries: "
+			+ string.Join(" ; ", points.Take(5).Select(point => $"{point.Kind}:{point.Id}={point.Name}")));
+
+		// The first entry of a coordinate query is the position itself, named after the street
+		// address there ("coord:4621020:504065:NAV4:Nöthnitzer Straße 46", type "c"). Entries with an
+		// address id come second; stops and points of interest are not "where the user is".
+		VvoPoint? best =
+			points.FirstOrDefault(
+				point => point.Kind == PlaceKind.Coordinate && !string.IsNullOrWhiteSpace(point.Name))
+			?? points
+				.Where(point => point.Kind == PlaceKind.Address && !string.IsNullOrWhiteSpace(point.Name))
+				.OrderBy(point => DistanceSquared(Map(point), latitude, longitude))
+				.FirstOrDefault();
+
+		return best is null
+			? null
+			: Map(best);
 	}
 
 

@@ -92,11 +92,22 @@ public sealed class RunViewModel : DisposableViewModel, IQueryAttributable
 		ShowLiveCommand =
 			new AsyncCommand(
 				ShowLiveAsync);
+
+		OpenMapCommand =
+			new AsyncCommand(
+				OpenMapAsync);
 	}
 
 	public AsyncCommand RefreshCommand { get; }
 
 	public AsyncCommand ShowLiveCommand { get; }
+
+	/// <summary>Shows the stops of the run (and where the vehicle is) on a map.</summary>
+	public AsyncCommand OpenMapCommand { get; }
+
+	/// <summary>At least two stops of the run have a position.</summary>
+	public bool CanShowMap =>
+		Rows.Count(row => row.Stop.Station.Latitude is not null && row.Stop.Station.Longitude is not null) >= 2;
 
 	/// <summary>The line is a plain number, so its vehicles can be looked up on the live page.</summary>
 	public bool CanShowLive =>
@@ -185,6 +196,33 @@ public sealed class RunViewModel : DisposableViewModel, IQueryAttributable
 		}
 	}
 
+	private async Task OpenMapAsync()
+	{
+		if (_departure is not { } departure)
+		{
+			return;
+		}
+
+		try
+		{
+			bool shown =
+				await MapScenes.OpenAsync(
+					MapScenes.FromRun(
+						[.. Rows.Select(row => row.Stop)],
+						departure.Line.Mode),
+					Title);
+
+			if (!shown)
+			{
+				Message = _localization.CurrentStrings.Extras.MapNoData;
+			}
+		}
+		catch (Exception ex)
+		{
+			System.Diagnostics.Debug.WriteLine($"Opening the map failed: {ex.Message}");
+		}
+	}
+
 	private async Task ShowLiveAsync()
 	{
 		if (!CanShowLive)
@@ -242,8 +280,12 @@ public sealed class RunViewModel : DisposableViewModel, IQueryAttributable
 
 			Message =
 				Rows.Count == 0
-					? _localization.CurrentStrings.Departures.NoRun
+					? departure.Effective < DateTimeOffset.UtcNow
+						? _localization.CurrentStrings.Extras.RunDeparted
+						: _localization.CurrentStrings.Departures.NoRun
 					: string.Empty;
+
+			OnPropertyChanged(nameof(CanShowMap));
 		}
 		catch (OperationCanceledException)
 		{

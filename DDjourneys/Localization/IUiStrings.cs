@@ -553,5 +553,21 @@ public sealed class ExtrasStrings
 	public required string OptNote { get; init; }
 	public required string FaresTitle { get; init; }
 	public required string PdfFailed { get; init; }
+	public required string LiveHowTitle { get; init; }
+	public required string LiveHowText { get; init; }
+	public required string LineFilterLabel { get; init; }
+	public required string LiveQuickLines { get; init; }
+	public required string LiveAllLines { get; init; }
+	public required string LiveInvalid { get; init; }
+	public required string LiveEmpty { get; init; }
+	public required string LiveCount { get; init; }
+	public required string MapTitle { get; init; }
+	public required string MapShow { get; init; }
+	public required string MapJourneyTitle { get; init; }
+	public required string MapStopTitle { get; init; }
+	public required string MapNoData { get; init; }
+	public required string MapStart { get; init; }
+	public required string MapEnd { get; init; }
+	public required string RunDeparted { get; init; }
 }
 // </extras>

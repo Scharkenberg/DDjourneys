@@ -45,6 +45,13 @@
 					StyleClass="Tonal"
 					Text="{localization:Tr Extras.LiveShow}" />
 
+				<Button
+					Command="{Binding OpenMapCommand}"
+					HorizontalOptions="Start"
+					IsVisible="{Binding CanShowMap}"
+					StyleClass="Tonal"
+					Text="{localization:Tr Extras.MapShow}" />
+
 				<Label
 					HorizontalTextAlignment="Center"
 					IsVisible="{Binding HasMessage}"

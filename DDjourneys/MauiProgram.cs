@@ -193,6 +193,7 @@ public static class MauiProgram
 		builder.Services.AddTransient<DeparturesPage>();
 		builder.Services.AddTransient<DeparturesViewModel>();
 		builder.Services.AddTransient<VehiclesPage>();
+		builder.Services.AddTransient<MapPage>();
 		builder.Services.AddTransient<VehiclesViewModel>();
 		builder.Services.AddTransient<RunPage>();
 		builder.Services.AddTransient<RunViewModel>();

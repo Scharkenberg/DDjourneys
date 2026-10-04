@@ -169,6 +169,14 @@
 											Spacing="4"
 											VerticalOptions="Center">
 
+											<!--  Route changes: before the time, so the times stay in one column on the right  -->
+											<controls:IconButton
+												Command="{Binding Source={RelativeSource AncestorType={x:Type local:DeparturesViewModel}}, x:DataType=local:DeparturesViewModel, Path=OpenChangesCommand}"
+												CommandParameter="{Binding .}"
+												Glyph="Warning"
+												IsVisible="{Binding HasChanges}"
+												SemanticProperties.Description="{localization:Tr Departures.RouteChanges}" />
+
 											<VerticalStackLayout Spacing="0" HorizontalOptions="End">
 												<Label
 													FontFamily="{DynamicResource FontSemibold}"
@@ -185,13 +193,6 @@
 													StyleClass="Caption"
 													Text="{Binding InText}" />
 											</VerticalStackLayout>
-
-											<controls:IconButton
-												Command="{Binding Source={RelativeSource AncestorType={x:Type local:DeparturesViewModel}}, x:DataType=local:DeparturesViewModel, Path=OpenChangesCommand}"
-												CommandParameter="{Binding .}"
-												Glyph="Warning"
-												IsVisible="{Binding HasChanges}"
-												SemanticProperties.Description="{localization:Tr Departures.RouteChanges}" />
 										</HorizontalStackLayout>
 
 										<Grid.GestureRecognizers>
@@ -247,6 +248,8 @@
 
 				<!--  Lines serving the stop  -->
 				<VerticalStackLayout IsVisible="{Binding HasStop}" Spacing="{DynamicResource SpaceS}">
+					<Button Command="{Binding OpenMapCommand}" StyleClass="Tonal" Text="{localization:Tr Extras.MapShow}" />
+
 					<Button Command="{Binding ToggleLinesCommand}" StyleClass="Tonal" Text="{Binding LinesToggleText}" />
 
 					<Border

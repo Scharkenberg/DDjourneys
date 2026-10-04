@@ -1,3 +1,4 @@
+using DDjourneys.Core.Mapping;
 using DDjourneys.Support;
 
 namespace DDjourneys.Pages;
@@ -13,6 +14,19 @@ public partial class VehiclesPage : ContentPage
 		InitializeComponent();
 		Motion.Prepare(this);
 		BindingContext = _vm = vm;
+
+		_vm.SceneChanged += OnSceneChanged;
+		_vm.FocusRequested += OnFocusRequested;
+	}
+
+	private void OnSceneChanged(object? sender, MapScene scene) =>
+		_ = Map.ShowAsync(scene);
+
+	// The map is at the top of the page: bring it into view, then centre the vehicle.
+	private async void OnFocusRequested(object? sender, string key)
+	{
+		await Scroller.ScrollToAsync(0, 0, true);
+		await Map.FocusAsync(key);
 	}
 
 	protected override void OnAppearing()
@@ -23,7 +37,7 @@ public partial class VehiclesPage : ContentPage
 		if (_timer is null)
 		{
 			_timer = Dispatcher.CreateTimer();
-			_timer.Interval = TimeSpan.FromSeconds(5);
+			_timer.Interval = TimeSpan.FromSeconds(2);
 			_timer.Tick += (_, _) => _vm.Tick();
 		}
 

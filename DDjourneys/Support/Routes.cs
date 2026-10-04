@@ -28,6 +28,11 @@ public static class Routes
 	public const string Vehicles = "vehicles";
 	public const string StopInfo = "stopinfo";
 
+	/// <summary>The map page, and its query keys: a <c>MapScene</c> and the page title.</summary>
+	public const string Map = "map";
+	public const string MapScene = "MapScene";
+	public const string MapTitle = "MapTitle";
+
 	/// <summary>Query key: line number(s) the live vehicles page opens with.</summary>
 	public const string Line = "Line";
 

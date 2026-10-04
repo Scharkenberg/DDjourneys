@@ -560,6 +560,11 @@
 					Text="{Binding AlternativeStatus}" />
 
 				<Button
+					Command="{Binding OpenMapCommand}"
+					StyleClass="Tonal"
+					Text="{localization:Tr Extras.MapShow}" />
+
+				<Button
 					Command="{Binding OpenDocumentCommand}"
 					IsVisible="{Binding HasDocument}"
 					StyleClass="Tonal"

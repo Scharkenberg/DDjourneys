@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<style>/*LEAFLET_CSS*/</style>
+<style>
+html, body, #map { height: 100%; margin: 0; padding: 0; background: #e8e8e8; }
+body.dark, body.dark #map { background: #1b1b1b; }
+.leaflet-container { font: 13px/1.35 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+.dd-icon { background: none; border: none; }
+.dd-icon > div { position: absolute; transform: translate(-50%, -50%); box-sizing: border-box; }
+.dd-dot { width: 14px; height: 14px; border-radius: 50%; background: #fff; border: 3px solid #1565c0; box-shadow: 0 0 0 1px rgba(0,0,0,.35); }
+body.dark .dd-dot { background: #262626; }
+.dd-end, .dd-start { width: 20px; height: 20px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.5), 0 1px 4px rgba(0,0,0,.4); }
+.dd-start { background: #2e7d32; }
+.dd-end { background: #c62828; }
+.dd-current { width: 20px; height: 20px; border-radius: 50%; background: #fff; border: 5px solid #1565c0; box-shadow: 0 0 0 4px rgba(21,101,192,.25); }
+.dd-me { width: 16px; height: 16px; border-radius: 50%; background: #1a73e8; border: 3px solid #fff; box-shadow: 0 0 0 6px rgba(26,115,232,.25); }
+.dd-poi { width: 14px; height: 14px; background: #ef6c00; border: 2px solid #fff; transform: translate(-50%, -50%) rotate(45deg) !important; box-shadow: 0 0 0 1px rgba(0,0,0,.4); }
+.dd-veh { color: #fff; font-weight: 700; font-size: 13px; line-height: 20px; height: 24px; min-width: 36px; padding: 0 7px; text-align: center; white-space: nowrap; border-radius: 12px; border: 2px solid #fff; box-shadow: 0 1px 5px rgba(0,0,0,.55); }
+.dd-pop b { display: block; }
+.dd-pop span { color: #666; }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<script>/*LEAFLET_JS*/</script>
+<script>
+(function () {
+	// Tile sources. CARTO's basemaps need no Referer header (plain OpenStreetMap tiles do, which a web view
+	// without an origin cannot send) and have a matching dark style. Attribution is required by both licences.
+	var attribution =
+		'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors ' +
+		'&copy; <a href="https://carto.com/attributions">CARTO</a>';
+	var options = { maxZoom: 19, attribution: attribution };
+	// Replaced by the app: "?key=<CARTO key>" (empty when no key is configured).
+	var key = '/*CARTO_QUERY*/';
+
+	var light = L.tileLayer('https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png' + key, options);
+	var dark = L.tileLayer('https://basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png' + key, options);
+
+	var map = L.map('map', { zoomControl: true, preferCanvas: true }).setView([51.0504, 13.7373], 12);
+	map.attributionControl.setPrefix('<a href="https://leafletjs.com">Leaflet</a>');
+
+	var lineLayer = L.layerGroup().addTo(map);
+	var markerLayer = L.layerGroup().addTo(map);
+	var markers = {};
+	var isDark = null;
+
+	function esc(value) {
+		return String(value == null ? '' : value).replace(/[&<>"]/g, function (c) {
+			return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+		});
+	}
+
+	function icon(m) {
+		var color = m.color || '#1565c0';
+		var html;
+
+		switch (m.kind) {
+			case 'vehicle':
+				html = '<div class="dd-veh" style="background:' + esc(color) + '">' + esc(m.label) + '</div>';
+				break;
+			case 'start': html = '<div class="dd-start"></div>'; break;
+			case 'end': html = '<div class="dd-end"></div>'; break;
+			case 'current': html = '<div class="dd-current" style="border-color:' + esc(color) + '"></div>'; break;
+			case 'me': html = '<div class="dd-me"></div>'; break;
+			case 'poi': html = '<div class="dd-poi"></div>'; break;
+			default: html = '<div class="dd-dot" style="border-color:' + esc(color) + '"></div>'; break;
+		}
+
+		return L.divIcon({ className: 'dd-icon', html: html, iconSize: [0, 0], iconAnchor: [0, 0] });
+	}
+
+	function popup(m) {
+		var title = m.title || (m.kind === 'vehicle' ? m.label : '');
+
+		if (!title && !m.subtitle) { return null; }
+
+		return '<div class="dd-pop"><b>' + esc(title) + '</b>' + (m.subtitle ? '<span>' + esc(m.subtitle) + '</span>' : '') + '</div>';
+	}
+
+	function setTheme(value) {
+		if (isDark === value) { return; }
+
+		isDark = value;
+		document.body.classList.toggle('dark', value);
+
+		map.removeLayer(value ? light : dark);
+		(value ? dark : light).addTo(map);
+	}
+
+	function fit() {
+		var bounds = L.latLngBounds([]);
+
+		lineLayer.eachLayer(function (layer) { bounds.extend(layer.getBounds()); });
+		markerLayer.eachLayer(function (layer) { bounds.extend(layer.getLatLng()); });
+
+		if (bounds.isValid()) {
+			map.fitBounds(bounds, { padding: [30, 30], maxZoom: 17 });
+		}
+	}
+
+	window.ddMap = {
+		set: function (scene) {
+			setTheme(!!scene.dark);
+
+			lineLayer.clearLayers();
+
+			(scene.lines || []).forEach(function (line) {
+				L.polyline(line.points, {
+					color: line.color,
+					weight: line.weight || 5,
+					opacity: 0.9,
+					dashArray: line.dashed ? '6 9' : null,
+					lineCap: 'round',
+					lineJoin: 'round'
+				}).addTo(lineLayer);
+			});
+
+			var seen = {};
+
+			(scene.markers || []).forEach(function (m) {
+				seen[m.id] = true;
+
+				var position = [m.lat, m.lon];
+				var content = popup(m);
+				var marker = markers[m.id];
+
+				if (marker) {
+					marker.setLatLng(position);
+					marker.setIcon(icon(m));
+
+					if (content) {
+						if (marker.getPopup()) { marker.setPopupContent(content); } else { marker.bindPopup(content); }
+					}
+				} else {
+					marker = L.marker(position, {
+						icon: icon(m),
+						keyboard: false,
+						zIndexOffset: m.kind === 'vehicle' ? 1000 : (m.kind === 'stop' ? 0 : 500)
+					}).addTo(markerLayer);
+
+					if (content) { marker.bindPopup(content); }
+
+					markers[m.id] = marker;
+				}
+			});
+
+			Object.keys(markers).forEach(function (id) {
+				if (!seen[id]) {
+					markerLayer.removeLayer(markers[id]);
+					delete markers[id];
+				}
+			});
+
+			if (scene.fit) { fit(); }
+		},
+
+		focus: function (id) {
+			var marker = markers[id];
+
+			if (marker) {
+				map.setView(marker.getLatLng(), Math.max(map.getZoom(), 16));
+
+				if (marker.getPopup()) { marker.openPopup(); }
+			}
+		},
+
+		fit: fit
+	};
+
+	setTheme(false);
+	window.addEventListener('resize', function () { map.invalidateSize(); });
+})();
+</script>
+</body>
+</html>

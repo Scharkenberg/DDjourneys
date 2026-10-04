@@ -367,6 +367,10 @@ public sealed class DeparturesViewModel : DisposableViewModel
 			new AsyncCommand<ServicePointRow>(
 				OpenServicePointAsync);
 
+		OpenMapCommand =
+			new AsyncCommand(
+				OpenMapAsync);
+
 		RefreshQuickPicks();
 	}
 
@@ -403,6 +407,9 @@ public sealed class DeparturesViewModel : DisposableViewModel
 	public AsyncCommand ToggleServicePointsCommand { get; }
 
 	public AsyncCommand<ServicePointRow> OpenServicePointCommand { get; }
+
+	/// <summary>Shows the stop, the stops near the passenger and the service points on a map.</summary>
+	public AsyncCommand OpenMapCommand { get; }
 
 	public ObservableCollection<AccessRow> Accessibility { get; } = [];
 
@@ -985,7 +992,36 @@ public sealed class DeparturesViewModel : DisposableViewModel
 	{
 		try
 		{
-			await Launcher.Default.OpenAsync(row.MapUri);
+			await MapScenes.OpenAsync(
+				MapScenes.FromStops(null, [], [row.Point]),
+				row.Name);
+		}
+		catch (Exception ex)
+		{
+			System.Diagnostics.Debug.WriteLine($"Opening the map failed: {ex.Message}");
+		}
+	}
+
+	private async Task OpenMapAsync()
+	{
+		try
+		{
+			ExtrasStrings strings = _localization.CurrentStrings.Extras;
+
+			bool shown =
+				await MapScenes.OpenAsync(
+					MapScenes.FromStops(
+						Stop,
+						Nearby.Select(row => row.Stop),
+						ShowServicePoints
+							? ServicePoints.Select(row => row.Point)
+							: []),
+					Stop?.Name ?? strings.MapStopTitle);
+
+			if (!shown)
+			{
+				Message = strings.MapNoData;
+			}
 		}
 		catch (Exception ex)
 		{

@@ -5,10 +5,10 @@ using DDjourneys.Controls;
 using DDjourneys.Core.Models;
 using DDjourneys.Core.Providers;
 using DDjourneys.Core.Providers.Abstractions;
+using DDjourneys.Core.Services;
 using DDjourneys.Core.Tracking;
 using DDjourneys.Localization;
 using DDjourneys.Support;
-using DDjourneys.Core.Services;
 using Location = DDjourneys.Core.Models.Location;
 
 namespace DDjourneys.Pages;
@@ -1206,11 +1206,24 @@ public sealed partial class PlanViewModel : DisposableViewModel
 				return null;
 			}
 
+			TimeSpan timeout =
+				TimeSpan.FromSeconds(_settings.TimeoutSeconds);
+
+			// "Start at my exact position": the address at the position, not the nearest stop.
+			if (_settings.ExactPosition
+				&& await _locations.ResolveAddressAsync(
+					here.Latitude,
+					here.Longitude,
+					timeout: timeout) is { } address)
+			{
+				return address;
+			}
+
 			IReadOnlyList<Location> stops =
 				await _locations.SearchByCoordinatesAsync(
 					here.Latitude,
 					here.Longitude,
-					timeout: TimeSpan.FromSeconds(_settings.TimeoutSeconds));
+					timeout: timeout);
 
 			if (stops.Count == 0)
 			{
@@ -1218,15 +1231,6 @@ public sealed partial class PlanViewModel : DisposableViewModel
 					_localization.CurrentStrings.Plan.NoStopNearby);
 
 				return null;
-			}
-
-			if (_settings.ExactPosition
-				&& await _locations.ResolveAddressAsync(
-					here.Latitude,
-					here.Longitude,
-					timeout: TimeSpan.FromSeconds(_settings.TimeoutSeconds)) is { } address)
-			{
-				return address;
 			}
 
 			return stops[0];

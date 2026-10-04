@@ -92,6 +92,10 @@ public sealed class JourneyViewModel :
 			new AsyncCommand<LegRow>(
 				ShowLiveAsync);
 
+		OpenMapCommand =
+			new AsyncCommand(
+				OpenMapAsync);
+
 		Subscribe(
 			() => _contract.Changed += OnContractChanged,
 			() => _contract.Changed -= OnContractChanged);
@@ -152,6 +156,9 @@ public sealed class JourneyViewModel :
 
 	public bool HasLiveVehicles =>
 		_providers.Supports(ProviderCapabilities.LiveVehicles);
+
+	/// <summary>Shows the whole journey on a map.</summary>
+	public AsyncCommand OpenMapCommand { get; }
 
 	/// <summary>Opens the printable version of the journey (tr/trippdf).</summary>
 	public AsyncCommand OpenDocumentCommand { get; }
@@ -640,6 +647,33 @@ public sealed class JourneyViewModel :
 		catch (Exception ex)
 		{
 			System.Diagnostics.Debug.WriteLine($"Opening the live page failed: {ex.Message}");
+		}
+	}
+
+
+	private async Task OpenMapAsync()
+	{
+		if (_journey is not { } journey)
+		{
+			return;
+		}
+
+		try
+		{
+			ExtrasStrings strings = _localization.CurrentStrings.Extras;
+
+			if (!await MapScenes.OpenAsync(
+					MapScenes.FromJourney(journey),
+					strings.MapJourneyTitle))
+			{
+				AlternativeStatus = strings.MapNoData;
+			}
+		}
+		catch (Exception ex)
+		{
+			System.Diagnostics.Debug.WriteLine($"Opening the map failed: {ex.Message}");
+
+			AlternativeStatus = ex.Message;
 		}
 	}
 

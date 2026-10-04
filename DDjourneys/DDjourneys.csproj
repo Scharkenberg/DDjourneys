@@ -27,8 +27,8 @@
 		<ApplicationId>dev.Scharkenberg.DDjourneys</ApplicationId>
 
 		<!-- Versions -->
-		<ApplicationDisplayVersion>0.6.1</ApplicationDisplayVersion>
-		<ApplicationVersion>28</ApplicationVersion>
+		<ApplicationDisplayVersion>0.7.0</ApplicationDisplayVersion>
+		<ApplicationVersion>1</ApplicationVersion>
 
 		<!-- To develop, package, and publish an app to the Microsoft Store, see: https://aka.ms/MauiTemplateUnpackaged -->
 		<WindowsPackageType>MSIX</WindowsPackageType>
@@ -43,27 +43,27 @@
 
 	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net11.0-android|AnyCPU'">
 	  <ApplicationId>dev.Scharkenberg.DDjourneys</ApplicationId>
-	  <ApplicationDisplayVersion>0.6.1</ApplicationDisplayVersion>
-	  <ApplicationVersion>28</ApplicationVersion>
+	  <ApplicationDisplayVersion>0.7.0</ApplicationDisplayVersion>
+	  <ApplicationVersion>1</ApplicationVersion>
 	  <EmbedAssembliesIntoApk>True</EmbedAssembliesIntoApk>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net11.0-windows10.0.26100.0|AnyCPU'">
 	  <ApplicationId>dev.Scharkenberg.DDjourneys</ApplicationId>
-	  <ApplicationDisplayVersion>0.6.1</ApplicationDisplayVersion>
-	  <ApplicationVersion>28</ApplicationVersion>
+	  <ApplicationDisplayVersion>0.7.0</ApplicationDisplayVersion>
+	  <ApplicationVersion>1</ApplicationVersion>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net11.0-android|AnyCPU'">
 	  <ApplicationId>dev.Scharkenberg.DDjourneys</ApplicationId>
-	  <ApplicationDisplayVersion>0.6.1</ApplicationDisplayVersion>
-	  <ApplicationVersion>28</ApplicationVersion>
+	  <ApplicationDisplayVersion>0.7.0</ApplicationDisplayVersion>
+	  <ApplicationVersion>1</ApplicationVersion>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net11.0-windows10.0.26100.0|AnyCPU'">
 	  <ApplicationId>dev.Scharkenberg.DDjourneys</ApplicationId>
-	  <ApplicationDisplayVersion>0.6.1</ApplicationDisplayVersion>
-	  <ApplicationVersion>28</ApplicationVersion>
+	  <ApplicationDisplayVersion>0.7.0</ApplicationDisplayVersion>
+	  <ApplicationVersion>1</ApplicationVersion>
 	</PropertyGroup>
 
   <ItemGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net11.0-android|AnyCPU'">
@@ -105,6 +105,7 @@
 	</ItemGroup>
 
   <ItemGroup>
+    <None Remove="Resources\Raw\secrets.json" />
     <None Remove="Resources\Splash\splash.svg" />
   </ItemGroup>
 

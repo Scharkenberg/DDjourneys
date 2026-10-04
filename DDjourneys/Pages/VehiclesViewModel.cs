@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
+using DDjourneys.Core.Mapping;
 using DDjourneys.Core.Models;
 using DDjourneys.Core.Services;
 using DDjourneys.Localization;
@@ -91,12 +92,6 @@ public sealed class VehicleRow : ObservableObject
 	public string Description =>
 		$"{LineText}, {RunText}, {DelayText}, {AgeText}";
 
-	public Uri MapUri =>
-		new(
-			string.Create(
-				CultureInfo.InvariantCulture,
-				$"https://www.openstreetmap.org/?mlat={Vehicle.Latitude:F6}&mlon={Vehicle.Longitude:F6}#map=17/{Vehicle.Latitude:F6}/{Vehicle.Longitude:F6}"));
-
 	public void Update(LiveVehicle vehicle)
 	{
 		ArgumentNullException.ThrowIfNull(vehicle);
@@ -122,15 +117,45 @@ public sealed class VehicleRow : ObservableObject
 }
 
 
-/// <summary>Live positions of the vehicles of chosen lines (TLMS).</summary>
+/// <summary>A quick pick for a line: tapping it adds or removes the line from the entry field.</summary>
+public sealed class LineChip : ObservableObject
+{
+	public LineChip(int line)
+	{
+		Line = line;
+	}
+
+	public int Line { get; }
+
+	public string Text =>
+		Line.ToString(CultureInfo.CurrentCulture);
+
+	public bool IsSelected
+	{
+		get => field;
+		internal set => SetProperty(ref field, value);
+	}
+}
+
+
+/// <summary>Live positions of the vehicles of chosen lines (TLMS), on a map and in a list.</summary>
 public sealed class VehiclesViewModel : DisposableViewModel, IQueryAttributable
 {
 	private const int MaxRows = 300;
+
+	/// <summary>How long to wait for the first position before saying that none arrived.</summary>
+	private static readonly TimeSpan EmptyAfter = TimeSpan.FromSeconds(12);
+
+	/// <summary>Dresden's tram lines, offered as quick picks.</summary>
+	private static readonly int[] TramLines = [1, 2, 3, 4, 6, 7, 8, 9, 11, 12, 13];
 
 	private readonly VehicleService _vehicles;
 	private readonly LocalizationService _localization;
 	private readonly Dictionary<string, VehicleRow> _byKey = [];
 	private CancellationTokenSource? _stream;
+	private DateTimeOffset _startedAt;
+	private bool _dirty;
+	private bool _fitNext;
 
 	public VehiclesViewModel(
 		VehicleService vehicles)
@@ -140,6 +165,8 @@ public sealed class VehiclesViewModel : DisposableViewModel, IQueryAttributable
 		_vehicles = vehicles;
 		_localization = LocalizationService.Current;
 
+		Chips = [.. TramLines.Select(line => new LineChip(line))];
+
 		StartCommand =
 			new AsyncCommand(
 				StartAsync);
@@ -148,24 +175,98 @@ public sealed class VehiclesViewModel : DisposableViewModel, IQueryAttributable
 			new Command(
 				Stop);
 
-		OpenMapCommand =
-			new AsyncCommand<VehicleRow>(
-				OpenMapAsync);
+		FocusCommand =
+			new Command<VehicleRow>(
+				row =>
+				{
+					if (row is not null)
+					{
+						FocusRequested?.Invoke(this, row.Key);
+					}
+				});
+
+		ToggleChipCommand =
+			new AsyncCommand<LineChip>(
+				ToggleChipAsync);
+
+		AllLinesCommand =
+			new AsyncCommand(
+				async () =>
+				{
+					LineFilter = string.Empty;
+					OnPropertyChanged(nameof(LineFilter));
+
+					await StartAsync();
+				});
+
+		Rows.CollectionChanged +=
+			(_, _) =>
+			{
+				OnPropertyChanged(nameof(CountText));
+				OnPropertyChanged(nameof(HasRows));
+			};
 	}
+
+	/// <summary>A new picture of the map is ready (the page hands it to the map).</summary>
+	public event EventHandler<MapScene>? SceneChanged;
+
+	/// <summary>The map should centre on this vehicle (<see cref="LiveVehicle.Key"/>).</summary>
+	public event EventHandler<string>? FocusRequested;
 
 	public AsyncCommand StartCommand { get; }
 
 	public Command StopCommand { get; }
 
-	public AsyncCommand<VehicleRow> OpenMapCommand { get; }
+	public Command<VehicleRow> FocusCommand { get; }
+
+	public AsyncCommand<LineChip> ToggleChipCommand { get; }
+
+	public AsyncCommand AllLinesCommand { get; }
+
+	public IReadOnlyList<LineChip> Chips { get; }
 
 	public ObservableCollection<VehicleRow> Rows { get; } = [];
+
+	public bool HasRows =>
+		Rows.Count > 0;
+
+	public string CountText =>
+		Rows.Count == 0
+			? string.Empty
+			: string.Format(
+				CultureInfo.CurrentCulture,
+				_localization.CurrentStrings.Extras.LiveCount,
+				Rows.Count);
 
 	public string LineFilter
 	{
 		get => field;
-		set => SetProperty(ref field, value ?? string.Empty);
+
+		set
+		{
+			if (SetProperty(ref field, value ?? string.Empty))
+			{
+				SyncChips();
+			}
+		}
 	} = string.Empty;
+
+	/// <summary>Entries that were not line numbers and were left out; empty when the input was fine.</summary>
+	public string InputHint
+	{
+		get => field;
+
+		private set
+		{
+			if (SetProperty(ref field, value))
+			{
+				OnPropertyChanged(nameof(HasInputHint));
+			}
+		}
+	} = string.Empty;
+
+	public bool HasInputHint =>
+		InputHint.Length > 0;
 
 	public bool IsStreaming
 	{
@@ -213,23 +314,103 @@ public sealed class VehiclesViewModel : DisposableViewModel, IQueryAttributable
 		}
 	}
 
-	/// <summary>Called by the page's timer: the "x s ago" texts move on.</summary>
+	/// <summary>Called by the page's timer: texts move on, the map gets the newest positions.</summary>
 	public void Tick()
 	{
 		foreach (VehicleRow row in Rows)
 		{
 			row.Refresh();
 		}
+
+		if (_dirty)
+		{
+			PublishScene();
+		}
+
+		if (IsStreaming
+			&& Rows.Count == 0
+			&& HasStatus
+			&& DateTimeOffset.UtcNow - _startedAt > EmptyAfter)
+		{
+			Status = _localization.CurrentStrings.Extras.LiveEmpty;
+		}
 	}
 
-	private static IReadOnlyList<int> ParseLines(string text) =>
-		[.. text
-			.Split(
+	private void PublishScene()
+	{
+		_dirty = false;
+
+		bool fit = _fitNext && Rows.Count > 0;
+
+		if (fit)
+		{
+			_fitNext = false;
+		}
+
+		SceneChanged?.Invoke(
+			this,
+			MapScenes.FromVehicles(
+				Rows.Select(row => row.Vehicle),
+				fit));
+	}
+
+	private static (IReadOnlyList<int> Lines, IReadOnlyList<string> Ignored) ParseLines(string text)
+	{
+		var lines = new List<int>();
+		var ignored = new List<string>();
+
+		foreach (string part in
+			text.Split(
 				[',', ';', ' '],
-				StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-			.Select(part => int.TryParse(part, NumberStyles.Integer, CultureInfo.InvariantCulture, out int line) ? line : -1)
-			.Where(line => line >= 0)
-			.Distinct()];
+				StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+		{
+			if (int.TryParse(part, NumberStyles.None, CultureInfo.InvariantCulture, out int line))
+			{
+				if (!lines.Contains(line))
+				{
+					lines.Add(line);
+				}
+			}
+			else
+			{
+				ignored.Add(part);
+			}
+		}
+
+		return (lines, ignored);
+	}
+
+	private void SyncChips()
+	{
+		IReadOnlyList<int> lines = ParseLines(LineFilter).Lines;
+
+		foreach (LineChip chip in Chips)
+		{
+			chip.IsSelected = lines.Contains(chip.Line);
+		}
+	}
+
+	private async Task ToggleChipAsync(LineChip chip)
+	{
+		if (chip is null)
+		{
+			return;
+		}
+
+		var lines = ParseLines(LineFilter).Lines.ToList();
+
+		if (!lines.Remove(chip.Line))
+		{
+			lines.Add(chip.Line);
+		}
+
+		lines.Sort();
+
+		LineFilter = string.Join(", ", lines);
+		OnPropertyChanged(nameof(LineFilter));
+
+		await StartAsync();
+	}
 
 	private async Task StartAsync()
 	{
@@ -246,16 +427,29 @@ public sealed class VehiclesViewModel : DisposableViewModel, IQueryAttributable
 		Rows.Clear();
 		_byKey.Clear();
 
+		(IReadOnlyList<int> lines, IReadOnlyList<string> ignored) = ParseLines(LineFilter);
+
+		ExtrasStrings strings = _localization.CurrentStrings.Extras;
+
+		InputHint =
+			ignored.Count == 0
+				? string.Empty
+				: string.Format(CultureInfo.CurrentCulture, strings.LiveInvalid, string.Join(", ", ignored));
+
+		_startedAt = DateTimeOffset.UtcNow;
+		_fitNext = true;
+		_dirty = false;
+
+		SceneChanged?.Invoke(this, new MapScene { Fit = false });
+
 		IsStreaming = true;
-		Status = _localization.CurrentStrings.Extras.LiveConnecting;
+		Status = strings.LiveConnecting;
 
 		try
 		{
-			bool first = true;
-
 			await foreach (LiveVehicle vehicle in
 				_vehicles.StreamAsync(
-					new VehicleFilter { Lines = ParseLines(LineFilter) },
+					new VehicleFilter { Lines = lines },
 					cts.Token))
 			{
 				if (cts.IsCancellationRequested || IsDisposed)
@@ -263,9 +457,8 @@ public sealed class VehiclesViewModel : DisposableViewModel, IQueryAttributable
 					return;
 				}
 
-				if (first)
+				if (HasStatus)
 				{
-					first = false;
 					Status = string.Empty;
 				}
 
@@ -274,7 +467,7 @@ public sealed class VehiclesViewModel : DisposableViewModel, IQueryAttributable
 
 			if (!cts.IsCancellationRequested)
 			{
-				Status = _localization.CurrentStrings.Extras.LiveError;
+				Status = strings.LiveError;
 			}
 		}
 		catch (OperationCanceledException)
@@ -284,7 +477,7 @@ public sealed class VehiclesViewModel : DisposableViewModel, IQueryAttributable
 		{
 			System.Diagnostics.Debug.WriteLine($"Live vehicles failed: {ex}");
 
-			Status = _localization.CurrentStrings.Extras.LiveError;
+			Status = strings.LiveError;
 		}
 		finally
 		{
@@ -297,6 +490,8 @@ public sealed class VehiclesViewModel : DisposableViewModel, IQueryAttributable
 
 	private void Apply(LiveVehicle vehicle)
 	{
+		_dirty = true;
+
 		if (_byKey.TryGetValue(vehicle.Key, out VehicleRow? row))
 		{
 			row.Update(vehicle);
@@ -329,18 +524,6 @@ public sealed class VehiclesViewModel : DisposableViewModel, IQueryAttributable
 		_stream?.Cancel();
 		_stream = null;
 		IsStreaming = false;
-	}
-
-	private async Task OpenMapAsync(VehicleRow row)
-	{
-		try
-		{
-			await Launcher.Default.OpenAsync(row.MapUri);
-		}
-		catch (Exception ex)
-		{
-			System.Diagnostics.Debug.WriteLine($"Opening the map failed: {ex.Message}");
-		}
 	}
 
 	protected override void OnDisposing() =>

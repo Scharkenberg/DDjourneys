@@ -64,9 +64,9 @@ public sealed class Location
 		&& !string.IsNullOrWhiteSpace(Id);
 
 
-	/// <summary>The router can start or end here (stop, address or point of interest).</summary>
+	/// <summary>The router can start or end here (stop, address, point of interest or an exact position).</summary>
 	public bool IsRoutable =>
-		Kind is PlaceKind.Stop or PlaceKind.Address or PlaceKind.Poi
+		Kind is PlaceKind.Stop or PlaceKind.Address or PlaceKind.Poi or PlaceKind.Coordinate
 		&& !string.IsNullOrWhiteSpace(Id);
 
 
