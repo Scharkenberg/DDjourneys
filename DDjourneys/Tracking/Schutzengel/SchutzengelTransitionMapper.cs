@@ -204,7 +204,13 @@ internal static class SchutzengelTransitionMapper
 	}
 
 
+	/// <summary>
+	/// A ride. Classified exactly like the journey mapper does (transfer instructions first): a "StayForConnection"
+	/// part may list stops, but it is the guarantee of the change, not a vehicle. Counting it as a ride shifted the
+	/// legs (the second ride vanished and the plan showed "gesicherter Anschluss" as a line).
+	/// </summary>
 	internal static bool IsMovement(
 		VvoPartialRoute route) =>
-		route.RegularStops.Count > 0;
+		route.RegularStops.Count > 0
+		&& !DDjourneys.Core.Providers.Vvo.Mapping.VvoTransferMapper.IsTransfer(route);
 }

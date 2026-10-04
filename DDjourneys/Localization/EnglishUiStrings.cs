@@ -390,6 +390,7 @@ public sealed class EnglishUiStrings : IUiStrings
 		NotifChangeTitle = "Change at {0}",
 		NotifChangeText = "Next departure {0}",
 		NotifRiskTitle = "Connection at risk",
+		GuaranteedChange = "guaranteed connection",
 		NotifMissedText = "Connection missed at {0}",
 		NotifTightText = "Tight change at {0}",
 		NotifCancelledTitle = "Journey cancelled",

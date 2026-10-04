@@ -456,6 +456,32 @@ public sealed class TrackedJourneysViewModel : DisposableViewModel, IQueryAttrib
 		}
 	}
 
+	/// <summary>"7 · gesicherter Anschluss · 6": the lines, with a guaranteed change named where it happens.</summary>
+	private static string LinesOf(WatchedJourney journey, TrackingStrings strings)
+	{
+		string[] lines = [.. journey.Lines.Where(item => !string.IsNullOrWhiteSpace(item))];
+
+		// The marks only line up when every ride has its own entry (equal names in a row were merged).
+		if (journey.EnsuredChanges is not { } ensured || ensured.Count != lines.Length - 1)
+		{
+			return string.Join(" · ", lines);
+		}
+
+		var parts = new List<string>(lines.Length * 2);
+
+		for (int i = 0; i < lines.Length; i++)
+		{
+			parts.Add(lines[i]);
+
+			if (i < ensured.Count && ensured[i])
+			{
+				parts.Add(strings.GuaranteedChange);
+			}
+		}
+
+		return string.Join(" · ", parts);
+	}
+
 	private TrackedRow CreateRow(WatchedJourney journey, TrackingStrings strings)
 	{
 		CultureInfo culture = CultureInfo.CurrentCulture;
@@ -510,7 +536,7 @@ public sealed class TrackedJourneysViewModel : DisposableViewModel, IQueryAttrib
 			PlanId = journey.PlanId,
 			Title = route,
 			Subtitle = subtitle,
-			LinesText = string.Join(" · ", journey.Lines.Where(item => !string.IsNullOrWhiteSpace(item))),
+			LinesText = LinesOf(journey, strings),
 			StatusText = status,
 			IsProblem = problem,
 			IsCancelled = cancelled,

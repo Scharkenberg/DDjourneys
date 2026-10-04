@@ -400,6 +400,7 @@ public sealed class GermanUiStrings : IUiStrings
 		NotifChangeTitle = "Umstieg in {0}",
 		NotifChangeText = "N\u00e4chste Abfahrt {0}",
 		NotifRiskTitle = "Anschluss gef\u00e4hrdet",
+		GuaranteedChange = "gesicherter Anschluss",
 		NotifMissedText = "Anschluss in {0} verpasst",
 		NotifTightText = "Knapper Umstieg in {0}",
 		NotifCancelledTitle = "Fahrt f\u00e4llt aus",

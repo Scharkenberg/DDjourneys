@@ -400,6 +400,7 @@ public sealed class TrackingStrings
 	public required string NotifChangeTitle { get; init; }
 	public required string NotifChangeText { get; init; }
 	public required string NotifRiskTitle { get; init; }
+	public required string GuaranteedChange { get; init; }
 	public required string NotifMissedText { get; init; }
 	public required string NotifTightText { get; init; }
 	public required string NotifCancelledTitle { get; init; }

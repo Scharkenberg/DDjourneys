@@ -24,11 +24,11 @@
 		<ApplicationTitle>DDjourneys</ApplicationTitle>
 
 		<!-- App Identifier -->
-		<ApplicationId>com.companyname.ddjourneys</ApplicationId>
+		<ApplicationId>dev.Scharkenberg.DDjourneys</ApplicationId>
 
 		<!-- Versions -->
-		<ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
-		<ApplicationVersion>1</ApplicationVersion>
+		<ApplicationDisplayVersion>0.6.1</ApplicationDisplayVersion>
+		<ApplicationVersion>2</ApplicationVersion>
 
 		<!-- To develop, package, and publish an app to the Microsoft Store, see: https://aka.ms/MauiTemplateUnpackaged -->
 		<WindowsPackageType>MSIX</WindowsPackageType>
@@ -43,27 +43,27 @@
 
 	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net11.0-android|AnyCPU'">
 	  <ApplicationId>dev.Scharkenberg.DDjourneys</ApplicationId>
-	  <ApplicationDisplayVersion>0.6.0</ApplicationDisplayVersion>
-	  <ApplicationVersion>1</ApplicationVersion>
+	  <ApplicationDisplayVersion>0.6.1</ApplicationDisplayVersion>
+	  <ApplicationVersion>2</ApplicationVersion>
 	  <EmbedAssembliesIntoApk>True</EmbedAssembliesIntoApk>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net11.0-windows10.0.26100.0|AnyCPU'">
 	  <ApplicationId>dev.Scharkenberg.DDjourneys</ApplicationId>
-	  <ApplicationDisplayVersion>0.6.0</ApplicationDisplayVersion>
-	  <ApplicationVersion>1</ApplicationVersion>
+	  <ApplicationDisplayVersion>0.6.1</ApplicationDisplayVersion>
+	  <ApplicationVersion>2</ApplicationVersion>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net11.0-android|AnyCPU'">
 	  <ApplicationId>dev.Scharkenberg.DDjourneys</ApplicationId>
-	  <ApplicationDisplayVersion>0.6.0</ApplicationDisplayVersion>
-	  <ApplicationVersion>1</ApplicationVersion>
+	  <ApplicationDisplayVersion>0.6.1</ApplicationDisplayVersion>
+	  <ApplicationVersion>2</ApplicationVersion>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net11.0-windows10.0.26100.0|AnyCPU'">
 	  <ApplicationId>dev.Scharkenberg.DDjourneys</ApplicationId>
-	  <ApplicationDisplayVersion>0.6.0</ApplicationDisplayVersion>
-	  <ApplicationVersion>1</ApplicationVersion>
+	  <ApplicationDisplayVersion>0.6.1</ApplicationDisplayVersion>
+	  <ApplicationVersion>2</ApplicationVersion>
 	</PropertyGroup>
 
   <ItemGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net11.0-android|AnyCPU'">
@@ -92,7 +92,6 @@
 
   <ItemGroup>
 		<!-- Splash Screen -->
-		<MauiSplashScreen Include="Resources\Splash\splash.svg" Color="#121016" BaseSize="160,160" />
 
 		<!-- Images -->
 		<MauiImage Include="Resources\Images\*" />
@@ -105,6 +104,14 @@
 		<MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
 	</ItemGroup>
 
+  <ItemGroup>
+    <None Remove="Resources\Splash\splash.svg" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <MauiSplashScreen Include="Resources\Splash\splash.svg" Color="#121016" BaseSize="160,160" />
+  </ItemGroup>
+
 	<ItemGroup>
 		<PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
 		<!-- Share image: MAUI Graphics on SkiaSharp, identical output on every platform -->
@@ -115,12 +122,6 @@
 
 	<ItemGroup>
 	  <ProjectReference Include="..\DDjourneys.Core\DDjourneys.Core.csproj" />
-	</ItemGroup>
-
-	<ItemGroup>
-	  <MauiXaml Update="Pages\ThemesPage.xaml">
-	    <Generator>MSBuild:Compile</Generator>
-	  </MauiXaml>
 	</ItemGroup>
 
 </Project>

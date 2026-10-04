@@ -37,4 +37,5 @@ public sealed record WatchedJourney(
 	DateTimeOffset? NextStopTime,
 	string? LatestNotice,
 	WatchOptions Options,
-	bool IsPeriodic);
+	bool IsPeriodic,
+	IReadOnlyList<bool>? EnsuredChanges = null);

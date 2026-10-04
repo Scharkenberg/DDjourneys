@@ -119,6 +119,18 @@ public sealed class JourneyStructureTests
 	}
 
 	[Fact]
+	public void A_guaranteed_connection_with_stops_is_not_a_ride_in_the_plan()
+	{
+		var stops = new List<VvoStop> { new() { Name = "A" }, new() { Name = "B" } };
+
+		var tram = new VvoPartialRoute { Mot = new VvoMot { Type = "Tram", Name = "7" }, RegularStops = stops };
+		var stay = new VvoPartialRoute { Mot = new VvoMot { Type = "StayForConnection", Name = "gesicherter Anschluss" }, RegularStops = stops };
+
+		Assert.True(SchutzengelTransitionMapper.IsMovement(tram));
+		Assert.False(SchutzengelTransitionMapper.IsMovement(stay));
+	}
+
+	[Fact]
 	public void Vvo_modes_are_mapped()
 	{
 		Assert.Equal(TransitMode.Walk, VvoModeMapper.MapMode(new VvoMot { Type = "Footpath" }));

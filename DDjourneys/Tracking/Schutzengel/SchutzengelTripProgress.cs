@@ -156,6 +156,43 @@ internal sealed class TripTimeline
 		return before >= 0 && before < _ensured.Count && _ensured[before];
 	}
 
+	/// <summary>
+	/// True when a connection-risk text refers to a change the provider ensures. The provider's guarantee is
+	/// authoritative: a service notice (which can only see the clock) must not turn it into a risk. The text is
+	/// matched by the change's stop name; when every change of the trip is ensured, any such text qualifies.
+	/// </summary>
+	public bool CoversEnsuredChange(string? text)
+	{
+		if (string.IsNullOrWhiteSpace(text))
+		{
+			return false;
+		}
+
+		TripEpisode[] rides = [.. Episodes.Where(episode => !episode.IsIndividual)];
+
+		if (rides.Length < 2 || _ensured.Count != rides.Length - 1)
+		{
+			return false;
+		}
+
+		if (_ensured.All(flag => flag))
+		{
+			return true;
+		}
+
+		for (int i = 0; i < _ensured.Count; i++)
+		{
+			if (_ensured[i]
+				&& rides[i].To.Name.Length > 0
+				&& text.Contains(rides[i].To.Name, StringComparison.OrdinalIgnoreCase))
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
 	public IReadOnlyList<TripEpisode> Episodes { get; }
 
 	public DateTimeOffset? Start =>

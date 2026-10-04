@@ -803,6 +803,26 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 
 	private const int UnconfirmedArrivalGraceMinutes = 30;
 
+	/// <summary>
+	/// A connection-risk notice about a change the provider ensures. The guarantee is authoritative (the next vehicle
+	/// waits); the service's notice only sees the clock. Such a notice is neither shown nor alerted.
+	/// </summary>
+	private static bool IsOutrankedByGuarantee(WatchEntry entry, SchutzengelNotice notice)
+	{
+		if (notice.Severity != SchutzengelNoticeSeverity.ConnectionRisk)
+		{
+			return false;
+		}
+
+		if (entry.Timeline?.CoversEnsuredChange(notice.Text) == true)
+		{
+			return true;
+		}
+
+		// Before the timeline is loaded, the summary alone decides: every change of the trip is ensured.
+		return entry.Summary?.EnsuredChanges is { Count: > 0 } changes && changes.All(flag => flag);
+	}
+
 	private WatchedJourney Evaluate(
 		WatchEntry entry,
 		DateTimeOffset now,
@@ -812,6 +832,12 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 		SchutzengelPlanInfo info = entry.Info;
 		TripSnapshot snapshot = entry.Timeline?.Calculate(now) ?? TripSnapshot.Empty;
 		SchutzengelNotice? newest = entry.Notices.Count > 0 ? entry.Notices[^1] : null;
+
+		// An ensured change cannot be at risk: the provider's guarantee outranks the service's clock-based notice.
+		if (newest is not null && IsOutrankedByGuarantee(entry, newest))
+		{
+			newest = null;
+		}
 
 		DateTimeOffset? start = entry.Timeline?.Start ?? entry.Summary?.Departure;
 		DateTimeOffset? end = entry.Timeline?.End ?? entry.Summary?.Arrival;
@@ -918,7 +944,8 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 			riding ? snapshot.NextStopTime : null,
 			latest?.Text,
 			info.Options.ToWatchOptions(),
-			periodic);
+			periodic,
+			entry.Summary?.EnsuredChanges);
 	}
 
 	private void RaiseTransitions(
@@ -960,6 +987,11 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 			{
 				foreach (SchutzengelNotice notice in entry.Notices.Skip(entry.AlertedNotices))
 				{
+					if (IsOutrankedByGuarantee(entry, notice))
+					{
+						continue;
+					}
+
 					bool problem = notice.Severity != SchutzengelNoticeSeverity.Information;
 
 					if (!alertable || !(problem ? options.Problem : options.Change))
@@ -1265,7 +1297,8 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 				&& a.LatestNotice == b.LatestNotice
 				&& a.Options == b.Options
 				&& a.IsPeriodic == b.IsPeriodic
-				&& a.Lines.SequenceEqual(b.Lines);
+				&& a.Lines.SequenceEqual(b.Lines)
+				&& (a.EnsuredChanges ?? []).SequenceEqual(b.EnsuredChanges ?? []);
 
 			if (!same)
 			{

@@ -110,6 +110,23 @@ public sealed class LiveTrackingTests
 		Assert.NotEqual(TripStage.Arrived, timeline.Calculate(Base.AddMinutes(15)).Stage);
 	}
 
+	[Fact]
+	public void A_risk_notice_never_applies_to_an_ensured_change()
+	{
+		TripTimeline timeline = Timeline();
+		const string notice = "Wegen Verspätungen von 0 Minute ist der geplante Umstieg an Haltestelle B gefährdet.";
+
+		Assert.False(timeline.CoversEnsuredChange(notice));
+
+		timeline.SetEnsured([true]);
+
+		Assert.True(timeline.CoversEnsuredChange(notice));
+		Assert.False(timeline.CoversEnsuredChange(null));
+
+		timeline.SetEnsured([true, false]); // does not fit the rides: ignored
+		Assert.False(timeline.CoversEnsuredChange(notice));
+	}
+
 	/// <summary>Ride 11 A(0) M(5) B(10, real-time 12), a walk at B, ride 7 B(20) C(35).</summary>
 	private static TripTimeline Timeline()
 	{
