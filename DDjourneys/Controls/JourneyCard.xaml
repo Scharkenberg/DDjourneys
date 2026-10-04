@@ -7,7 +7,7 @@
 	xmlns:support="clr-namespace:DDjourneys.Support"
 	x:DataType="support:JourneyCardModel">
 
-	<Border SemanticProperties.Description="{Binding AccessibilityText}" StyleClass="Card">
+	<Border SemanticProperties.Description="{Binding AccessibilityText}" StyleClass="Card" support:Motion.Enter="None">
 		<VerticalStackLayout Spacing="{DynamicResource SpaceM}">
 
 			<!--  Times  -->
@@ -87,12 +87,14 @@
 							StrokeThickness="{Binding Look.StrokeThickness}"
 							StyleClass="Chip"
 							Stroke="{Binding Look.Stroke}">
-							<Label
-								FontFamily="{DynamicResource FontSemibold}"
-								FontSize="{StaticResource FontCaption}"
-								StyleClass="ChipLabel"
-								Text="{Binding Text}"
-								TextColor="{Binding Look.Text}" />
+							<support:PillScroll>
+								<Label
+									FontFamily="{DynamicResource FontSemibold}"
+									FontSize="{StaticResource FontCaption}"
+									StyleClass="ChipLabel"
+									Text="{Binding Text}"
+									TextColor="{Binding Look.Text}" />
+							</support:PillScroll>
 						</Border>
 					</DataTemplate>
 				</BindableLayout.ItemTemplate>

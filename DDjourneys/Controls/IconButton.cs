@@ -163,6 +163,11 @@ public sealed class IconButton : ContentView
 	{
 		try
 		{
+			if (Glyph == IconGlyph.Refresh)
+			{
+				_ = Motion.SpinAsync(_icon);
+			}
+
 			await Motion.TapAsync(_surface);
 		}
 		catch (Exception ex)

@@ -20,6 +20,8 @@
 		<Setter Property="TextColor" Value="{DynamicResource Ink}" />
 		<Setter Property="FontFamily" Value="{DynamicResource FontRegular}" />
 		<Setter Property="FontSize" Value="{StaticResource FontBody}" />
+		<!--  Motion (Motion.cs): shown later = rises in; Pulse (below) = a changed value ticks over  -->
+		<Setter Property="support:Motion.OnShow" Value="True" />
 	</Style>
 	<Style Class="Headline" TargetType="Label">
 		<Setter Property="FontFamily" Value="{DynamicResource FontSemibold}" />
@@ -32,6 +34,7 @@
 	<Style Class="Time" TargetType="Label">
 		<Setter Property="FontFamily" Value="{DynamicResource FontSemibold}" />
 		<Setter Property="FontSize" Value="{StaticResource FontTime}" />
+		<Setter Property="support:Motion.Pulse" Value="True" />
 	</Style>
 	<Style Class="Caption" TargetType="Label">
 		<Setter Property="FontSize" Value="{StaticResource FontCaption}" />
@@ -46,11 +49,13 @@
 		<Setter Property="FontFamily" Value="{DynamicResource FontSemibold}" />
 		<Setter Property="FontSize" Value="{StaticResource FontCaption}" />
 		<Setter Property="TextColor" Value="{DynamicResource OnTime}" />
+		<Setter Property="support:Motion.Pulse" Value="True" />
 	</Style>
 	<Style Class="Delay" TargetType="Label">
 		<Setter Property="FontFamily" Value="{DynamicResource FontSemibold}" />
 		<Setter Property="FontSize" Value="{StaticResource FontCaption}" />
 		<Setter Property="TextColor" Value="{DynamicResource Delay}" />
+		<Setter Property="support:Motion.Pulse" Value="True" />
 	</Style>
 	<Style Class="Cancelled" TargetType="Label">
 		<Setter Property="FontFamily" Value="{DynamicResource FontSemibold}" />
@@ -65,6 +70,8 @@
 		<Setter Property="StrokeThickness" Value="1" />
 		<Setter Property="StrokeShape" Value="RoundRectangle 6" />
 		<Setter Property="Padding" Value="{DynamicResource PadCard}" />
+		<Setter Property="support:Motion.Enter" Value="Rise" />
+		<Setter Property="support:Motion.OnShow" Value="True" />
 	</Style>
 	<Style Class="Chip" TargetType="Border">
 		<Setter Property="BackgroundColor" Value="{DynamicResource Raised}" />
@@ -73,6 +80,7 @@
 		<!--  Generous horizontal padding: Android measures the semibold font a hair too narrow  -->
 		<Setter Property="support:Dense.Padding" Value="12,4" />
 		<Setter Property="support:Dense.MinHeight" Value="28" />
+		<!--  A long text scrolls inside the pill (support:PillScroll, which also sizes and reveals the pill)  -->
 	</Style>
 	<!--  Pill text must never wrap or truncate ("Walk 20 min" -> "Walk 20")  -->
 	<Style Class="ChipLabel" TargetType="Label">
@@ -98,6 +106,8 @@
 		<Setter Property="BorderColor" Value="Transparent" />
 		<Setter Property="support:Dense.MinHeight" Value="48" />
 		<Setter Property="Padding" Value="16,0" />
+		<Setter Property="support:Motion.Enter" Value="Zoom" />
+		<Setter Property="support:Motion.OnShow" Value="True" />
 		<Setter Property="VisualStateManager.VisualStateGroups">
 			<VisualStateGroupList>
 				<VisualStateGroup x:Name="CommonStates">
@@ -148,11 +158,13 @@
 		<Setter Property="StrokeThickness" Value="0" />
 		<Setter Property="StrokeShape" Value="RoundRectangle 4" />
 		<Setter Property="support:Dense.Padding" Value="12,8" />
+		<Setter Property="support:Motion.Enter" Value="Zoom" />
 	</Style>
 	<!--  Row container: no border; hairline divider is a separate BoxView  -->
 	<Style Class="Divider" TargetType="BoxView">
 		<Setter Property="HeightRequest" Value="1" />
 		<Setter Property="Color" Value="{DynamicResource Outline}" />
+		<Setter Property="support:Motion.Enter" Value="Grow" />
 	</Style>
 	<Style Class="Section" TargetType="Label">
 		<Setter Property="FontFamily" Value="{DynamicResource FontSemibold}" />
@@ -161,6 +173,7 @@
 		<Setter Property="CharacterSpacing" Value="0.5" />
 		<Setter Property="TextTransform" Value="Uppercase" />
 		<Setter Property="Margin" Value="4,8,0,0" />
+		<Setter Property="support:Motion.Enter" Value="Fade" />
 	</Style>
 	<Style Class="Subtitle" TargetType="Label">
 		<Setter Property="FontFamily" Value="{DynamicResource FontSemibold}" />

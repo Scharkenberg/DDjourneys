@@ -72,7 +72,7 @@ public sealed class PlaceSearchStrings
 	public required string SearchPlaceholder { get; init; }
 	public required string SearchForPlace { get; init; }
 	public required string Hint { get; init; }
-	public required string TypeAtLeastTwoCharacters { get; init; }
+	public required string TypeAtLeastThreeCharacters { get; init; }
 	public required string NoPlacesFound { get; init; }
 	public required string Searching { get; init; }
 	public required string CouldNotReachService { get; init; }

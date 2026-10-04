@@ -38,7 +38,7 @@
 						<VerticalStackLayout BindableLayout.ItemsSource="{Binding LiveOptions}">
 							<BindableLayout.ItemTemplate>
 								<DataTemplate x:DataType="local:LiveOption">
-									<Grid
+									<Grid support:Motion.Feedback="True"
 										support:Dense.Padding="12,10"
 										ColumnDefinitions="*,Auto"
 										ColumnSpacing="10"
@@ -106,6 +106,7 @@
 
 											<Border
 												ClassId="{Binding PlanId}"
+												Loaded="CardLoaded"
 												SemanticProperties.Description="{Binding AccessibilityText}"
 												StyleClass="Card"
 												support:Themed.IsOn="{Binding IsFocused}"
@@ -124,7 +125,7 @@
 
 												<VerticalStackLayout Spacing="8">
 
-													<Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+													<Grid support:Motion.Feedback="True" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
 
 														<VerticalStackLayout Spacing="2">
 
@@ -234,7 +235,7 @@
 													</Border>
 
 													<!--  Extended view: every stop, moving with the clock  -->
-													<Label
+													<Label support:Motion.Feedback="True"
 														FontFamily="{DynamicResource FontSemibold}"
 														FontSize="{StaticResource FontCaption}"
 														Text="{Binding CourseToggleText}"
@@ -447,7 +448,7 @@
 
 														<FlexLayout Wrap="Wrap">
 
-															<Border Margin="0,0,8,8" StyleClass="ChipButton">
+															<Border support:Motion.Feedback="True" Margin="0,0,8,8" StyleClass="ChipButton">
 																<HorizontalStackLayout Spacing="6">
 																	<controls:Icon
 																		Glyph="Check"
@@ -466,14 +467,14 @@
 																</Border.GestureRecognizers>
 															</Border>
 
-															<Border Margin="0,0,8,8" StyleClass="ChipButton">
+															<Border support:Motion.Feedback="True" Margin="0,0,8,8" StyleClass="ChipButton">
 																<Label StyleClass="Caption" Text="{Binding LeadText}" />
 																<Border.GestureRecognizers>
 																	<TapGestureRecognizer Command="{Binding CycleLeadCommand}" />
 																</Border.GestureRecognizers>
 															</Border>
 
-															<Border Margin="0,0,8,8" StyleClass="ChipButton">
+															<Border support:Motion.Feedback="True" Margin="0,0,8,8" StyleClass="ChipButton">
 																<HorizontalStackLayout Spacing="6">
 																	<controls:Icon
 																		Glyph="Check"
@@ -492,7 +493,7 @@
 																</Border.GestureRecognizers>
 															</Border>
 
-															<Border Margin="0,0,8,8" StyleClass="ChipButton">
+															<Border support:Motion.Feedback="True" Margin="0,0,8,8" StyleClass="ChipButton">
 																<HorizontalStackLayout Spacing="6">
 																	<controls:Icon
 																		Glyph="Check"

@@ -207,12 +207,14 @@
 							Stroke="{Binding Look.Stroke}"
 							VerticalOptions="Center">
 
-							<Label
-								FontFamily="{DynamicResource FontSemibold}"
-								FontSize="{StaticResource FontCaption}"
-								StyleClass="ChipLabel"
-								Text="{Binding LineText}"
-								TextColor="{Binding Look.Text}" />
+							<support:PillScroll Fraction="0.6">
+								<Label
+									FontFamily="{DynamicResource FontSemibold}"
+									FontSize="{StaticResource FontCaption}"
+									StyleClass="ChipLabel"
+									Text="{Binding LineText}"
+									TextColor="{Binding Look.Text}" />
+							</support:PillScroll>
 						</Border>
 
 						<Label
@@ -255,9 +257,10 @@
 						FontSize="{StaticResource FontCaption}"
 						IsVisible="{Binding IsActive}"
 						Text="{localization:Tr Journey.InProgress}"
+						support:Motion.Breathe="True"
 						TextColor="{DynamicResource Accent}" />
 
-					<HorizontalStackLayout
+					<HorizontalStackLayout support:Motion.Feedback="True"
 						IsVisible="{Binding HasIntermediates}"
 						support:Dense.MinHeight="36"
 						SemanticProperties.Description="{localization:Tr Journey.ShowOrHideIntermediateStops}"
@@ -273,7 +276,7 @@
 
 						<controls:Icon
 							Glyph="ChevronDown"
-							Rotation="{Binding ChevronRotation}"
+							support:Motion.Turn="{Binding ChevronRotation}"
 							Size="18"
 							VerticalOptions="Center"
 							Color="{DynamicResource Accent}" />
@@ -438,7 +441,9 @@
 						IsVisible="{Binding HasWait}"
 						StyleClass="Chip">
 
-						<Label StyleClass="Caption" Text="{Binding WaitText}" />
+						<support:PillScroll>
+							<Label StyleClass="Caption" Text="{Binding WaitText}" />
+						</support:PillScroll>
 					</Border>
 
 					<Label

@@ -15,7 +15,7 @@
 			<Label StyleClass="Section" Text="{localization:Tr Settings.Theme}" />
 
 			<Border Padding="0" StyleClass="Card">
-				<Grid
+				<Grid support:Motion.Feedback="True"
 					support:Dense.Padding="12,10"
 					ColumnDefinitions="*,Auto"
 					ColumnSpacing="10"
@@ -48,7 +48,7 @@
 
 					<BindableLayout.ItemTemplate>
 						<DataTemplate x:DataType="localization:LocalizationPack">
-							<Grid
+							<Grid support:Motion.Feedback="True"
 								support:Dense.Padding="12,10"
 								ColumnDefinitions="*,Auto"
 								support:Dense.MinHeight="52">
@@ -128,7 +128,7 @@
 				<VerticalStackLayout>
 
 					<!--  Provider: opens the list of data providers  -->
-					<Grid
+					<Grid support:Motion.Feedback="True"
 						support:Dense.Padding="12,10"
 						ColumnDefinitions="*,Auto"
 						ColumnSpacing="10"
@@ -257,7 +257,7 @@
 
 					<BoxView StyleClass="Divider" />
 
-					<Grid
+					<Grid support:Motion.Feedback="True"
 						support:Dense.Padding="12,10"
 						ColumnDefinitions="*,Auto"
 						ColumnSpacing="10"

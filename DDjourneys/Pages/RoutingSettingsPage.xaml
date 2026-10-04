@@ -54,7 +54,7 @@
 					<VerticalStackLayout BindableLayout.ItemsSource="{Binding Transfers.Options}">
 						<BindableLayout.ItemTemplate>
 							<DataTemplate x:DataType="support:ChoiceOption">
-								<Grid
+								<Grid support:Motion.Feedback="True"
 									support:Dense.Padding="12,10"
 									ColumnDefinitions="*,Auto"
 									support:Dense.MinHeight="48">
@@ -89,7 +89,7 @@
 					<VerticalStackLayout BindableLayout.ItemsSource="{Binding Pace.Options}">
 						<BindableLayout.ItemTemplate>
 							<DataTemplate x:DataType="support:ChoiceOption">
-								<Grid
+								<Grid support:Motion.Feedback="True"
 									support:Dense.Padding="12,10"
 									ColumnDefinitions="*,Auto"
 									support:Dense.MinHeight="48">
@@ -163,7 +163,7 @@
 					<VerticalStackLayout BindableLayout.ItemsSource="{Binding Accessibility.Options}">
 						<BindableLayout.ItemTemplate>
 							<DataTemplate x:DataType="support:ChoiceOption">
-								<Grid
+								<Grid support:Motion.Feedback="True"
 									support:Dense.Padding="12,10"
 									ColumnDefinitions="*,Auto"
 									support:Dense.MinHeight="48">

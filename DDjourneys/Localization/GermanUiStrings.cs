@@ -65,8 +65,8 @@ public sealed class GermanUiStrings : IUiStrings
 			"Bahnhof, Haltestelle oder Adresse",
 		Hint =
 			"Bahnhof, Haltestelle oder Adresse eingeben.",
-		TypeAtLeastTwoCharacters =
-			"Mindestens 2 Zeichen eingeben.",
+		TypeAtLeastThreeCharacters =
+			"Mindestens 3 Zeichen eingeben.",
 		NoPlacesFound = "Keine Orte gefunden.",
 		Searching = "Suche...",
 		CouldNotReachService =

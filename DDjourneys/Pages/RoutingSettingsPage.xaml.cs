@@ -24,6 +24,6 @@ public partial class RoutingSettingsPage : ContentPage
 	{
 		base.OnAppearing();
 
-		Motion.EnterPage(this);
+		Motion.EnterPage(this, cascade: true);
 	}
 }

@@ -20,7 +20,7 @@
 					<BindableLayout.ItemTemplate>
 						<DataTemplate x:DataType="local:AppearanceChoice">
 							<VerticalStackLayout>
-								<Grid
+								<Grid support:Motion.Feedback="True"
 									support:Dense.Padding="12,8"
 									ColumnDefinitions="*,Auto"
 									ColumnSpacing="12"
@@ -82,7 +82,7 @@
 					<BindableLayout.ItemTemplate>
 						<DataTemplate x:DataType="local:AppearanceChoice">
 							<VerticalStackLayout>
-								<Grid
+								<Grid support:Motion.Feedback="True"
 									support:Dense.Padding="12,8"
 									ColumnDefinitions="Auto,*,Auto"
 									ColumnSpacing="12"
@@ -155,7 +155,7 @@
 					<BindableLayout.ItemTemplate>
 						<DataTemplate x:DataType="local:AppearanceChoice">
 							<VerticalStackLayout>
-								<Grid
+								<Grid support:Motion.Feedback="True"
 									support:Dense.Padding="12,8"
 									ColumnDefinitions="*,Auto"
 									ColumnSpacing="12"
@@ -197,7 +197,7 @@
 					<BindableLayout.ItemTemplate>
 						<DataTemplate x:DataType="local:AppearanceChoice">
 							<VerticalStackLayout>
-								<Grid
+								<Grid support:Motion.Feedback="True"
 									support:Dense.Padding="12,8"
 									ColumnDefinitions="*,Auto"
 									ColumnSpacing="12"
@@ -243,7 +243,7 @@
 					<BindableLayout.ItemTemplate>
 						<DataTemplate x:DataType="local:AppearanceChoice">
 							<VerticalStackLayout>
-								<Grid
+								<Grid support:Motion.Feedback="True"
 									support:Dense.Padding="12,8"
 									ColumnDefinitions="*,Auto"
 									ColumnSpacing="12"
@@ -289,7 +289,7 @@
 					<BindableLayout.ItemTemplate>
 						<DataTemplate x:DataType="local:AppearanceChoice">
 							<VerticalStackLayout>
-								<Grid
+								<Grid support:Motion.Feedback="True"
 									support:Dense.Padding="12,8"
 									ColumnDefinitions="*,Auto"
 									ColumnSpacing="12"

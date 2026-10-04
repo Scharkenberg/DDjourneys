@@ -33,7 +33,7 @@
 									<BindableLayout.ItemTemplate>
 										<DataTemplate x:DataType="local:ProviderRow">
 
-											<Grid
+											<Grid support:Motion.Feedback="True"
 												support:Dense.Padding="14,12"
 												ColumnDefinitions="*,Auto"
 												ColumnSpacing="12"
@@ -60,7 +60,9 @@
 																	Margin="0,0,6,6"
 																	FlexLayout.Shrink="0"
 																	StyleClass="Chip">
-																	<Label StyleClass="Faint" Text="{Binding .}" />
+																	<support:PillScroll>
+																		<Label StyleClass="Faint" Text="{Binding .}" />
+																	</support:PillScroll>
 																</Border>
 															</DataTemplate>
 														</BindableLayout.ItemTemplate>

@@ -26,6 +26,6 @@ public partial class AppearancePage : ContentPage
 	{
 		base.OnAppearing();
 		_vm.Refresh();
-		Motion.EnterPage(this);
+		Motion.EnterPage(this, cascade: true);
 	}
 }

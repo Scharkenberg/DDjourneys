@@ -19,5 +19,50 @@ public partial class AppShell : Shell
 		Routing.RegisterRoute(Routes.Expert, typeof(ExpertPage));
 		Routing.RegisterRoute(Routes.Routing, typeof(RoutingSettingsPage));
 		Routing.RegisterRoute(Routes.Providers, typeof(ProvidersPage));
+
+		Navigating += OnNavigating;
+	}
+
+	/// <summary>
+	/// Page transition, exit half: the page that is left slides away and fades while the shell switches (the entrance
+	/// half is <see cref="Motion.EnterPage"/>: a fade-through). Deliberately no navigation deferral: the shell throws
+	/// when a second navigation starts while one is deferred, and a double tap must stay harmless.
+	/// </summary>
+	private void OnNavigating(object? sender, ShellNavigatingEventArgs e)
+	{
+		try
+		{
+			bool back = e.Source is ShellNavigationSource.Pop or ShellNavigationSource.PopToRoot;
+			bool forward = e.Source is ShellNavigationSource.Push;
+
+			if (!Motion.Enabled || e.Cancelled || !(back || forward))
+			{
+				return;
+			}
+
+			Motion.NavigationStarting(back);
+
+			if (CurrentPage is not ContentPage leaving)
+			{
+				return;
+			}
+
+			_ = Motion.ExitPageAsync(leaving, back);
+
+			// If the navigation was cancelled the page is still the current one: show it again.
+			leaving.Dispatcher.DispatchDelayed(
+				TimeSpan.FromMilliseconds(1200),
+				() =>
+				{
+					if (CurrentPage == leaving)
+					{
+						Motion.Restore(leaving);
+					}
+				});
+		}
+		catch (Exception ex)
+		{
+			System.Diagnostics.Debug.WriteLine($"Page transition skipped: {ex.Message}");
+		}
 	}
 }

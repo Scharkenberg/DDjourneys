@@ -38,7 +38,7 @@ public sealed partial class PlaceSearchViewModel : DisposableViewModel, IQueryAt
 
 	private int MinQueryLength => _settings.MinQueryLength;
 
-	private const int CacheSize = 24;
+	private const int CacheSize = 32;
 
 	// Answers of this session by normalised query: backspacing or retyping costs no request.
 	private readonly Dictionary<string, IReadOnlyList<Location>> _cache = new(StringComparer.CurrentCultureIgnoreCase);
@@ -430,7 +430,7 @@ public sealed partial class PlaceSearchViewModel : DisposableViewModel, IQueryAt
 				_localization.CurrentStrings.PlaceSearch.Hint,
 
 			MessageKind.TooShort =>
-				_localization.CurrentStrings.PlaceSearch.TypeAtLeastTwoCharacters,
+				_localization.CurrentStrings.PlaceSearch.TypeAtLeastThreeCharacters,
 
 			MessageKind.NoResults =>
 				_localization.CurrentStrings.PlaceSearch.NoPlacesFound,

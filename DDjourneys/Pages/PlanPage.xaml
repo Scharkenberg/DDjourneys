@@ -50,7 +50,7 @@
 						ColumnDefinitions="*,44"
 						support:Dense.MinHeight="64">
 
-						<VerticalStackLayout Spacing="2" VerticalOptions="Center">
+						<VerticalStackLayout support:Motion.Feedback="True" Spacing="2" VerticalOptions="Center">
 							<Label StyleClass="Caption" Text="{localization:Tr Plan.FromPlaceholder}" />
 
 							<controls:StopNameView
@@ -82,7 +82,7 @@
 						ColumnDefinitions="*,44"
 						support:Dense.MinHeight="64">
 
-						<VerticalStackLayout Spacing="2" VerticalOptions="Center">
+						<VerticalStackLayout support:Motion.Feedback="True" Spacing="2" VerticalOptions="Center">
 							<Label StyleClass="Caption" Text="{localization:Tr Plan.ToPlaceholder}" />
 
 							<controls:StopNameView
@@ -298,7 +298,7 @@
 
 								<Grid RowDefinitions="Auto,Auto" RowSpacing="0">
 
-									<Grid
+									<Grid support:Motion.Feedback="True"
 										support:Dense.Padding="14,10"
 										ColumnDefinitions="Auto,*,Auto"
 										ColumnSpacing="10"

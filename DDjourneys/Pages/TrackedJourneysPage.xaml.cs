@@ -12,6 +12,9 @@ public partial class TrackedJourneysPage : ContentPage
 
 	private string? _scrollTarget;
 
+	/// <summary>Cards that have come in already; the rows are rebuilt on every refresh and must not replay it.</summary>
+	private readonly HashSet<string> _revealed = [];
+
 	public TrackedJourneysPage(TrackedJourneysViewModel vm)
 	{
 		InitializeComponent();
@@ -27,6 +30,19 @@ public partial class TrackedJourneysPage : ContentPage
 		};
 
 		vm.FocusRequested += OnFocusRequested;
+	}
+
+	private void CardLoaded(object? sender, EventArgs e)
+	{
+		if (!Motion.Enabled
+			|| sender is not Border card
+			|| card.BindingContext is not TrackedRow row
+			|| !_revealed.Add(row.PlanId))
+		{
+			return;
+		}
+
+		_ = Motion.RevealAsync(card, Math.Min(_revealed.Count - 1, 8) * 55, 300, 16);
 	}
 
 	/// <summary>Opens and shows one followed journey (from a notification while the page is open).</summary>

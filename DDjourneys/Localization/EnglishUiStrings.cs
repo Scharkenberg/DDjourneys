@@ -61,8 +61,8 @@ public sealed class EnglishUiStrings : IUiStrings
 		"Station, stop or address",
 		Hint =
 		"Type a station, stop or address.",
-		TypeAtLeastTwoCharacters =
-		"Type at least 2 characters.",
+		TypeAtLeastThreeCharacters =
+		"Type at least 3 characters.",
 		NoPlacesFound = "No places found.",
 		Searching = "Searching...",
 		CouldNotReachService =
