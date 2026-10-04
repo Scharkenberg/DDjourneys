@@ -15,4 +15,13 @@ public interface ILocationProvider
 		string query,
 		CancellationToken cancellationToken = default,
 		TimeSpan? timeout = null);
+
+	/// <summary>
+	/// Searches for locations near the given coordinates.
+	/// </summary>
+	Task<IReadOnlyList<Location>> SearchByCoordinatesAsync(
+		double latitude,
+		double longitude,
+		CancellationToken cancellationToken = default,
+		TimeSpan? timeout = null);
 }

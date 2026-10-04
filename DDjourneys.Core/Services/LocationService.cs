@@ -31,9 +31,9 @@ public sealed class LocationService
 	/// Searches for locations matching user input.
 	/// </summary>
 	public Task<IReadOnlyList<Location>> SearchAsync(
-	string query,
-	CancellationToken cancellationToken = default,
-	TimeSpan? timeout = null)
+		string query,
+		CancellationToken cancellationToken = default,
+		TimeSpan? timeout = null)
 	{
 		ILocationProvider? provider =
 			_registry is null
@@ -43,8 +43,32 @@ public sealed class LocationService
 		return provider is null
 			? Task.FromResult<IReadOnlyList<Location>>([])
 			: provider.SearchAsync(
-				query,
-				cancellationToken,
-				timeout);
+					query,
+					cancellationToken,
+					timeout);
+	}
+
+
+	/// <summary>
+	/// Searches for locations near the given coordinates.
+	/// </summary>
+	public Task<IReadOnlyList<Location>> SearchByCoordinatesAsync(
+		double latitude,
+		double longitude,
+		CancellationToken cancellationToken = default,
+		TimeSpan? timeout = null)
+	{
+		ILocationProvider? provider =
+			_registry is null
+				? _providers.FirstOrDefault()
+				: _providers.FirstOrDefault(_registry.IsSelected);
+
+		return provider is null
+			? Task.FromResult<IReadOnlyList<Location>>([])
+			: provider.SearchByCoordinatesAsync(
+					latitude,
+					longitude,
+					cancellationToken,
+					timeout);
 	}
 }

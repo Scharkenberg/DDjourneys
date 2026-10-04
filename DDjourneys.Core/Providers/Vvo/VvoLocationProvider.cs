@@ -66,6 +66,39 @@ public sealed class VvoLocationProvider : ILocationProvider, IProviderDescriptor
 
 
 	/// <summary>
+	/// Searches for locations near the given coordinates using the VVO WebAPI.
+	/// </summary>
+	public async Task<IReadOnlyList<Location>> SearchByCoordinatesAsync(
+		double latitude,
+		double longitude,
+		CancellationToken cancellationToken = default,
+		TimeSpan? timeout = null)
+	{
+		VvoPointResponse? response =
+			await _apiClient.FindPointsByCoordinatesAsync(
+				latitude,
+				longitude,
+				cancellationToken,
+				timeout)
+				.ConfigureAwait(false);
+
+		if (response is null)
+		{
+			return Array.Empty<Location>();
+		}
+
+		cancellationToken.ThrowIfCancellationRequested();
+
+		IReadOnlyList<VvoPoint> points = response.Points;
+
+		return points
+			.Where(point => !string.IsNullOrWhiteSpace(point.Name))
+			.Select(Map)
+			.ToArray();
+	}
+
+
+	/// <summary>
 	/// Maps one PointFinder entry. The geometry the API returned is kept (converted to WGS84); a point
 	/// without usable coordinates (the API sends "0" for some entries) simply has none.
 	/// </summary>

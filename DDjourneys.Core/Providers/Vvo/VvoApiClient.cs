@@ -81,6 +81,40 @@ public sealed class VvoApiClient
 
 
 	/// <summary>
+	/// Searches for locations near the given coordinates using VVO PointFinder.
+	/// </summary>
+	public async Task<VvoPointResponse?> FindPointsByCoordinatesAsync(
+		double latitude,
+		double longitude,
+		CancellationToken cancellationToken = default,
+		TimeSpan? timeout = null)
+	{
+		string requestUri =
+			$"{BaseUrl}/tr/pointfinder" +
+			$"?coord={latitude:F6},{longitude:F6}" +
+			"&limit=10" +
+			"&format=json";
+
+		string json =
+			await _apiClient.GetAsync(
+				requestUri,
+				cancellationToken,
+				timeout)
+				.ConfigureAwait(false);
+
+		VvoPointResponse? response =
+			JsonSerializer.Deserialize<VvoPointResponse>(
+				json,
+				_jsonOptions);
+
+		EnsureProviderSuccess(
+			response?.Status);
+
+		return response;
+	}
+
+
+	/// <summary>
 	/// Searches for journeys using the VVO trip planner.
 	/// </summary>
 	public async Task<VvoTripResponse?> GetTripsAsync(
