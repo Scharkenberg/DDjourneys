@@ -49,6 +49,7 @@ public partial class PlanPage : ContentPage, IQueryAttributable
 		// Setup location permission callbacks
 		vm.CheckLocationPermission = HasLocationPermission;
 		vm.RequestLocationPermission = CheckAndRequestLocationPermission;
+		vm.OpenRoutingSettings = OpenRoutingSettingsAsync;
 
 		// Setup dialog callbacks
 		vm.ShowRouteNameDialog = ShowRouteNameDialog;
@@ -268,4 +269,8 @@ public partial class PlanPage : ContentPage, IQueryAttributable
 			_localization.CurrentStrings.Plan.SetHomeLocation,
 			_localization.CurrentStrings.Plan.HomeLocationName,
 			initialValue: defaultName);
+	}
+	private async Task OpenRoutingSettingsAsync()
+	{
+		await NavigateAsync(Routes.RoutingSettings, []);
 	}

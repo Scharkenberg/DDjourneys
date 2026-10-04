@@ -238,6 +238,8 @@ public sealed partial class PlanViewModel : DisposableViewModel
 
 	public Func<Task>? RequestLocationPermission { get; set; }
 
+	public Func<Task>? OpenRoutingSettings { get; set; }
+
 
 	public AsyncCommand PickFromCommand { get; }
 
@@ -278,6 +280,8 @@ public sealed partial class PlanViewModel : DisposableViewModel
 	public Command ClearHomeCommand { get; }
 
 	public Command ClearSavedRoutesCommand { get; }
+
+	public AsyncCommand OpenRoutingSettingsCommand { get; }
 
 	/// <summary>Takes a remembered connection and searches it again straight away.</summary>
 	public AsyncCommand<RouteRow> UseRouteCommand { get; }
