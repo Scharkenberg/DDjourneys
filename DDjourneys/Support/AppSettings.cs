@@ -185,6 +185,35 @@ public sealed class AppSettings
 		set => Write("timeout", Math.Clamp(value, 5, 60));
 	}
 
+	// ----- Places -----
+
+	/// <summary>The place search also finds addresses (the router adds the walk to the stop).</summary>
+	public bool SearchAddresses
+	{
+		get => Read("searchAddresses", true);
+		set => Write("searchAddresses", value);
+	}
+
+	/// <summary>The place search also finds points of interest.</summary>
+	public bool SearchPois
+	{
+		get => Read("searchPois", true);
+		set => Write("searchPois", value);
+	}
+
+	/// <summary>"Use my location" starts at the address the device is at, not at the nearest stop.</summary>
+	public bool ExactPosition
+	{
+		get => Read("exactPosition", false);
+		set => Write("exactPosition", value);
+	}
+
+	/// <summary>The kinds of places a search for a journey endpoint may return.</summary>
+	public PlaceKinds SearchKinds =>
+		PlaceKinds.Stops
+		| (SearchAddresses ? PlaceKinds.Addresses : PlaceKinds.None)
+		| (SearchPois ? PlaceKinds.Pois : PlaceKinds.None);
+
 	// ----- Journey display -----
 
 	/// <summary>Occupancy dots on stops and rides.</summary>
@@ -305,6 +334,12 @@ public sealed class AppSettings
 		set => Write("fewestTransfers", value);
 	}
 
+	public RouteOptimisation Optimisation
+	{
+		get => Read("optimisation", RouteOptimisation.Fastest);
+		set => Write("optimisation", value);
+	}
+
 	public EntranceNeed Entrance
 	{
 		get => Read("entrance", EntranceNeed.Any);
@@ -330,6 +365,7 @@ public sealed class AppSettings
 			AvoidStairs = AvoidStairs,
 			AvoidEscalators = AvoidEscalators,
 			FewestTransfers = FewestTransfers,
+			Optimisation = Optimisation,
 			Entrance = Entrance,
 			ExtraCharge = ExtraCharge
 		};
@@ -345,6 +381,7 @@ public sealed class AppSettings
 		AvoidStairs = false;
 		AvoidEscalators = false;
 		FewestTransfers = false;
+		Optimisation = RouteOptimisation.Fastest;
 		Entrance = EntranceNeed.Any;
 		ExtraCharge = ExtraChargeFilter.Any;
 	}
@@ -357,6 +394,9 @@ public sealed class AppSettings
 		ExpandNotices = false;
 		TimeoutSeconds = 15;
 		ShowOccupancy = true;
+		SearchAddresses = true;
+		SearchPois = true;
+		ExactPosition = false;
 		ShowPlatforms = true;
 		ExpandStops = false;
 		ExpertView = true;

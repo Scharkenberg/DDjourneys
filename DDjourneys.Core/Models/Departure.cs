@@ -76,6 +76,9 @@ public sealed class Departure
 	/// <summary>Ids of the route changes (disruptions, construction) that affect this run.</summary>
 	public IReadOnlyList<string> RouteChangeIds { get; init; } = [];
 
+	/// <summary>What the provider keeps for this departure (e.g. the stops of its run).</summary>
+	public object? ProviderData { get; init; }
+
 	public bool IsCancelled => State == DepartureState.Cancelled;
 
 	public DateTimeOffset Effective => Realtime ?? Scheduled;

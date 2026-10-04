@@ -282,6 +282,71 @@
 				</VerticalStackLayout>
 			</Border>
 
+			<Label StyleClass="Section" Text="{localization:Tr PlaceSearch.Title}" />
+
+			<Border Padding="0" StyleClass="Card">
+				<VerticalStackLayout>
+
+					<Grid
+						support:Dense.Padding="12,8"
+						ColumnDefinitions="*,Auto"
+						ColumnSpacing="12"
+						support:Dense.MinHeight="52">
+
+						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
+							<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Extras.SearchAddresses}" />
+							<Label StyleClass="Caption" Text="{localization:Tr Extras.SearchAddressesDescription}" />
+						</VerticalStackLayout>
+
+						<Switch
+							Grid.Column="1"
+							IsToggled="{Binding SearchAddresses}"
+							SemanticProperties.Description="{localization:Tr Extras.SearchAddresses}"
+							VerticalOptions="Center" />
+					</Grid>
+
+					<BoxView StyleClass="Divider" />
+
+					<Grid
+						support:Dense.Padding="12,8"
+						ColumnDefinitions="*,Auto"
+						ColumnSpacing="12"
+						support:Dense.MinHeight="52">
+
+						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
+							<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Extras.SearchPois}" />
+							<Label StyleClass="Caption" Text="{localization:Tr Extras.SearchPoisDescription}" />
+						</VerticalStackLayout>
+
+						<Switch
+							Grid.Column="1"
+							IsToggled="{Binding SearchPois}"
+							SemanticProperties.Description="{localization:Tr Extras.SearchPois}"
+							VerticalOptions="Center" />
+					</Grid>
+
+					<BoxView StyleClass="Divider" />
+
+					<Grid
+						support:Dense.Padding="12,8"
+						ColumnDefinitions="*,Auto"
+						ColumnSpacing="12"
+						support:Dense.MinHeight="52">
+
+						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
+							<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Extras.ExactPosition}" />
+							<Label StyleClass="Caption" Text="{localization:Tr Extras.ExactPositionDescription}" />
+						</VerticalStackLayout>
+
+						<Switch
+							Grid.Column="1"
+							IsToggled="{Binding ExactPosition}"
+							SemanticProperties.Description="{localization:Tr Extras.ExactPosition}"
+							VerticalOptions="Center" />
+					</Grid>
+				</VerticalStackLayout>
+			</Border>
+
 			<Label StyleClass="Section" Text="{localization:Tr Settings.JourneyDisplay}" />
 
 			<Border Padding="0" StyleClass="Card">

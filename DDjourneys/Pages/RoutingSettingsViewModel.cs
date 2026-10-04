@@ -64,6 +64,17 @@ public sealed class RoutingSettingsViewModel : DisposableViewModel
 				() => (int)_settings.Accessibility,
 				value => _settings.Accessibility = (AccessibilityNeed)value);
 
+		Optimisation =
+			new ChoiceGroup(
+				[
+					((int)RouteOptimisation.Fastest, () => ExtraStrings.OptFastest),
+					((int)RouteOptimisation.FewestChanges, () => ExtraStrings.OptFewestChanges),
+					((int)RouteOptimisation.LeastWalking, () => ExtraStrings.OptLeastWalking),
+					((int)RouteOptimisation.LowestFare, () => ExtraStrings.OptLowestFare)
+				],
+				() => (int)_settings.Optimisation,
+				value => _settings.Optimisation = (RouteOptimisation)value);
+
 		Entrance =
 			new ChoiceGroup(
 				[
@@ -139,6 +150,9 @@ public sealed class RoutingSettingsViewModel : DisposableViewModel
 
 	public ChoiceGroup Accessibility { get; }
 
+	/// <summary>What the router optimises for (providers with route optimisation).</summary>
+	public ChoiceGroup Optimisation { get; }
+
 	/// <summary>Required vehicle entrance.</summary>
 	public ChoiceGroup Entrance { get; }
 
@@ -176,6 +190,9 @@ public sealed class RoutingSettingsViewModel : DisposableViewModel
 		string.Format(
 			Strings.FootpathDescription,
 			_settings.FootpathMinutes);
+
+	private ExtrasStrings ExtraStrings =>
+		_localization.CurrentStrings.Extras;
 
 	private RoutingStrings Strings =>
 		_localization.CurrentStrings.Routing;
@@ -233,6 +250,7 @@ public sealed class RoutingSettingsViewModel : DisposableViewModel
 		Pace.Refresh();
 		Accessibility.Refresh();
 		Entrance.Refresh();
+		Optimisation.Refresh();
 		ExtraCharge.Refresh();
 
 		OnPropertyChanged(nameof(FootpathMinutes));

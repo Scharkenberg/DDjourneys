@@ -260,6 +260,17 @@
 						support:Motion.Breathe="True"
 						TextColor="{DynamicResource Accent}" />
 
+					<Button
+						Padding="12,0"
+						Command="{Binding Source={RelativeSource AncestorType={x:Type local:JourneyViewModel}}, x:DataType=local:JourneyViewModel, Path=ShowLiveCommand}"
+						CommandParameter="{Binding .}"
+						FontSize="{StaticResource FontCaption}"
+						HorizontalOptions="Start"
+						IsVisible="{Binding CanShowLive}"
+						support:Dense.MinHeight="36"
+						StyleClass="Tonal"
+						Text="{localization:Tr Extras.LiveShow}" />
+
 					<HorizontalStackLayout IsVisible="{Binding Source={RelativeSource AncestorType={x:Type local:JourneyViewModel}}, x:DataType=local:JourneyViewModel, Path=HasLegAlternatives}" Spacing="8">
 						<Button
 							Padding="12,0"
@@ -620,6 +631,38 @@
 				</VerticalStackLayout>
 
 			</VerticalStackLayout>
+
+			<Border
+				Padding="12"
+				IsVisible="{Binding HasFares}"
+				StyleClass="Card">
+
+				<VerticalStackLayout Spacing="{DynamicResource SpaceS}">
+					<Label StyleClass="Section" Text="{localization:Tr Extras.FaresTitle}" />
+
+					<VerticalStackLayout BindableLayout.ItemsSource="{Binding Fares}">
+						<BindableLayout.ItemTemplate>
+							<DataTemplate x:DataType="support:FareRow">
+								<Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="12" Padding="0,4">
+									<Label
+										FontFamily="{DynamicResource FontSemibold}"
+										Text="{Binding Name}" />
+									<Label
+										Grid.Column="1"
+										FontFamily="{DynamicResource FontSemibold}"
+										Text="{Binding PriceText}" />
+									<Label
+										Grid.Row="1"
+										Grid.ColumnSpan="2"
+										IsVisible="{Binding HasDescription}"
+										StyleClass="Caption"
+										Text="{Binding Description}" />
+								</Grid>
+							</DataTemplate>
+						</BindableLayout.ItemTemplate>
+					</VerticalStackLayout>
+				</VerticalStackLayout>
+			</Border>
 
 			<Label
 				IsVisible="{Binding HasError}"

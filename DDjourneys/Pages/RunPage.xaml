@@ -38,6 +38,13 @@
 						VerticalOptions="Center" />
 				</Grid>
 
+				<Button
+					Command="{Binding ShowLiveCommand}"
+					HorizontalOptions="Start"
+					IsVisible="{Binding CanShowLive}"
+					StyleClass="Tonal"
+					Text="{localization:Tr Extras.LiveShow}" />
+
 				<Label
 					HorizontalTextAlignment="Center"
 					IsVisible="{Binding HasMessage}"

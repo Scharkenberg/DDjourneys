@@ -1,0 +1,103 @@
+<ContentPage
+	x:Class="DDjourneys.Pages.VehiclesPage"
+	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+	xmlns:local="clr-namespace:DDjourneys.Pages"
+	xmlns:localization="clr-namespace:DDjourneys.Localization"
+	xmlns:support="clr-namespace:DDjourneys.Support"
+	Title="{localization:Tr Extras.LiveTitle}"
+	x:DataType="local:VehiclesViewModel">
+
+	<ScrollView>
+		<VerticalStackLayout Padding="{DynamicResource PadPage}" Spacing="{DynamicResource SpaceM}">
+
+			<Border Padding="10,0" StyleClass="Card">
+				<Entry
+					ClearButtonVisibility="WhileEditing"
+					Completed="FilterCompleted"
+					Keyboard="Numeric"
+					Placeholder="{localization:Tr Extras.LineFilterPlaceholder}"
+					ReturnType="Search"
+					SemanticProperties.Description="{localization:Tr Extras.LineFilterPlaceholder}"
+					Text="{Binding LineFilter}" />
+			</Border>
+
+			<Grid ColumnDefinitions="*,*" ColumnSpacing="{DynamicResource SpaceS}">
+				<Button
+					Command="{Binding StartCommand}"
+					Text="{localization:Tr Extras.LiveStart}" />
+				<Button
+					Grid.Column="1"
+					Command="{Binding StopCommand}"
+					IsEnabled="{Binding IsStreaming}"
+					StyleClass="Tonal"
+					Text="{localization:Tr Extras.LiveStop}" />
+			</Grid>
+
+			<Label
+				HorizontalTextAlignment="Center"
+				IsVisible="{Binding HasStatus}"
+				StyleClass="Caption"
+				Text="{Binding Status}" />
+
+			<Border Padding="0" StyleClass="Card">
+				<Border.Triggers>
+					<DataTrigger
+						Binding="{Binding Rows.Count}"
+						TargetType="Border"
+						Value="0">
+						<Setter Property="IsVisible" Value="False" />
+					</DataTrigger>
+				</Border.Triggers>
+
+				<VerticalStackLayout BindableLayout.ItemsSource="{Binding Rows}">
+					<BindableLayout.ItemTemplate>
+						<DataTemplate x:DataType="local:VehicleRow">
+							<Grid RowDefinitions="Auto,Auto" RowSpacing="0">
+								<Grid
+									support:Dense.Padding="14,10"
+									support:Dense.MinHeight="56"
+									support:Motion.Feedback="True"
+									ColumnDefinitions="*,Auto"
+									ColumnSpacing="10"
+									SemanticProperties.Description="{Binding Description}">
+
+									<VerticalStackLayout Spacing="1" VerticalOptions="Center">
+										<Label FontFamily="{DynamicResource FontSemibold}" Text="{Binding LineText}" />
+										<Label StyleClass="Caption" Text="{Binding RunText}" />
+										<Label StyleClass="Caption" Text="{Binding SourceText}" />
+									</VerticalStackLayout>
+
+									<VerticalStackLayout
+										Grid.Column="1"
+										Spacing="1"
+										VerticalOptions="Center">
+										<Label
+											HorizontalTextAlignment="End"
+											IsVisible="{Binding HasDelay}"
+											Text="{Binding DelayText}" />
+										<Label
+											HorizontalTextAlignment="End"
+											StyleClass="Caption"
+											Text="{Binding AgeText}" />
+									</VerticalStackLayout>
+
+									<Grid.GestureRecognizers>
+										<TapGestureRecognizer
+											Command="{Binding Source={RelativeSource AncestorType={x:Type local:VehiclesViewModel}}, x:DataType=local:VehiclesViewModel, Path=OpenMapCommand}"
+											CommandParameter="{Binding .}" />
+									</Grid.GestureRecognizers>
+								</Grid>
+
+								<BoxView Grid.Row="1" StyleClass="Divider" />
+							</Grid>
+						</DataTemplate>
+					</BindableLayout.ItemTemplate>
+				</VerticalStackLayout>
+			</Border>
+
+			<Label StyleClass="Caption" Text="{localization:Tr Extras.LiveHint}" />
+
+		</VerticalStackLayout>
+	</ScrollView>
+</ContentPage>

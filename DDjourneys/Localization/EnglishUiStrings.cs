@@ -114,6 +114,63 @@ public sealed class EnglishUiStrings : IUiStrings
 		Details = "Details"
 	};
 
+	// <extras>
+	public ExtrasStrings Extras { get; } = new()
+	{
+		KindStop = "Stop",
+		KindAddress = "Address",
+		KindPoi = "Point of interest",
+		SearchAddresses = "Addresses",
+		SearchAddressesDescription = "Find addresses in the place search. The route includes the walk to the nearest stop.",
+		SearchPois = "Points of interest",
+		SearchPoisDescription = "Find landmarks, buildings and other places by name.",
+		ExactPosition = "Start at my exact position",
+		ExactPositionDescription = "\"Use my location\" picks the address you are at instead of the nearest stop.",
+		LiveTitle = "Live vehicles",
+		LiveShow = "Where is the vehicle?",
+		LineFilterPlaceholder = "Line numbers, e.g. 11, 3 (empty: all)",
+		LiveStart = "Show",
+		LiveStop = "Stop",
+		LiveConnecting = "Connecting…",
+		LiveWaiting = "Waiting for vehicles…",
+		LiveError = "The live positions are not available right now.",
+		LiveLine = "Line {0}",
+		LiveRun = "Run {0}",
+		LiveSecondsAgo = "{0} s ago",
+		LiveMinutesAgo = "{0} min ago",
+		LiveOnTime = "On time",
+		LiveSourceGps = "GPS",
+		LiveSourceTelegram = "Radio telegram",
+		LiveHint = "Positions come from the community TLMS network and can be incomplete.",
+		LiveOpenMap = "Open map",
+		AccessTitle = "Accessibility of this stop",
+		AccessHide = "Hide accessibility",
+		AccessNone = "The city publishes no accessibility data for this stop.",
+		AccessPlatform = "Platform {0}",
+		AccessBoarding = "Boarding: {0}",
+		AccessKerb = "Kerb height: {0}",
+		AccessWidth = "Width: {0}",
+		AccessTactile = "Tactile guidance: {0}",
+		AccessAudio = "Announcements: {0}",
+		ServiceShow = "DVB service points nearby",
+		ServiceHide = "Hide service points",
+		ServiceNone = "No service points nearby.",
+		ServiceNeedsPosition = "Choose a stop or use your location first.",
+		CapLive = "Live vehicles",
+		CapOpenData = "City open data",
+		CapFares = "Fares",
+		CapOptimisation = "Route optimisation",
+		OptSection = "Optimise route for",
+		OptFastest = "Fastest",
+		OptFewestChanges = "Fewest changes",
+		OptLeastWalking = "Least walking",
+		OptLowestFare = "Lowest fare",
+		OptNote = "Only the VVO (TRIAS) provider honours this choice; other providers always search for the fastest route.",
+		FaresTitle = "Tickets and prices",
+		PdfFailed = "The PDF could not be loaded. Details are in the log file diagnostics.log."
+	};
+	// </extras>
+
 	public PlaceSearchStrings PlaceSearch { get; } = new()
 	{
 		Title = "Choose place",

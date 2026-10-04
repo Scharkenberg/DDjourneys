@@ -226,6 +226,42 @@
 				</VerticalStackLayout>
 			</Border>
 
+			<Label StyleClass="Section" Text="{localization:Tr Extras.OptSection}" />
+
+			<Border Padding="0" StyleClass="Card">
+				<VerticalStackLayout>
+					<VerticalStackLayout BindableLayout.ItemsSource="{Binding Optimisation.Options}">
+						<BindableLayout.ItemTemplate>
+							<DataTemplate x:DataType="support:ChoiceOption">
+								<Grid support:Motion.Feedback="True"
+									support:Dense.Padding="12,10"
+									ColumnDefinitions="*,Auto"
+									support:Dense.MinHeight="48">
+
+									<Label
+										FontFamily="{DynamicResource FontSemibold}"
+										Text="{Binding Title}"
+										VerticalOptions="Center" />
+
+									<controls:Icon
+										Grid.Column="1"
+										Glyph="Check"
+										IsVisible="{Binding IsSelected}"
+										Size="20"
+										VerticalOptions="Center"
+										Color="{DynamicResource Accent}" />
+
+									<Grid.GestureRecognizers>
+										<TapGestureRecognizer Command="{Binding SelectCommand}" />
+									</Grid.GestureRecognizers>
+								</Grid>
+							</DataTemplate>
+						</BindableLayout.ItemTemplate>
+					</VerticalStackLayout>
+				</VerticalStackLayout>
+			</Border>
+			<Label StyleClass="Caption" Text="{localization:Tr Extras.OptNote}" />
+
 			<Label StyleClass="Section" Text="{localization:Tr Routing.SectionExtraCharge}" />
 
 			<Border Padding="0" StyleClass="Card">

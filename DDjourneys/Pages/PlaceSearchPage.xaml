@@ -18,6 +18,10 @@
 					Spacing="2"
 					VerticalOptions="Center">
 					<controls:StopNameView Place="{Binding Detail}" Stop="{Binding Name}" />
+					<Label
+						IsVisible="{Binding HasKind}"
+						StyleClass="Caption"
+						Text="{Binding KindText}" />
 				</VerticalStackLayout>
 
 				<!--  Hairline between rows (the last one sits on the card border)  -->

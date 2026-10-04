@@ -1,5 +1,6 @@
 ﻿using System.Text.Json;
 using DDjourneys.Core.Api;
+using DDjourneys.Core.Diagnostics;
 using DDjourneys.Core.Providers.Vvo.Extensions;
 using DDjourneys.Core.Providers.Vvo.Models;
 using DDjourneys.Core.Providers.Vvo.Requests;
@@ -317,10 +318,40 @@ public sealed class VvoApiClient
 			timeout);
 
 
-	/// <summary>
-	/// Address of the PDF of a planned trip (GET tr/trippdf). The caller opens it; nothing is downloaded here.
-	/// </summary>
+	/// <summary>One way of asking for the PDF: a label for the log and the address.</summary>
+	public sealed record VvoPdfAttempt(string Label, Uri Uri);
+
+
+	/// <summary>Address of the PDF of a planned trip (the first, most complete attempt).</summary>
 	public Uri BuildTripPdfUri(
+		string routeId,
+		string sessionId,
+		string origin,
+		string destination,
+		DateTimeOffset time,
+		bool isArrivalTime,
+		string? via,
+		VvoStandardSettings standardSettings,
+		VvoMobilitySettings mobilitySettings) =>
+		BuildTripPdfAttempts(
+			routeId,
+			sessionId,
+			origin,
+			destination,
+			time,
+			isArrivalTime,
+			via,
+			standardSettings,
+			mobilitySettings)[0].Uri;
+
+
+	/// <summary>
+	/// The ways to ask for the PDF (GET tr/trippdf), from the full request down to the exact shape of the
+	/// documented example: first everything, then without the standard settings, without the mobility
+	/// settings, without via, and finally with the session id's colon unescaped. Identical addresses are
+	/// listed once.
+	/// </summary>
+	public IReadOnlyList<VvoPdfAttempt> BuildTripPdfAttempts(
 		string routeId,
 		string sessionId,
 		string origin,
@@ -338,22 +369,123 @@ public sealed class VvoApiClient
 		ArgumentNullException.ThrowIfNull(standardSettings);
 		ArgumentNullException.ThrowIfNull(mobilitySettings);
 
-		static string Escape(string value) =>
-			Uri.EscapeDataString(value);
+		var parameters =
+			new List<(string Key, string Value)>
+			{
+				("id", routeId),
+				("origin", origin),
+				("destination", destination),
+				("sessionid", sessionId),
+				("time", time.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'", System.Globalization.CultureInfo.InvariantCulture)),
+				("isarrivaltime", Flag(isArrivalTime))
+			};
 
-		string query =
-			$"id={Escape(routeId)}" +
-			$"&origin={Escape(origin)}" +
-			$"&destination={Escape(destination)}" +
-			$"&sessionid={Escape(sessionId)}" +
-			$"&time={Escape(time.ToString("O", System.Globalization.CultureInfo.InvariantCulture))}" +
-			$"&isarrivaltime={Flag(isArrivalTime)}" +
-			(string.IsNullOrWhiteSpace(via) ? string.Empty : $"&via={Escape(via)}") +
-			$"&mobilitysettings={Escape(JsonSerializer.Serialize(mobilitySettings, _jsonOptions))}" +
-			$"&standardSettings={Escape(JsonSerializer.Serialize(standardSettings, _jsonOptions))}" +
-			"&numberprev=0&numbernext=0";
+		if (!string.IsNullOrWhiteSpace(via))
+		{
+			parameters.Add(("via", via));
+		}
 
-		return new Uri($"{BaseUrl}/tr/trippdf?{query}");
+		parameters.Add(("mobilitysettings", JsonSerializer.Serialize(mobilitySettings, _jsonOptions)));
+		parameters.Add(("standardSettings", JsonSerializer.Serialize(standardSettings, _jsonOptions)));
+		parameters.Add(("numberprev", "0"));
+		parameters.Add(("numbernext", "0"));
+		parameters.Add(("format", "json"));
+
+		static string Query(IEnumerable<(string Key, string Value)> items, bool rawColon) =>
+			string.Join(
+				"&",
+				items.Select(
+					item =>
+					{
+						string escaped = Uri.EscapeDataString(item.Value);
+
+						return $"{item.Key}={(rawColon && item.Key == "sessionid" ? escaped.Replace("%3A", ":") : escaped)}";
+					}));
+
+		var steps = new List<(string Label, string Query)>();
+
+		IEnumerable<(string Key, string Value)> Without(params string[] keys) =>
+			parameters.Where(
+				item => !keys.Contains(item.Key, StringComparer.OrdinalIgnoreCase));
+
+		steps.Add(("full", Query(parameters, false)));
+		steps.Add(("without standardSettings", Query(Without("standardSettings"), false)));
+		steps.Add(("without standardSettings, mobilitysettings", Query(Without("standardSettings", "mobilitysettings"), false)));
+		steps.Add(("documented shape (also without via)", Query(Without("standardSettings", "mobilitysettings", "via"), false)));
+		steps.Add(("documented shape, raw colon in sessionid", Query(Without("standardSettings", "mobilitysettings", "via"), true)));
+
+		return
+			[.. steps
+				.DistinctBy(step => step.Query)
+				.Select(step => new VvoPdfAttempt(step.Label, new Uri($"{BaseUrl}/tr/trippdf?{step.Query}")))];
+	}
+
+
+	/// <summary>
+	/// Tries the attempts in order and returns the first answer that is a PDF; null when none is.
+	/// Every attempt (parameters, status, media type, size, start of a non-PDF body) goes to the diagnostic log.
+	/// </summary>
+	public async Task<byte[]?> DownloadTripPdfAsync(
+		IReadOnlyList<VvoPdfAttempt> attempts,
+		CancellationToken cancellationToken = default,
+		TimeSpan? timeout = null)
+	{
+		ArgumentNullException.ThrowIfNull(attempts);
+
+		foreach (VvoPdfAttempt attempt in attempts)
+		{
+			cancellationToken.ThrowIfCancellationRequested();
+
+			DiagnosticLog.Write($"[VVO PDF] try '{attempt.Label}': {attempt.Uri}");
+
+			try
+			{
+				(byte[] content, string? mediaType) =
+					await _apiClient
+						.GetBytesAsync(
+							attempt.Uri.AbsoluteUri,
+							"application/pdf, */*",
+							cancellationToken,
+							timeout)
+						.ConfigureAwait(false);
+
+				bool isPdf =
+					content.Length >= 4
+					&& content[0] == 0x25
+					&& content[1] == 0x50
+					&& content[2] == 0x44
+					&& content[3] == 0x46;
+
+				if (isPdf)
+				{
+					DiagnosticLog.Write($"[VVO PDF] '{attempt.Label}': OK, {content.Length} bytes, {mediaType}");
+
+					return content;
+				}
+
+				string start =
+					System.Text.Encoding.UTF8
+						.GetString(content, 0, Math.Min(content.Length, 300))
+						.ReplaceLineEndings(" ");
+
+				DiagnosticLog.Write($"[VVO PDF] '{attempt.Label}': 200 but not a PDF ({mediaType}, {content.Length} bytes): {start}");
+			}
+			catch (OperationCanceledException)
+			{
+				throw;
+			}
+			catch (ApiException ex)
+			{
+				string body =
+					(ex.ResponseBody ?? string.Empty)
+						.ReplaceLineEndings(" ");
+
+				DiagnosticLog.Write(
+					$"[VVO PDF] '{attempt.Label}': failed, status {ex.StatusCode?.ToString() ?? "none"}: {body[..Math.Min(body.Length, 300)]} {ex.Detail}");
+			}
+		}
+
+		return null;
 	}
 
 

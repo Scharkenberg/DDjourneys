@@ -135,6 +135,17 @@ public sealed class LegRow : TimelineRow
 	public bool HasDirection =>
 		Direction is not null;
 
+	/// <summary>The line is a plain number, so its vehicles can be looked up on the live page.</summary>
+	public bool CanShowLive =>
+		int.TryParse(
+			LineText.Trim(),
+			System.Globalization.NumberStyles.None,
+			System.Globalization.CultureInfo.InvariantCulture,
+			out _);
+
+	public string LineNumber =>
+		LineText.Trim();
+
 	public bool HasFeatures =>
 		FeaturesText is not null;
 
@@ -299,6 +310,20 @@ public sealed class NoticeRow : TimelineRow
 	public bool Expanded { get; init; }
 
 	public bool Technical { get; init; }
+}
+
+
+/// <summary>One ticket the provider quotes for a journey.</summary>
+public sealed class FareRow
+{
+	public required string Name { get; init; }
+
+	public required string PriceText { get; init; }
+
+	public string? Description { get; init; }
+
+	public bool HasDescription =>
+		!string.IsNullOrWhiteSpace(Description);
 }
 
 

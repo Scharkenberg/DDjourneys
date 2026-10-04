@@ -33,7 +33,8 @@ public sealed class LocationService
 	public Task<IReadOnlyList<Location>> SearchAsync(
 	string query,
 	CancellationToken cancellationToken = default,
-	TimeSpan? timeout = null)
+	TimeSpan? timeout = null,
+	PlaceKinds kinds = PlaceKinds.Stops)
 	{
 		ILocationProvider? provider =
 			_registry is null
@@ -44,6 +45,7 @@ public sealed class LocationService
 			? Task.FromResult<IReadOnlyList<Location>>([])
 			: provider.SearchAsync(
 				query,
+				kinds,
 				cancellationToken,
 				timeout);
 	}
@@ -67,6 +69,28 @@ public sealed class LocationService
 		return provider is null
 			? Task.FromResult<IReadOnlyList<Location>>([])
 			: provider.SearchByCoordinatesAsync(
+				latitude,
+				longitude,
+				cancellationToken,
+				timeout);
+	}
+
+
+	/// <summary>The address at a position, or null (see <see cref="ILocationProvider.ResolveAddressAsync"/>).</summary>
+	public Task<Location?> ResolveAddressAsync(
+		double latitude,
+		double longitude,
+		CancellationToken cancellationToken = default,
+		TimeSpan? timeout = null)
+	{
+		ILocationProvider? provider =
+			_registry is null
+				? _providers.FirstOrDefault()
+				: _providers.FirstOrDefault(_registry.IsSelected);
+
+		return provider is null
+			? Task.FromResult<Location?>(null)
+			: provider.ResolveAddressAsync(
 				latitude,
 				longitude,
 				cancellationToken,

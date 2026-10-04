@@ -7,6 +7,7 @@ public interface IUiStrings
 	PlaceSearchStrings PlaceSearch { get; }
 	DeparturesStrings Departures { get; }
 	DisruptionsStrings Disruptions { get; }
+	ExtrasStrings Extras { get; }
 	ResultsStrings Results { get; }
 	JourneyStrings Journey { get; }
 	TrackingStrings Tracking { get; }
@@ -497,3 +498,60 @@ public sealed class TrackingStrings
 	public required string NotifMinutes { get; init; }
 	public required string NotifNow { get; init; }
 }
+
+// <extras>
+public sealed class ExtrasStrings
+{
+	public required string KindStop { get; init; }
+	public required string KindAddress { get; init; }
+	public required string KindPoi { get; init; }
+	public required string SearchAddresses { get; init; }
+	public required string SearchAddressesDescription { get; init; }
+	public required string SearchPois { get; init; }
+	public required string SearchPoisDescription { get; init; }
+	public required string ExactPosition { get; init; }
+	public required string ExactPositionDescription { get; init; }
+	public required string LiveTitle { get; init; }
+	public required string LiveShow { get; init; }
+	public required string LineFilterPlaceholder { get; init; }
+	public required string LiveStart { get; init; }
+	public required string LiveStop { get; init; }
+	public required string LiveConnecting { get; init; }
+	public required string LiveWaiting { get; init; }
+	public required string LiveError { get; init; }
+	public required string LiveLine { get; init; }
+	public required string LiveRun { get; init; }
+	public required string LiveSecondsAgo { get; init; }
+	public required string LiveMinutesAgo { get; init; }
+	public required string LiveOnTime { get; init; }
+	public required string LiveSourceGps { get; init; }
+	public required string LiveSourceTelegram { get; init; }
+	public required string LiveHint { get; init; }
+	public required string LiveOpenMap { get; init; }
+	public required string AccessTitle { get; init; }
+	public required string AccessHide { get; init; }
+	public required string AccessNone { get; init; }
+	public required string AccessPlatform { get; init; }
+	public required string AccessBoarding { get; init; }
+	public required string AccessKerb { get; init; }
+	public required string AccessWidth { get; init; }
+	public required string AccessTactile { get; init; }
+	public required string AccessAudio { get; init; }
+	public required string ServiceShow { get; init; }
+	public required string ServiceHide { get; init; }
+	public required string ServiceNone { get; init; }
+	public required string ServiceNeedsPosition { get; init; }
+	public required string CapLive { get; init; }
+	public required string CapOpenData { get; init; }
+	public required string CapFares { get; init; }
+	public required string CapOptimisation { get; init; }
+	public required string OptSection { get; init; }
+	public required string OptFastest { get; init; }
+	public required string OptFewestChanges { get; init; }
+	public required string OptLeastWalking { get; init; }
+	public required string OptLowestFare { get; init; }
+	public required string OptNote { get; init; }
+	public required string FaresTitle { get; init; }
+	public required string PdfFailed { get; init; }
+}
+// </extras>

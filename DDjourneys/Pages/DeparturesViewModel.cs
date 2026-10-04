@@ -164,6 +164,76 @@ public sealed record StopLineRow(
 }
 
 
+/// <summary>One platform with its accessibility data (Dresden open data).</summary>
+public sealed record AccessRow(
+	StopAccessibility Data)
+{
+	private static string? Line(string format, string? value) =>
+		string.IsNullOrWhiteSpace(value)
+			? null
+			: string.Format(CultureInfo.CurrentCulture, format, value);
+
+	public string Title =>
+		Line(
+			LocalizationService.Current.CurrentStrings.Extras.AccessPlatform,
+			Data.Platform)
+		?? Data.StopName;
+
+	/// <summary>The remaining facts, one per line.</summary>
+	public string Details
+	{
+		get
+		{
+			ExtrasStrings strings =
+				LocalizationService.Current.CurrentStrings.Extras;
+
+			return string.Join(
+				"\n",
+				new[]
+				{
+					Line(strings.AccessBoarding, Data.Boarding),
+					Line(strings.AccessKerb, Data.KerbHeight),
+					Line(strings.AccessWidth, Data.Width),
+					Line(strings.AccessTactile, Data.TactileGuidance),
+					Line(strings.AccessAudio, Data.AudioAnnouncements)
+				}
+				.Where(line => line is not null));
+		}
+	}
+}
+
+
+/// <summary>A DVB service point near the stop or the passenger.</summary>
+public sealed record ServicePointRow(
+	ServicePoint Point)
+{
+	public string Name =>
+		Point.Name;
+
+	public string Details =>
+		string.Join(
+			"\n",
+			Point.Details
+				.Take(4)
+				.Select(detail => detail.Value));
+
+	public bool HasDetails =>
+		Details.Length > 0;
+
+	public string DistanceText =>
+		string.Format(
+			CultureInfo.CurrentCulture,
+			LocalizationService.Current.CurrentStrings.Departures.Metres,
+			Point.DistanceMeters);
+
+	public Uri MapUri =>
+		new(
+			string.Create(
+				CultureInfo.InvariantCulture,
+				$"https://www.openstreetmap.org/?mlat={Point.Latitude:F6}&mlon={Point.Longitude:F6}#map=17/{Point.Latitude:F6}/{Point.Longitude:F6}"));
+}
+
+
 /// <summary>
 /// Departure monitor: what leaves (or arrives at) a stop, optionally at another time, with the lines of the
 /// stop, the tariff zone and the stops near the passenger.
@@ -174,6 +244,7 @@ public sealed class DeparturesViewModel : DisposableViewModel
 
 	private readonly DepartureService _departures;
 	private readonly NetworkService _network;
+	private readonly OpenDataService _openData;
 	private readonly LocationService _locations;
 	private readonly DeviceLocator _locator;
 	private readonly PlaceStore _store;
@@ -184,6 +255,8 @@ public sealed class DeparturesViewModel : DisposableViewModel
 	private bool _syncing;
 	private bool _isNow = true;
 	private bool _linesLoaded;
+	private Location? _accessibilityFor;
+	private (double Latitude, double Longitude)? _here;
 	private IReadOnlyList<Departure> _current = [];
 	private CancellationTokenSource? _refresh;
 	private CancellationTokenSource? _info;
@@ -191,6 +264,7 @@ public sealed class DeparturesViewModel : DisposableViewModel
 	public DeparturesViewModel(
 		DepartureService departures,
 		NetworkService network,
+		OpenDataService openData,
 		LocationService locations,
 		DeviceLocator locator,
 		PlaceStore store,
@@ -198,6 +272,7 @@ public sealed class DeparturesViewModel : DisposableViewModel
 	{
 		ArgumentNullException.ThrowIfNull(departures);
 		ArgumentNullException.ThrowIfNull(network);
+		ArgumentNullException.ThrowIfNull(openData);
 		ArgumentNullException.ThrowIfNull(locations);
 		ArgumentNullException.ThrowIfNull(locator);
 		ArgumentNullException.ThrowIfNull(store);
@@ -205,6 +280,7 @@ public sealed class DeparturesViewModel : DisposableViewModel
 
 		_departures = departures;
 		_network = network;
+		_openData = openData;
 		_locations = locations;
 		_locator = locator;
 		_store = store;
@@ -279,6 +355,18 @@ public sealed class DeparturesViewModel : DisposableViewModel
 			new AsyncCommand(
 				ToggleLinesAsync);
 
+		ToggleAccessibilityCommand =
+			new AsyncCommand(
+				ToggleAccessibilityAsync);
+
+		ToggleServicePointsCommand =
+			new AsyncCommand(
+				ToggleServicePointsAsync);
+
+		OpenServicePointCommand =
+			new AsyncCommand<ServicePointRow>(
+				OpenServicePointAsync);
+
 		RefreshQuickPicks();
 	}
 
@@ -309,6 +397,16 @@ public sealed class DeparturesViewModel : DisposableViewModel
 	public AsyncCommand<DepartureRow> OpenChangesCommand { get; }
 
 	public AsyncCommand ToggleLinesCommand { get; }
+
+	public AsyncCommand ToggleAccessibilityCommand { get; }
+
+	public AsyncCommand ToggleServicePointsCommand { get; }
+
+	public AsyncCommand<ServicePointRow> OpenServicePointCommand { get; }
+
+	public ObservableCollection<AccessRow> Accessibility { get; } = [];
+
+	public ObservableCollection<ServicePointRow> ServicePoints { get; } = [];
 
 	public ObservableCollection<DepartureRow> Rows { get; } = [];
 
@@ -507,6 +605,74 @@ public sealed class DeparturesViewModel : DisposableViewModel
 	public bool HasLines =>
 		Lines.Count > 0;
 
+	public bool ShowAccessibility
+	{
+		get => field;
+
+		private set
+		{
+			if (SetProperty(ref field, value))
+			{
+				OnPropertyChanged(nameof(AccessibilityToggleText));
+			}
+		}
+	}
+
+	public string AccessibilityToggleText =>
+		ShowAccessibility
+			? _localization.CurrentStrings.Extras.AccessHide
+			: _localization.CurrentStrings.Extras.AccessTitle;
+
+	public string AccessibilityMessage
+	{
+		get => field;
+
+		private set
+		{
+			if (SetProperty(ref field, value))
+			{
+				OnPropertyChanged(nameof(HasAccessibilityMessage));
+			}
+		}
+	} = string.Empty;
+
+	public bool HasAccessibilityMessage =>
+		AccessibilityMessage.Length > 0;
+
+	public bool ShowServicePoints
+	{
+		get => field;
+
+		private set
+		{
+			if (SetProperty(ref field, value))
+			{
+				OnPropertyChanged(nameof(ServicePointsToggleText));
+			}
+		}
+	}
+
+	public string ServicePointsToggleText =>
+		ShowServicePoints
+			? _localization.CurrentStrings.Extras.ServiceHide
+			: _localization.CurrentStrings.Extras.ServiceShow;
+
+	public string ServicePointsMessage
+	{
+		get => field;
+
+		private set
+		{
+			if (SetProperty(ref field, value))
+			{
+				OnPropertyChanged(nameof(HasServicePointsMessage));
+			}
+		}
+	} = string.Empty;
+
+	public bool HasServicePointsMessage =>
+		ServicePointsMessage.Length > 0;
+
 	/// <summary>Called by the page after a place search for this page.</summary>
 	public void SetStop(Location stop)
 	{
@@ -531,6 +697,9 @@ public sealed class DeparturesViewModel : DisposableViewModel
 		Rows.Clear();
 		Lines.Clear();
 		_linesLoaded = false;
+		Accessibility.Clear();
+		AccessibilityMessage = string.Empty;
+		_accessibilityFor = null;
 		ZoneText = null;
 		Message = string.Empty;
 		OnPropertyChanged(nameof(HasLines));
@@ -644,6 +813,8 @@ public sealed class DeparturesViewModel : DisposableViewModel
 				return;
 			}
 
+			_here = here;
+
 			IReadOnlyList<NearbyStop> found =
 				await _network.GetNearbyStopsAsync(
 					here.Latitude,
@@ -709,6 +880,116 @@ public sealed class DeparturesViewModel : DisposableViewModel
 		finally
 		{
 			IsLocating = false;
+		}
+	}
+
+	private async Task ToggleAccessibilityAsync()
+	{
+		ShowAccessibility = !ShowAccessibility;
+
+		if (!ShowAccessibility
+			|| Stop is not { } stop
+			|| ReferenceEquals(_accessibilityFor, stop))
+		{
+			return;
+		}
+
+		try
+		{
+			IReadOnlyList<StopAccessibility> entries =
+				await _openData.GetStopAccessibilityAsync(
+					stop,
+					timeout: TimeSpan.FromSeconds(_settings.TimeoutSeconds));
+
+			if (!ReferenceEquals(Stop, stop) || IsDisposed)
+			{
+				return;
+			}
+
+			_accessibilityFor = stop;
+			Accessibility.Clear();
+
+			foreach (StopAccessibility entry in entries)
+			{
+				Accessibility.Add(new AccessRow(entry));
+			}
+
+			AccessibilityMessage =
+				entries.Count == 0
+					? _localization.CurrentStrings.Extras.AccessNone
+					: string.Empty;
+		}
+		catch (Exception ex)
+		{
+			System.Diagnostics.Debug.WriteLine($"Accessibility failed: {ex.Message}");
+
+			AccessibilityMessage = _localization.CurrentStrings.Common.SomethingWentWrong;
+		}
+	}
+
+	private async Task ToggleServicePointsAsync()
+	{
+		ShowServicePoints = !ShowServicePoints;
+
+		if (!ShowServicePoints)
+		{
+			return;
+		}
+
+		(double Latitude, double Longitude)? around =
+			Stop is { Latitude: { } latitude, Longitude: { } longitude }
+				? (latitude, longitude)
+				: _here;
+
+		if (around is not { } center)
+		{
+			ServicePointsMessage = _localization.CurrentStrings.Extras.ServiceNeedsPosition;
+
+			return;
+		}
+
+		try
+		{
+			IReadOnlyList<ServicePoint> points =
+				await _openData.GetServicePointsAsync(
+					center.Latitude,
+					center.Longitude,
+					timeout: TimeSpan.FromSeconds(_settings.TimeoutSeconds));
+
+			if (IsDisposed)
+			{
+				return;
+			}
+
+			ServicePoints.Clear();
+
+			foreach (ServicePoint point in points)
+			{
+				ServicePoints.Add(new ServicePointRow(point));
+			}
+
+			ServicePointsMessage =
+				points.Count == 0
+					? _localization.CurrentStrings.Extras.ServiceNone
+					: string.Empty;
+		}
+		catch (Exception ex)
+		{
+			System.Diagnostics.Debug.WriteLine($"Service points failed: {ex.Message}");
+
+			ServicePointsMessage = _localization.CurrentStrings.Common.SomethingWentWrong;
+		}
+	}
+
+	private async Task OpenServicePointAsync(ServicePointRow row)
+	{
+		try
+		{
+			await Launcher.Default.OpenAsync(row.MapUri);
+		}
+		catch (Exception ex)
+		{
+			System.Diagnostics.Debug.WriteLine($"Opening the map failed: {ex.Message}");
 		}
 	}
 
@@ -889,6 +1170,8 @@ public sealed class DeparturesViewModel : DisposableViewModel
 
 				OnPropertyChanged(nameof(StopName));
 				OnPropertyChanged(nameof(LinesToggleText));
+				OnPropertyChanged(nameof(AccessibilityToggleText));
+				OnPropertyChanged(nameof(ServicePointsToggleText));
 				RebuildRows();
 			});
 

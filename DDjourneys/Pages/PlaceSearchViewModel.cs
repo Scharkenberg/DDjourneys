@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using DDjourneys.Core.Api;
+using DDjourneys.Core.Models;
 using DDjourneys.Core.Providers;
 using DDjourneys.Core.Services;
 using DDjourneys.Localization;
@@ -15,6 +16,25 @@ public sealed record PlaceRow(Location Place)
 	public string Name => Place.Name;
 	public string Detail => Place.Place ?? string.Empty;
 	public bool HasDetail => !string.IsNullOrWhiteSpace(Place.Place);
+
+	/// <summary>"Address" / "Point of interest"; stops carry no label.</summary>
+	public string? KindText
+	{
+		get
+		{
+			ExtrasStrings strings =
+				LocalizationService.Current.CurrentStrings.Extras;
+
+			return Place.Kind switch
+			{
+				PlaceKind.Address => strings.KindAddress,
+				PlaceKind.Poi => strings.KindPoi,
+				_ => null
+			};
+		}
+	}
+
+	public bool HasKind => KindText is not null;
 }
 
 public sealed partial class PlaceSearchViewModel : DisposableViewModel, IQueryAttributable
@@ -31,7 +51,16 @@ public sealed partial class PlaceSearchViewModel : DisposableViewModel, IQueryAt
 	private readonly ProviderRegistry _providers;
 	private string _providerId;
 	private string CacheKey(string text) =>
-	$"{_providerId}\0{text}";
+	$"{_providerId}\0{(int)Kinds}\0{text}";
+
+	/// <summary>
+	/// What this search may return: stops only when the place is for the departure monitor or a stop
+	/// over; otherwise what the settings allow.
+	/// </summary>
+	private PlaceKinds Kinds =>
+		_target is Routes.TargetDepartures or Routes.TargetVia
+			? PlaceKinds.Stops
+			: _settings.SearchKinds;
 
 	/// <summary>Quiet time after the last keystroke before the endpoint is asked (a setting).</summary>
 	private TimeSpan Debounce => TimeSpan.FromMilliseconds(_settings.SearchDelayMs);
@@ -275,7 +304,8 @@ public sealed partial class PlaceSearchViewModel : DisposableViewModel, IQueryAt
 					await _locations.SearchAsync(
 						text,
 						token,
-						TimeSpan.FromSeconds(_settings.TimeoutSeconds));
+						TimeSpan.FromSeconds(_settings.TimeoutSeconds),
+						Kinds);
 
 				Remember(key, found);
 			}

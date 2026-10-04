@@ -37,7 +37,19 @@ public enum ProviderCapabilities
 	NetworkInfo = 512,
 
 	/// <summary>Alternatives for a single leg of a journey, and a printable journey.</summary>
-	JourneyExtras = 1024
+	JourneyExtras = 1024,
+
+	/// <summary>Live positions of vehicles.</summary>
+	LiveVehicles = 2048,
+
+	/// <summary>Open data of the city: stop accessibility, service points.</summary>
+	OpenData = 4096,
+
+	/// <summary>Fares and tickets of a journey.</summary>
+	Fares = 8192,
+
+	/// <summary>The router can optimise for fastest, fewest changes, least walking or lowest fare.</summary>
+	RouteOptimisation = 16384
 }
 
 /// <summary>

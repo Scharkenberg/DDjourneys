@@ -259,7 +259,7 @@ public static class VvoNetworkMapper
 	}
 
 	private static readonly Regex LineBreaks =
-		new(@"<\s*(br\s*/?|/p|/div|/li|/h\d)\s*>", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+	new(@"<\s*(br\s*/?|/p|/div|/li|/h\d)\s*>", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
 	private static readonly Regex Tags =
 		new(@"<[^>]+>", RegexOptions.Compiled);

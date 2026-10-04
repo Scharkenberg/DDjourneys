@@ -179,6 +179,38 @@ public sealed class SettingsViewModel : DisposableViewModel
 		}
 	}
 
+	// ----- Places -----
+
+	public bool SearchAddresses
+	{
+		get => _settings.SearchAddresses;
+		set
+		{
+			_settings.SearchAddresses = value;
+			OnPropertyChanged();
+		}
+	}
+
+	public bool SearchPois
+	{
+		get => _settings.SearchPois;
+		set
+		{
+			_settings.SearchPois = value;
+			OnPropertyChanged();
+		}
+	}
+
+	public bool ExactPosition
+	{
+		get => _settings.ExactPosition;
+		set
+		{
+			_settings.ExactPosition = value;
+			OnPropertyChanged();
+		}
+	}
+
 	// ----- Journey display -----
 
 	public bool ShowOccupancy
@@ -379,6 +411,9 @@ public sealed class SettingsViewModel : DisposableViewModel
 		OnPropertyChanged(nameof(LeadMinutes));
 		OnPropertyChanged(nameof(LeadText));
 		OnPropertyChanged(nameof(ShowOccupancy));
+		OnPropertyChanged(nameof(SearchAddresses));
+		OnPropertyChanged(nameof(SearchPois));
+		OnPropertyChanged(nameof(ExactPosition));
 		OnPropertyChanged(nameof(ShowPlatforms));
 		OnPropertyChanged(nameof(ExpandStops));
 		OnPropertyChanged(nameof(ExpertView));

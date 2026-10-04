@@ -140,6 +140,11 @@ public sealed class Journey
 	/// <summary>The journey cannot take place as planned. Broader than <see cref="IsCancelled"/>.</summary>
 	public bool IsImpossible => Block is not null;
 
+	/// <summary>Tickets and prices the provider quotes for the whole journey.</summary>
+	public IReadOnlyList<JourneyFare> Fares { get; init; }
+		= Array.Empty<JourneyFare>();
+
+
 	public IReadOnlyList<JourneyTransfer> Transfers { get; init; }
 		= Array.Empty<JourneyTransfer>();
 

@@ -1,0 +1,596 @@
+using System.Globalization;
+using System.Xml.Linq;
+using DDjourneys.Core.Models;
+using Location = DDjourneys.Core.Models.Location;
+
+namespace DDjourneys.Core.Providers.Trias;
+
+/// <summary>The stops of a run as they came with a stop event; kept in <c>Departure.ProviderData</c>.</summary>
+internal sealed record TriasRunData(IReadOnlyList<RunStop> Stops);
+
+/// <summary>TRIAS XML to the app's models. Elements are read by local name and every field is optional.</summary>
+internal static class TriasMapper
+{
+	// ---------- Places ----------
+
+	public static IReadOnlyList<Location> MapLocations(XDocument document) =>
+		[.. document
+			.Deep("LocationResult")
+			.Select(MapLocation)
+			.OfType<Location>()];
+
+	private static Location? MapLocation(XElement result)
+	{
+		XElement? location = result.Child("Location") ?? result;
+
+		XElement? stopPlace = location.Child("StopPlace");
+		XElement? stopPoint = location.Child("StopPoint");
+		XElement? address = location.Child("Address");
+		XElement? poi = location.Child("PointOfInterest");
+
+		string? id;
+		string? name;
+		PlaceKind kind;
+
+		if (stopPlace is not null)
+		{
+			id = stopPlace.ChildText("StopPlaceRef");
+			name = stopPlace.ChildLabel("StopPlaceName");
+			kind = PlaceKind.Stop;
+		}
+		else if (stopPoint is not null)
+		{
+			id = stopPoint.ChildText("StopPointRef");
+			name = stopPoint.ChildLabel("StopPointName");
+			kind = PlaceKind.Stop;
+		}
+		else if (address is not null)
+		{
+			id = address.ChildText("AddressCode");
+			name = address.ChildLabel("AddressName");
+			kind = PlaceKind.Address;
+		}
+		else if (poi is not null)
+		{
+			id = poi.ChildText("PointOfInterestCode");
+			name = poi.ChildLabel("PointOfInterestName");
+			kind = PlaceKind.Poi;
+		}
+		else
+		{
+			return null;
+		}
+
+		name ??= location.ChildLabel("LocationName");
+
+		if (string.IsNullOrWhiteSpace(name))
+		{
+			return null;
+		}
+
+		XElement? position = location.Child("GeoPosition");
+
+		return new Location
+		{
+			Id = id,
+			ProviderId = TriasProviderInfo.Id,
+			Name = name,
+			Kind = kind,
+			Place = location.ChildLabel("LocalityName"),
+			Latitude = position.Child("Latitude").Number(),
+			Longitude = position.Child("Longitude").Number()
+		};
+	}
+
+	// ---------- Stops, modes ----------
+
+	private static Station MapStop(XElement? call, string idName, string nameName, string? platform, PlatformKind platformKind) =>
+		new()
+		{
+			Id = call.ChildText(idName) ?? string.Empty,
+			ProviderId = TriasProviderInfo.Id,
+			Name = call.ChildLabel(nameName) ?? call.ChildText(idName) ?? string.Empty,
+			Platform = platform,
+			PlatformKind = platformKind
+		};
+
+	private static TransitMode MapMode(XElement? mode)
+	{
+		string? pt = mode.ChildText("PtMode");
+
+		if (pt is null)
+		{
+			return TransitMode.Unknown;
+		}
+
+		string submode =
+			string.Concat(
+				mode?.Elements()
+					.Where(child => child.Name.LocalName.EndsWith("Submode", StringComparison.Ordinal))
+					.Select(child => child.Value.Trim()) ?? []);
+
+		return pt switch
+		{
+			"bus" or "trolleyBus" or "coach" => TransitMode.Bus,
+			"tram" => TransitMode.Tram,
+			"metro" => TransitMode.Subway,
+			"urbanRail" => TransitMode.SuburbanRail,
+			"intercityRail" => TransitMode.LongDistanceTrain,
+			"rail" when submode.Contains("longDistance", StringComparison.OrdinalIgnoreCase)
+				|| submode.Contains("highSpeed", StringComparison.OrdinalIgnoreCase)
+				|| submode.Contains("interRegional", StringComparison.OrdinalIgnoreCase)
+				=> TransitMode.LongDistanceTrain,
+			"rail" => TransitMode.RegionalTrain,
+			"water" => TransitMode.Ferry,
+			"cableway" or "funicular" or "telecabin" or "lift" => TransitMode.CableCar,
+			"taxi" => TransitMode.Taxi,
+			_ => TransitMode.Unknown
+		};
+	}
+
+	private static PlatformKind KindFor(TransitMode mode) =>
+		mode is TransitMode.RegionalTrain or TransitMode.LongDistanceTrain or TransitMode.SuburbanRail
+			? PlatformKind.Railtrack
+			: PlatformKind.Platform;
+
+	private static TransitLine MapService(XElement? service, TransitMode mode) =>
+		new()
+		{
+			Name = service.ChildLabel("PublishedLineName")
+				?? service.ChildText("LineRef")
+				?? mode.ToString(),
+			Mode = mode,
+			Operator = service.ChildText("OperatorRef"),
+			Destination = service.ChildLabel("DestinationText"),
+			DirectionId = service.ChildText("DirectionRef")
+		};
+
+	private static bool IsCancelled(XElement? service) =>
+		service.Child("Cancelled").Flag();
+
+	private static IReadOnlyList<string> Attributes(XElement? service, string lineName) =>
+		[.. service
+			.Children("Attribute")
+			.Select(attribute => attribute.ChildLabel("Text") ?? attribute.Label())
+			.Where(text => !string.IsNullOrWhiteSpace(text) && text != lineName)
+			.Cast<string>()
+			.Distinct()];
+
+	// ---------- Times ----------
+
+	private static (DateTimeOffset? Planned, DateTimeOffset? Estimated) Times(XElement? call, string name)
+	{
+		XElement? element = call.Child(name);
+
+		return (element.Child("TimetabledTime").Time(), element.Child("EstimatedTime").Time());
+	}
+
+	private static DepartureState StateOf(DateTimeOffset? planned, DateTimeOffset? estimated, bool cancelled)
+	{
+		if (cancelled)
+		{
+			return DepartureState.Cancelled;
+		}
+
+		if (estimated is not { } real)
+		{
+			return DepartureState.Unknown;
+		}
+
+		return planned is { } plan && real - plan >= TimeSpan.FromMinutes(1)
+			? DepartureState.Delayed
+			: DepartureState.InTime;
+	}
+
+	private static (string? Name, PlatformKind Kind, string? Platform) Bay(XElement? call, TransitMode mode)
+	{
+		string? bay = call.ChildLabel("EstimatedBay") ?? call.ChildLabel("PlannedBay");
+
+		return (bay, KindFor(mode), bay);
+	}
+
+	private static StopTime MapStopTime(XElement call, TransitMode mode)
+	{
+		(DateTimeOffset? plannedArrival, DateTimeOffset? estimatedArrival) = Times(call, "ServiceArrival");
+		(DateTimeOffset? plannedDeparture, DateTimeOffset? estimatedDeparture) = Times(call, "ServiceDeparture");
+		string? platform = call.ChildLabel("EstimatedBay") ?? call.ChildLabel("PlannedBay");
+		PlatformKind kind = platform is null ? PlatformKind.Unknown : KindFor(mode);
+		bool skipped = call.Child("NotServicedStop").Flag();
+
+		return new StopTime
+		{
+			Station = MapStop(call, "StopPointRef", "StopPointName", platform, kind),
+			ScheduledArrival = plannedArrival,
+			RealtimeArrival = estimatedArrival,
+			ScheduledDeparture = plannedDeparture,
+			RealtimeDeparture = estimatedDeparture,
+			Platform = platform,
+			PlatformKind = kind,
+			IsCancelled = skipped
+		};
+	}
+
+	// ---------- Trips ----------
+
+	public static IReadOnlyList<Journey> MapJourneys(XDocument document, Location from, Location to)
+	{
+		Station origin = ToStation(from);
+		Station destination = ToStation(to);
+
+		return
+			[.. document
+				.Deep("TripResult")
+				.Select(result => MapJourney(result, origin, destination))
+				.OfType<Journey>()];
+	}
+
+	private static Station ToStation(Location place) =>
+		new()
+		{
+			Id = place.Id ?? string.Empty,
+			ProviderId = place.ProviderId,
+			Name = place.Name,
+			Place = place.Place,
+			Latitude = place.Latitude,
+			Longitude = place.Longitude
+		};
+
+	private static Journey? MapJourney(XElement result, Station origin, Station destination)
+	{
+		XElement? trip = result.Child("Trip");
+
+		if (trip is null)
+		{
+			return null;
+		}
+
+		var legs = new List<JourneyLeg>();
+		var transfers = new List<JourneyTransfer>();
+
+		// Walks before the next ride are held back until that ride exists (and its index is known).
+		var pending = new List<XElement>();
+
+		foreach (XElement tripLeg in trip.Children("TripLeg"))
+		{
+			if (tripLeg.Child("TimedLeg") is { } timed)
+			{
+				JourneyLeg leg = MapTimedLeg(tripLeg, timed);
+				int index = legs.Count;
+
+				legs.Add(leg);
+
+				foreach (XElement walk in pending)
+				{
+					transfers.Add(MapTransfer(walk, legs, index - 1 >= 0 ? index - 1 : null, index));
+				}
+
+				pending.Clear();
+			}
+			else
+			{
+				pending.Add(tripLeg);
+			}
+		}
+
+		if (legs.Count == 0)
+		{
+			return null;
+		}
+
+		foreach (XElement walk in pending)
+		{
+			transfers.Add(MapTransfer(walk, legs, legs.Count - 1, null));
+		}
+
+		AddWaiting(legs, transfers);
+
+		string? id = trip.ChildText("TripId") ?? result.ChildText("ResultId");
+
+		return new Journey
+		{
+			From = legs[0].From,
+			To = legs[^1].To,
+			Origin = origin,
+			Destination = destination,
+			Legs = legs,
+			Transfers = transfers,
+			Id = id,
+			ProviderId = TriasProviderInfo.Id,
+			ProviderData = result,
+			PlannedDuration = trip.Child("Duration").Duration(),
+			Fares = MapFares(result)
+		};
+	}
+
+	private static JourneyLeg MapTimedLeg(XElement tripLeg, XElement timed)
+	{
+		XElement? service = timed.Child("Service");
+		TransitMode mode = MapMode(service.Child("Mode"));
+		XElement? board = timed.Child("LegBoard");
+		XElement? alight = timed.Child("LegAlight");
+
+		var calls = new List<XElement>();
+
+		if (board is not null)
+		{
+			calls.Add(board);
+		}
+
+		calls.AddRange(timed.Children("LegIntermediates"));
+
+		if (alight is not null)
+		{
+			calls.Add(alight);
+		}
+
+		(DateTimeOffset? plannedDeparture, DateTimeOffset? estimatedDeparture) = Times(board, "ServiceDeparture");
+		(DateTimeOffset? plannedArrival, DateTimeOffset? estimatedArrival) = Times(alight, "ServiceArrival");
+
+		(string? fromBay, PlatformKind fromKind, _) = Bay(board, mode);
+		(string? toBay, PlatformKind toKind, _) = Bay(alight, mode);
+
+		TransitLine line = MapService(service, mode);
+
+		return new JourneyLeg
+		{
+			Mode = mode,
+			From = MapStop(board, "StopPointRef", "StopPointName", fromBay, fromBay is null ? PlatformKind.Unknown : fromKind),
+			To = MapStop(alight, "StopPointRef", "StopPointName", toBay, toBay is null ? PlatformKind.Unknown : toKind),
+			Stops = [.. calls.Select(call => MapStopTime(call, mode))],
+			Path = MapPath(timed.Child("LegTrack")),
+			Line = line,
+			ScheduledDeparture = plannedDeparture,
+			RealtimeDeparture = estimatedDeparture,
+			ScheduledArrival = plannedArrival,
+			RealtimeArrival = estimatedArrival,
+			DeparturePlatform = fromBay,
+			DeparturePlatformKind = fromBay is null ? PlatformKind.Unknown : fromKind,
+			ArrivalPlatform = toBay,
+			ArrivalPlatformKind = toBay is null ? PlatformKind.Unknown : toKind,
+			IsCancelled = IsCancelled(service),
+			Notices = Attributes(service, line.Name),
+			Id = tripLeg.ChildText("LegId"),
+			ProviderData = tripLeg
+		};
+	}
+
+	private static IReadOnlyList<(double Latitude, double Longitude)> MapPath(XElement? track) =>
+		track is null
+			? []
+			: [.. track
+				.Deep("Position")
+				.Select(position => (Latitude: position.Child("Latitude").Number(), Longitude: position.Child("Longitude").Number()))
+				.Where(point => point.Latitude is not null && point.Longitude is not null)
+				.Select(point => (point.Latitude!.Value, point.Longitude!.Value))];
+
+	private static JourneyTransfer MapTransfer(XElement tripLeg, List<JourneyLeg> legs, int? previous, int? next)
+	{
+		XElement? walk =
+			tripLeg.Child("ContinuousLeg")
+			?? tripLeg.Child("InterchangeLeg")
+			?? tripLeg.Child("TransferLeg");
+
+		Station? location =
+			(previous is { } before ? legs[before].To : null)
+			?? (next is { } after ? legs[after].From : null);
+
+		Station Point(string name) =>
+			new()
+			{
+				Id = walk.Child(name).Child("LocationRef").ChildText("StopPointRef")
+					?? walk.Child(name).Child("LocationRef").ChildText("StopPlaceRef")
+					?? string.Empty,
+				ProviderId = TriasProviderInfo.Id,
+				Name = walk.Child(name).Child("LocationRef").ChildLabel("LocationName")
+					?? location?.Name
+					?? string.Empty,
+				Latitude = walk.Child(name).Child("LocationRef").Child("GeoPosition").Child("Latitude").Number(),
+				Longitude = walk.Child(name).Child("LocationRef").Child("GeoPosition").Child("Longitude").Number()
+			};
+
+		bool interchange = tripLeg.Child("InterchangeLeg") is not null;
+		TimeSpan duration = walk.Child("Duration").Duration() ?? TimeSpan.Zero;
+
+		return new JourneyTransfer
+		{
+			Location = location ?? Point("LegStart"),
+			PreviousLegIndex = previous,
+			NextLegIndex = next,
+			Duration = duration < TimeSpan.Zero ? TimeSpan.Zero : duration,
+			Kind = interchange ? TransferKind.PlatformChange : TransferKind.Walk,
+			Path = MapPath(walk),
+			IsGuaranteed = true,
+			From = Point("LegStart"),
+			To = Point("LegEnd"),
+			ProviderData = tripLeg
+		};
+	}
+
+	/// <summary>Waiting time of a change: the gap between arrival and next departure minus the walk.</summary>
+	private static void AddWaiting(List<JourneyLeg> legs, List<JourneyTransfer> transfers)
+	{
+		for (int i = 0; i < transfers.Count; i++)
+		{
+			JourneyTransfer transfer = transfers[i];
+
+			if (transfer.PreviousLegIndex is not { } before
+				|| transfer.NextLegIndex is not { } after
+				|| legs[before].EffectiveArrival is not { } arrival
+				|| legs[after].EffectiveDeparture is not { } departure)
+			{
+				continue;
+			}
+
+			TimeSpan wait = departure - arrival - transfer.Duration;
+
+			transfers[i] = new JourneyTransfer
+			{
+				Location = transfer.Location,
+				PreviousLegIndex = transfer.PreviousLegIndex,
+				NextLegIndex = transfer.NextLegIndex,
+				Duration = transfer.Duration,
+				WaitingTime = wait < TimeSpan.Zero ? TimeSpan.Zero : wait,
+				Kind = transfer.Kind,
+				Path = transfer.Path,
+				IsGuaranteed = transfer.IsGuaranteed,
+				From = transfer.From,
+				To = transfer.To,
+				ProviderData = transfer.ProviderData
+			};
+		}
+	}
+
+	// ---------- Fares ----------
+
+	private static IReadOnlyList<JourneyFare> MapFares(XElement result)
+	{
+		var fares = new List<JourneyFare>();
+
+		foreach (XElement product in result.Deep("FareProduct"))
+		{
+			string? name = product.ChildLabel("FareProductName") ?? product.ChildText("FareProductId");
+
+			if (name is null)
+			{
+				continue;
+			}
+
+			decimal? price = product.Child("Price").Decimal();
+
+			// A price may arrive in cents when the server says so; EUR with two decimals is the usual form.
+			fares.Add(
+				new JourneyFare
+				{
+					Name = name,
+					Price = price,
+					Currency = product.ChildText("Currency") ?? "EUR",
+					Description = product.ChildLabel("TariffLevelName")
+						?? product.ChildText("TariffLevel")
+						?? product.ChildLabel("Description")
+				});
+		}
+
+		return [.. fares.DistinctBy(fare => (fare.Name, fare.Price, fare.Description))];
+	}
+
+	// ---------- Departures ----------
+
+	public static DepartureBoard MapBoard(XDocument document, Location stop, bool arrival)
+	{
+		var departures = new List<Departure>();
+		string? name = null;
+
+		foreach (XElement result in document.Deep("StopEventResult"))
+		{
+			XElement? stopEvent = result.Child("StopEvent") ?? result;
+			XElement? thisCall = stopEvent.Child("ThisCall")?.Child("CallAtStop") ?? stopEvent.Child("ThisCall");
+
+			if (thisCall is null)
+			{
+				continue;
+			}
+
+			name ??= thisCall.ChildLabel("StopPointName");
+
+			XElement? service = stopEvent.Child("Service");
+			TransitMode mode = MapMode(service.Child("Mode"));
+
+			(DateTimeOffset? planned, DateTimeOffset? estimated) =
+				Times(thisCall, arrival ? "ServiceArrival" : "ServiceDeparture");
+
+			if (planned is not { } scheduled)
+			{
+				continue;
+			}
+
+			string? bay = thisCall.ChildLabel("EstimatedBay") ?? thisCall.ChildLabel("PlannedBay");
+			bool cancelled = IsCancelled(service) || thisCall.Child("NotServicedStop").Flag();
+
+			var runStops = new List<RunStop>();
+
+			foreach (XElement call in stopEvent.Children("PreviousCall"))
+			{
+				runStops.Add(MapRunStop(call.Child("CallAtStop") ?? call, RunPosition.Previous, mode));
+			}
+
+			runStops.Add(MapRunStop(thisCall, RunPosition.Current, mode));
+
+			foreach (XElement call in stopEvent.Children("OnwardCall"))
+			{
+				runStops.Add(MapRunStop(call.Child("CallAtStop") ?? call, RunPosition.Onward, mode));
+			}
+
+			departures.Add(
+				new Departure
+				{
+					Id = service.ChildText("JourneyRef")
+						?? stopEvent.ChildText("StopEventId")
+						?? result.ChildText("ResultId")
+						?? scheduled.ToString("O", CultureInfo.InvariantCulture),
+					StopId = thisCall.ChildText("StopPointRef") ?? stop.Id ?? string.Empty,
+					Line = MapService(service, mode),
+					Scheduled = scheduled,
+					IsArrival = arrival,
+					Realtime = estimated,
+					Platform = bay,
+					PlatformKind = bay is null ? PlatformKind.Unknown : KindFor(mode),
+					State = StateOf(planned, estimated, cancelled),
+					ProviderData = new TriasRunData(runStops)
+				});
+		}
+
+		return new DepartureBoard
+		{
+			StopName = name ?? stop.Name,
+			StopPlace = stop.Place,
+			Departures =
+				[.. departures
+					.OrderBy(departure => departure.Effective)]
+		};
+	}
+
+	private static RunStop MapRunStop(XElement call, RunPosition position, TransitMode mode)
+	{
+		(DateTimeOffset? plannedArrival, DateTimeOffset? estimatedArrival) = Times(call, "ServiceArrival");
+		(DateTimeOffset? plannedDeparture, DateTimeOffset? estimatedDeparture) = Times(call, "ServiceDeparture");
+
+		DateTimeOffset? planned = plannedDeparture ?? plannedArrival;
+		DateTimeOffset? estimated = estimatedDeparture ?? estimatedArrival;
+		string? bay = call.ChildLabel("EstimatedBay") ?? call.ChildLabel("PlannedBay");
+
+		bool cancelled = call.Child("NotServicedStop").Flag();
+
+		return new RunStop
+		{
+			Station = MapStop(call, "StopPointRef", "StopPointName", bay, bay is null ? PlatformKind.Unknown : KindFor(mode)),
+			Position = position,
+			Scheduled = planned,
+			Realtime = estimated,
+			State = StateOf(planned, estimated, cancelled)
+		};
+	}
+
+	// ---------- Errors ----------
+
+	/// <summary>The first error the service reported, or null.</summary>
+	public static (string? Code, string? Text)? Error(XDocument document)
+	{
+		XElement? error = document.Deep("ErrorMessage").FirstOrDefault();
+
+		if (error is null)
+		{
+			return null;
+		}
+
+		return (error.ChildText("Code"), error.ChildLabel("Text") ?? error.Label());
+	}
+
+	public static bool IsNoResult(string? code) =>
+		code is { } value
+		&& (value.Contains("NOTRIP", StringComparison.OrdinalIgnoreCase)
+			|| value.Contains("NO_TRIP", StringComparison.OrdinalIgnoreCase)
+			|| value.Contains("NORESULT", StringComparison.OrdinalIgnoreCase)
+			|| value.Contains("NO_RESULT", StringComparison.OrdinalIgnoreCase)
+			|| value.Contains("NOTFOUND", StringComparison.OrdinalIgnoreCase)
+			|| value.Contains("NOT_FOUND", StringComparison.OrdinalIgnoreCase));
+}

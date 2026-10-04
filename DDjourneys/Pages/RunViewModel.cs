@@ -88,16 +88,37 @@ public sealed class RunViewModel : DisposableViewModel, IQueryAttributable
 		RefreshCommand =
 			new AsyncCommand(
 				LoadAsync);
+
+		ShowLiveCommand =
+			new AsyncCommand(
+				ShowLiveAsync);
 	}
 
 	public AsyncCommand RefreshCommand { get; }
+
+	public AsyncCommand ShowLiveCommand { get; }
+
+	/// <summary>The line is a plain number, so its vehicles can be looked up on the live page.</summary>
+	public bool CanShowLive =>
+		int.TryParse(
+			Title.Trim(),
+			NumberStyles.None,
+			CultureInfo.InvariantCulture,
+			out _);
 
 	public ObservableCollection<RunRow> Rows { get; } = [];
 
 	public string Title
 	{
 		get => field;
-		private set => SetProperty(ref field, value);
+
+		private set
+		{
+			if (SetProperty(ref field, value))
+			{
+				OnPropertyChanged(nameof(CanShowLive));
+			}
+		}
 	} = string.Empty;
 
 	public string? Direction
@@ -161,6 +182,28 @@ public sealed class RunViewModel : DisposableViewModel, IQueryAttributable
 			Look = ModeChips.For(departure.Line.Mode);
 
 			_ = LoadAsync();
+		}
+	}
+
+	private async Task ShowLiveAsync()
+	{
+		if (!CanShowLive)
+		{
+			return;
+		}
+
+		try
+		{
+			await Shell.Current.GoToAsync(
+				Routes.Vehicles,
+				new ShellNavigationQueryParameters
+				{
+					[Routes.Line] = Title.Trim()
+				});
+		}
+		catch (Exception ex)
+		{
+			System.Diagnostics.Debug.WriteLine($"Opening the live page failed: {ex.Message}");
 		}
 	}
 

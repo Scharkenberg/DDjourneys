@@ -293,6 +293,88 @@
 					</Border>
 				</VerticalStackLayout>
 
+				<!--  Accessibility of the chosen stop (open data)  -->
+				<VerticalStackLayout IsVisible="{Binding HasStop}" Spacing="{DynamicResource SpaceS}">
+					<Button Command="{Binding ToggleAccessibilityCommand}" StyleClass="Tonal" Text="{Binding AccessibilityToggleText}" />
+
+					<Label
+						IsVisible="{Binding HasAccessibilityMessage}"
+						StyleClass="Caption"
+						Text="{Binding AccessibilityMessage}" />
+
+					<Border
+						Padding="0"
+						IsVisible="{Binding ShowAccessibility}"
+						StyleClass="Card">
+						<VerticalStackLayout BindableLayout.ItemsSource="{Binding Accessibility}">
+							<BindableLayout.ItemTemplate>
+								<DataTemplate x:DataType="local:AccessRow">
+									<Grid RowDefinitions="Auto,Auto" RowSpacing="0">
+										<VerticalStackLayout support:Dense.Padding="14,10" Spacing="2">
+											<Label FontFamily="{DynamicResource FontSemibold}" Text="{Binding Title}" />
+											<Label StyleClass="Caption" Text="{Binding Details}" />
+										</VerticalStackLayout>
+										<BoxView Grid.Row="1" StyleClass="Divider" />
+									</Grid>
+								</DataTemplate>
+							</BindableLayout.ItemTemplate>
+						</VerticalStackLayout>
+					</Border>
+				</VerticalStackLayout>
+
+				<!--  DVB service points near the stop or the passenger (open data)  -->
+				<VerticalStackLayout Spacing="{DynamicResource SpaceS}">
+					<Button Command="{Binding ToggleServicePointsCommand}" StyleClass="Tonal" Text="{Binding ServicePointsToggleText}" />
+
+					<Label
+						IsVisible="{Binding HasServicePointsMessage}"
+						StyleClass="Caption"
+						Text="{Binding ServicePointsMessage}" />
+
+					<Border
+						Padding="0"
+						IsVisible="{Binding ShowServicePoints}"
+						StyleClass="Card">
+						<VerticalStackLayout BindableLayout.ItemsSource="{Binding ServicePoints}">
+							<BindableLayout.ItemTemplate>
+								<DataTemplate x:DataType="local:ServicePointRow">
+									<Grid RowDefinitions="Auto,Auto" RowSpacing="0">
+										<Grid
+											support:Dense.Padding="14,10"
+											support:Motion.Feedback="True"
+											ColumnDefinitions="*,Auto"
+											ColumnSpacing="10">
+											<VerticalStackLayout Spacing="2">
+												<Label FontFamily="{DynamicResource FontSemibold}" Text="{Binding Name}" />
+												<Label
+													IsVisible="{Binding HasDetails}"
+													StyleClass="Caption"
+													Text="{Binding Details}" />
+											</VerticalStackLayout>
+											<Label
+												Grid.Column="1"
+												StyleClass="Caption"
+												Text="{Binding DistanceText}"
+												VerticalOptions="Start" />
+											<Grid.GestureRecognizers>
+												<TapGestureRecognizer
+													Command="{Binding Source={RelativeSource AncestorType={x:Type local:DeparturesViewModel}}, x:DataType=local:DeparturesViewModel, Path=OpenServicePointCommand}"
+													CommandParameter="{Binding .}" />
+											</Grid.GestureRecognizers>
+										</Grid>
+										<BoxView Grid.Row="1" StyleClass="Divider" />
+									</Grid>
+								</DataTemplate>
+							</BindableLayout.ItemTemplate>
+						</VerticalStackLayout>
+					</Border>
+				</VerticalStackLayout>
+
+				<Button
+					Clicked="LiveClicked"
+					StyleClass="Tonal"
+					Text="{localization:Tr Extras.LiveTitle}" />
+
 				<!--  Favourites and recent stops, until one is chosen  -->
 				<VerticalStackLayout IsVisible="{Binding ShowQuickPicks}" Spacing="{DynamicResource SpaceS}">
 					<Label StyleClass="Title" Text="{localization:Tr Plan.Recent}" />

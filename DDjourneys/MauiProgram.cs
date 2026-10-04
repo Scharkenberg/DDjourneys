@@ -4,6 +4,9 @@ using DDjourneys.Core.Api;
 using DDjourneys.Core.Diagnostics;
 using DDjourneys.Core.Providers;
 using DDjourneys.Core.Providers.Abstractions;
+using DDjourneys.Core.Providers.OpenData;
+using DDjourneys.Core.Providers.Tlms;
+using DDjourneys.Core.Providers.Trias;
 using DDjourneys.Core.Providers.Vvo;
 using DDjourneys.Core.Services;
 using DDjourneys.Core.Tracking;
@@ -51,6 +54,18 @@ public static class MauiProgram
 
 		var settings = new AppSettings();
 
+		try
+		{
+			DiagnosticLog.FilePath =
+				System.IO.Path.Combine(
+					FileSystem.AppDataDirectory,
+					"diagnostics.log");
+		}
+		catch (Exception ex)
+		{
+			System.Diagnostics.Debug.WriteLine($"Diagnostic log file unavailable: {ex.Message}");
+		}
+
 		LocalizationInitializer.Initialize(settings);
 
 		builder.Services.AddSingleton(settings);
@@ -61,6 +76,15 @@ public static class MauiProgram
 
 		// Providers: every provider registers its description; the registry holds the user's choice.
 		builder.Services.AddSingleton(VvoProviderInfo.Value);
+		builder.Services.AddSingleton(TriasProviderInfo.Value);
+		builder.Services.AddSingleton<TriasClient>();
+		builder.Services.AddSingleton<TriasProvider>();
+		builder.Services.AddSingleton<IJourneyProvider>(
+			services => services.GetRequiredService<TriasProvider>());
+		builder.Services.AddSingleton<IDepartureProvider>(
+			services => services.GetRequiredService<TriasProvider>());
+		builder.Services.AddSingleton<ILocationProvider>(
+			services => services.GetRequiredService<TriasProvider>());
 		builder.Services.AddSingleton(
 			services => new ProviderRegistry(
 				services.GetServices<ProviderInfo>(),
@@ -76,6 +100,10 @@ public static class MauiProgram
 			services => services.GetRequiredService<VvoNetworkProvider>());
 		builder.Services.AddSingleton<INetworkInfoProvider>(
 			services => services.GetRequiredService<VvoNetworkProvider>());
+		builder.Services.AddSingleton<ILiveVehicleProvider, TlmsVehicleProvider>();
+		builder.Services.AddSingleton<VehicleService>();
+		builder.Services.AddSingleton<IOpenDataProvider, DresdenOpenDataProvider>();
+		builder.Services.AddSingleton<OpenDataService>();
 		builder.Services.AddSingleton<DepartureService>();
 		builder.Services.AddSingleton<NetworkService>();
 
@@ -164,6 +192,8 @@ public static class MauiProgram
 
 		builder.Services.AddTransient<DeparturesPage>();
 		builder.Services.AddTransient<DeparturesViewModel>();
+		builder.Services.AddTransient<VehiclesPage>();
+		builder.Services.AddTransient<VehiclesViewModel>();
 		builder.Services.AddTransient<RunPage>();
 		builder.Services.AddTransient<RunViewModel>();
 		builder.Services.AddTransient<DisruptionsPage>();

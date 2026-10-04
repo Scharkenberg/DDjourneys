@@ -113,9 +113,38 @@ public sealed class ApiClient : IDisposable
 	/// Sends a JSON POST once. A dropped response does not prove the server did not process
 	/// the request, so replaying it could create duplicate work at the provider.
 	/// </summary>
-	public async Task<string> PostJsonAsync(
+	public Task<string> PostJsonAsync(
 		string requestUri,
 		string json,
+		CancellationToken cancellationToken = default,
+		TimeSpan? timeout = null) =>
+		PostAsync(
+			requestUri,
+			json,
+			"application/json",
+			cancellationToken,
+			timeout);
+
+	/// <summary>Sends an XML POST once (same rules as <see cref="PostJsonAsync"/>).</summary>
+	public Task<string> PostXmlAsync(
+		string requestUri,
+		string xml,
+		CancellationToken cancellationToken = default,
+		TimeSpan? timeout = null) =>
+		PostAsync(
+			requestUri,
+			xml,
+			"text/xml",
+			cancellationToken,
+			timeout);
+
+	/// <summary>
+	/// Downloads a binary resource once (no retries) and returns its bytes and media type.
+	/// Non-success statuses throw <see cref="ApiException"/> like the other calls.
+	/// </summary>
+	public async Task<(byte[] Content, string? MediaType)> GetBytesAsync(
+		string requestUri,
+		string accept,
 		CancellationToken cancellationToken = default,
 		TimeSpan? timeout = null)
 	{
@@ -133,11 +162,83 @@ public sealed class ApiClient : IDisposable
 			CancellationToken requestToken =
 				linkedCts.Token;
 
+			using var request =
+				new HttpRequestMessage(
+					HttpMethod.Get,
+					requestUri);
+
+			request.Headers.Accept.ParseAdd(accept);
+
+			using HttpResponseMessage response =
+				await _httpClient
+					.SendAsync(
+						request,
+						requestToken)
+					.ConfigureAwait(false);
+
+			byte[] bytes =
+				await response.Content
+					.ReadAsByteArrayAsync(requestToken)
+					.ConfigureAwait(false);
+
+			if (!response.IsSuccessStatusCode)
+			{
+				EnsureSuccess(
+					response,
+					System.Text.Encoding.UTF8.GetString(bytes));
+			}
+
+			return (
+				bytes,
+				response.Content.Headers.ContentType?.MediaType);
+		}
+		catch (OperationCanceledException ex)
+			when (!cancellationToken.IsCancellationRequested)
+		{
+			throw new ApiException(
+				string.Empty,
+				null,
+				true,
+				null,
+				ex);
+		}
+		catch (HttpRequestException ex)
+		{
+			throw new ApiException(
+				string.Empty,
+				null,
+				true,
+				null,
+				ex);
+		}
+	}
+
+	private async Task<string> PostAsync(
+		string requestUri,
+		string body,
+		string mediaType,
+		CancellationToken cancellationToken,
+		TimeSpan? timeout)
+	{
+		try
+		{
+			using var timeoutCts =
+				new CancellationTokenSource(
+					timeout ?? DefaultTimeout);
+
+			using var linkedCts =
+				CancellationTokenSource.CreateLinkedTokenSource(
+					cancellationToken,
+					timeoutCts.Token);
+
+			CancellationToken requestToken =
+				linkedCts.Token;
+
 			using var content =
 				new StringContent(
-					json,
+					body,
 					System.Text.Encoding.UTF8,
-					"application/json");
+					mediaType);
 
 			using HttpResponseMessage response =
 				await _httpClient

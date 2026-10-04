@@ -118,6 +118,63 @@ public sealed class GermanUiStrings : IUiStrings
 		Details = "Details"
 	};
 
+	// <extras>
+	public ExtrasStrings Extras { get; } = new()
+	{
+		KindStop = "Haltestelle",
+		KindAddress = "Adresse",
+		KindPoi = "Sehenswürdigkeit / Ort",
+		SearchAddresses = "Adressen",
+		SearchAddressesDescription = "Adressen in der Ortssuche finden. Die Verbindung enthält den Fußweg zur nächsten Haltestelle.",
+		SearchPois = "Orte und Sehenswürdigkeiten",
+		SearchPoisDescription = "Orte, Gebäude und Sehenswürdigkeiten per Name finden.",
+		ExactPosition = "Genau an meinem Standort starten",
+		ExactPositionDescription = "„Meinen Standort verwenden“ wählt die Adresse, an der Sie sind, statt der nächsten Haltestelle.",
+		LiveTitle = "Fahrzeuge live",
+		LiveShow = "Wo ist das Fahrzeug?",
+		LineFilterPlaceholder = "Liniennummern, z. B. 11, 3 (leer: alle)",
+		LiveStart = "Anzeigen",
+		LiveStop = "Anhalten",
+		LiveConnecting = "Verbinde…",
+		LiveWaiting = "Warte auf Fahrzeuge…",
+		LiveError = "Die Live-Positionen sind gerade nicht verfügbar.",
+		LiveLine = "Linie {0}",
+		LiveRun = "Fahrt {0}",
+		LiveSecondsAgo = "vor {0} s",
+		LiveMinutesAgo = "vor {0} min",
+		LiveOnTime = "Pünktlich",
+		LiveSourceGps = "GPS",
+		LiveSourceTelegram = "Funktelegramm",
+		LiveHint = "Die Positionen stammen aus dem Community-Netz TLMS und können unvollständig sein.",
+		LiveOpenMap = "Karte öffnen",
+		AccessTitle = "Barrierefreiheit der Haltestelle",
+		AccessHide = "Barrierefreiheit ausblenden",
+		AccessNone = "Für diese Haltestelle veröffentlicht die Stadt keine Barrierefreiheitsdaten.",
+		AccessPlatform = "Steig {0}",
+		AccessBoarding = "Einstieg: {0}",
+		AccessKerb = "Bordhöhe: {0}",
+		AccessWidth = "Breite: {0}",
+		AccessTactile = "Leitsystem: {0}",
+		AccessAudio = "Ansagen: {0}",
+		ServiceShow = "DVB-Servicestellen in der Nähe",
+		ServiceHide = "Servicestellen ausblenden",
+		ServiceNone = "Keine Servicestellen in der Nähe.",
+		ServiceNeedsPosition = "Zuerst eine Haltestelle wählen oder den Standort verwenden.",
+		CapLive = "Fahrzeuge live",
+		CapOpenData = "Offene Stadtdaten",
+		CapFares = "Preise",
+		CapOptimisation = "Routenoptimierung",
+		OptSection = "Route optimieren auf",
+		OptFastest = "Schnellste Verbindung",
+		OptFewestChanges = "Wenigste Umstiege",
+		OptLeastWalking = "Wenigster Fußweg",
+		OptLowestFare = "Niedrigster Preis",
+		OptNote = "Nur der Anbieter VVO (TRIAS) berücksichtigt diese Auswahl; andere Anbieter suchen immer die schnellste Verbindung.",
+		FaresTitle = "Tickets und Preise",
+		PdfFailed = "Das PDF konnte nicht geladen werden. Details stehen in der Protokolldatei diagnostics.log."
+	};
+	// </extras>
+
 	public PlaceSearchStrings PlaceSearch { get; } = new()
 	{
 		Title = "Ort wählen",

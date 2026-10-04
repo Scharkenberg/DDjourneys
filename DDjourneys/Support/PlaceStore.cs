@@ -549,7 +549,8 @@ public sealed class PlaceStore
 		string? Place,
 		double? Latitude,
 		double? Longitude,
-		string? ProviderId = null);
+		string? ProviderId = null,
+		string? Kind = null);
 
 
 	/// <summary>Stored shape of a connection: the two endpoints, nothing else.</summary>
@@ -582,7 +583,8 @@ public sealed class PlaceStore
 			StoredJson.String(element, "Place"),
 			StoredJson.Number(element, "Latitude"),
 			StoredJson.Number(element, "Longitude"),
-			StoredJson.String(element, "ProviderId"));
+			StoredJson.String(element, "ProviderId"),
+			StoredJson.String(element, "Kind"));
 	}
 
 
@@ -669,7 +671,10 @@ public sealed class PlaceStore
 			place.Longitude,
 			string.IsNullOrWhiteSpace(place.ProviderId)
 				? null
-				: place.ProviderId);
+				: place.ProviderId,
+			place.Kind == PlaceKind.Stop
+				? null
+				: place.Kind.ToString());
 
 
 	/// <summary>
@@ -687,6 +692,10 @@ public sealed class PlaceStore
 					: string.IsNullOrWhiteSpace(entry.Id)
 						? string.Empty
 						: LegacyProviderId,
+			Kind =
+				Enum.TryParse(entry.Kind, out PlaceKind kind)
+					? kind
+					: PlaceKind.Stop,
 			Name = entry.Name,
 			Place = entry.Place,
 			Latitude = entry.Latitude,

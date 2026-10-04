@@ -114,6 +114,13 @@ public partial class DeparturesPage : ContentPage, IQueryAttributable
 		return timer;
 	}
 
+	private async void LiveClicked(
+		object? sender,
+		EventArgs e) =>
+		await NavigateAsync(
+			Routes.Vehicles,
+			[]);
+
 	private async Task NavigateAsync(
 		string route,
 		ShellNavigationQueryParameters parameters)

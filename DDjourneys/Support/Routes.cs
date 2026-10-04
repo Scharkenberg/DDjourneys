@@ -25,6 +25,11 @@ public static class Routes
 	public const string Departures = "departures";
 	public const string Run = "run";
 	public const string Disruptions = "disruptions";
+	public const string Vehicles = "vehicles";
+	public const string StopInfo = "stopinfo";
+
+	/// <summary>Query key: line number(s) the live vehicles page opens with.</summary>
+	public const string Line = "Line";
 
 	/// <summary>
 	/// Query key: what a place search is for when it is not the start or the destination

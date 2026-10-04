@@ -88,6 +88,10 @@ public sealed class JourneyViewModel :
 			new AsyncCommand(
 				OpenDocumentAsync);
 
+		ShowLiveCommand =
+			new AsyncCommand<LegRow>(
+				ShowLiveAsync);
+
 		Subscribe(
 			() => _contract.Changed += OnContractChanged,
 			() => _contract.Changed -= OnContractChanged);
@@ -142,6 +146,12 @@ public sealed class JourneyViewModel :
 	public AsyncCommand<LegRow> LegEarlierCommand { get; }
 
 	public AsyncCommand<LegRow> LegLaterCommand { get; }
+
+	/// <summary>Opens the live page for the line of a ride.</summary>
+	public AsyncCommand<LegRow> ShowLiveCommand { get; }
+
+	public bool HasLiveVehicles =>
+		_providers.Supports(ProviderCapabilities.LiveVehicles);
 
 	/// <summary>Opens the printable version of the journey (tr/trippdf).</summary>
 	public AsyncCommand OpenDocumentCommand { get; }
@@ -500,6 +510,29 @@ public sealed class JourneyViewModel :
 		Notices.Count > 0;
 
 
+	/// <summary>Tickets and prices the provider quotes (empty when it quotes none).</summary>
+	public IReadOnlyList<FareRow> Fares
+	{
+		get => field;
+
+		private set
+		{
+			if (SetProperty(
+					ref field,
+					value))
+			{
+				OnPropertyChanged(
+					nameof(HasFares));
+			}
+		}
+	} =
+		[];
+
+
+	public bool HasFares =>
+		Fares.Count > 0;
+
+
 	public void ApplyQueryAttributes(
 		IDictionary<string, object> query)
 	{
@@ -587,18 +620,63 @@ public sealed class JourneyViewModel :
 	}
 
 
-	private async Task OpenDocumentAsync()
+	private async Task ShowLiveAsync(
+		LegRow row)
 	{
-		if (_query is not { } query
-			|| _journey is not { } journey
-			|| _journeys.GetJourneyDocumentUri(query, journey) is not { } uri)
+		if (!row.CanShowLive)
 		{
 			return;
 		}
 
 		try
 		{
-			await Launcher.Default.OpenAsync(uri);
+			await Shell.Current.GoToAsync(
+				Routes.Vehicles,
+				new ShellNavigationQueryParameters
+				{
+					[Routes.Line] = row.LineNumber
+				});
+		}
+		catch (Exception ex)
+		{
+			System.Diagnostics.Debug.WriteLine($"Opening the live page failed: {ex.Message}");
+		}
+	}
+
+
+	private async Task OpenDocumentAsync()
+	{
+		if (_query is not { } query
+			|| _journey is not { } journey)
+		{
+			return;
+		}
+
+		try
+		{
+			// The address itself is refused when opened in a browser (HTTP 403); the app fetches the PDF
+			// and hands the file to the system viewer.
+			JourneyDocument? document =
+				await _journeys.GetJourneyDocumentAsync(query, journey);
+
+			if (document is null)
+			{
+				AlternativeStatus = _localization.CurrentStrings.Extras.PdfFailed;
+
+				return;
+			}
+
+			string path =
+				System.IO.Path.Combine(
+					FileSystem.CacheDirectory,
+					document.FileName);
+
+			await File.WriteAllBytesAsync(path, document.Content);
+
+			await Launcher.Default.OpenAsync(
+				new OpenFileRequest(
+					document.FileName,
+					new ReadOnlyFile(path, "application/pdf")));
 		}
 		catch (Exception ex)
 		{
@@ -738,6 +816,23 @@ public sealed class JourneyViewModel :
 
 		_builtOptions = options;
 
+
+		Fares =
+			[.. journey.Fares
+				.Select(
+					fare => new FareRow
+					{
+						Name = fare.Name,
+						PriceText =
+							fare.Price is { } price
+								? string.Format(
+									CultureInfo.CurrentCulture,
+									"{0:N2} {1}",
+									price,
+									fare.Currency)
+								: string.Empty,
+						Description = fare.Description
+					})];
 
 		Notices =
 			journey.Notices

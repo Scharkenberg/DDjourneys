@@ -1220,6 +1220,15 @@ public sealed partial class PlanViewModel : DisposableViewModel
 				return null;
 			}
 
+			if (_settings.ExactPosition
+				&& await _locations.ResolveAddressAsync(
+					here.Latitude,
+					here.Longitude,
+					timeout: TimeSpan.FromSeconds(_settings.TimeoutSeconds)) is { } address)
+			{
+				return address;
+			}
+
 			return stops[0];
 		}
 		finally
