@@ -491,6 +491,7 @@ public sealed class GermanUiStrings : IUiStrings
 		Title = "Anbieter",
 		Intro = "Woher Verbindungen und Haltestellen kommen. Jeder Anbieter deckt seine eigene Region ab; ein Wechsel setzt Start und Ziel zurück.",
 		InUse = "Aktiv",
+		Experimental = "Experimentell",
 		CapJourneys = "Verbindungen",
 		CapPlaces = "Haltestellensuche",
 		CapContinuation = "Früher / später",

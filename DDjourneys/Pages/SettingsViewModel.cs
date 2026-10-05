@@ -44,7 +44,9 @@ public sealed class SettingsViewModel : DisposableViewModel
 	/// <summary>Name of the selected provider, shown on the entry row.</summary>
 	public string ProviderText =>
 		_providers.Selected is { } provider
-			? $"{provider.Name} \u00b7 {provider.FullName}"
+			? provider.IsExperimental
+				? $"{provider.Name} \u00b7 {provider.FullName} \u00b7 {_localization.CurrentStrings.Provider.Experimental}"
+				: $"{provider.Name} \u00b7 {provider.FullName}"
 			: string.Empty;
 
 	public void RefreshProvider() =>

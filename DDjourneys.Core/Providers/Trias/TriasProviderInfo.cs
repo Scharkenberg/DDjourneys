@@ -25,5 +25,6 @@ public static class TriasProviderInfo
 			| ProviderCapabilities.Fares
 			| ProviderCapabilities.RouteOptimisation
 			| ProviderCapabilities.LiveVehicles
-			| ProviderCapabilities.OpenData);
+			| ProviderCapabilities.OpenData,
+			IsExperimental: true);
 }

@@ -6,6 +6,8 @@ namespace DDjourneys.Core.Mapping;
 /// <summary>
 /// The colours of the app theme in effect, as the map page needs them to recolour the basemap
 /// (hex strings, "#RRGGBB"). <see cref="Ok"/> is the theme's "on time" colour, used for green areas.
+/// <see cref="Font"/> is the app's font face id (the page ships the same fonts) and <see cref="FontScale"/>
+/// the OS text size factor, so the map text follows the app's typography and accessibility settings.
 /// </summary>
 public sealed record MapTheme(
 	bool Dark,
@@ -17,7 +19,9 @@ public sealed record MapTheme(
 	string InkMuted,
 	string Accent,
 	string AccentSoft,
-	string Ok)
+	string Ok,
+	string Font = "opensans",
+	double FontScale = 1)
 {
 	/// <summary>The JSON for <c>ddMapCall('theme', ...)</c>.</summary>
 	public string ToJson()
@@ -77,6 +81,8 @@ public sealed record MapTheme(
 		writer.WriteString("accent", Accent);
 		writer.WriteString("accentSoft", AccentSoft);
 		writer.WriteString("ok", Ok);
+		writer.WriteString("font", Font);
+		writer.WriteNumber("fontScale", FontScale);
 		writer.WriteEndObject();
 	}
 }

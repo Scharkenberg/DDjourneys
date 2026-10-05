@@ -157,6 +157,26 @@ public static class MapScenes
 					? name
 					: Format.TransportMode(leg.Mode);
 
+			// Every stop in between: a small quiet knot on the line (the name is in its popup).
+			for (int stopIndex = 1; stopIndex < leg.Stops.Count - 1; stopIndex++)
+			{
+				StopTime between = leg.Stops[stopIndex];
+
+				if (Position(between.Station) is { } knot)
+				{
+					markers.Add(
+						new MapMarker(
+							$"leg{index}-k{stopIndex}",
+							knot.Latitude,
+							knot.Longitude,
+							string.Empty,
+							MapMarkerKind.Knot,
+							ModeColor(leg.Mode),
+							between.Station.Name,
+							$"{lineName} · {Format.TimeOrDash(between.RealtimeDeparture ?? between.ScheduledDeparture ?? between.RealtimeArrival ?? between.ScheduledArrival)}"));
+				}
+			}
+
 			// Boarding and alighting stops; the start and end markers stand for the first and the last of them.
 			if (index > 0
 				&& (Position(leg.From) ?? FirstOf(points)) is { } board)

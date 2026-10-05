@@ -94,14 +94,16 @@ internal static class TriasMapper
 			PlatformKind = platformKind
 		};
 
-	private static TransitMode MapMode(XElement? mode)
+	/// <summary>
+	/// Vehicle type of a service. TRIAS names it in <c>Mode/PtMode</c>; servers differ in where they put it and
+	/// some leave it out, so the submode elements, the mode and product-category texts and finally the line name
+	/// are tried before giving up.
+	/// </summary>
+	private static TransitMode MapMode(XElement? mode, XElement? service = null)
 	{
-		string? pt = mode.ChildText("PtMode");
-
-		if (pt is null)
-		{
-			return TransitMode.Unknown;
-		}
+		string? pt =
+			mode.Deep("PtMode").Select(element => element.Text()).FirstOrDefault(text => text is not null)
+			?? service.Deep("PtMode").Select(element => element.Text()).FirstOrDefault(text => text is not null);
 
 		string submode =
 			string.Concat(
@@ -109,36 +111,209 @@ internal static class TriasMapper
 					.Where(child => child.Name.LocalName.EndsWith("Submode", StringComparison.Ordinal))
 					.Select(child => child.Value.Trim()) ?? []);
 
-		return pt switch
+		TransitMode result = FromPtMode(pt, submode);
+
+		if (result != TransitMode.Unknown)
 		{
-			"bus" or "trolleyBus" or "coach" => TransitMode.Bus,
-			"tram" => TransitMode.Tram,
-			"metro" => TransitMode.Subway,
-			"urbanRail" => TransitMode.SuburbanRail,
-			"intercityRail" => TransitMode.LongDistanceTrain,
-			"rail" when submode.Contains("longDistance", StringComparison.OrdinalIgnoreCase)
-				|| submode.Contains("highSpeed", StringComparison.OrdinalIgnoreCase)
-				|| submode.Contains("interRegional", StringComparison.OrdinalIgnoreCase)
-				=> TransitMode.LongDistanceTrain,
-			"rail" => TransitMode.RegionalTrain,
-			"water" => TransitMode.Ferry,
-			"cableway" or "funicular" or "telecabin" or "lift" => TransitMode.CableCar,
-			"taxi" => TransitMode.Taxi,
+			return result;
+		}
+
+		// No usable PtMode: the name of the submode element ("TramSubmode", "MetroSubmode", ...) says it too.
+		foreach (XElement child in mode?.Elements() ?? [])
+		{
+			string name = child.Name.LocalName;
+
+			if (name.EndsWith("Submode", StringComparison.Ordinal))
+			{
+				result = FromPtMode(name[..^"Submode".Length].ToLowerInvariant() switch
+				{
+					"bus" => "bus",
+					"trolleybus" => "trolleyBus",
+					"coach" => "coach",
+					"tram" => "tram",
+					"metro" => "metro",
+					"rail" => "rail",
+					"urbanrail" => "urbanRail",
+					"water" => "water",
+					"telecabin" or "cableway" => "cableway",
+					"funicular" => "funicular",
+					"taxi" => "taxi",
+					"air" => "air",
+					_ => null
+				}, child.Value.Trim());
+
+				if (result != TransitMode.Unknown)
+				{
+					return result;
+				}
+			}
+		}
+
+		// Free texts: "Straßenbahn", "Bus", "S-Bahn", "Regionalzug" ...
+		foreach (string? text in new[]
+		{
+			mode.ChildLabel("Name"),
+			service.Child("ProductCategory").ChildLabel("Name"),
+			service.Child("ProductCategory").ChildText("ShortName"),
+			service.ChildLabel("PublishedServiceName") ?? service.ChildLabel("PublishedLineName")
+		})
+		{
+			result = FromText(text);
+
+			if (result != TransitMode.Unknown)
+			{
+				return result;
+			}
+		}
+
+		return TransitMode.Unknown;
+	}
+
+	private static TransitMode FromPtMode(string? pt, string submode)
+	{
+		if (string.IsNullOrWhiteSpace(pt))
+		{
+			return TransitMode.Unknown;
+		}
+
+		return pt.Trim() switch
+		{
+			var value when value.Equals("bus", StringComparison.OrdinalIgnoreCase)
+				|| value.Equals("trolleyBus", StringComparison.OrdinalIgnoreCase)
+				|| value.Equals("coach", StringComparison.OrdinalIgnoreCase) => TransitMode.Bus,
+			var value when value.Equals("tram", StringComparison.OrdinalIgnoreCase) => TransitMode.Tram,
+			var value when value.Equals("metro", StringComparison.OrdinalIgnoreCase) => TransitMode.Subway,
+			var value when value.Equals("urbanRail", StringComparison.OrdinalIgnoreCase) => TransitMode.SuburbanRail,
+			var value when value.Equals("intercityRail", StringComparison.OrdinalIgnoreCase) => TransitMode.LongDistanceTrain,
+			var value when value.Equals("rail", StringComparison.OrdinalIgnoreCase)
+				=> submode.Contains("urban", StringComparison.OrdinalIgnoreCase)
+					|| submode.Contains("suburban", StringComparison.OrdinalIgnoreCase)
+					? TransitMode.SuburbanRail
+					: submode.Contains("longDistance", StringComparison.OrdinalIgnoreCase)
+						|| submode.Contains("highSpeed", StringComparison.OrdinalIgnoreCase)
+						|| submode.Contains("interRegional", StringComparison.OrdinalIgnoreCase)
+						|| submode.Contains("international", StringComparison.OrdinalIgnoreCase)
+						? TransitMode.LongDistanceTrain
+						: TransitMode.RegionalTrain,
+			var value when value.Equals("water", StringComparison.OrdinalIgnoreCase) => TransitMode.Ferry,
+			var value when value.Equals("cableway", StringComparison.OrdinalIgnoreCase)
+				|| value.Equals("funicular", StringComparison.OrdinalIgnoreCase)
+				|| value.Equals("telecabin", StringComparison.OrdinalIgnoreCase)
+				|| value.Equals("lift", StringComparison.OrdinalIgnoreCase) => TransitMode.CableCar,
+			var value when value.Equals("taxi", StringComparison.OrdinalIgnoreCase) => TransitMode.Taxi,
 			_ => TransitMode.Unknown
 		};
 	}
+
+	/// <summary>Vehicle type from a human-readable text or a line name ("S1", "RE 15", "Straßenbahn").</summary>
+	private static TransitMode FromText(string? text)
+	{
+		if (string.IsNullOrWhiteSpace(text))
+		{
+			return TransitMode.Unknown;
+		}
+
+		string value = text.Trim();
+
+		if (value.Contains("straßenbahn", StringComparison.OrdinalIgnoreCase)
+			|| value.Contains("strassenbahn", StringComparison.OrdinalIgnoreCase)
+			|| value.Equals("tram", StringComparison.OrdinalIgnoreCase))
+		{
+			return TransitMode.Tram;
+		}
+
+		if (value.Contains("bus", StringComparison.OrdinalIgnoreCase))
+		{
+			return TransitMode.Bus;
+		}
+
+		if (value.Contains("s-bahn", StringComparison.OrdinalIgnoreCase)
+			|| value.Contains("stadtbahn", StringComparison.OrdinalIgnoreCase)
+			|| SuburbanLine.IsMatch(value))
+		{
+			return TransitMode.SuburbanRail;
+		}
+
+		if (value.Contains("u-bahn", StringComparison.OrdinalIgnoreCase))
+		{
+			return TransitMode.Subway;
+		}
+
+		if (value.Contains("fähre", StringComparison.OrdinalIgnoreCase)
+			|| value.Contains("faehre", StringComparison.OrdinalIgnoreCase)
+			|| value.Contains("schiff", StringComparison.OrdinalIgnoreCase))
+		{
+			return TransitMode.Ferry;
+		}
+
+		if (value.Contains("schwebebahn", StringComparison.OrdinalIgnoreCase)
+			|| value.Contains("seilbahn", StringComparison.OrdinalIgnoreCase)
+			|| value.Contains("standseilbahn", StringComparison.OrdinalIgnoreCase))
+		{
+			return TransitMode.CableCar;
+		}
+
+		if (LongDistanceLine.IsMatch(value))
+		{
+			return TransitMode.LongDistanceTrain;
+		}
+
+		if (RegionalLine.IsMatch(value)
+			|| value.Contains("regional", StringComparison.OrdinalIgnoreCase)
+			|| value.Contains("zug", StringComparison.OrdinalIgnoreCase))
+		{
+			return TransitMode.RegionalTrain;
+		}
+
+		return TransitMode.Unknown;
+	}
+
+	private static readonly System.Text.RegularExpressions.Regex SuburbanLine =
+		new(@"^S\s?\d{1,2}\b", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
+	private static readonly System.Text.RegularExpressions.Regex LongDistanceLine =
+		new(@"^(ICE|IC|EC|ECE|RJ|RJX|NJ|FLX|TGV)\b", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
+	private static readonly System.Text.RegularExpressions.Regex RegionalLine =
+		new(@"^(RE|RB|IRE|MRB|OE|U\d|VIA|TLX|ODEG|SB)\s?\d*", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
 
 	private static PlatformKind KindFor(TransitMode mode) =>
 		mode is TransitMode.RegionalTrain or TransitMode.LongDistanceTrain or TransitMode.SuburbanRail
 			? PlatformKind.Railtrack
 			: PlatformKind.Platform;
 
+	/// <summary>
+	/// The visible line name. TRIAS 1.2 calls it <c>PublishedServiceName</c> (1.1: <c>PublishedLineName</c>); the
+	/// product category and the mode text are the fallbacks, never the word "Unknown".
+	/// </summary>
+	private static string LineName(XElement? service) =>
+		service.ChildLabel("PublishedServiceName")
+		?? service.ChildLabel("PublishedLineName")
+		?? service.Child("ProductCategory").ChildText("ShortName")
+		?? service.Child("ProductCategory").ChildLabel("Name")
+		?? ShortRef(service.ChildText("LineRef"))
+		?? service.Child("Mode").ChildLabel("Name")
+		?? "?";
+
+	/// <summary>"ddb:11011: :H" is not a name; the last meaningful token is the best guess.</summary>
+	private static string? ShortRef(string? reference)
+	{
+		if (string.IsNullOrWhiteSpace(reference))
+		{
+			return null;
+		}
+
+		string[] parts = reference.Split(':', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+		return parts.Length > 0
+			? parts.Length > 1 ? parts[1] : parts[0]
+			: null;
+	}
+
 	private static TransitLine MapService(XElement? service, TransitMode mode) =>
 		new()
 		{
-			Name = service.ChildLabel("PublishedLineName")
-				?? service.ChildText("LineRef")
-				?? mode.ToString(),
+			Name = LineName(service),
 			Mode = mode,
 			Operator = service.ChildText("OperatorRef"),
 			Destination = service.ChildLabel("DestinationText"),
@@ -305,7 +480,7 @@ internal static class TriasMapper
 	private static JourneyLeg MapTimedLeg(XElement tripLeg, XElement timed)
 	{
 		XElement? service = timed.Child("Service");
-		TransitMode mode = MapMode(service.Child("Mode"));
+		TransitMode mode = MapMode(service.Child("Mode"), service);
 		XElement? board = timed.Child("LegBoard");
 		XElement? alight = timed.Child("LegAlight");
 
@@ -493,7 +668,7 @@ internal static class TriasMapper
 			name ??= thisCall.ChildLabel("StopPointName");
 
 			XElement? service = stopEvent.Child("Service");
-			TransitMode mode = MapMode(service.Child("Mode"));
+			TransitMode mode = MapMode(service.Child("Mode"), service);
 
 			(DateTimeOffset? planned, DateTimeOffset? estimated) =
 				Times(thisCall, arrival ? "ServiceArrival" : "ServiceDeparture");

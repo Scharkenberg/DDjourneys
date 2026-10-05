@@ -62,13 +62,15 @@ public enum ProviderCapabilities
 /// <param name="Region">Group heading in the picker ("Sachsen"); providers with the same region are listed together.</param>
 /// <param name="Coverage">Main places served, as proper nouns.</param>
 /// <param name="Capabilities">What the provider supports.</param>
+/// <param name="IsExperimental">Works, but not to the standard of the others; the UI says so.</param>
 public sealed record ProviderInfo(
 	string Id,
 	string Name,
 	string FullName,
 	string Region,
 	string Coverage,
-	ProviderCapabilities Capabilities)
+	ProviderCapabilities Capabilities,
+	bool IsExperimental = false)
 {
 	public bool Supports(ProviderCapabilities capability) =>
 		(Capabilities & capability) == capability;

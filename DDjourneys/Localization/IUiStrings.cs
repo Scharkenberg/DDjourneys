@@ -398,6 +398,7 @@ public sealed class RoutingStrings
 
 public sealed class ProviderStrings
 {
+	public required string Experimental { get; init; }
 	public required string Title { get; init; }
 	public required string Intro { get; init; }
 	public required string InUse { get; init; }

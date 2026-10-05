@@ -10,6 +10,7 @@ public partial class App : Application
 	public App(AppSettings settings)
 	{
 		InitializeComponent();
+		SystemAccessibility.Refresh();
 		Motion.Bind(settings);
 		Theme.Initialize(this, settings);
 		Density.Initialize(this, settings);
@@ -26,13 +27,20 @@ public partial class App : Application
 		};
 	}
 
+	/// <summary>The accent colour and the accessibility options (text size, animations) can change in the background.</summary>
+	private static void RefreshSystemSettings()
+	{
+		Theme.Refresh();
+		SystemAccessibility.Refresh();
+	}
+
 	protected override Window CreateWindow(IActivationState? activationState)
 	{
 		var window = new Window(_shellFactory());
 
 		// The OS accent colour can change while the app is in the background.
-		window.Resumed += (_, _) => Theme.Refresh();
-		window.Activated += (_, _) => Theme.Refresh();
+		window.Resumed += (_, _) => RefreshSystemSettings();
+		window.Activated += (_, _) => RefreshSystemSettings();
 
 		WindowPlacement.Attach(window);
 

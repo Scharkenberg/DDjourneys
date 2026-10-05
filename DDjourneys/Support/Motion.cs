@@ -50,20 +50,25 @@ public static class Motion
 	private static readonly ConditionalWeakTable<VisualElement, object> Breathing = new();
 	private static readonly ConditionalWeakTable<VisualElement, Quiet> Quiets = new();
 
+	/// <summary>The app setting, and the OS: "remove animations" always wins.</summary>
 	public static bool Enabled { get; private set; } = true;
 
 	public static void Bind(AppSettings settings)
 	{
 		ArgumentNullException.ThrowIfNull(settings);
 
-		Enabled = settings.Animations;
+		Enabled = settings.Animations && !SystemAccessibility.ReduceMotion;
+
 		settings.Changed += (_, name) =>
 		{
 			if (name == nameof(AppSettings.Animations))
 			{
-				Enabled = settings.Animations;
+				Enabled = settings.Animations && !SystemAccessibility.ReduceMotion;
 			}
 		};
+
+		SystemAccessibility.Changed += (_, _) =>
+			Enabled = settings.Animations && !SystemAccessibility.ReduceMotion;
 	}
 
 	// ---------------------------------------------------------------- attached properties

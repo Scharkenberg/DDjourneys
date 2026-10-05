@@ -39,6 +39,19 @@ public sealed class MapView : ContentView
 
 		_web.RawMessageReceived += OnRawMessage;
 
+#if ANDROID
+		// The page scales its own text by the OS text size (see MapTheme.FontScale); the web view must not
+		// scale it a second time.
+		_web.HandlerChanged +=
+			(_, _) =>
+			{
+				if (_web.Handler?.PlatformView is Android.Webkit.WebView platformView)
+				{
+					platformView.Settings.TextZoom = 100;
+				}
+			};
+#endif
+
 		// The web view takes every touch (a swipe pans the map), so a strip of plain page background stays below
 		// it, inside the view's own bounds: there is always somewhere to put a finger to scroll the page or
 		// to go back, on any screen size.
@@ -107,7 +120,7 @@ public sealed class MapView : ContentView
 			return;
 		}
 
-		await CallAsync("focus", System.Text.Json.Nodes.JsonValue.Create(markerId)!.ToJsonString());
+		await CallAsync("focus", System.Text.Json.JsonSerializer.Serialize(markerId, WebBridge.StringInfo));
 	}
 
 	private void OnHandlerChanged(object? sender, EventArgs e)
@@ -117,6 +130,7 @@ public sealed class MapView : ContentView
 			if (_subscribed)
 			{
 				Theme.Changed -= OnThemeChanged;
+				SystemAccessibility.Changed -= OnThemeChanged;
 				_subscribed = false;
 			}
 
@@ -126,6 +140,7 @@ public sealed class MapView : ContentView
 		if (!_subscribed)
 		{
 			Theme.Changed += OnThemeChanged;
+			SystemAccessibility.Changed += OnThemeChanged;
 			_subscribed = true;
 		}
 	}

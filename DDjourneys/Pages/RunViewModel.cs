@@ -82,24 +82,24 @@ public sealed class RunViewModel : DisposableViewModel, IQueryAttributable
 		_settings = settings;
 		_localization = LocalizationService.Current;
 
+		// A plain command, not an AsyncCommand: the RefreshView must stay usable the whole time (an AsyncCommand
+		// reports "cannot execute" while it runs and the control disables itself with it).
 		RefreshCommand =
-			new AsyncCommand(
-				LoadAsync);
-
-		ShowLiveCommand =
-			new AsyncCommand(
-				ShowLiveAsync);
+			new Command(
+				() => _ = LoadAsync());
 
 		OpenMapCommand =
 			new AsyncCommand(
 				OpenMapAsync);
 	}
 
-	public AsyncCommand RefreshCommand { get; }
+	/// <summary>Pull to refresh.</summary>
+	public Command RefreshCommand { get; }
 
-	public AsyncCommand ShowLiveCommand { get; }
-
-	/// <summary>Shows the stops of the run (and where the vehicle is) on a map.</summary>
+	/// <summary>
+	/// The one map button: the live map (the stops, the course and where the vehicle is) when the line can be
+	/// followed, else the stops of the run with the position the times imply.
+	/// </summary>
 	public AsyncCommand OpenMapCommand { get; }
 
 	/// <summary>At least two stops of the run have a position.</summary>
@@ -151,10 +151,17 @@ public sealed class RunViewModel : DisposableViewModel, IQueryAttributable
 		private set => SetProperty(ref field, value);
 	}
 
+	/// <summary>True while the run loads; the RefreshView shows its spinner with it (one way).</summary>
 	public bool IsBusy
 	{
 		get => field;
-		private set => SetProperty(ref field, value);
+		private set
+		{
+			field = value;
+
+			// Always notify: the control may have set its own state on a pull, and it must follow ours back.
+			OnPropertyChanged();
+		}
 	}
 
 	public string Message
@@ -197,6 +204,13 @@ public sealed class RunViewModel : DisposableViewModel, IQueryAttributable
 	{
 		if (_departure is not { } departure)
 		{
+			return;
+		}
+
+		if (CanShowLive)
+		{
+			await ShowLiveAsync();
+
 			return;
 		}
 
@@ -295,30 +309,37 @@ public sealed class RunViewModel : DisposableViewModel, IQueryAttributable
 				return;
 			}
 
-			Rows.Clear();
-
 			// One journey, and the vehicle where its times say it is (not at the stop the search started from).
 			IReadOnlyList<RunStop> course =
 				RunCourse.Isolate(
 					stops,
 					departure.Scheduled);
 
+			// An empty answer never wipes what is on screen: stale rows with a note beat a blank page, and the
+			// list, the vehicle marker and the map stay in step with each other.
+			if (course.Count == 0)
+			{
+				Message =
+					departure.Effective < DateTimeOffset.UtcNow
+						? _localization.CurrentStrings.Extras.RunDeparted
+						: _localization.CurrentStrings.Departures.NoRun;
+
+				return;
+			}
+
 			int here =
 				RunCourse.VehicleIndex(
 					course,
 					DateTimeOffset.UtcNow);
+
+			Rows.Clear();
 
 			for (int i = 0; i < course.Count; i++)
 			{
 				Rows.Add(new RunRow(course[i], i < here, i == here));
 			}
 
-			Message =
-				Rows.Count == 0
-					? departure.Effective < DateTimeOffset.UtcNow
-						? _localization.CurrentStrings.Extras.RunDeparted
-						: _localization.CurrentStrings.Departures.NoRun
-					: string.Empty;
+			Message = string.Empty;
 
 			OnPropertyChanged(nameof(CanShowMap));
 		}
@@ -329,6 +350,7 @@ public sealed class RunViewModel : DisposableViewModel, IQueryAttributable
 		{
 			DiagnosticLog.Write($"Run failed: {ex}");
 
+			// The rows from the last good load stay; only the note changes.
 			Message =
 				string.IsNullOrWhiteSpace(ex.Message)
 					? _localization.CurrentStrings.Common.SomethingWentWrong

@@ -22,6 +22,11 @@ public sealed class ProviderRow : ObservableObject
 
 	public string Name => Info.Name;
 
+	public bool IsExperimental => Info.IsExperimental;
+
+	public string ExperimentalText =>
+		LocalizationService.Current.CurrentStrings.Provider.Experimental;
+
 	public string FullName => Info.FullName;
 
 	public string Coverage => Info.Coverage;
@@ -41,7 +46,9 @@ public sealed class ProviderRow : ObservableObject
 	public Command SelectCommand { get; }
 
 	public string Description =>
-		$"{Info.Name}, {Info.FullName}, {Info.Coverage}";
+		Info.IsExperimental
+			? $"{Info.Name}, {ExperimentalText}, {Info.FullName}, {Info.Coverage}"
+			: $"{Info.Name}, {Info.FullName}, {Info.Coverage}";
 }
 
 

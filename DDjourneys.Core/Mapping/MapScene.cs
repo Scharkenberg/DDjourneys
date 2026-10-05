@@ -25,7 +25,10 @@ public enum MapMarkerKind
 	Me,
 
 	/// <summary>A service point or another place of interest.</summary>
-	Poi
+	Poi,
+
+	/// <summary>An intermediate stop: a small, quiet dot without a name; the popup tells it.</summary>
+	Knot
 }
 
 
@@ -78,6 +81,7 @@ public sealed class MapScene
 			MapMarkerKind.Current => "current",
 			MapMarkerKind.Me => "me",
 			MapMarkerKind.Poi => "poi",
+			MapMarkerKind.Knot => "knot",
 			_ => "stop"
 		};
 

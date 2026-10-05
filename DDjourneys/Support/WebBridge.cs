@@ -11,9 +11,8 @@ namespace DDjourneys.Support;
 /// </summary>
 public static class WebBridge
 {
-	// Built by hand: a [JsonSerializable] context needs the System.Text.Json source generator, which does not
-	// run in this solution (same as [GeneratedRegex]). This is the AOT-safe metadata for a plain string.
-	private static readonly JsonTypeInfo<string> StringInfo =
+	// Metadata for a plain string, built by hand (a one-liner; no context type needed for it).
+	internal static readonly JsonTypeInfo<string> StringInfo =
 		JsonMetadataServices.CreateValueInfo<string>(
 			new JsonSerializerOptions { TypeInfoResolver = JsonTypeInfoResolver.Combine() },
 			JsonMetadataServices.StringConverter);
@@ -59,11 +58,15 @@ public static class WebBridge
 					true,
 					Hex("Bg", "#0C1418"), Hex("Surface", "#16232A"), Hex("Raised", "#23343E"), Hex("Outline", "#456070"),
 					Hex("Ink", "#E9EFF1"), Hex("InkMuted", "#A2B3BC"), Hex("Accent", "#5CC0DA"), Hex("AccentSoft", "#1B3E4A"),
-					Hex("OnTime", "#4ADE80"))
+					Hex("OnTime", "#4ADE80"),
+					Theme.Font,
+					SystemAccessibility.TextScale)
 				: new MapTheme(
 					false,
 					Hex("Bg", "#F2F4F5"), Hex("Surface", "#FFFFFF"), Hex("Raised", "#DFE6E9"), Hex("Outline", "#B4C1C7"),
 					Hex("Ink", "#0F1A1F"), Hex("InkMuted", "#4A5960"), Hex("Accent", "#0B6E8A"), Hex("AccentSoft", "#D3E9F0"),
-					Hex("OnTime", "#15803D"));
+					Hex("OnTime", "#15803D"),
+					Theme.Font,
+					SystemAccessibility.TextScale);
 	}
 }

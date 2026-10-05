@@ -118,6 +118,9 @@
 
 		<!-- Raw Assets (also remove the "Resources\Raw" prefix) -->
 		<MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
+
+		<!-- The map page (HybridWebView) uses the app's own fonts: the same files, served from wwwroot/fonts -->
+		<MauiAsset Include="Resources\Fonts\*.ttf" Link="Resources\Raw\wwwroot\fonts\%(Filename)%(Extension)" LogicalName="wwwroot\fonts\%(Filename)%(Extension)" />
 	</ItemGroup>
 
   <ItemGroup>

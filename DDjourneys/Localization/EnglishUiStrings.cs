@@ -481,6 +481,7 @@ public sealed class EnglishUiStrings : IUiStrings
 		Title = "Provider",
 		Intro = "Where journeys and stops come from. Each provider covers its own region; changing it clears the current start and destination.",
 		InUse = "In use",
+		Experimental = "Experimental",
 		CapJourneys = "Journeys",
 		CapPlaces = "Stop search",
 		CapContinuation = "Earlier / later",
