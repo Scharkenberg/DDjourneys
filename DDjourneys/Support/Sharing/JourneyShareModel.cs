@@ -72,6 +72,9 @@ public sealed record ShareStep
 
 	/// <summary>Change (or walk between stops of a change): the connection may be missed.</summary>
 	public bool IsEndangered { get; init; }
+
+	/// <summary>Change (or walk between stops of a change): the operators guarantee the connection (it is held).</summary>
+	public bool IsGuaranteed { get; init; }
 }
 
 /// <summary>
@@ -97,8 +100,8 @@ public sealed record JourneyShareModel
 
 	public required IReadOnlyList<ShareStep> Steps { get; init; }
 
-	/// <summary>Plain-text notices, each at most once.</summary>
-	public required IReadOnlyList<string> Notices { get; init; }
+	/// <summary>The ticket price for the passenger set in the options ("2,70 €"); null when the provider quotes none.</summary>
+	public string? PriceText { get; init; }
 
 	/// <summary>The journey cannot take place (a ride cancelled, a stop skipped, a connection unreachable).</summary>
 	public bool IsCancelled { get; init; }
@@ -112,7 +115,10 @@ public sealed record JourneyShareModel
 	/// <summary>Lines in riding order, for chips ("11", "62").</summary>
 	public IEnumerable<ShareStep> Rides => Steps.Where(step => step.Kind == ShareStepKind.Ride);
 
-	public static JourneyShareModel Create(Journey journey, IUiStrings strings)
+	public static JourneyShareModel Create(
+		Journey journey,
+		IUiStrings strings,
+		PassengerCategory passenger = PassengerCategory.Adult)
 	{
 		ArgumentNullException.ThrowIfNull(journey);
 		ArgumentNullException.ThrowIfNull(strings);
@@ -161,7 +167,8 @@ public sealed record JourneyShareModel
 							Duration = change.WalkTime,
 							WaitTime = change.Wait,
 							To = StopLabel.Compose(after.Leg.From),
-							IsEndangered = change.Endangered
+							IsEndangered = change.Endangered,
+							IsGuaranteed = change.Ensured
 						});
 					break;
 
@@ -173,7 +180,8 @@ public sealed record JourneyShareModel
 							From = StopLabel.Compose(change.At),
 							Duration = change.Wait,
 							WalkTime = change.WalkTime,
-							IsEndangered = change.Endangered
+							IsEndangered = change.Endangered,
+							IsGuaranteed = change.Ensured
 						});
 					break;
 
@@ -241,7 +249,10 @@ public sealed record JourneyShareModel
 					_ => string.Format(CultureInfo.CurrentCulture, text.MultipleTransfers, transfers)
 				},
 			Steps = steps,
-			Notices = CollectNotices(journey),
+			PriceText =
+				FareChoice.Preferred(journey.Fares, passenger) is { Price: { } price } fare
+					? Format.Price(price, fare.Currency)
+					: null,
 			IsCancelled = journey.IsImpossible,
 			BlockText = JourneyBlockText.Describe(journey.Block, text),
 			BlockReason = JourneyBlockText.Reason(journey.Block, text)
@@ -285,14 +296,4 @@ public sealed record JourneyShareModel
 		string.IsNullOrWhiteSpace(platform)
 			? null
 			: $"{(kind == PlatformKind.Railtrack ? text.Track : text.Platform)} {platform.Trim()}";
-
-	private static IReadOnlyList<string> CollectNotices(Journey journey) =>
-		journey.Notices
-			.Concat(journey.Legs.SelectMany(leg => leg.Notices))
-			.Concat(journey.Transfers.SelectMany(transfer => transfer.Notices))
-			.Where(notice => !string.IsNullOrWhiteSpace(notice))
-			.Select(notice => NoticeText.Plain(NoticeText.Parse(notice)).Trim())
-			.Where(notice => notice.Length > 0)
-			.Distinct(StringComparer.Ordinal)
-			.ToList();
 }

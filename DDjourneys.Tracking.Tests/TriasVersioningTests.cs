@@ -211,11 +211,13 @@ public sealed class TriasVersioningTests
 				+ "<OnwardCall><CallAtStop><StopPointRef>de:14612:3:1</StopPointRef><StopPointName><Text>C</Text></StopPointName></CallAtStop></OnwardCall>"
 				+ "</TripInfoResult></Trias>");
 
-		IReadOnlyList<RunStop> run = TriasMapper.MapRun(response, "de:14612:2");
+		RunDetail run = TriasMapper.MapRun(response, "de:14612:2");
 
 		Assert.Equal(
 			[RunPosition.Previous, RunPosition.Current, RunPosition.Onward],
-			run.Select(stop => stop.Position));
+			run.Stops.Select(stop => stop.Position));
+		Assert.Equal(51.0, run.Vehicle?.Latitude);
+		Assert.Equal(13.7, run.Vehicle?.Longitude);
 	}
 
 	[Fact]

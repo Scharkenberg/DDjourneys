@@ -188,6 +188,11 @@ public static class JourneyShareImage
 			figures.Add(model.DurationText);
 			figures.Add(model.TransfersText);
 
+			if (model.PriceText is { Length: > 0 } price)
+			{
+				figures.Add(price);
+			}
+
 			y += Text(string.Join(" · ", figures.Where(figure => figure.Length > 0)), Margin, y, inner, SzSub, fonts.Regular, p.Muted, 2);
 
 			if (model.IsCancelled)
@@ -229,20 +234,6 @@ public static class JourneyShareImage
 					ShareStepKind.Change => Change(step, text, content, contentWidth, y),
 					_ => Endpoint(step, text.Arrive, left, timeColumn, rail, content, contentWidth, y)
 				};
-			}
-
-			// ----- Notices -----
-
-			if (model.Notices.Count > 0)
-			{
-				y += 8;
-
-				foreach (string notice in model.Notices.Take(3))
-				{
-					y = Notice(notice, left, Width - Margin - CardInset - left, y) + 12;
-				}
-
-				y -= 12;
 			}
 
 			y += CardInset - 6;
@@ -371,6 +362,10 @@ public static class JourneyShareImage
 			{
 				height += Text(text.ConnectionMayBeMissed, content, y + height, contentWidth, SzSmall, fonts.Semibold, p.Cancelled, 2);
 			}
+			else if (step.IsGuaranteed)
+			{
+				height += Text(text.ConnectionGuaranteed, content, y + height, contentWidth, SzSmall, fonts.Semibold, p.OnTime, 2);
+			}
 
 			height = Math.Max(44, height);
 
@@ -409,6 +404,10 @@ public static class JourneyShareImage
 			{
 				height += 4 + Text(text.ConnectionMayBeMissed, content + icon + 10, y + height + 4, contentWidth - icon - 10, SzSmall, fonts.Regular, p.Cancelled, 2);
 			}
+			else if (step.IsGuaranteed)
+			{
+				height += 4 + Text(text.ConnectionGuaranteed, content + icon + 10, y + height + 4, contentWidth - icon - 10, SzSmall, fonts.Semibold, p.OnTime, 2);
+			}
 
 			if (canvas is not null)
 			{
@@ -446,129 +445,6 @@ public static class JourneyShareImage
 			}
 
 			return y + Math.Max(height, LineHeight(SzBody)) + 14;
-		}
-
-		private float Notice(string notice, float x, float width, float y)
-		{
-			const float pad = 20;
-			const float icon = 26;
-
-			float textWidth = width - (2 * pad) - icon - 12;
-			float height = Text(notice, x + pad + icon + 12, y + pad, textWidth, SzSmall, fonts.Regular, p.Ink, 6, measureOnly: true);
-
-			if (canvas is not null)
-			{
-				using var fill = new SKPaint { Color = p.Raised, IsAntialias = true };
-				canvas.DrawRoundRect(new SKRect(x, y, x + width, y + height + (2 * pad)), 4 * Scale, 4 * Scale, fill);
-
-				WarningIcon(x + pad, y + pad + ((LineHeight(SzSmall) - icon) / 2), icon, p.Delay);
-
-				Text(notice, x + pad + icon + 12, y + pad, textWidth, SzSmall, fonts.Regular, p.Ink, 6);
-			}
-
-			return y + height + (2 * pad);
-		}
-
-		// ----- Primitives -----
-
-		/// <summary>The time column fits the widest time shown, so the rail sits close to the times.</summary>
-		private float TimeColumn(JourneyShareModel model)
-		{
-			float widest = Measure("00:00", fonts.Semibold, SzBody);
-
-			foreach (ShareStep step in model.Steps)
-			{
-				foreach (DateTimeOffset? time in new[] { step.Time, step.EndTime })
-				{
-					widest = Math.Max(widest, Measure(Format.TimeOrDash(time), fonts.Semibold, SzBody));
-				}
-
-				foreach (DateTimeOffset? time in new[] { step.LiveTime, step.EndLiveTime })
-				{
-					if (time is not null)
-					{
-						widest = Math.Max(widest, Measure(Format.TimeOrDash(time), fonts.Semibold, SzLive));
-					}
-				}
-			}
-
-			return widest + 4;
-		}
-
-		/// <summary>The time on the same line as its stop; a real-time deviation sits right under it.</summary>
-		private void TimeCell(DateTimeOffset? planned, DateTimeOffset? live, float left, float width, float y)
-		{
-			Text(Format.TimeOrDash(planned), left, y, width, SzBody, fonts.Semibold, p.Ink, 1, align: SKTextAlign.Right);
-
-			if (live is { } actual && planned is { } plan)
-			{
-				SKColor color = actual > plan ? p.Delay : p.OnTime;
-
-				Text(Format.TimeOrDash(actual), left, y + LineHeight(SzBody), width, SzLive, fonts.Semibold, color, 1, align: SKTextAlign.Right);
-			}
-		}
-
-		private static float TimeCellHeight(bool withLive) =>
-			LineHeight(SzBody) + (withLive ? LineHeight(SzLive) : 0);
-
-		private void Node(float x, float y, SKColor color)
-		{
-			using var fill = new SKPaint { Color = p.Card, IsAntialias = true };
-			using var ring = new SKPaint { Color = color, IsAntialias = true, Style = SKPaintStyle.Stroke, StrokeWidth = 5 };
-
-			canvas!.DrawCircle(x, y, 12, fill);
-			canvas.DrawCircle(x, y, 10.5f, ring);
-		}
-
-		private void ChangeIcon(float x, float y, float size, SKColor color)
-		{
-			using var paint =
-				new SKPaint
-				{
-					Color = color,
-					IsAntialias = true,
-					Style = SKPaintStyle.Stroke,
-					StrokeWidth = size * 0.11f,
-					StrokeCap = SKStrokeCap.Round,
-					StrokeJoin = SKStrokeJoin.Round
-				};
-
-			float s = size;
-			using var path = new SKPath();
-
-			// Upper arrow to the right, lower arrow to the left.
-			path.MoveTo(x + (s * 0.12f), y + (s * 0.32f));
-			path.LineTo(x + (s * 0.86f), y + (s * 0.32f));
-			path.MoveTo(x + (s * 0.66f), y + (s * 0.12f));
-			path.LineTo(x + (s * 0.88f), y + (s * 0.32f));
-			path.LineTo(x + (s * 0.66f), y + (s * 0.52f));
-
-			path.MoveTo(x + (s * 0.88f), y + (s * 0.70f));
-			path.LineTo(x + (s * 0.14f), y + (s * 0.70f));
-			path.MoveTo(x + (s * 0.34f), y + (s * 0.50f));
-			path.LineTo(x + (s * 0.12f), y + (s * 0.70f));
-			path.LineTo(x + (s * 0.34f), y + (s * 0.90f));
-
-			canvas!.DrawPath(path, paint);
-		}
-
-		private void WarningIcon(float x, float y, float size, SKColor color)
-		{
-			using var fill = new SKPaint { Color = color, IsAntialias = true, Style = SKPaintStyle.Fill };
-			using var mark = new SKPaint { Color = p.Raised, IsAntialias = true, StrokeWidth = size * 0.11f, StrokeCap = SKStrokeCap.Round };
-			using var triangle = new SKPath();
-
-			float s = size;
-
-			triangle.MoveTo(x + (s * 0.5f), y + (s * 0.06f));
-			triangle.LineTo(x + (s * 0.97f), y + (s * 0.90f));
-			triangle.LineTo(x + (s * 0.03f), y + (s * 0.90f));
-			triangle.Close();
-
-			canvas!.DrawPath(triangle, fill);
-			canvas.DrawLine(x + (s * 0.5f), y + (s * 0.36f), x + (s * 0.5f), y + (s * 0.60f), mark);
-			using var dot = new SKPaint { Color = p.Raised, IsAntialias = true };
-			canvas.DrawCircle(x + (s * 0.5f), y + (s * 0.75f), s * 0.06f, dot);
 		}
 
 		/// <summary>

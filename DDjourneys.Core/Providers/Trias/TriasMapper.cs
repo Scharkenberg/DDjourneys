@@ -10,7 +10,8 @@ namespace DDjourneys.Core.Providers.Trias;
 internal sealed record TriasRunData(
 	IReadOnlyList<RunStop> Stops,
 	string? JourneyRef = null,
-	string? OperatingDayRef = null);
+	string? OperatingDayRef = null,
+	OperatingDays? OperatingDays = null);
 
 /// <summary>TRIAS XML to the app's models. Elements are read by local name and every field is optional.</summary>
 internal static class TriasMapper
@@ -639,6 +640,7 @@ internal static class TriasMapper
 			ArrivalPlatformKind = toBay is null ? PlatformKind.Unknown : toKind,
 			IsCancelled = IsCancelled(service),
 			Vehicle = MapVehicle(service, line),
+			OperatingDays = MapOperatingDays(timed) ?? MapOperatingDays(service),
 			Notices =
 				[.. Attributes(service, line.Name)
 					.Concat(SituationsOf(timed.Deep("SituationFullRef"), situations))
@@ -762,6 +764,15 @@ internal static class TriasMapper
 
 	// ---------- Fares ----------
 
+	/// <summary>The passenger categories a ticket names in its <c>ValidFor</c> elements (those it does not name are dropped).</summary>
+	private static IReadOnlyList<PassengerCategory> PassengersOf(XElement ticket) =>
+		[.. ticket
+			.Children("ValidFor")
+			.Select(item => item.Text())
+			.Select(text => Enum.TryParse(text, true, out PassengerCategory category) ? (PassengerCategory?)category : null)
+			.OfType<PassengerCategory>()
+			.Distinct()];
+
 	/// <summary>A ticket valid for a day (duration P1D or the word "Tages"/"day") is a day ticket.</summary>
 	private static FareKind KindOf(string name, string? duration) =>
 		duration is "P1D" or "PT24H"
@@ -821,6 +832,7 @@ internal static class TriasMapper
 						Description = string.Join(" · ", new[] { level, validity }.Where(part => !string.IsNullOrWhiteSpace(part))) is { Length: > 0 } text ? text : null,
 						Zones = zones,
 						ValidFor = validFor,
+						Passengers = PassengersOf(ticket),
 						Url = ticket.Child("SaleUrl").ChildText("Url") ?? ticket.Child("InfoUrl").ChildText("Url")
 					});
 			}
@@ -848,7 +860,7 @@ internal static class TriasMapper
 				});
 		}
 
-		return [.. fares.DistinctBy(fare => (fare.Name, fare.Price, fare.Description))];
+		return [.. fares.DistinctBy(fare => (fare.Name, fare.Price, fare.Description, string.Join(',', fare.Passengers)))];
 	}
 
 	// ---------- Departures ----------
@@ -917,7 +929,8 @@ internal static class TriasMapper
 						new TriasRunData(
 							runStops,
 							service.ChildText("JourneyRef"),
-							service.ChildText("OperatingDayRef"))
+							service.ChildText("OperatingDayRef"),
+							MapOperatingDays(stopEvent))
 				});
 		}
 
@@ -953,20 +966,51 @@ internal static class TriasMapper
 		};
 	}
 
+	// ---------- Operating days ----------
+
+	/// <summary>
+	/// <c>OperatingDays</c> (From, To, Pattern) and <c>OperatingDaysDescription</c> of a leg, stop event or trip
+	/// info. Null when neither is there.
+	/// </summary>
+	private static OperatingDays? MapOperatingDays(XElement? owner)
+	{
+		XElement? days = owner.Child("OperatingDays");
+		string? description = owner.ChildLabel("OperatingDaysDescription");
+
+		if (days is null && description is null)
+		{
+			return null;
+		}
+
+		return new OperatingDays
+		{
+			From = Day(days.ChildText("From")),
+			To = Day(days.ChildText("To")),
+			Pattern = days.ChildText("Pattern") ?? string.Empty,
+			Description = description
+		};
+	}
+
+	/// <summary>An <c>xs:date</c> ("2026-10-05", possibly with a zone suffix).</summary>
+	private static DateOnly? Day(string? value) =>
+		value is { Length: >= 10 }
+		&& DateOnly.TryParseExact(value[..10], "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateOnly day)
+			? day
+			: null;
+
 	// ---------- Trip info ----------
 
 	/// <summary>
-	/// The calls of one run from a TripInfo answer: <c>PreviousCall</c>, the vehicle position,
-	/// <c>OnwardCall</c>. The call at <paramref name="currentStopId"/> is marked as the current one.
-	/// The vehicle position, when the server sent one, is written to the log.
+	/// One run from a TripInfo answer: <c>PreviousCall</c>, the vehicle position, <c>OnwardCall</c>. The call at
+	/// <paramref name="currentStopId"/> is marked as the current one.
 	/// </summary>
-	public static IReadOnlyList<RunStop> MapRun(XDocument document, string currentStopId)
+	public static RunDetail MapRun(XDocument document, string currentStopId)
 	{
 		XElement? result = document.Deep("TripInfoResult").FirstOrDefault();
 
 		if (result is null)
 		{
-			return [];
+			return new RunDetail([]);
 		}
 
 		XElement? service = result.Child("Service");
@@ -989,23 +1033,38 @@ internal static class TriasMapper
 				continue;
 			}
 
-			RunStop stop = MapRunStop(element.Child("CallAtStop") ?? element, kind, mode);
+			XElement call = element.Child("CallAtStop") ?? element;
+			RunStop stop = MapRunStop(call, kind, mode);
 
 			stops.Add(
 				string.Equals(stop.Station.Id, currentStopId, StringComparison.Ordinal)
-					? MapRunStop(element.Child("CallAtStop") ?? element, RunPosition.Current, mode)
+					? MapRunStop(call, RunPosition.Current, mode)
 					: stop);
 		}
 
-		if (result.Child("CurrentPosition") is { } vehicle
-			&& vehicle.Child("GeoPosition") is { } point)
+		GeoPosition? vehicle = null;
+
+		if (result.Child("CurrentPosition") is { } current
+			&& current.Child("GeoPosition") is { } point
+			&& point.Child("Latitude").Decimal() is { } latitude
+			&& point.Child("Longitude").Decimal() is { } longitude)
 		{
+			vehicle =
+				new GeoPosition
+				{
+					Latitude = (double)latitude,
+					Longitude = (double)longitude
+				};
+
 			DiagnosticLog.Write(
-				$"[TRIAS] vehicle at {point.ChildText("Latitude")}, {point.ChildText("Longitude")}"
-				+ $" progress {vehicle.ChildText("Progress")}");
+				$"[TRIAS] vehicle at {latitude}, {longitude}, progress {current.ChildText("Progress")}");
 		}
 
-		return stops;
+		return new RunDetail(stops)
+		{
+			Vehicle = vehicle,
+			OperatingDays = MapOperatingDays(result)
+		};
 	}
 
 	// ---------- Errors ----------

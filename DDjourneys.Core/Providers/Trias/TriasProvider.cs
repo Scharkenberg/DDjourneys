@@ -210,21 +210,34 @@ public sealed class TriasProvider :
 	public async Task<IReadOnlyList<RunStop>> GetRunAsync(
 		Departure departure,
 		int timeoutSeconds = 15,
+		CancellationToken cancellationToken = default) =>
+		(await GetRunDetailAsync(departure, timeoutSeconds, cancellationToken).ConfigureAwait(false)).Stops;
+
+	public async Task<RunDetail> GetRunDetailAsync(
+		Departure departure,
+		int timeoutSeconds = 15,
 		CancellationToken cancellationToken = default)
 	{
 		ArgumentNullException.ThrowIfNull(departure);
 
 		if (departure.ProviderData is not TriasRunData run)
 		{
-			return [];
+			return new RunDetail([]);
 		}
+
+		// What the stop event itself carried: the calls as they were then and the operating days.
+		var known =
+			new RunDetail(run.Stops)
+			{
+				OperatingDays = run.OperatingDays
+			};
 
 		if (run.JourneyRef is not { } journeyRef)
 		{
-			return run.Stops;
+			return known;
 		}
 
-		// The stop event carried the run as it was then; TripInfo has the current estimates.
+		// TripInfo has the current estimates and, when the server knows it, where the vehicle is.
 		string day =
 			run.OperatingDayRef
 			?? departure.Scheduled.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
@@ -240,11 +253,14 @@ public sealed class TriasProvider :
 						Timeout(timeoutSeconds))
 					.ConfigureAwait(false);
 
-			IReadOnlyList<RunStop> stops = TriasMapper.MapRun(response, departure.StopId);
+			RunDetail detail = TriasMapper.MapRun(response, departure.StopId);
 
-			if (stops.Count > 0)
+			if (detail.Stops.Count > 0)
 			{
-				return stops;
+				return detail with
+				{
+					OperatingDays = detail.OperatingDays ?? run.OperatingDays
+				};
 			}
 		}
 		catch (ApiException ex)
@@ -256,6 +272,6 @@ public sealed class TriasProvider :
 			DiagnosticLog.Write($"[TRIAS] TripInfo unreadable, using the stop event's run: {ex.Message}");
 		}
 
-		return run.Stops;
+		return known;
 	}
 }

@@ -394,6 +394,13 @@ public sealed class AppSettings
 		set => Write(Scoped("entrance"), value);
 	}
 
+	/// <summary>Who the tickets are for (the price on cards and shares; asked of providers that quote by passenger).</summary>
+	public PassengerCategory Passenger
+	{
+		get => Read(Scoped("passenger"), PassengerCategory.Adult);
+		set => Write(Scoped("passenger"), value);
+	}
+
 	public ExtraChargeFilter ExtraCharge
 	{
 		get => Read(Scoped("extraCharge"), ExtraChargeFilter.Any);
@@ -415,7 +422,8 @@ public sealed class AppSettings
 			FewestTransfers = FewestTransfers,
 			Optimisation = Optimisation,
 			Entrance = Entrance,
-			ExtraCharge = ExtraCharge
+			ExtraCharge = ExtraCharge,
+			Passenger = Passenger
 		};
 
 	public void ResetRoutingDefaults()
@@ -432,6 +440,7 @@ public sealed class AppSettings
 		Optimisation = RouteOptimisation.Fastest;
 		Entrance = EntranceNeed.Any;
 		ExtraCharge = ExtraChargeFilter.Any;
+		Passenger = PassengerCategory.Adult;
 	}
 
 	public void ResetJourneyDefaults()

@@ -307,6 +307,21 @@ internal static class TriasRequests
 		parameters.Add(new XElement(T + "IncludeIntermediateStops", "true"));
 		parameters.Add(new XElement(T + "IncludeFares", "true"));
 
+		if (dialect.HasExtendedContent)
+		{
+			parameters.Add(new XElement(T + "IncludeOperatingDays", "true"));
+		}
+
+		// FaresParam is the last element of the sequence. Adult is the server's default and is not sent.
+		if (dialect.HasMobilityAdditions
+			&& routing.Passenger != PassengerCategory.Adult)
+		{
+			parameters.Add(
+				new XElement(
+					T + "FaresParam",
+					new XElement(T + "PassengerCategory", routing.Passenger.ToString())));
+		}
+
 		return parameters;
 	}
 
@@ -327,6 +342,11 @@ internal static class TriasRequests
 		parameters.Add(new XElement(T + "StopEventType", query.IsArrival ? "arrival" : "departure"));
 		parameters.Add(new XElement(T + "IncludePreviousCalls", "true"));
 		parameters.Add(new XElement(T + "IncludeOnwardCalls", "true"));
+
+		if (dialect.HasExtendedContent)
+		{
+			parameters.Add(new XElement(T + "IncludeOperatingDays", "true"));
+		}
 
 		parameters.Add(new XElement(T + "IncludeRealtimeData", "true"));
 

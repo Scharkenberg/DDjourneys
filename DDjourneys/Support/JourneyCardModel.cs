@@ -130,17 +130,24 @@ public sealed class JourneyCardModel : ObservableObject
 
 	public string TransfersText => _transfersText;
 
-	/// <summary>The cheapest single price the provider quotes ("2,70 €"), or null when it quotes none.</summary>
+	/// <summary>Who the price is for (the option "Tickets for"); the normal adult price by default.</summary>
+	public PassengerCategory Passenger { get; init; } = PassengerCategory.Adult;
+
+	/// <summary>Opens the journey on the map; null on cards that have no map button (the results list).</summary>
+	public System.Windows.Input.ICommand? MapCommand { get; init; }
+
+	public bool HasMap =>
+		MapCommand is not null;
+
+	/// <summary>The single ticket for <see cref="Passenger"/> ("2,70 €"), or null when the provider quotes none.</summary>
 	public string? PriceText
 	{
 		get
 		{
 			JourneyFare? fare =
-				Journey.Fares
-					.Where(item => item.Price is not null)
-					.OrderBy(item => item.Kind == FareKind.Single ? 0 : item.Kind == FareKind.Day ? 2 : 1)
-					.ThenBy(item => item.Price)
-					.FirstOrDefault();
+				FareChoice.Preferred(
+					Journey.Fares,
+					Passenger);
 
 			return fare is { Price: { } price }
 				? Format.Price(price, fare.Currency)

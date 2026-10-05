@@ -14,4 +14,14 @@ public interface IDepartureProvider
 		Departure departure,
 		int timeoutSeconds = 15,
 		CancellationToken cancellationToken = default);
+
+	/// <summary>
+	/// The run with whatever else the provider knows about it (vehicle position, operating days).
+	/// Providers with nothing more to say keep this default.
+	/// </summary>
+	async Task<RunDetail> GetRunDetailAsync(
+		Departure departure,
+		int timeoutSeconds = 15,
+		CancellationToken cancellationToken = default) =>
+		new(await GetRunAsync(departure, timeoutSeconds, cancellationToken).ConfigureAwait(false));
 }

@@ -83,6 +83,11 @@ public sealed class JourneyViewModel :
 				ToggleStops);
 
 
+		ToggleFaresCommand =
+			new Command(
+				() => FaresExpanded = !FaresExpanded);
+
+
 		ShareCommand =
 			new AsyncCommand(
 				ShareAsync);
@@ -564,6 +569,112 @@ public sealed class JourneyViewModel :
 		Fares.Count > 0;
 
 
+	/// <summary>The section starts collapsed: the preferred ticket is in its header, the rest on demand.</summary>
+	public bool FaresExpanded
+	{
+		get => field;
+
+		private set
+		{
+			if (SetProperty(
+					ref field,
+					value))
+			{
+				OnPropertyChanged(
+					nameof(FaresChevronRotation));
+
+				OnPropertyChanged(
+					nameof(FaresToggleDescription));
+			}
+		}
+	}
+
+
+	public double FaresChevronRotation =>
+		FaresExpanded
+			? 180
+			: 0;
+
+
+	public string FaresToggleDescription =>
+		FaresExpanded
+			? _localization.CurrentStrings.Extras.FaresCollapse
+			: _localization.CurrentStrings.Extras.FaresExpand;
+
+
+	/// <summary>The ticket for the passenger set in the options, named under the section title.</summary>
+	public string FaresSummaryName
+	{
+		get => field;
+
+		private set =>
+			SetProperty(
+				ref field,
+				value);
+	} =
+		string.Empty;
+
+
+	/// <summary>Its price, shown in the section header.</summary>
+	public string FaresSummaryPrice
+	{
+		get => field;
+
+		private set =>
+			SetProperty(
+				ref field,
+				value);
+	} =
+		string.Empty;
+
+
+	/// <summary>"Zones: Dresden, Radebeul": the zones are the same for every ticket, so they are said once.</summary>
+	public string? FaresZonesText
+	{
+		get => field;
+
+		private set
+		{
+			if (SetProperty(
+					ref field,
+					value))
+			{
+				OnPropertyChanged(
+					nameof(HasFaresZones));
+			}
+		}
+	}
+
+
+	public bool HasFaresZones =>
+		!string.IsNullOrWhiteSpace(FaresZonesText);
+
+
+	/// <summary>The conditions the provider prints with its tickets, each once.</summary>
+	public string? FaresNotesText
+	{
+		get => field;
+
+		private set
+		{
+			if (SetProperty(
+					ref field,
+					value))
+			{
+				OnPropertyChanged(
+					nameof(HasFaresNotes));
+			}
+		}
+	}
+
+
+	public bool HasFaresNotes =>
+		!string.IsNullOrWhiteSpace(FaresNotesText);
+
+
+	public Command ToggleFaresCommand { get; }
+
+
 	public void ApplyQueryAttributes(
 		IDictionary<string, object> query)
 	{
@@ -844,6 +955,150 @@ public sealed class JourneyViewModel :
 	}
 
 
+	/// <summary>
+	/// The tickets as compact rows (the passenger's own ticket first), with what they share said once:
+	/// zones and conditions.
+	/// </summary>
+	private void BuildFares(
+		Journey journey)
+	{
+		ExtrasStrings strings =
+			_localization.CurrentStrings.Extras;
+
+		JourneyFare? preferred =
+			FareChoice.Preferred(
+				journey.Fares,
+				_settings.Passenger);
+
+		string NameOf(
+			JourneyFare fare) =>
+			fare.Kind switch
+			{
+				FareKind.Single => strings.FareSingle,
+				FareKind.Day => strings.FareDay,
+				_ => fare.Name
+			};
+
+		string? WhoOf(
+			JourneyFare fare) =>
+			fare.Passengers.Count > 0
+				? string.Join(
+					", ",
+					fare.Passengers
+						.Select(
+							who => OperatingDaysText.Passenger(
+								who,
+								strings)))
+				: fare.ValidFor;
+
+		Fares =
+			journey.Fares
+				.OrderBy(
+					fare => ReferenceEquals(fare, preferred)
+						? 0
+						: 1)
+				.ThenBy(
+					fare => fare.Kind == FareKind.Single
+						? 0
+						: fare.Kind == FareKind.Day
+							? 2
+							: 1)
+				.ThenBy(
+					fare => fare.Price)
+				.Select(
+					fare => new FareRow
+					{
+						Name =
+							NameOf(
+								fare),
+
+						PriceText =
+							fare.Price is { } price
+								? Format.Price(
+									price,
+									fare.Currency)
+								: string.Empty,
+
+						Detail =
+							string.Join(
+								" · ",
+								new[]
+								{
+									fare.Description,
+									WhoOf(
+										fare)
+								}.Where(
+									part => !string.IsNullOrWhiteSpace(
+										part))) is { Length: > 0 } detail
+								? detail
+								: null,
+
+						IsPreferred =
+							ReferenceEquals(
+								fare,
+								preferred)
+					})
+				.ToList();
+
+		FaresSummaryName =
+			preferred is null
+				? string.Empty
+				: string.Join(
+					" · ",
+					new[]
+					{
+						NameOf(
+							preferred),
+						WhoOf(
+							preferred)
+					}.Where(
+						part => !string.IsNullOrWhiteSpace(
+							part)));
+
+		FaresSummaryPrice =
+			preferred is { Price: { } best }
+				? Format.Price(
+					best,
+					preferred.Currency)
+				: string.Empty;
+
+		string zones =
+			string.Join(
+				", ",
+				journey.Fares
+					.Select(
+						fare => fare.Zones)
+					.Where(
+						text => !string.IsNullOrWhiteSpace(
+							text))
+					.Distinct());
+
+		FaresZonesText =
+			zones.Length > 0
+				? $"{strings.FareZones}: {zones}"
+				: null;
+
+		string notes =
+			string.Join(
+				" ",
+				journey.Fares
+					.Select(
+						fare => fare.Notes)
+					.Where(
+						text => !string.IsNullOrWhiteSpace(
+							text))
+					.Distinct());
+
+		FaresNotesText =
+			notes.Length > 0
+				? notes
+				: null;
+
+		OnPropertyChanged(
+			nameof(FaresToggleDescription));
+	}
+
+
 	private void BuildLocalizedDisplay(
 		Journey journey)
 	{
@@ -851,7 +1106,9 @@ public sealed class JourneyViewModel :
 			new JourneyCardModel(
 				journey)
 			{
-				ShowEndpoints = false
+				ShowEndpoints = false,
+				Passenger = _settings.Passenger,
+				MapCommand = OpenMapCommand
 			};
 
 
@@ -909,33 +1166,9 @@ public sealed class JourneyViewModel :
 		_builtOptions = options;
 
 
-		Fares =
-			(journey.Fares
-				.Select(
-					fare => new FareRow
-					{
-						Name =
-							fare.Kind switch
-							{
-								FareKind.Single => _localization.CurrentStrings.Extras.FareSingle,
-								FareKind.Day => _localization.CurrentStrings.Extras.FareDay,
-								_ => fare.Name
-							},
-						PriceText =
-							fare.Price is { } price
-								? Format.Price(price, fare.Currency)
-								: string.Empty,
-						Description = fare.Description,
-						ZonesText =
-							fare.Zones is { Length: > 0 } zones
-								? $"{_localization.CurrentStrings.Extras.FareZones}: {zones}"
-								: null,
-						NotesText = fare.Notes,
-						ValidForText =
-							fare.ValidFor is { Length: > 0 } who
-								? $"{_localization.CurrentStrings.Extras.FareValidFor}: {who}"
-								: null
-					})).ToList();
+		BuildFares(
+			journey);
+
 
 		Notices =
 			journey.Notices
@@ -1109,7 +1342,7 @@ public sealed class JourneyViewModel :
 
 		try
 		{
-			JourneyShareModel model = JourneyShareModel.Create(_journey, strings);
+			JourneyShareModel model = JourneyShareModel.Create(_journey, strings, _settings.Passenger);
 
 			string? choice =
 				ChooseShareFormat is null

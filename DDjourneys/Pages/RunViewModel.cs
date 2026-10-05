@@ -69,6 +69,7 @@ public sealed class RunViewModel : DisposableViewModel, IQueryAttributable
 	private readonly AppSettings _settings;
 	private readonly LocalizationService _localization;
 	private Departure? _departure;
+	private GeoPosition? _vehicle;
 	private CancellationTokenSource? _load;
 
 	public RunViewModel(
@@ -177,6 +178,23 @@ public sealed class RunViewModel : DisposableViewModel, IQueryAttributable
 		}
 	} = string.Empty;
 
+	/// <summary>"Runs Mon–Fri" when the provider names the operating days of this run.</summary>
+	public string? OperatingText
+	{
+		get => field;
+
+		private set
+		{
+			if (SetProperty(ref field, value))
+			{
+				OnPropertyChanged(nameof(HasOperatingText));
+			}
+		}
+	}
+
+	public bool HasOperatingText =>
+		!string.IsNullOrWhiteSpace(OperatingText);
+
 	public bool HasMessage =>
 		Message.Length > 0;
 
@@ -207,7 +225,8 @@ public sealed class RunViewModel : DisposableViewModel, IQueryAttributable
 			return;
 		}
 
-		if (CanShowLive)
+		// A position the provider reported beats the live lookup by line number; the static map shows it.
+		if (CanShowLive && _vehicle is null)
 		{
 			await ShowLiveAsync();
 
@@ -221,7 +240,9 @@ public sealed class RunViewModel : DisposableViewModel, IQueryAttributable
 					MapScenes.FromRun(
 						(Rows.Select(row => row.Stop)).ToList(),
 						departure.Line.Mode,
-						Rows.ToList().FindIndex(row => row.IsCurrent)),
+						Rows.ToList().FindIndex(row => row.IsCurrent),
+						_vehicle,
+						Title),
 					Title);
 
 			if (!shown)
@@ -298,11 +319,13 @@ public sealed class RunViewModel : DisposableViewModel, IQueryAttributable
 
 		try
 		{
-			IReadOnlyList<RunStop> stops =
-				await _departures.GetRunAsync(
+			RunDetail detail =
+				await _departures.GetRunDetailAsync(
 					departure,
 					_settings.TimeoutSeconds,
 					cts.Token);
+
+			IReadOnlyList<RunStop> stops = detail.Stops;
 
 			if (cts.IsCancellationRequested || IsDisposed)
 			{
@@ -340,6 +363,13 @@ public sealed class RunViewModel : DisposableViewModel, IQueryAttributable
 			}
 
 			Message = string.Empty;
+
+			_vehicle = detail.Vehicle;
+
+			OperatingText =
+				OperatingDaysText.Describe(
+					detail.OperatingDays,
+					_localization.CurrentStrings.Extras);
 
 			OnPropertyChanged(nameof(CanShowMap));
 		}

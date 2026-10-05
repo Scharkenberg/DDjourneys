@@ -389,6 +389,7 @@ public sealed class RoutingStrings
 	public required string FewestTransfers { get; init; }
 	public required string FewestTransfersDescription { get; init; }
 	public required string SectionEntrance { get; init; }
+	public required string SectionTickets { get; init; }
 	public required string EntranceAny { get; init; }
 	public required string EntranceSmallStep { get; init; }
 	public required string EntranceNoStep { get; init; }
@@ -568,6 +569,16 @@ public sealed class ExtrasStrings
 	public required string FareZones { get; init; }
 	public required string FareValidFor { get; init; }
 	public required string FareNotAll { get; init; }
+	public required string FaresExpand { get; init; }
+	public required string FaresCollapse { get; init; }
+	public required string PassengerAdult { get; init; }
+	public required string PassengerYouth { get; init; }
+	public required string PassengerChild { get; init; }
+	public required string PassengerSenior { get; init; }
+	public required string PassengerDisabled { get; init; }
+	public required string RunsOn { get; init; }
+	public required string RunsDaily { get; init; }
+	public required string VehicleReported { get; init; }
 	public required string PdfFailed { get; init; }
 	public required string LiveHowTitle { get; init; }
 	public required string LiveHowText { get; init; }

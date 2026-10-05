@@ -1,4 +1,4 @@
-﻿namespace DDjourneys.Core.Models;
+namespace DDjourneys.Core.Models;
 
 /// <summary>
 /// Represents one segment of a complete journey.
@@ -47,6 +47,9 @@ public sealed class JourneyLeg
 	/// Null for walking.
 	/// </summary>
 	public TransitLine? Line { get; init; }
+
+	/// <summary>The days the service runs on, when the provider says (TRIAS <c>OperatingDays</c>).</summary>
+	public OperatingDays? OperatingDays { get; init; }
 
 	/// <summary>
 	/// Physical vehicle information if supplied.

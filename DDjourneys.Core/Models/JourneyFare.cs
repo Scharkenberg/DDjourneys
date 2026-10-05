@@ -13,6 +13,20 @@ public enum FareKind
 	Day
 }
 
+/// <summary>Who a ticket is for (the TRIAS passenger categories).</summary>
+public enum PassengerCategory
+{
+	Adult = 0,
+
+	Youth,
+
+	Child,
+
+	Senior,
+
+	Disabled
+}
+
 /// <summary>One ticket the provider quotes for a journey.</summary>
 public sealed class JourneyFare
 {
@@ -37,6 +51,9 @@ public sealed class JourneyFare
 
 	/// <summary>Who the ticket is for (TRIAS passenger categories: adult, child, senior ...), joined.</summary>
 	public string? ValidFor { get; init; }
+
+	/// <summary>The passenger categories the ticket is for; empty when the provider does not say (its normal price).</summary>
+	public IReadOnlyList<PassengerCategory> Passengers { get; init; } = [];
 
 	/// <summary>Where the ticket is sold or explained, when the provider says.</summary>
 	public string? Url { get; init; }

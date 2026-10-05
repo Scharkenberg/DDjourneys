@@ -118,6 +118,12 @@ public sealed class LegRow : TimelineRow
 
 	public string? FeaturesText { get; init; }
 
+	/// <summary>"Runs Mon–Fri" (or the provider's wording); null when the service runs every day or the provider does not say.</summary>
+	public string? OperatingText { get; init; }
+
+	public bool HasOperating =>
+		OperatingText is not null;
+
 	/// <summary>Occupancy of the vehicle on this ride.</summary>
 	public OccupancyLevel Occupancy { get; init; } =
 		OccupancyLevel.Unknown;
@@ -313,38 +319,26 @@ public sealed class NoticeRow : TimelineRow
 }
 
 
-/// <summary>One ticket the provider quotes for a journey.</summary>
+/// <summary>One ticket the provider quotes for a journey: one compact line, the price on the right.</summary>
 public sealed class FareRow
 {
 	public required string Name { get; init; }
 
 	public required string PriceText { get; init; }
 
-	public string? Description { get; init; }
+	/// <summary>Tariff level, validity and the passengers it is for, in one line.</summary>
+	public string? Detail { get; init; }
 
-	public bool HasDescription =>
-		!string.IsNullOrWhiteSpace(Description);
+	public bool HasDetail =>
+		!string.IsNullOrWhiteSpace(Detail);
 
-	/// <summary>"Zones: Dresden, Radebeul".</summary>
-	public string? ZonesText { get; init; }
-
-	public bool HasZones =>
-		!string.IsNullOrWhiteSpace(ZonesText);
-
-	/// <summary>Conditions printed with the ticket.</summary>
-	public string? NotesText { get; init; }
-
-	public bool HasNotes =>
-		!string.IsNullOrWhiteSpace(NotesText);
-
-	/// <summary>"For: Adult, Child".</summary>
-	public string? ValidForText { get; init; }
-
-	public bool HasValidFor =>
-		!string.IsNullOrWhiteSpace(ValidForText);
+	/// <summary>The ticket for the passenger set in the options (the one cards and shares name).</summary>
+	public bool IsPreferred { get; init; }
 
 	public string AccessibilityText =>
-		$"{Name}, {PriceText}";
+		HasDetail
+			? $"{Name}, {Detail}, {PriceText}"
+			: $"{Name}, {PriceText}";
 }
 
 
@@ -727,6 +721,11 @@ public static class TimelineRowFactory
 				FeaturesText =
 					Features(
 						leg.Vehicle?.Accessibility),
+
+				OperatingText =
+					OperatingDaysText.Describe(
+						leg.OperatingDays,
+						LocalizationService.Current.CurrentStrings.Extras),
 
 				Occupancy =
 					legOccupancy,

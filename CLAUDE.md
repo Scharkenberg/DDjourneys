@@ -26,12 +26,13 @@ Journey planner for DVB/VVO (Dresden), .NET 11 MAUI / C# 15. Repo: `Scharkenberg
 - Journey stops are identified by stop place (`StationId`: first three DHID parts), the platform is a detail. Changes are `InterchangeLeg` (`InterchangeMode`: walk, protectedConnection, guaranteedConnection, remainInVehicle; `WalkDuration`, `BufferTime`) or `ContinuousLeg`; only the connection modes are guaranteed.
 - Versions: every request is written for 1.4 and steps down 1.3, 1.2, 1.1 (`TriasClient.SendAsync(kind, build(dialect))`, `TriasDialect`). Rejected = non-transient HTTP error, unreadable XML, or an `ErrorMessage` without any result and not a "no result" code. The working version is remembered per `TriasRequestKind` and 1.4 is retried after 30 min. Unreachable/timeouts never downgrade. Each attempt is logged (`[TRIAS] ...`). Only 1.4 is in VDVde/TRIAS; which optional parameters older versions know (`HasExtendedContent` from 1.3, `HasMobilityAdditions` 1.4) is an assumption.
 - Request parameters are an XSD sequence: keep `TriasRequests` in the order of `TripParam`/`StopEventParam`/`TripInfoParam` (1.4: `InterchangeLimit`, not `TransferLimit`; it is a positive integer, so "no transfers" is filtered client-side).
-- TripInfo (`TriasRequests.TripInfo`, `TriasMapper.MapRun`) refreshes a run (`GetRunAsync`) from `JourneyRef` + `OperatingDayRef` kept in `TriasRunData`; falls back to the stop event's calls. `CurrentPosition` is only logged.
+- TripInfo (`TriasRequests.TripInfo`, `TriasMapper.MapRun` → `RunDetail`) refreshes a run from `JourneyRef` + `OperatingDayRef` kept in `TriasRunData`; falls back to the stop event's calls. `IDepartureProvider.GetRunDetailAsync` (default: stops only) carries `RunDetail.Vehicle` (`CurrentPosition`) and `OperatingDays`; the Run page shows operating days and `MapScenes.FromRun` adds a reported-position vehicle marker (and then prefers the static map over the live lookup).
+- `FaresParam` (`PassengerCategory`, last element of `TripParam`) is sent from 1.4 on for non-adult passengers (`RoutingPreferences.Passenger`, option "Tickets for" on the routing page, per provider). `IncludeOperatingDays` from 1.3; `OperatingDays` (From/To/Pattern bit string, description) → `JourneyLeg.OperatingDays`, shown on the leg as "Runs Mon–Fri" (`OperatingDaysText`, nothing when daily).
 - Situations: `Situations/PtSituation` (SIRI SX: SituationNumber, Summary/Description/Detail) are matched to `SituationFullRef` on the trip and its legs and become `Journey.Notices` / `JourneyLeg.Notices`. Call-level `Occupancy` fills `RunStop.Occupancy`.
-- Not implemented: `FaresParam` (passenger category), operating days, `CurrentPosition` on the map, Trias_Booking/Facilities/Alerts.
+- Not implemented: `CurrentPosition` on journey maps (only the run map), traveller age/owned tickets in `FaresParam`, Trias_Booking/Facilities/Alerts.
 
 ## Fares
-- `JourneyFare` (kind, price, zones, notes, valid-for, url). VVO: `VvoFareMapper` turns the route's `Price`/`PriceDayTicket` (+ zone names, `TicketNotes`) into a single and a day ticket; the API quotes nothing else. TRIAS 1.4: `TripFares/Ticket`. The result card shows the cheapest price (`JourneyCardModel.PriceText`), the journey page lists all tickets.
+- `JourneyFare` (kind, price, zones, notes, valid-for, url). VVO: `VvoFareMapper` turns the route's `Price`/`PriceDayTicket` (+ zone names, `TicketNotes`) into a single and a day ticket; the API quotes nothing else. TRIAS 1.4: `TripFares/Ticket`. `FareChoice.Preferred(fares, passenger)` picks the one ticket cards, header and shares name: the passenger's own single ticket, else tickets without a passenger statement (VVO quotes only the normal price), else adult. The journey page section is collapsed by default (header: preferred ticket and price; expanded: compact rows, zones and conditions once).
 - A change is "endangered" only by arithmetic once real-time times exist on either side (`TimelineBuilder.CreateBoundary`); the provider's flag counts only without real-time data.
 
 ## Logging and developer options
@@ -65,12 +66,13 @@ Journey planner for DVB/VVO (Dresden), .NET 11 MAUI / C# 15. Repo: `Scharkenberg
 - `WebBridge` holds the shared JS call and theme helpers.
 
 ## Sharing
+- Provider notices are never part of a share. The model also carries the preferred price (figures line) and guaranteed connections (`IsGuaranteed`, "✓ guaranteed").
 - `JourneyShareModel` is the single source for `JourneyShareText` and `JourneyShareImage` (SkiaSharp, drawn in two passes: measure, paint). The start is always a row (`ShareStepKind.Depart`) unless the first ride boards exactly there. The image keeps its surroundings small and its content (times, stops, lines) large.
 
 ## State (end of last session, nothing compiled or run by me)
 Done: disruptions overhaul, departures time picker (`WhenPicker`), "Around this stop" rows (`SectionRow`), planner shortcut redesign, walk-only trips, marker positions, single attribution, free strip, Auto-fit, run identification, journey alternative buttons wrapping, vehicles tracking banner, walking-interchange timeline and share fixes.
 Open / ideas:
-- Journey page: the follow, tracking and hand-off buttons are still stacked; planned to restyle into a single Card.
+- Journey page: the follow, tracking and hand-off buttons are still stacked; planned to restyle into a single Card. The map button now lives in the overview card (`JourneyCardModel.MapCommand`, bottom right).
 - Broader UI refinement pass across the remaining pages (crowded pages, consistency, icons).
 - Other `HybridWebView` subscribers (`MapView` `open:`) should be checked for the same UI-thread issue.
 - Map markers in popups and the Android live notification do not yet reflect the split walking interchange.

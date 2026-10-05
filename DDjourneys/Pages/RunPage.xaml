@@ -49,6 +49,12 @@
 
 				<Label
 					HorizontalTextAlignment="Center"
+					IsVisible="{Binding HasOperatingText}"
+					StyleClass="Caption"
+					Text="{Binding OperatingText}" />
+
+				<Label
+					HorizontalTextAlignment="Center"
 					IsVisible="{Binding HasMessage}"
 					StyleClass="Caption"
 					Text="{Binding Message}" />

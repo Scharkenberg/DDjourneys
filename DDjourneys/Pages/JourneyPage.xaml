@@ -247,6 +247,11 @@
 						StyleClass="Caption"
 						Text="{Binding FeaturesText}" />
 
+					<Label
+						IsVisible="{Binding HasOperating}"
+						StyleClass="Caption"
+						Text="{Binding OperatingText}" />
+
 					<HorizontalStackLayout IsVisible="{Binding HasOccupancy}" Spacing="8">
 
 						<controls:OccupancyIndicator Level="{Binding Occupancy}" />
@@ -638,13 +643,6 @@
 				<FlexLayout AlignContent="Start" AlignItems="Start" Wrap="Wrap">
 					<Button
 						Margin="0,0,8,8"
-						Command="{Binding OpenMapCommand}"
-						FlexLayout.Grow="1"
-						FlexLayout.Basis="140"
-						StyleClass="Tonal"
-						Text="{localization:Tr Extras.MapShow}" />
-					<Button
-						Margin="0,0,8,8"
 						Command="{Binding OpenDocumentCommand}"
 						FlexLayout.Grow="1"
 						FlexLayout.Basis="140"
@@ -720,78 +718,119 @@
 
 			</VerticalStackLayout>
 
-			<!--  Tickets: one tonal tile per ticket, the price large on the right  -->
+			<!--  Tickets: collapsed to the passenger's own ticket, every ticket on demand  -->
 			<Border
 				Padding="12"
 				IsVisible="{Binding HasFares}"
 				StyleClass="Card">
 
 				<VerticalStackLayout Spacing="{DynamicResource SpaceS}">
-					<HorizontalStackLayout Spacing="8">
+
+					<Grid
+						support:Motion.Feedback="True"
+						support:Dense.MinHeight="40"
+						ColumnDefinitions="Auto,*,Auto,Auto"
+						ColumnSpacing="10"
+						RowDefinitions="Auto,Auto"
+						RowSpacing="0"
+						SemanticProperties.Description="{Binding FaresToggleDescription}">
+
 						<controls:Icon
 							Glyph="Ticket"
-							Size="18"
+							Size="20"
 							VerticalOptions="Center"
 							Color="{DynamicResource Accent}" />
+
 						<Label
+							Grid.Column="1"
+							Margin="0"
 							StyleClass="Section"
 							Text="{localization:Tr Extras.FaresTitle}"
-							VerticalOptions="Center" />
-					</HorizontalStackLayout>
+							VerticalOptions="Center"
+							VerticalTextAlignment="Center" />
 
-					<VerticalStackLayout BindableLayout.ItemsSource="{Binding Fares}" Spacing="{DynamicResource SpaceS}">
-						<BindableLayout.ItemTemplate>
-							<DataTemplate x:DataType="support:FareRow">
-								<Border
-									Padding="12,10"
-									BackgroundColor="{DynamicResource AccentSoft}"
-									SemanticProperties.Description="{Binding AccessibilityText}"
-									StrokeShape="RoundRectangle 10"
-									StrokeThickness="0">
-									<Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="2">
-										<Label
-											FontFamily="{DynamicResource FontSemibold}"
-											Text="{Binding Name}"
-											VerticalOptions="Center" />
-										<Label
-											Grid.Column="1"
-											Grid.RowSpan="2"
-											FontFamily="{DynamicResource FontSemibold}"
-											FontSize="{StaticResource FontTitle}"
-											Text="{Binding PriceText}"
-											TextColor="{DynamicResource Accent}"
-											VerticalOptions="Center" />
-										<Label
-											Grid.Row="1"
-											IsVisible="{Binding HasDescription}"
-											StyleClass="Caption"
-											Text="{Binding Description}" />
-										<Label
-											Grid.Row="2"
-											Grid.ColumnSpan="2"
-											IsVisible="{Binding HasZones}"
-											StyleClass="Caption"
-											Text="{Binding ZonesText}" />
-										<Label
-											Grid.Row="3"
-											Grid.ColumnSpan="2"
-											IsVisible="{Binding HasValidFor}"
-											StyleClass="Caption"
-											Text="{Binding ValidForText}" />
-										<Label
-											Grid.Row="4"
-											Grid.ColumnSpan="2"
-											IsVisible="{Binding HasNotes}"
-											LineBreakMode="WordWrap"
-											StyleClass="Faint"
-											Text="{Binding NotesText}" />
-									</Grid>
-								</Border>
-							</DataTemplate>
-						</BindableLayout.ItemTemplate>
+						<Label
+							Grid.Column="2"
+							FontFamily="{DynamicResource FontSemibold}"
+							FontSize="{StaticResource FontTitle}"
+							Text="{Binding FaresSummaryPrice}"
+							TextColor="{DynamicResource Accent}"
+							VerticalOptions="Center"
+							VerticalTextAlignment="Center" />
+
+						<controls:Icon
+							Grid.Column="3"
+							Glyph="ChevronDown"
+							support:Motion.Turn="{Binding FaresChevronRotation}"
+							Size="20"
+							VerticalOptions="Center"
+							Color="{DynamicResource Accent}" />
+
+						<Label
+							Grid.Row="1"
+							Grid.Column="1"
+							Grid.ColumnSpan="3"
+							StyleClass="Caption"
+							Text="{Binding FaresSummaryName}" />
+
+						<Grid.GestureRecognizers>
+							<TapGestureRecognizer Command="{Binding ToggleFaresCommand}" />
+						</Grid.GestureRecognizers>
+					</Grid>
+
+					<VerticalStackLayout IsVisible="{Binding FaresExpanded}" Spacing="{DynamicResource SpaceS}">
+
+						<BoxView StyleClass="Divider" />
+
+						<VerticalStackLayout BindableLayout.ItemsSource="{Binding Fares}" Spacing="2">
+							<BindableLayout.ItemTemplate>
+								<DataTemplate x:DataType="support:FareRow">
+									<Border
+										Padding="8,6"
+										SemanticProperties.Description="{Binding AccessibilityText}"
+										StrokeShape="RoundRectangle 8"
+										StrokeThickness="0">
+										<Border.Triggers>
+											<DataTrigger
+												Binding="{Binding IsPreferred}"
+												TargetType="Border"
+												Value="True">
+												<Setter Property="BackgroundColor" Value="{DynamicResource AccentSoft}" />
+											</DataTrigger>
+										</Border.Triggers>
+										<Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+											<VerticalStackLayout Spacing="0" VerticalOptions="Center">
+												<Label LineBreakMode="WordWrap" Text="{Binding Name}" />
+												<Label
+													IsVisible="{Binding HasDetail}"
+													LineBreakMode="WordWrap"
+													StyleClass="Caption"
+													Text="{Binding Detail}" />
+											</VerticalStackLayout>
+											<Label
+												Grid.Column="1"
+												FontFamily="{DynamicResource FontSemibold}"
+												Text="{Binding PriceText}"
+												VerticalOptions="Center" />
+										</Grid>
+									</Border>
+								</DataTemplate>
+							</BindableLayout.ItemTemplate>
+						</VerticalStackLayout>
+
+						<Label
+							IsVisible="{Binding HasFaresZones}"
+							StyleClass="Caption"
+							Text="{Binding FaresZonesText}" />
+
+						<Label
+							IsVisible="{Binding HasFaresNotes}"
+							LineBreakMode="WordWrap"
+							StyleClass="Faint"
+							Text="{Binding FaresNotesText}" />
+
+						<Label StyleClass="Faint" Text="{localization:Tr Extras.FareNotAll}" />
 					</VerticalStackLayout>
-
-					<Label StyleClass="Faint" Text="{localization:Tr Extras.FareNotAll}" />
 				</VerticalStackLayout>
 			</Border>
 

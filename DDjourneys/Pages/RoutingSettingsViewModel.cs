@@ -91,6 +91,18 @@ public sealed class RoutingSettingsViewModel : DisposableViewModel
 				() => (int)_settings.Entrance,
 				value => _settings.Entrance = (EntranceNeed)value);
 
+		Passenger =
+			new ChoiceGroup(
+				new List<(int Code, Func<string> Title)>
+				{
+					((int)PassengerCategory.Adult, () => ExtraStrings.PassengerAdult),
+					((int)PassengerCategory.Youth, () => ExtraStrings.PassengerYouth),
+					((int)PassengerCategory.Child, () => ExtraStrings.PassengerChild),
+					((int)PassengerCategory.Senior, () => ExtraStrings.PassengerSenior)
+				},
+				() => (int)_settings.Passenger,
+				value => _settings.Passenger = (PassengerCategory)value);
+
 		ExtraCharge =
 			new ChoiceGroup(
 				new List<(int Code, Func<string> Title)>
@@ -164,6 +176,9 @@ public sealed class RoutingSettingsViewModel : DisposableViewModel
 
 	/// <summary>Required vehicle entrance.</summary>
 	public ChoiceGroup Entrance { get; }
+
+	/// <summary>Who the tickets are for.</summary>
+	public ChoiceGroup Passenger { get; }
 
 	/// <summary>Fare supplements to avoid.</summary>
 	public ChoiceGroup ExtraCharge { get; }
@@ -261,6 +276,7 @@ public sealed class RoutingSettingsViewModel : DisposableViewModel
 		Entrance.Refresh();
 		Optimisation.Refresh();
 		ExtraCharge.Refresh();
+		Passenger.Refresh();
 
 		OnPropertyChanged(nameof(FootpathMinutes));
 		OnPropertyChanged(nameof(FootpathText));

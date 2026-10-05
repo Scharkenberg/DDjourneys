@@ -457,7 +457,10 @@ public sealed class ResultsViewModel :
 				{
 					Items.Add(
 						new JourneyCardModel(
-							journey));
+							journey)
+						{
+							Passenger = _settings.Passenger
+						});
 				}
 				catch (Exception ex)
 				{
@@ -593,7 +596,10 @@ public sealed class ResultsViewModel :
 				{
 					replacement.Add(
 						new JourneyCardModel(
-							journey));
+							journey)
+						{
+							Passenger = _settings.Passenger
+						});
 				}
 				catch (Exception ex)
 				{

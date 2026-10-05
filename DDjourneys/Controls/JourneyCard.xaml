@@ -96,51 +96,69 @@
 					Stop="{Binding ToName}" />
 			</Grid>
 
-			<!--  Legs  -->
-			<FlexLayout AlignContent="Start" AlignItems="Start" BindableLayout.ItemsSource="{Binding Chips}" Wrap="Wrap">
-				<BindableLayout.ItemTemplate>
-					<DataTemplate x:DataType="support:LegChip">
-						<Border
-							Margin="0,0,6,6"
-							BackgroundColor="{Binding Look.Fill}"
-							FlexLayout.Shrink="0"
-							StrokeDashArray="{Binding Look.Dashes}"
-							StrokeShape="{Binding Look.Shape}"
-							StrokeThickness="{Binding Look.StrokeThickness}"
-							StyleClass="Chip"
-							Stroke="{Binding Look.Stroke}">
-							<support:PillScroll>
-								<Label
-									FontFamily="{DynamicResource FontSemibold}"
-									FontSize="{StaticResource FontCaption}"
-									StyleClass="ChipLabel"
-									Text="{Binding Text}"
-									TextColor="{Binding Look.Text}" />
-							</support:PillScroll>
-						</Border>
-					</DataTemplate>
-				</BindableLayout.ItemTemplate>
-			</FlexLayout>
+			<!--  Legs and state on the left, the map button anchored bottom right  -->
+			<Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource SpaceS}">
 
-			<!--  Cannot take place: own row, so a long reason can wrap  -->
-			<Label
-				IsVisible="{Binding IsCancelled}"
-				LineBreakMode="WordWrap"
-				StyleClass="Cancelled"
-				Text="{Binding BlockText}" />
+				<VerticalStackLayout Spacing="{DynamicResource SpaceM}">
 
-			<!--  State  -->
-			<HorizontalStackLayout IsVisible="{Binding HasStatusRow}" Spacing="{DynamicResource SpaceM}">
-				<Label IsVisible="{Binding IsOnTime}" StyleClass="OnTime">
-					<Label.Text>
-						<localization:Tr Key="Journey.OnTime" />
-					</Label.Text>
-				</Label>
-				<Label
-					IsVisible="{Binding HasNotices}"
-					StyleClass="Caption"
-					Text="{Binding NoticesText}" />
-			</HorizontalStackLayout>
+					<!--  Legs  -->
+					<FlexLayout AlignContent="Start" AlignItems="Start" BindableLayout.ItemsSource="{Binding Chips}" Wrap="Wrap">
+						<BindableLayout.ItemTemplate>
+							<DataTemplate x:DataType="support:LegChip">
+								<Border
+									Margin="0,0,6,6"
+									BackgroundColor="{Binding Look.Fill}"
+									FlexLayout.Shrink="0"
+									StrokeDashArray="{Binding Look.Dashes}"
+									StrokeShape="{Binding Look.Shape}"
+									StrokeThickness="{Binding Look.StrokeThickness}"
+									StyleClass="Chip"
+									Stroke="{Binding Look.Stroke}">
+									<support:PillScroll>
+										<Label
+											FontFamily="{DynamicResource FontSemibold}"
+											FontSize="{StaticResource FontCaption}"
+											StyleClass="ChipLabel"
+											Text="{Binding Text}"
+											TextColor="{Binding Look.Text}" />
+									</support:PillScroll>
+								</Border>
+							</DataTemplate>
+						</BindableLayout.ItemTemplate>
+					</FlexLayout>
+
+					<!--  Cannot take place: own row, so a long reason can wrap  -->
+					<Label
+						IsVisible="{Binding IsCancelled}"
+						LineBreakMode="WordWrap"
+						StyleClass="Cancelled"
+						Text="{Binding BlockText}" />
+
+					<!--  State  -->
+					<HorizontalStackLayout IsVisible="{Binding HasStatusRow}" Spacing="{DynamicResource SpaceM}">
+						<Label IsVisible="{Binding IsOnTime}" StyleClass="OnTime">
+							<Label.Text>
+								<localization:Tr Key="Journey.OnTime" />
+							</Label.Text>
+						</Label>
+						<Label
+							IsVisible="{Binding HasNotices}"
+							StyleClass="Caption"
+							Text="{Binding NoticesText}" />
+					</HorizontalStackLayout>
+
+				</VerticalStackLayout>
+
+				<controls:IconButton
+					Grid.Column="1"
+					Command="{Binding MapCommand}"
+					Glyph="Map"
+					HorizontalOptions="End"
+					IsVisible="{Binding HasMap}"
+					SemanticProperties.Description="{localization:Tr Extras.MapShow}"
+					VerticalOptions="End" />
+
+			</Grid>
 
 		</VerticalStackLayout>
 	</Border>

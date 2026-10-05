@@ -116,6 +116,9 @@ public sealed record RoutingPreferences
 	/// <summary>Fare supplement filter (VVO <c>extraCharge</c>).</summary>
 	public ExtraChargeFilter ExtraCharge { get; init; } = ExtraChargeFilter.Any;
 
+	/// <summary>Who the tickets are for: asked of providers that can quote by passenger, and the one cards show.</summary>
+	public PassengerCategory Passenger { get; init; } = PassengerCategory.Adult;
+
 	/// <summary>What to optimise for; only providers that can choose an algorithm honour it.</summary>
 	public RouteOptimisation Optimisation { get; init; } = RouteOptimisation.Fastest;
 }

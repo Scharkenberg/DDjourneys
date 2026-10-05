@@ -258,7 +258,9 @@ public static class MapScenes
 	public static MapScene FromRun(
 		IReadOnlyList<RunStop> stops,
 		TransitMode mode,
-		int vehicleIndex = -1)
+		int vehicleIndex = -1,
+		GeoPosition? vehicle = null,
+		string? lineText = null)
 	{
 		ArgumentNullException.ThrowIfNull(stops);
 
@@ -303,6 +305,22 @@ public static class MapScenes
 					stop.Effective is { } time
 						? $"{Format.Time(time)}{(Format.Delay(stop.Delay) is { } delay ? $" · {delay}" : string.Empty)}"
 						: null));
+		}
+
+		// Where the provider says the vehicle is (TRIAS CurrentPosition), on top of the stops.
+		if (vehicle is not null
+			&& Position(vehicle.Latitude, vehicle.Longitude) is { } reported)
+		{
+			markers.Add(
+				new MapMarker(
+					"vehicle",
+					reported.Latitude,
+					reported.Longitude,
+					lineText ?? string.Empty,
+					MapMarkerKind.Vehicle,
+					color,
+					Strings.VehicleReported,
+					null));
 		}
 
 		return new MapScene

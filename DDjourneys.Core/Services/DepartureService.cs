@@ -42,4 +42,12 @@ public sealed class DepartureService
 		Provider is { } provider
 			? provider.GetRunAsync(departure, timeoutSeconds, cancellationToken)
 			: Task.FromResult<IReadOnlyList<RunStop>>([]);
+
+	public Task<RunDetail> GetRunDetailAsync(
+		Departure departure,
+		int timeoutSeconds = 15,
+		CancellationToken cancellationToken = default) =>
+		Provider is { } provider
+			? provider.GetRunDetailAsync(departure, timeoutSeconds, cancellationToken)
+			: Task.FromResult(new RunDetail([]));
 }
