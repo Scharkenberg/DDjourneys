@@ -2,6 +2,7 @@ using System.Windows.Input;
 using DDjourneys.Controls;
 using DDjourneys.Core.Models;
 using DDjourneys.Localization;
+using Location = DDjourneys.Core.Models.Location;
 
 namespace DDjourneys.Support;
 
