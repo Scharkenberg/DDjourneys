@@ -443,6 +443,7 @@ public sealed class TrackingStrings
 	public required string Pause { get; init; }
 	public required string Resume { get; init; }
 	public required string StopFollowing { get; init; }
+	public required string DismissNotice { get; init; }
 	public required string LiveTitle { get; init; }
 	public required string LiveAutomatic { get; init; }
 	public required string LiveAutomaticHint { get; init; }

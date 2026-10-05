@@ -217,13 +217,23 @@
 							</support:PillScroll>
 						</Border>
 
-						<Label
+						<!--  Direction: the same soft pill as a ride heading on the followed-journeys page  -->
+						<Border
 							Grid.Column="1"
+							Padding="10,3"
+							BackgroundColor="{DynamicResource AccentSoft}"
+							HorizontalOptions="Start"
 							IsVisible="{Binding HasDirection}"
-							LineBreakMode="TailTruncation"
-							StyleClass="Caption"
-							Text="{Binding Direction}"
-							VerticalOptions="Center" />
+							StrokeShape="RoundRectangle 100"
+							StrokeThickness="0"
+							VerticalOptions="Center">
+							<Label
+								FontFamily="{DynamicResource FontSemibold}"
+								FontSize="{StaticResource FontCaption}"
+								LineBreakMode="TailTruncation"
+								Text="{Binding Direction}"
+								TextColor="{DynamicResource Accent}" />
+						</Border>
 
 						<Label
 							Grid.Column="2"
@@ -346,7 +356,28 @@
 					Padding="0,4,0,10"
 					Spacing="2">
 
-					<Label FontFamily="{DynamicResource FontSemibold}" Text="{Binding Text}" />
+					<!--  Walk: dashed outline with the walking icon, like the walk heading on the followed-journeys page  -->
+					<Border
+						Padding="10,3"
+						HorizontalOptions="Start"
+						Stroke="{DynamicResource InkMuted}"
+						StrokeDashArray="3,2"
+						StrokeShape="RoundRectangle 100"
+						StrokeThickness="1.5">
+						<HorizontalStackLayout Spacing="6">
+							<controls:Icon
+								Glyph="Walk"
+								Size="14"
+								VerticalOptions="Center"
+								Color="{DynamicResource InkMuted}" />
+							<Label
+								FontSize="{StaticResource FontCaption}"
+								LineBreakMode="WordWrap"
+								Text="{Binding Text}"
+								TextColor="{DynamicResource InkMuted}"
+								VerticalOptions="Center" />
+						</HorizontalStackLayout>
+					</Border>
 
 					<controls:StopNameView
 						Compact="True"
@@ -458,15 +489,44 @@
 
 					<controls:StopNameView Place="{Binding Place}" Stop="{Binding Name}" />
 
-					<Label
+					<!--  Change instructions as pills (not tappable): connection soft, walk dashed  -->
+					<Border
+						Padding="10,3"
+						BackgroundColor="{DynamicResource AccentSoft}"
+						HorizontalOptions="Start"
 						IsVisible="{Binding HasConnection}"
-						StyleClass="Caption"
-						Text="{Binding ConnectionText}" />
+						StrokeShape="RoundRectangle 100"
+						StrokeThickness="0">
+						<Label
+							FontFamily="{DynamicResource FontSemibold}"
+							FontSize="{StaticResource FontCaption}"
+							LineBreakMode="WordWrap"
+							Text="{Binding ConnectionText}"
+							TextColor="{DynamicResource Accent}" />
+					</Border>
 
-					<Label
+					<Border
+						Padding="10,3"
+						HorizontalOptions="Start"
 						IsVisible="{Binding HasWalk}"
-						StyleClass="Caption"
-						Text="{Binding WalkText}" />
+						Stroke="{DynamicResource InkMuted}"
+						StrokeDashArray="3,2"
+						StrokeShape="RoundRectangle 100"
+						StrokeThickness="1.5">
+						<HorizontalStackLayout Spacing="6">
+							<controls:Icon
+								Glyph="Walk"
+								Size="14"
+								VerticalOptions="Center"
+								Color="{DynamicResource InkMuted}" />
+							<Label
+								FontSize="{StaticResource FontCaption}"
+								LineBreakMode="WordWrap"
+								Text="{Binding WalkText}"
+								TextColor="{DynamicResource InkMuted}"
+								VerticalOptions="Center" />
+						</HorizontalStackLayout>
+					</Border>
 
 					<Border
 						Margin="0,2,0,0"
@@ -484,10 +544,20 @@
 						StyleClass="Delay"
 						Text="{Binding RiskText}" />
 
-					<Label
+					<Border
+						Padding="10,3"
+						BackgroundColor="{DynamicResource AccentSoft}"
+						HorizontalOptions="Start"
 						IsVisible="{Binding HasAssurance}"
-						StyleClass="Caption"
-						Text="{Binding AssuranceText}" />
+						StrokeShape="RoundRectangle 100"
+						StrokeThickness="0">
+						<Label
+							FontFamily="{DynamicResource FontSemibold}"
+							FontSize="{StaticResource FontCaption}"
+							LineBreakMode="WordWrap"
+							Text="{Binding AssuranceText}"
+							TextColor="{DynamicResource Accent}" />
+					</Border>
 
 					<!--  The change cannot be made (stop skipped, or the next vehicle leaves first)  -->
 					<Label

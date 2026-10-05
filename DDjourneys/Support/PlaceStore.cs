@@ -4,6 +4,7 @@ using System.Text.Json.Nodes;
 using DDjourneys.Core.Models;
 using DDjourneys.Core.Storage;
 using DDjourneys.Core.Providers.Vvo;
+using DDjourneys.Core.Providers.Vvo.Mapping;
 using Location = DDjourneys.Core.Models.Location;
 
 namespace DDjourneys.Support;
@@ -741,25 +742,37 @@ public sealed class PlaceStore
 	/// belongs to VVO. Free-form places have no provider.
 	/// </summary>
 	private static Location ToLocation(
-		Entry entry) =>
-		new()
+		Entry entry)
+	{
+		string providerId =
+			!string.IsNullOrWhiteSpace(entry.ProviderId)
+				? entry.ProviderId
+				: string.IsNullOrWhiteSpace(entry.Id)
+					? string.Empty
+					: LegacyProviderId;
+
+		PlaceKind placeKind =
+			Enum.TryParse(entry.Kind, out PlaceKind kind)
+				? kind
+				: PlaceKind.Stop;
+
+		// VVO leaves out Dresden; entries stored before that was made explicit get it now.
+		string? place =
+			string.Equals(providerId, VvoProviderInfo.Id, StringComparison.OrdinalIgnoreCase)
+				? VvoPlaces.Resolve(entry.Place, placeKind)
+				: entry.Place;
+
+		return new()
 		{
 			Id = entry.Id,
-			ProviderId =
-				!string.IsNullOrWhiteSpace(entry.ProviderId)
-					? entry.ProviderId
-					: string.IsNullOrWhiteSpace(entry.Id)
-						? string.Empty
-						: LegacyProviderId,
-			Kind =
-				Enum.TryParse(entry.Kind, out PlaceKind kind)
-					? kind
-					: PlaceKind.Stop,
+			ProviderId = providerId,
+			Kind = placeKind,
 			Name = entry.Name,
-			Place = entry.Place,
+			Place = place,
 			Latitude = entry.Latitude,
 			Longitude = entry.Longitude
 		};
+	}
 
 
 	private List<Location> Load(

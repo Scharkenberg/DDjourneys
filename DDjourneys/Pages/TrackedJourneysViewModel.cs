@@ -114,6 +114,11 @@ public sealed class TrackedRow
 	public required ICommand ToggleChangeAlertCommand { get; init; }
 	public required ICommand ToggleProblemAlertCommand { get; init; }
 	public required ICommand ToggleCourseCommand { get; init; }
+
+	/// <summary>Hides the shown notice (swipe or the close button); a newer notice shows again.</summary>
+	public required ICommand DismissNoticeCommand { get; init; }
+
+	public required string DismissNoticeText { get; init; }
 }
 
 /// <summary>The overview of all journeys the user follows.</summary>
@@ -567,6 +572,8 @@ public sealed class TrackedJourneysViewModel : DisposableViewModel, IQueryAttrib
 			CourseToggleText = course ? strings.CourseHide : strings.CourseShow,
 			Course = rows,
 			CourseHint = strings.CourseNotYet,
+			DismissNoticeText = strings.DismissNotice,
+			DismissNoticeCommand = new AsyncCommand(() => _tracker.DismissNoticeAsync(journey.PlanId), null, ShowError),
 			ToggleCourseCommand = new Command(() => ToggleCourse(journey)),
 			ToggleExpandedCommand = new Command(() => ToggleExpanded(journey)),
 			PauseResumeCommand = new AsyncCommand(() => PauseResumeAsync(journey), null, ShowError),

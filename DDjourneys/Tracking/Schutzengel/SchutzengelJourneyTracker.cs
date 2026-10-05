@@ -59,6 +59,9 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 	private readonly SemaphoreSlim _gate = new(1, 1);
 	private readonly Dictionary<string, WatchEntry> _entries = new(StringComparer.Ordinal);
 	private readonly Dictionary<string, string> _dismissed = new(StringComparer.Ordinal);
+
+	/// <summary>Per plan: the notice (time and text) the user swiped away.</summary>
+	private readonly Dictionary<string, string> _dismissedNotices = new(StringComparer.Ordinal);
 	private readonly TrackingEventBroadcaster<JourneyTrackingEvent> _events = new();
 
 	private readonly List<string> _pendingForgotten = [];
@@ -699,6 +702,16 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 	{
 		_entries.Remove(planId);
 		_dismissed.Remove(planId);
+		_dismissedNotices.Remove(planId);
+
+		try
+		{
+			Preferences.Default.Remove(DismissedNoticePrefix + planId);
+		}
+		catch (Exception ex)
+		{
+			Log($"Dismissed notice not cleared: {ex.Message}");
+		}
 
 		if (_preferredLive == planId)
 		{
@@ -824,6 +837,88 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 		return entry.Summary?.EnsuredChanges is { Count: > 0 } changes && changes.All(flag => flag);
 	}
 
+	/// <summary>
+	/// A boarding instruction is obsolete once the ride it is about is under way: it was issued before that ride's
+	/// planned departure and the passenger has since boarded (the current ride started after the notice).
+	/// </summary>
+	private static bool IsBoardingDone(WatchEntry entry, SchutzengelNotice notice, TripSnapshot snapshot)
+	{
+		if (!notice.IsBoardingInstruction
+			|| snapshot.Stage != TripStage.Riding
+			|| notice.Time is not { } issued
+			|| entry.Timeline is not { } timeline
+			|| snapshot.EpisodeIndex < 0
+			|| snapshot.EpisodeIndex >= timeline.Episodes.Count)
+		{
+			return false;
+		}
+
+		return timeline.Episodes[snapshot.EpisodeIndex].From.Scheduled is { } rideStart
+			&& issued <= rideStart;
+	}
+
+	private static string NoticeKey(SchutzengelNotice notice) =>
+		string.Create(
+			CultureInfo.InvariantCulture,
+			$"{notice.Time?.ToUnixTimeMilliseconds()}|{notice.Text}");
+
+	private const string DismissedNoticePrefix = "tracking.dismissed_notice.";
+
+	private string? DismissedNoticeKey(string planId)
+	{
+		if (_dismissedNotices.TryGetValue(planId, out string? key))
+		{
+			return key;
+		}
+
+		try
+		{
+			string stored = Preferences.Default.Get(DismissedNoticePrefix + planId, string.Empty);
+
+			if (stored.Length > 0)
+			{
+				_dismissedNotices[planId] = stored;
+
+				return stored;
+			}
+		}
+		catch (Exception ex)
+		{
+			Log($"Dismissed notice unreadable: {ex.Message}");
+		}
+
+		return null;
+	}
+
+	public Task DismissNoticeAsync(string planId, CancellationToken cancellationToken = default)
+	{
+		ArgumentException.ThrowIfNullOrWhiteSpace(planId);
+
+		return RunAsync(
+			() =>
+			{
+				if (_entries.TryGetValue(planId, out WatchEntry? entry)
+					&& entry.Notices.Count > 0)
+				{
+					string key = NoticeKey(entry.Notices[^1]);
+
+					_dismissedNotices[planId] = key;
+
+					try
+					{
+						Preferences.Default.Set(DismissedNoticePrefix + planId, key);
+					}
+					catch (Exception ex)
+					{
+						Log($"Dismissed notice not saved: {ex.Message}");
+					}
+				}
+
+				return Task.FromResult(Recompute());
+			},
+			cancellationToken);
+	}
+
 	private WatchedJourney Evaluate(
 		WatchEntry entry,
 		DateTimeOffset now,
@@ -836,6 +931,12 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 
 		// An ensured change cannot be at risk: the provider's guarantee outranks the service's clock-based notice.
 		if (newest is not null && IsOutrankedByGuarantee(entry, newest))
+		{
+			newest = null;
+		}
+
+		// Swiped away by the user: gone until a newer notice arrives.
+		if (newest is not null && DismissedNoticeKey(info.PlanId) == NoticeKey(newest))
 		{
 			newest = null;
 		}
@@ -882,12 +983,13 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 				{
 					SchutzengelNoticeSeverity.Cancellation => NoticeKind.Cancellation,
 					SchutzengelNoticeSeverity.ConnectionRisk => NoticeKind.ConnectionRisk,
-					_ => NoticeKind.Information
+					_ => newest.IsBoardingInstruction ? NoticeKind.Instruction : NoticeKind.Information
 				},
 				newest.Time,
 				journeyOver,
 				snapshot.Risk is not null,
 				now).IsVisible
+				&& !IsBoardingDone(entry, newest, snapshot)
 				? newest
 				: null;
 

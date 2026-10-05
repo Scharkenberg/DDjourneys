@@ -62,6 +62,12 @@ public interface IJourneyTracker
 	Task SetPreferredLivePlanAsync(string? planId, CancellationToken cancellationToken = default) =>
 		Task.CompletedTask;
 
+	/// <summary>
+	/// Hides the notice a followed journey currently shows (the user swiped it away). A newer notice shows again.
+	/// </summary>
+	Task DismissNoticeAsync(string planId, CancellationToken cancellationToken = default) =>
+		Task.CompletedTask;
+
 	/// <summary>The full course of a followed journey with every stop, or null while it is not known yet.</summary>
 	TrackedTrip? GetTrip(string planId) => null;
 }

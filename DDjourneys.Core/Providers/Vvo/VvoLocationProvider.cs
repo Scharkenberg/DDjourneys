@@ -226,7 +226,7 @@ public sealed class VvoLocationProvider : ILocationProvider, IProviderDescriptor
 			ProviderId = VvoProviderInfo.Id,
 			Name = point.Name ?? string.Empty,
 			Kind = point.Kind,
-			Place = point.Place,
+			Place = VvoPlaces.Resolve(point.Place, point.Kind),
 			Latitude = hasCoordinates ? coordinates.Latitude : null,
 			Longitude = hasCoordinates ? coordinates.Longitude : null
 		};

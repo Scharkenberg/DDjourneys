@@ -22,7 +22,7 @@ public static class VvoNetworkMapper
 		return new DepartureBoard
 		{
 			StopName = response.Name ?? stop.Name,
-			StopPlace = response.Place ?? stop.Place,
+			StopPlace = VvoPlaces.Resolve(response.Place ?? stop.Place),
 			Departures =
 				[.. response.Departures
 					.Select(departure => MapDeparture(departure, stopId, isArrival))
@@ -85,7 +85,7 @@ public static class VvoNetworkMapper
 								Id = stop.Id ?? string.Empty,
 								ProviderId = VvoProviderInfo.Id,
 								Name = stop.Name ?? string.Empty,
-								Place = stop.Place,
+								Place = VvoPlaces.Resolve(stop.Place),
 								Latitude = position?.Latitude,
 								Longitude = position?.Longitude,
 								Platform = stop.Platform?.Name,

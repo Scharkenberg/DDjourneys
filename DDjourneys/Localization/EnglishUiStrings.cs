@@ -523,6 +523,7 @@ public sealed class EnglishUiStrings : IUiStrings
 		Pause = "Pause",
 		Resume = "Resume",
 		StopFollowing = "Stop following",
+		DismissNotice = "Dismiss notice",
 		LiveTitle = "Live notification",
 		LiveAutomatic = "Automatic",
 		LiveAutomaticHint = "The next journey under way",

@@ -533,6 +533,7 @@ public sealed class GermanUiStrings : IUiStrings
 		Pause = "Pausieren",
 		Resume = "Fortsetzen",
 		StopFollowing = "Nicht mehr verfolgen",
+		DismissNotice = "Hinweis ausblenden",
 		LiveTitle = "Live-Benachrichtigung",
 		LiveAutomatic = "Automatisch",
 		LiveAutomaticHint = "Die n\u00e4chste laufende Fahrt",

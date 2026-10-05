@@ -259,6 +259,11 @@ internal sealed record SchutzengelNotice(
 		}
 	}
 
+	/// <summary>"Einstieg X: bitte gehen Sie zur Haltestelle X Steig 1": valid until the ride starts.</summary>
+	public bool IsBoardingInstruction =>
+		Severity == SchutzengelNoticeSeverity.Information
+		&& DDjourneys.Core.Tracking.NoticePolicy.IsBoardingInstruction(Text);
+
 	private static bool ContainsAny(string text, params string[] phrases) =>
 		phrases.Any(phrase => text.Contains(phrase, StringComparison.OrdinalIgnoreCase));
 }
