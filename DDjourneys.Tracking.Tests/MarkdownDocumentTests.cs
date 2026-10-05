@@ -277,3 +277,69 @@ public sealed class ReadmeTests
 		}
 	}
 }
+
+/// <summary>The English and the German README are one text in two languages: same shape, same links, same code.</summary>
+public sealed class ReadmeLanguagesTests
+{
+	private static IReadOnlyList<MarkdownBlock> Read(string file)
+	{
+		string? directory = AppContext.BaseDirectory;
+
+		while (directory is not null)
+		{
+			if (File.Exists(Path.Combine(directory, "DDjourneys.slnx")))
+			{
+				return MarkdownDocument.Parse(File.ReadAllText(Path.Combine(directory, file)));
+			}
+
+			directory = Path.GetDirectoryName(directory);
+		}
+
+		throw new FileNotFoundException($"{file} next to DDjourneys.slnx");
+	}
+
+	private static string Plain(MarkdownHeading heading) =>
+		string.Concat(heading.Content.Select(item => item.Text));
+
+	// One entry per block: "H2" for a heading of level 2, "P" for a paragraph.
+	private static List<string> Shape(IReadOnlyList<MarkdownBlock> blocks) =>
+		[.. blocks.Select(block => block is MarkdownHeading heading ? $"H{heading.Level}" : block.GetType().Name)];
+
+	private static List<string> Links(IReadOnlyList<MarkdownBlock> blocks) =>
+		[.. blocks.OfType<MarkdownParagraph>().SelectMany(item => item.Content).Where(item => item.Url is not null).Select(item => item.Url!)];
+
+	private static List<string> Code(IReadOnlyList<MarkdownBlock> blocks) =>
+		[.. blocks.OfType<MarkdownParagraph>().SelectMany(item => item.Content).Where(item => item.Style.HasFlag(InlineStyle.Code)).Select(item => item.Text)];
+
+	[Fact]
+	public void Both_files_have_the_same_headings_and_paragraphs_in_the_same_order()
+	{
+		Assert.Equal(Shape(Read("README.md")), Shape(Read("README.de.md")));
+	}
+
+	[Fact]
+	public void Both_files_have_the_same_links_and_the_same_code()
+	{
+		IReadOnlyList<MarkdownBlock> english = Read("README.md");
+		IReadOnlyList<MarkdownBlock> german = Read("README.de.md");
+
+		Assert.Equal(Links(english), Links(german));
+		Assert.Equal(Code(english), Code(german));
+	}
+
+	[Fact]
+	public void The_german_file_starts_with_the_name_of_the_app_and_follows_the_same_rules()
+	{
+		IReadOnlyList<MarkdownBlock> german = Read("README.de.md");
+
+		Assert.Equal("DDjourneys", Plain(Assert.IsType<MarkdownHeading>(german[0])));
+		Assert.DoesNotContain(german, block => block is MarkdownList or MarkdownQuote or MarkdownRule);
+
+		foreach (MarkdownParagraph paragraph in german.OfType<MarkdownParagraph>())
+		{
+			Assert.DoesNotContain(
+				paragraph.Content,
+				run => run.Style.HasFlag(InlineStyle.Bold) || run.Style.HasFlag(InlineStyle.Italic));
+		}
+	}
+}

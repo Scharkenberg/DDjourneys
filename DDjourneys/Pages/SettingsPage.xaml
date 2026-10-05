@@ -124,8 +124,72 @@
 
 			<Label StyleClass="Section" Text="{localization:Tr Settings.MapSection}" />
 
-			<!--  The basemap needs the user's own CARTO key; without a usable one the map stays off  -->
+			<!--  Which library draws the map: CARTO vector (needs a key and WebGL 2) or Leaflet raster (anything)  -->
 			<Border Padding="0" StyleClass="Card">
+				<VerticalStackLayout>
+
+					<VerticalStackLayout support:Dense.Padding="12,8" Spacing="1">
+						<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.MapEngineTitle}" />
+						<Label StyleClass="Caption" Text="{localization:Tr Settings.MapEngineDescription}" />
+					</VerticalStackLayout>
+
+					<BoxView StyleClass="Divider" />
+
+					<Grid support:Motion.Feedback="True"
+						support:Dense.Padding="12,8"
+						ColumnDefinitions="*,Auto"
+						ColumnSpacing="12"
+						support:Dense.MinHeight="{StaticResource HitRow}">
+
+						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
+							<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.MapEngineCarto}" />
+							<Label StyleClass="Caption" Text="{localization:Tr Settings.MapEngineCartoDescription}" />
+						</VerticalStackLayout>
+
+						<controls:Icon
+							Grid.Column="1"
+							Glyph="Check"
+							IsVisible="{Binding MapEngineIsCarto}"
+							Size="20"
+							VerticalOptions="Center"
+							Color="{DynamicResource Accent}" />
+
+						<Grid.GestureRecognizers>
+							<TapGestureRecognizer Command="{Binding SelectMapEngineCommand}" CommandParameter="carto" />
+						</Grid.GestureRecognizers>
+					</Grid>
+
+					<BoxView StyleClass="Divider" />
+
+					<Grid support:Motion.Feedback="True"
+						support:Dense.Padding="12,8"
+						ColumnDefinitions="*,Auto"
+						ColumnSpacing="12"
+						support:Dense.MinHeight="{StaticResource HitRow}">
+
+						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
+							<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.MapEngineLeaflet}" />
+							<Label StyleClass="Caption" Text="{localization:Tr Settings.MapEngineLeafletDescription}" />
+						</VerticalStackLayout>
+
+						<controls:Icon
+							Grid.Column="1"
+							Glyph="Check"
+							IsVisible="{Binding MapEngineIsLeaflet}"
+							Size="20"
+							VerticalOptions="Center"
+							Color="{DynamicResource Accent}" />
+
+						<Grid.GestureRecognizers>
+							<TapGestureRecognizer Command="{Binding SelectMapEngineCommand}" CommandParameter="leaflet" />
+						</Grid.GestureRecognizers>
+					</Grid>
+
+				</VerticalStackLayout>
+			</Border>
+
+			<!--  The basemap needs the user's own CARTO key; without a usable one the map stays off  -->
+			<Border IsVisible="{Binding MapEngineIsCarto}" Padding="0" StyleClass="Card">
 				<VerticalStackLayout support:Dense.Padding="12,8" Spacing="6">
 					<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.MapKeyTitle}" />
 					<Label StyleClass="Caption" Text="{localization:Tr Settings.MapKeyDescription}" />

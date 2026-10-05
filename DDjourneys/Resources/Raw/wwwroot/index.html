@@ -126,8 +126,8 @@
 			} catch (e) { window.ddLog('webgl probe: ' + names[n] + ' threw ' + e.message); }
 		}
 
-		// MapLibre GL 5 needs WebGL 2 and these language features. Without them the library is not even loaded:
-		// it would fail (or take the web view down) and the app shows its notice instead.
+		// MapLibre GL 5 (engine "carto") needs WebGL 2 and these language features. Without them the library is not
+		// loaded unless the app says "force": it would fail (or take the web view down). Leaflet needs neither.
 		if (missingRequired.length) { window.ddUnsupported = 'JavaScript engine too old (Chromium ' + (chrome ? chrome[1] : '?') + '): ' + missingRequired.join(', '); }
 		else if (!gl2) { window.ddUnsupported = 'WebGL 2 is not available'; }
 	}
@@ -141,24 +141,64 @@
 <script src="_framework/hybridwebview.js"></script>
 <script>window.ddLog && window.ddLog("hybridwebview.js: " + typeof window.HybridWebView);</script>
 <script>
-// maplibre-gl.js is loaded only when the engine passed the checks above, then the page script (ddMain) starts.
+// The page waits for the app: it says "boot" once the bridge exists, the app answers ddBoot('start', {engine, force}),
+// and only then the chosen library is loaded: "carto" = MapLibre GL (vector, WebGL 2, only when the checks above
+// pass or the app forces it), "leaflet" = Leaflet (raster tiles, any web view). Then ddMain(engine) runs and says "ready".
 (function () {
+	var started = false;
+
+	function say(text) { try { window.HybridWebView.SendRawMessage(text); } catch (e) { } }
+
 	function fail(reason) {
 		window.ddLog('map not started: ' + reason);
 		window.ddFlush();
-		try { window.HybridWebView.SendRawMessage('unsupported:' + reason); } catch (e) { }
+		say('unsupported:' + reason);
 	}
 
-	if (window.ddUnsupported) { fail(window.ddUnsupported); return; }
+	function load(src, done, css) {
+		if (css) {
+			var link = document.createElement('link');
+			link.rel = 'stylesheet';
+			link.href = css;
+			document.head.appendChild(link);
+		}
 
-	var script = document.createElement('script');
-	script.onload = function () {
-		window.ddLog('maplibre-gl.js: ' + typeof window.maplibregl + (window.maplibregl ? ' ' + window.maplibregl.version : ' (did not run: see the errors above)'));
-		if (window.maplibregl) { window.ddMain(); } else { fail('maplibre-gl.js did not start'); }
+		var script = document.createElement('script');
+		script.onload = done;
+		script.onerror = function () { fail(src + ' could not be loaded'); };
+		script.src = src;
+		document.head.appendChild(script);
+	}
+
+	window.ddBoot = function (command, json) {
+		var arg = json ? JSON.parse(json) : {};
+
+		window.ddLog('ddBoot ' + command + ' ' + (json || ''));
+
+		if (command !== 'start' || started) { return; }
+
+		if (arg.engine === 'leaflet') {
+			started = true;
+			load('leaflet/leaflet.js', function () {
+				window.ddLog('leaflet.js: ' + typeof window.L + (window.L ? ' ' + window.L.version : ' (did not run: see the errors above)'));
+				if (window.L) { window.ddMain('leaflet'); } else { started = false; fail('leaflet.js did not start'); }
+			}, 'leaflet/leaflet.css');
+			return;
+		}
+
+		if (window.ddUnsupported && !arg.force) { fail(window.ddUnsupported); return; }
+
+		if (window.ddUnsupported) { window.ddLog('forced past: ' + window.ddUnsupported); }
+
+		started = true;
+		load('maplibre/maplibre-gl.js', function () {
+			window.ddLog('maplibre-gl.js: ' + typeof window.maplibregl + (window.maplibregl ? ' ' + window.maplibregl.version : ' (did not run: see the errors above)'));
+			if (window.maplibregl) { window.ddMain('carto'); } else { started = false; fail('maplibre-gl.js did not start'); }
+		});
 	};
-	script.onerror = function () { fail('maplibre-gl.js could not be loaded'); };
-	script.src = 'maplibre/maplibre-gl.js';
-	document.head.appendChild(script);
+
+	window.ddLog('boot: asking the app which engine to start');
+	say('boot');
 }());
 </script>
 <style>
@@ -185,6 +225,21 @@ body.dark .maplibregl-ctrl-group button .maplibregl-ctrl-icon { filter: invert(1
 .maplibregl-ctrl-group:not(:empty) { box-shadow: none; }
 .maplibregl-ctrl-group button + button { border-top: 1px solid var(--outline); }
 .maplibregl-ctrl-group button:not(:disabled):hover { background: var(--accent-soft); }
+
+/* Leaflet (the other engine) wears the same clothes: flat bars, outline instead of shadow, popups in the app's colours. */
+.leaflet-container { background: var(--bg); font: inherit; font-family: var(--font); outline: 0; }
+.leaflet-bar { background: var(--surface); border: 1px solid var(--outline); border-radius: var(--radius); box-shadow: none; }
+.leaflet-bar a, .leaflet-bar a:hover { background-color: var(--surface); color: var(--ink); border-bottom: 1px solid var(--outline); font-family: var(--font); }
+.leaflet-bar a:last-child { border-bottom: 0; border-radius: 0; }
+.leaflet-bar a:hover { background-color: var(--accent-soft); }
+.leaflet-bar a.leaflet-disabled { color: var(--ink-muted); opacity: .5; }
+.leaflet-touch .leaflet-bar a { width: 30px; height: 30px; line-height: 30px; }
+.leaflet-bar.dd-fitnow { border: 1px solid var(--outline); }
+.leaflet-control.dd-fit, .leaflet-control.dd-attr { box-shadow: none; }
+.dd-licon { background: none; border: 0; overflow: visible; }
+.dd-popup .leaflet-popup-content-wrapper { background: var(--surface); color: var(--ink); border: 1px solid var(--outline); border-radius: var(--radius-card); box-shadow: 0 2px 10px rgba(0,0,0,.25); }
+.dd-popup .leaflet-popup-content { margin: 8px 12px; font: inherit; line-height: 1.4; }
+.dd-popup .leaflet-popup-tip { background: var(--surface); border: 1px solid var(--outline); box-shadow: none; }
 .dd-attr { position: relative; margin: 0 6px 6px 0; }
 .dd-attr > button { width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--outline); background: color-mix(in srgb, var(--surface) 88%, transparent); color: var(--ink-muted);
 	font: 700 13px/1 Georgia, serif; font-style: italic; cursor: pointer; padding: 0; display: block; margin-left: auto; }
@@ -192,13 +247,13 @@ body.dark .maplibregl-ctrl-group button .maplibregl-ctrl-icon { filter: invert(1
 	border-radius: var(--radius); padding: 4px 8px; font-size: .85rem; line-height: 1.3; }
 .dd-attr.open > div { display: block; }
 .dd-attr a { color: var(--ink); text-decoration: underline; }
-.dd-fit { margin: 10px 0 0 10px; }
+.dd-fit { margin: 0 0 10px 10px; }
 .dd-fit button { display: flex; align-items: center; gap: 6px; min-height: 32px; height: auto; padding: 0 10px 0 8px; border: 1px solid var(--outline); border-radius: var(--radius); background: var(--surface);
 	color: var(--ink); font-family: inherit; font-weight: 600; font-size: .95rem; line-height: 1; cursor: pointer; }
 .dd-fit button i { width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--ink-muted); box-sizing: border-box; display: block; }
 .dd-fit button.on { background: var(--accent-soft); border-color: var(--accent); }
 .dd-fit button.on i { background: var(--accent); border-color: var(--accent); }
-.dd-fitnow button { width: 30px; height: 30px; padding: 0; display: flex; align-items: center; justify-content: center; }
+.dd-fitnow button { background: var(--surface); border: 0; cursor: pointer; width: 30px; height: 30px; padding: 0; display: flex; align-items: center; justify-content: center; }
 .dd-fitnow svg { width: 18px; height: 18px; stroke: var(--ink); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .maplibregl-popup-content { background: var(--surface); color: var(--ink); border: 1px solid var(--outline); border-radius: var(--radius-card); box-shadow: 0 2px 10px rgba(0,0,0,.25); padding: 8px 12px; font: inherit; }
 .maplibregl-popup-anchor-top .maplibregl-popup-tip { border-bottom-color: var(--surface); }
@@ -228,7 +283,7 @@ body.dark .maplibregl-ctrl-group button .maplibregl-ctrl-icon { filter: invert(1
 <body>
 <div id="map"></div>
 <script>
-window.ddMain = function () {
+window.ddMain = function (engineName) {
 	'use strict';
 
 	var map = null, key = '', theme = null, styleName = null, styleReady = false;
@@ -236,6 +291,7 @@ window.ddMain = function () {
 	var scene = { markers: [], lines: [] }, wantFit = false;
 	var markers = {}, overlayMarkers = {}, overlay = [], explore = false, pickMode = false, pendingCenter = null, viewTimer = 0;
 	var errors = 0, firstRender = false, firstStyle = false, firstIdle = false;
+	var engine = engineName, gl = engine === 'carto', eng = null, tiles = null, lineGroup = null, programmatic = 0;
 
 	function dd(text) { if (window.ddLog) { window.ddLog(text); } }
 
@@ -360,7 +416,7 @@ window.ddMain = function () {
 	// Recolours the loaded vector style by layer role. Roles are recognised from the layer ids of the
 	// CARTO styles (OpenMapTiles schema); a layer that matches nothing keeps its original colour.
 	function recolor() {
-		if (!map || !theme || !styleReady) { return; }
+		if (!gl || !map || !theme || !styleReady) { return; }
 
 		var p = palette(theme);
 		var layers = (map.getStyle() || {}).layers || [];
@@ -437,6 +493,36 @@ window.ddMain = function () {
 	}
 
 	function drawLines() {
+		if (!map) { return; }
+
+		if (gl) { drawLinesGL(); } else { drawLinesLeaflet(); }
+	}
+
+	// Leaflet: the same lines as polylines (casing, line, dashed line) in their own layer group above the tiles.
+	function drawLinesLeaflet() {
+		lineGroup.clearLayers();
+
+		var caseColor = theme && theme.dark ? 'rgba(0,0,0,0.65)' : 'rgba(255,255,255,0.9)';
+		var lines = scene.lines || [];
+
+		function latlngs(line) { return line.points.map(function (pt) { return [pt[0], pt[1]]; }); }
+		function opacity(line) { return line.opacity == null ? 1 : line.opacity; }
+
+		lines.forEach(function (line) {
+			if (line.dashed) { return; }
+
+			L.polyline(latlngs(line), { color: caseColor, weight: (line.weight || 5) + 4, opacity: opacity(line), lineCap: 'round', lineJoin: 'round', interactive: false }).addTo(lineGroup);
+		});
+
+		lines.forEach(function (line) {
+			var w = line.weight || 5;
+
+			L.polyline(latlngs(line), { color: line.color, weight: w, opacity: opacity(line), lineCap: line.dashed ? 'butt' : 'round', lineJoin: 'round',
+				dashArray: line.dashed ? (w * 1.2) + ' ' + (w * 1.6) : null, interactive: false }).addTo(lineGroup);
+		});
+	}
+
+	function drawLinesGL() {
 		if (!map || !styleReady) { return; }
 
 		['dd-line-dash', 'dd-line', 'dd-casing'].forEach(function (id) {
@@ -532,7 +618,7 @@ window.ddMain = function () {
 			var html = interactive ? null : popupHtml(m);
 
 			if (entry && entry.signature === signature) {
-				entry.marker.setLngLat([m.lon, m.lat]);
+				entry.marker.move(m.lat, m.lon);
 
 				return;
 			}
@@ -540,9 +626,8 @@ window.ddMain = function () {
 			if (entry) { entry.marker.remove(); }
 
 			var el = markerElement(m);
-			var marker = new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat([m.lon, m.lat]);
-
-			if (html) { marker.setPopup(new maplibregl.Popup({ offset: 16, closeButton: false, maxWidth: '260px' }).setHTML(html)); }
+			var z = m.kind === 'vehicle' ? 3 : (m.kind === 'knot' ? 0 : (m.kind === 'stop' ? 1 : 2));
+			var marker = eng.marker(el, m, html, interactive, z);
 
 			if (interactive) {
 				// Overlay stops are chosen, not described: C# shows the actions.
@@ -553,9 +638,6 @@ window.ddMain = function () {
 				});
 			}
 
-			marker.addTo(map);
-
-			var z = m.kind === 'vehicle' ? 3 : (m.kind === 'knot' ? 0 : (m.kind === 'stop' ? 1 : 2));
 			el.style.zIndex = String(z);
 
 			store[m.id] = { marker: marker, signature: signature };
@@ -587,19 +669,16 @@ window.ddMain = function () {
 	function fit() {
 		if (!map) { return; }
 
-		var b = new maplibregl.LngLatBounds();
-		var count = 0;
+		var points = [];
 
-		(scene.lines || []).forEach(function (line) { line.points.forEach(function (pt) { b.extend([pt[1], pt[0]]); count++; }); });
-		(scene.markers || []).forEach(function (m) { b.extend([m.lon, m.lat]); count++; });
+		(scene.lines || []).forEach(function (line) { line.points.forEach(function (pt) { points.push([pt[0], pt[1]]); }); });
+		(scene.markers || []).forEach(function (m) { points.push([m.lat, m.lon]); });
 
-		if (!count) { return; }
+		if (!points.length) { return; }
 
-		if (b.getSouthWest().lat === b.getNorthEast().lat && b.getSouthWest().lng === b.getNorthEast().lng) {
-			map.jumpTo({ center: b.getCenter(), zoom: 16 });
-		} else {
-			map.fitBounds(b, { padding: 48, maxZoom: 17, duration: 0 });
-		}
+		programmatic++;
+
+		try { eng.fit(points); } finally { programmatic--; }
 	}
 
 	function updateLabelZoom() {
@@ -616,6 +695,47 @@ window.ddMain = function () {
 		};
 	}
 
+	// The three controls of the page, filled the same way for either engine.
+	function buildFitNow(box) {
+		var b = document.createElement('button');
+		b.type = 'button';
+		b.title = labels.fitNow;
+		b.setAttribute('aria-label', labels.fitNow);
+		b.innerHTML = '<svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>';
+		b.addEventListener('click', function () { fit(); });
+		box.appendChild(b);
+	}
+
+	function buildAuto(box) {
+		autoButton = document.createElement('button');
+		autoButton.type = 'button';
+		autoButton.innerHTML = '<i></i><span></span>';
+		autoButton.addEventListener('click', function () {
+			setAuto(!autoFit);
+			send('auto:' + autoFit);
+			if (autoFit) { fit(); }
+		});
+		box.appendChild(autoButton);
+		refreshAuto();
+	}
+
+	function buildAttribution(box, html) {
+		var b = document.createElement('button');
+		b.type = 'button';
+		b.textContent = 'i';
+		b.title = labels.info;
+		b.setAttribute('aria-label', labels.info);
+		var d = document.createElement('div');
+		d.innerHTML = html;
+		b.addEventListener('click', function (e) { e.stopPropagation(); box.classList.toggle('open'); });
+		box.appendChild(d);
+		box.appendChild(b);
+		map.on('movestart', function () { box.classList.remove('open'); });
+		document.addEventListener('click', function () { box.classList.remove('open'); });
+	}
+
+	var ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a> &middot; ';
+
 	function refreshAuto() {
 		if (!autoButton) { return; }
 
@@ -631,6 +751,12 @@ window.ddMain = function () {
 
 	// ---- map lifecycle ----
 	function createMap() {
+		if (gl) { createGLMap(); } else { createLeafletMap(); }
+
+		updateLabelZoom();
+	}
+
+	function createGLMap() {
 		styleName = theme.dark ? 'dark-matter' : 'voyager';
 
 		dd('createMap: style ' + styleName + ', key ' + (key ? 'set (' + key.length + ' chars)' : 'missing') + ', container ' + document.getElementById('map').clientWidth + 'x' + document.getElementById('map').clientHeight);
@@ -666,41 +792,11 @@ window.ddMain = function () {
 
 		map.touchZoomRotate.disableRotation();
 		map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
-		map.addControl(control('maplibregl-ctrl maplibregl-ctrl-group dd-fitnow', function (box) {
-			var b = document.createElement('button');
-			b.type = 'button';
-			b.title = labels.fitNow;
-			b.setAttribute('aria-label', labels.fitNow);
-			b.innerHTML = '<svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>';
-			b.addEventListener('click', function () { fit(); });
-			box.appendChild(b);
-		}), 'top-right');
-		map.addControl(control('maplibregl-ctrl dd-fit', function (box) {
-			autoButton = document.createElement('button');
-			autoButton.type = 'button';
-			autoButton.innerHTML = '<i></i><span></span>';
-			autoButton.addEventListener('click', function () {
-				setAuto(!autoFit);
-				send('auto:' + autoFit);
-				if (autoFit) { fit(); }
-			});
-			box.appendChild(autoButton);
-			refreshAuto();
-		}), 'top-left');
-		map.addControl(control('maplibregl-ctrl dd-attr', function (box) {
-			var b = document.createElement('button');
-			b.type = 'button';
-			b.textContent = 'i';
-			b.title = labels.info;
-			b.setAttribute('aria-label', labels.info);
-			var d = document.createElement('div');
-			d.innerHTML = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a> &middot; <a href="https://maplibre.org">MapLibre</a>';
-			b.addEventListener('click', function (e) { e.stopPropagation(); box.classList.toggle('open'); });
-			box.appendChild(d);
-			box.appendChild(b);
-			map.on('movestart', function () { box.classList.remove('open'); });
-			document.addEventListener('click', function () { box.classList.remove('open'); });
-		}), 'bottom-right');
+		map.addControl(control('maplibregl-ctrl maplibregl-ctrl-group dd-fitnow', buildFitNow), 'top-right');
+
+		// Lower left: the top of the map is covered by the page's hints (tracking banner and the like).
+		map.addControl(control('maplibregl-ctrl dd-fit', buildAuto), 'bottom-left');
+		map.addControl(control('maplibregl-ctrl dd-attr', function (box) { buildAttribution(box, ATTRIBUTION + '<a href="https://maplibre.org">MapLibre</a>'); }), 'bottom-right');
 
 		// Moving the map by hand ends automatic fitting (a fixed view is what the person asked for by moving it).
 		['dragstart', 'zoomstart'].forEach(function (name) {
@@ -744,9 +840,154 @@ window.ddMain = function () {
 			if (errors++ < 15) { send('error:' + ((e && e.error && e.error.message) || 'map error')); }
 		});
 
-		updateLabelZoom();
 		watchMap();
 	}
+
+	// ---- Leaflet: raster tiles, no WebGL; the same markers, lines, controls and messages ----
+	function tileUrl(dark) {
+		return 'https://{s}.basemaps.cartocdn.com/' + (dark ? 'dark_all' : 'rastertiles/voyager') + '/{z}/{x}/{y}{r}.png';
+	}
+
+	function lfControl(position, className, build) {
+		var Custom = L.Control.extend({
+			options: { position: position },
+			onAdd: function () {
+				var box = L.DomUtil.create('div', className);
+				build(box);
+				L.DomEvent.disableClickPropagation(box);
+
+				return box;
+			}
+		});
+
+		new Custom().addTo(map);
+	}
+
+	function createLeafletMap() {
+		dd('createLeafletMap: container ' + document.getElementById('map').clientWidth + 'x' + document.getElementById('map').clientHeight);
+
+		map = L.map('map', { center: [51.0504, 13.7373], zoom: 12, maxZoom: 19, zoomControl: false, attributionControl: false, zoomAnimation: true, fadeAnimation: true });
+
+		tiles = L.tileLayer(tileUrl(!!theme.dark), { subdomains: 'abcd', maxZoom: 19, detectRetina: true });
+		tiles.on('tileerror', function () { if (errors++ < 15) { send('error:tile could not be loaded'); } });
+		tiles.on('load', function () { if (!firstIdle) { firstIdle = true; dd('map: tiles loaded'); } });
+		tiles.addTo(map);
+
+		lineGroup = L.layerGroup().addTo(map);
+		styleName = theme.dark ? 'dark' : 'light';
+		styleReady = true;
+
+		L.control.zoom({ position: 'topright' }).addTo(map);
+		lfControl('topright', 'leaflet-bar dd-fitnow', buildFitNow);
+		lfControl('bottomleft', 'dd-fit', buildAuto);
+		lfControl('bottomright', 'dd-attr', function (box) { buildAttribution(box, ATTRIBUTION + '<a href="https://leafletjs.com">Leaflet</a>'); });
+
+		// Our own moves (fit, jump, ease) must not switch Auto-fit off; a drag or a zoom by the person does.
+		map.on('dragstart', function () { if (autoFit) { setAuto(false); } });
+		map.on('zoomstart', function () { if (!programmatic && autoFit) { setAuto(false); } });
+		map.on('zoom', updateLabelZoom);
+
+		map.on('moveend', function () {
+			clearTimeout(viewTimer);
+			viewTimer = setTimeout(reportView, 300);
+		});
+
+		map.on('click', function (e) {
+			if (pickMode) { send('point:' + e.latlng.lat + ',' + e.latlng.lng); }
+		});
+
+		drawLines();
+
+		if (wantFit) { wantFit = false; fit(); }
+
+		reportView();
+	}
+
+	// What differs between the engines, behind one small interface (positions are always lat, lon).
+	var engines = {
+		carto: {
+			marker: function (el, m, html, interactive) {
+				var mk = new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat([m.lon, m.lat]);
+
+				if (html) { mk.setPopup(new maplibregl.Popup({ offset: 16, closeButton: false, maxWidth: '260px' }).setHTML(html)); }
+
+				mk.addTo(map);
+
+				return {
+					move: function (lat, lon) { mk.setLngLat([lon, lat]); },
+					remove: function () { mk.remove(); },
+					position: function () { var p = mk.getLngLat(); return [p.lat, p.lng]; },
+					showPopup: function () { var p = mk.getPopup(); if (p && !p.isOpen()) { mk.togglePopup(); } }
+				};
+			},
+			jump: function (lat, lon, zoom) { map.jumpTo({ center: [lon, lat], zoom: zoom }); },
+			ease: function (lat, lon, zoom, ms) { map.easeTo({ center: [lon, lat], zoom: zoom, duration: ms }); },
+			fit: function (points) {
+				var b = new maplibregl.LngLatBounds();
+
+				points.forEach(function (pt) { b.extend([pt[1], pt[0]]); });
+
+				if (b.getSouthWest().lat === b.getNorthEast().lat && b.getSouthWest().lng === b.getNorthEast().lng) {
+					map.jumpTo({ center: b.getCenter(), zoom: 16 });
+				} else {
+					map.fitBounds(b, { padding: 48, maxZoom: 17, duration: 0 });
+				}
+			},
+			theme: function (t) {
+				var name = t.dark ? 'dark-matter' : 'voyager';
+
+				if (name !== styleName) {
+					styleName = name;
+					styleReady = false;
+					map.setStyle(styleUrl(name));
+				} else {
+					recolor();
+					drawLines();
+				}
+			}
+		},
+
+		leaflet: {
+			marker: function (el, m, html, interactive, z) {
+				var icon = L.divIcon({ html: el, className: 'dd-licon', iconSize: [0, 0], iconAnchor: [0, 0], popupAnchor: [0, -12] });
+				var mk = L.marker([m.lat, m.lon], { icon: icon, interactive: !!(html || interactive), keyboard: false, zIndexOffset: z * 1000 });
+
+				if (html) { mk.bindPopup(html, { closeButton: false, maxWidth: 260, className: 'dd-popup' }); }
+
+				mk.addTo(map);
+
+				return {
+					move: function (lat, lon) { mk.setLatLng([lat, lon]); },
+					remove: function () { mk.remove(); },
+					position: function () { var p = mk.getLatLng(); return [p.lat, p.lng]; },
+					showPopup: function () { if (mk.getPopup() && !mk.isPopupOpen()) { mk.openPopup(); } }
+				};
+			},
+			jump: function (lat, lon, zoom) { programmatic++; try { map.setView([lat, lon], zoom, { animate: false }); } finally { programmatic--; } },
+			ease: function (lat, lon, zoom, ms) { programmatic++; try { map.setView([lat, lon], zoom, { animate: true, duration: ms / 1000 }); } finally { programmatic--; } },
+			fit: function (points) {
+				var b = L.latLngBounds(points);
+
+				if (b.getSouthWest().equals(b.getNorthEast())) {
+					map.setView(b.getCenter(), 16, { animate: false });
+				} else {
+					map.fitBounds(b, { padding: [48, 48], maxZoom: 17, animate: false });
+				}
+			},
+			theme: function (t) {
+				var name = t.dark ? 'dark' : 'light';
+
+				if (name !== styleName) {
+					styleName = name;
+					tiles.setUrl(tileUrl(!!t.dark));
+				}
+
+				drawLines();
+			}
+		}
+	};
+
+	eng = engines[engine];
 
 	// What the map reports about itself, for the log: first style, first frame, idle, failures with their details.
 	function watchMap() {
@@ -780,16 +1021,7 @@ window.ddMain = function () {
 
 		if (!map) { return; }
 
-		var name = t.dark ? 'dark-matter' : 'voyager';
-
-		if (name !== styleName) {
-			styleName = name;
-			styleReady = false;
-			map.setStyle(styleUrl(name));
-		} else {
-			recolor();
-			drawLines();
-		}
+		eng.theme(t);
 	}
 
 	// The one entry point C# calls (HybridWebView.InvokeJavaScriptAsync).
@@ -822,7 +1054,7 @@ window.ddMain = function () {
 				explore = !!arg.explore;
 				pickMode = !!arg.pick;
 				if (explore || pickMode) { setAuto(false); }
-				if (arg.center && map) { map.jumpTo({ center: [arg.center.lon, arg.center.lat], zoom: arg.center.zoom || 15 }); }
+				if (arg.center && map) { eng.jump(arg.center.lat, arg.center.lon, arg.center.zoom || 15); }
 				reportView();
 				break;
 
@@ -833,7 +1065,7 @@ window.ddMain = function () {
 
 			case 'center':
 				if (map) {
-					map.easeTo({ center: [arg.lon, arg.lat], zoom: arg.zoom || Math.max(map.getZoom(), 15), duration: 400 });
+					eng.ease(arg.lat, arg.lon, arg.zoom || Math.max(map.getZoom(), 15), 400);
 				} else {
 					pendingCenter = arg;
 				}
@@ -846,7 +1078,7 @@ window.ddMain = function () {
 			case 'key':
 				key = arg.key || '';
 				errors = 0;
-				if (map) { styleReady = false; map.setStyle(styleUrl(styleName)); }
+				if (map && gl) { styleReady = false; map.setStyle(styleUrl(styleName)); }
 				break;
 
 			case 'set':
@@ -863,11 +1095,10 @@ window.ddMain = function () {
 				var entry = markers[arg];
 
 				if (entry && map) {
-					map.easeTo({ center: entry.marker.getLngLat(), zoom: Math.max(map.getZoom(), 16), duration: 350 });
+					var at = entry.marker.position();
 
-					var popup = entry.marker.getPopup();
-
-					if (popup && !popup.isOpen()) { entry.marker.togglePopup(); }
+					eng.ease(at[0], at[1], Math.max(map.getZoom(), 16), 350);
+					entry.marker.showPopup();
 				}
 				break;
 		}

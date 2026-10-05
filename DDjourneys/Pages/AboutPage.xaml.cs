@@ -5,15 +5,19 @@ using DDjourneys.Support;
 namespace DDjourneys.Pages;
 
 /// <summary>
-/// The README of the project, shown as it is. The file is part of the app package (see the EmbeddedResource entry in the
-/// project file as an embedded resource), so it is there without a network and always matches the version of the app that shows it.
+/// The README of the project, shown as it is, in the language of the app (German or else English). Both files are part
+/// of the app package (EmbeddedResource entries in the project file), so they are there without a network and always match
+/// the version of the app that shows them. The two files say the same; a test keeps their structure in step.
 /// </summary>
 public partial class AboutPage : ContentPage
 {
-	/// <summary>Name of the document inside the app package.</summary>
+	/// <summary>Name of the English document inside the app package.</summary>
 	public const string ResourceName = "DDjourneys.README.md";
 
-	private bool _loaded;
+	/// <summary>Name of the German document inside the app package.</summary>
+	public const string GermanResourceName = "DDjourneys.README.de.md";
+
+	private string? _loadedName;
 
 	public AboutPage()
 	{
@@ -28,12 +32,14 @@ public partial class AboutPage : ContentPage
 
 		Motion.EnterPage(this);
 
-		if (_loaded)
+		string name = ResourceFor(LocalizationService.Current.LanguageCode);
+
+		if (string.Equals(_loadedName, name, StringComparison.Ordinal))
 		{
 			return;
 		}
 
-		_loaded = true;
+		_loadedName = name;
 
 		try
 		{
@@ -43,8 +49,8 @@ public partial class AboutPage : ContentPage
 					async () =>
 					{
 						await using Stream stream =
-							typeof(AboutPage).Assembly.GetManifestResourceStream(ResourceName)
-							?? throw new FileNotFoundException($"{ResourceName} is not embedded in the app.");
+							typeof(AboutPage).Assembly.GetManifestResourceStream(name)
+							?? throw new FileNotFoundException($"{name} is not embedded in the app.");
 
 						using var reader = new StreamReader(stream);
 
@@ -52,15 +58,25 @@ public partial class AboutPage : ContentPage
 					});
 
 			Document.Markdown = text;
+			Message.IsVisible = false;
 		}
 		catch (Exception ex)
 		{
-			DiagnosticLog.Write($"About page: {ResourceName} not read: {ex.Message}");
+			DiagnosticLog.Write($"About page: {name} not read: {ex.Message}");
+
+			_loadedName = null;
 
 			Message.Text = LocalizationService.Current.CurrentStrings.Common.SomethingWentWrong;
 			Message.IsVisible = true;
 		}
 	}
+
+	/// <summary>The document for a UI language code ("de", "de-DE": German; anything else: English).</summary>
+	public static string ResourceFor(string? languageCode) =>
+		languageCode is { } code
+		&& code.StartsWith("de", StringComparison.OrdinalIgnoreCase)
+			? GermanResourceName
+			: ResourceName;
 
 	private static async void OnLinkTapped(object? sender, string address)
 	{

@@ -21,11 +21,17 @@ public sealed partial class MapView : ContentView
 	/// <summary>Preference key: whether the map re-fits itself to its scene ("Auto-fit").</summary>
 	private const string AutoFitKey = "MapAutoFit";
 
-	private readonly HybridWebView _web;
+	private HybridWebView _web;
+	private MapEngine _engine;
+	private bool _bootReceived;
+	private bool _pageBlocked;
+	private string _pageReason = string.Empty;
+	private readonly Button _bypassButton;
+	private readonly Button _leafletButton;
 	private MapScene? _scene;
 	private string? _pendingFocus;
 	private bool _ready;
-	private readonly System.Diagnostics.Stopwatch _created;
+	private System.Diagnostics.Stopwatch _created = System.Diagnostics.Stopwatch.StartNew();
 	private bool _pageReady;
 	private bool _subscribed;
 	private readonly Border _notice;
@@ -37,41 +43,7 @@ public sealed partial class MapView : ContentView
 
 	public MapView()
 	{
-		_web =
-			new HybridWebView
-			{
-				HorizontalOptions = LayoutOptions.Fill,
-				VerticalOptions = LayoutOptions.Fill
-			};
-
-		_web.RawMessageReceived += OnRawMessage;
-
-		// Logging on: every request the page makes, so a style, a tile or a script that never arrives shows.
-		if (DiagnosticLog.Enabled)
-		{
-			_web.WebResourceRequested += (_, e) => DiagnosticLog.Write($"[Map] page requests {e.Uri}");
-		}
-
-		_created = System.Diagnostics.Stopwatch.StartNew();
-		DiagnosticLog.Write("[Map] web view created");
-
-#if ANDROID
-		// The page scales its own text by the OS text size (see MapTheme.FontScale); the web view must not
-		// scale it a second time.
-		_web.HandlerChanged +=
-			(_, _) =>
-			{
-				WebBridge.PaintBackground(_web);
-
-				if (_web.Handler?.PlatformView is Android.Webkit.WebView platformView)
-				{
-					platformView.Settings.TextZoom = 100;
-
-					// Logging on: what the device and its web view are, and a look inside the page when it stays silent.
-					DDjourneys.Platforms.Android.WebViewDiagnostics.Attach(platformView, "map", () => _pageReady);
-				}
-			};
-#endif
+		_web = CreateWeb();
 
 		// The web view takes every touch (a swipe pans the map), so a strip of plain page background stays below
 		// it, inside the view's own bounds: there is always somewhere to put a finger to scroll the page or
@@ -115,6 +87,26 @@ public sealed partial class MapView : ContentView
 
 		_settingsButton.Clicked += async (_, _) => await Shell.Current.GoToAsync(Routes.Settings);
 
+		_bypassButton =
+			new Button
+			{
+				HorizontalOptions = LayoutOptions.Center,
+				Text = LocalizationService.Current.CurrentStrings.Extras.MapBypass,
+				StyleClass = ["Tonal"]
+			};
+
+		_bypassButton.Clicked += async (_, _) => await BypassAsync();
+
+		_leafletButton =
+			new Button
+			{
+				HorizontalOptions = LayoutOptions.Center,
+				Text = LocalizationService.Current.CurrentStrings.Extras.MapUseLeaflet,
+				StyleClass = ["Tonal"]
+			};
+
+		_leafletButton.Clicked += (_, _) => MapAvailability.SetEngine(MapEngine.Leaflet);
+
 		_notice =
 			new Border
 			{
@@ -135,6 +127,8 @@ public sealed partial class MapView : ContentView
 								HorizontalOptions = LayoutOptions.Center
 							},
 							_noticeText,
+							_leafletButton,
+							_bypassButton,
 							_settingsButton
 						}
 					}
@@ -171,6 +165,48 @@ public sealed partial class MapView : ContentView
 			LocalizationService.Current.CurrentStrings.Extras.MapTitle);
 
 		HandlerChanged += OnHandlerChanged;
+	}
+
+	/// <summary>A fresh web view: each (re)start of the page gets its own, so no state of an earlier engine is left in it.</summary>
+	private HybridWebView CreateWeb()
+	{
+		var web =
+			new HybridWebView
+			{
+				HorizontalOptions = LayoutOptions.Fill,
+				VerticalOptions = LayoutOptions.Fill
+			};
+
+		web.RawMessageReceived += OnRawMessage;
+
+		// Logging on: every request the page makes, so a style, a tile or a script that never arrives shows.
+		if (DiagnosticLog.Enabled)
+		{
+			web.WebResourceRequested += (_, e) => DiagnosticLog.Write($"[Map] page requests {e.Uri}");
+		}
+
+		_created = System.Diagnostics.Stopwatch.StartNew();
+		DiagnosticLog.Write("[Map] web view created");
+
+#if ANDROID
+		// The page scales its own text by the OS text size (see MapTheme.FontScale); the web view must not
+		// scale it a second time.
+		web.HandlerChanged +=
+			(_, _) =>
+			{
+				WebBridge.PaintBackground(web);
+
+				if (web.Handler?.PlatformView is Android.Webkit.WebView platformView)
+				{
+					platformView.Settings.TextZoom = 100;
+
+					// Logging on: what the device and its web view are, and a look inside the page when it stays silent.
+					DDjourneys.Platforms.Android.WebViewDiagnostics.Attach(platformView, "map", () => _pageReady);
+				}
+			};
+#endif
+
+		return web;
 	}
 
 	/// <summary>Shows the scene (replacing the previous one). Markers with the same id stay in place.</summary>
@@ -268,9 +304,22 @@ public sealed partial class MapView : ContentView
 	{
 		string message = e.Message ?? string.Empty;
 
+		// A web view that was replaced (another engine) may still say something.
+		if (!ReferenceEquals(sender, _web))
+		{
+			return;
+		}
+
 		try
 		{
-			if (message == "ready")
+			if (message == "boot")
+			{
+				// The page is up and waits for the engine: the choice is the app's.
+				_bootReceived = true;
+
+				await StartPageAsync(MapSupport.Bypassed);
+			}
+			else if (message == "ready")
 			{
 				_pageReady = true;
 
@@ -286,7 +335,11 @@ public sealed partial class MapView : ContentView
 			else if (message.StartsWith("unsupported:", StringComparison.Ordinal))
 			{
 				// The page's own check (WebGL 2, language features) failed before MapLibre was loaded.
-				MapSupport.ReportFromPage(message[12..]);
+				_pageBlocked = true;
+				_pageReason = message[12..];
+
+				DiagnosticLog.Write($"[Map] the page cannot draw the map: {_pageReason}");
+
 				MapSupport.Finish();
 
 				await MainThread.InvokeOnMainThreadAsync(ApplyAvailability);
@@ -398,49 +451,98 @@ public sealed partial class MapView : ContentView
 				}
 			});
 
-	/// <summary>The map when there is a usable key, else the notice that says what to do.</summary>
-	private void ApplyAvailability()
+	/// <summary>Tells the page which engine to start (and whether to ignore its own checks).</summary>
+	private Task StartPageAsync(bool force) =>
+		WebBridge.CallAsync(
+			_web,
+			"ddBoot",
+			"start",
+			$"{{\"engine\":\"{(_engine == MapEngine.Leaflet ? MapAvailability.LeafletId : MapAvailability.CartoId)}\",\"force\":{(force ? "true" : "false")}}}",
+			"Map");
+
+	/// <summary>"Try anyway": the checks stop applying; the page that is already loaded is told to go on, else the web view is created now.</summary>
+	private async Task BypassAsync()
 	{
-		MapBlock block = MapSupport.Block;
-		bool available = block == MapBlock.None && MapAvailability.IsAvailable;
+		MapSupport.Bypass();
+
+		_pageBlocked = false;
+
 		bool attached = _grid.Children.Contains(_web);
 
-		if (available && !attached)
-		{
-			DiagnosticLog.Write("[Map] loading the map page");
+		ApplyAvailability();
 
-			MapSupport.Begin();
-			_grid.Children.Insert(0, _web);
-		}
-		else if (!available && attached)
+		if (attached
+			&& _bootReceived)
 		{
-			DiagnosticLog.Write($"[Map] map not shown: {(block == MapBlock.None ? "no usable key" : MapSupport.Detail)}");
+			await StartPageAsync(true);
+		}
+	}
+
+	/// <summary>
+	/// The map when it can be drawn (the engine's needs are met: for CARTO a key and a device that passes the check,
+	/// for Leaflet nothing), else the notice that says why and what can be done. A change of engine starts a new web view.
+	/// </summary>
+	private void ApplyAvailability()
+	{
+		MapEngine engine = MapAvailability.Engine;
+		bool carto = engine == MapEngine.Carto;
+		MapBlock block = carto ? MapSupport.Block : MapBlock.None;
+		bool wanted = block == MapBlock.None && MapAvailability.IsAvailable;
+		bool attached = _grid.Children.Contains(_web);
+
+		if (attached
+			&& (!wanted || engine != _engine))
+		{
+			DiagnosticLog.Write($"[Map] web view removed ({(wanted ? "engine changed" : "map not wanted")})");
 
 			_grid.Children.Remove(_web);
+			_web.RawMessageReceived -= OnRawMessage;
 			MapSupport.Finish();
 
+			_web = CreateWeb();
 			_pageReady = false;
 			_ready = false;
-		}
-		else if (!available && block != MapBlock.None)
-		{
-			DiagnosticLog.Write($"[Map] map not started: {MapSupport.Detail}");
+			_bootReceived = false;
+			_pageBlocked = false;
+			attached = false;
 		}
 
-		_notice.IsVisible = !available;
+		if (wanted
+			&& !attached)
+		{
+			DiagnosticLog.Write($"[Map] loading the map page ({engine})");
+
+			_engine = engine;
+
+			if (carto)
+			{
+				MapSupport.Begin();
+			}
+
+			_grid.Children.Insert(0, _web);
+		}
+		else if (!wanted)
+		{
+			DiagnosticLog.Write($"[Map] map not started: {(block == MapBlock.None ? "no usable key" : MapSupport.Detail)}");
+		}
+
+		bool shown = wanted && !_pageBlocked;
+
+		_notice.IsVisible = !shown;
 
 		ExtrasStrings strings = LocalizationService.Current.CurrentStrings.Extras;
 
 		_noticeText.Text =
-			block switch
-			{
-				MapBlock.Device => strings.MapUnsupported,
-				MapBlock.Crashed => strings.MapCrashed,
-				_ => MapAvailability.HasKey ? strings.MapKeyInvalid : strings.MapKeyMissing
-			};
+			_pageBlocked || block == MapBlock.Device
+				? strings.MapUnsupported
+				: block == MapBlock.Crashed
+					? strings.MapCrashed
+					: MapAvailability.HasKey ? strings.MapKeyInvalid : strings.MapKeyMissing;
 
-		// The device cannot be changed in Settings; the key can (and a changed key retries after a crash).
-		_settingsButton.IsVisible = block != MapBlock.Device;
+		// What can be done about it: try the CARTO map anyway (it may work, or end the app: that is remembered), use
+		// Leaflet, or look at the settings.
+		_bypassButton.IsVisible = carto && (_pageBlocked || block != MapBlock.None);
+		_leafletButton.IsVisible = carto;
 	}
 
 	private async void OnThemeChanged(object? sender, EventArgs e)

@@ -2,7 +2,7 @@
 
 DDjourneys is a journey planner for buses, trams and trains in and around Dresden. You tell it where you are going and when, and it shows you how to get there, what is late, and where your vehicle is right now. It runs on Android phones and on Windows.
 
-I wrote it because I wanted something like the old Android app oeffi, but made for the timetable data of the Verkehrsverbund Oberelbe (VVO) and in a shape that fits current phones and works on Windows too. **It is not an official app of the VVO or the DVB, and it is not made or actively endorsed by either of them.**
+I wrote it because I wanted something like the old Android app oeffi, but made for the timetable data of the Verkehrsverbund Oberelbe (VVO) and in a shape that fits current phones and works on Windows too. It is not an official app of the VVO or the DVB, and it is not made or actively endorsed by either of them.
 
 ## Getting started
 
@@ -42,7 +42,9 @@ Following works with the VVO provider only. The app hands the journey to a servi
 
 ## Map
 
-The map needs a key from CARTO, the company that makes the map background. The app does not come with a key of its own. Without a key the map stays off and the app says so. You get a key on the CARTO website, then paste it under Settings, Map. Everything else in the app works without it.
+Under Settings, Map you choose which engine draws the map. CARTO is the sharp vector map in the colours of the app. It needs a key from CARTO, the company that makes the map background, and a phone whose web view can run WebGL 2. The app does not come with a key of its own. You get one on the CARTO website and paste it under Settings, Map. Leaflet is the simple map. It shows ready-made picture tiles from CARTO, needs no key and runs on old phones too, but only light and dark follow the theme of the app. Both engines show the same journeys, stops and vehicles.
+
+If the phone cannot draw the CARTO map, the app says so instead of showing an empty square, and offers to use Leaflet instead or to try anyway. Trying anyway can end the app. If that happens the app remembers it and keeps the CARTO map off until you try again or save the key again. Everything else in the app works without a map.
 
 When the map shows the surroundings, stops appear once you zoom in. Tap a stop to see its departures or to plan a journey to or from it.
 
@@ -64,7 +66,7 @@ Other apps can open DDjourneys with a link, for example `ddjourneys://go?to=Hell
 
 ## Where the data comes from
 
-Journeys, departures and disruptions come from the interfaces of the VVO. Following a journey uses the DVB service mentioned above. Live positions come from the TLMS community network, which collects radio telegrams and GPS positions, so it is incomplete by nature. Accessibility of stops and service points come from the open data of the city of Dresden. The map background comes from CARTO and OpenStreetMap. The timetable data belongs to the VVO and the DVB.
+Journeys, departures and disruptions come from the interfaces of the VVO. Following a journey uses the DVB service mentioned above. Live positions come from the TLMS community network, which collects radio telegrams and GPS positions, so it is incomplete by nature. Accessibility of stops and service points come from the open data of the city of Dresden. The map background comes from CARTO and OpenStreetMap, drawn by the open source libraries MapLibre and Leaflet. The timetable data belongs to the VVO and the DVB.
 
 ## Privacy
 

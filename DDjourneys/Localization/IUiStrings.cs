@@ -254,6 +254,12 @@ public sealed class SettingsStrings
 	public required string MapKeyStatusMissing { get; init; }
 	public required string MapKeyStatusInvalid { get; init; }
 	public required string MapKeyStatusSet { get; init; }
+	public required string MapEngineTitle { get; init; }
+	public required string MapEngineDescription { get; init; }
+	public required string MapEngineCarto { get; init; }
+	public required string MapEngineCartoDescription { get; init; }
+	public required string MapEngineLeaflet { get; init; }
+	public required string MapEngineLeafletDescription { get; init; }
 	public required string About { get; init; }
 	public required string ThemeSystem { get; init; }
 	public required string ThemeLight { get; init; }
@@ -629,6 +635,8 @@ public sealed class ExtrasStrings
 	public required string MapKeyOpenSettings { get; init; }
 	public required string MapUnsupported { get; init; }
 	public required string MapCrashed { get; init; }
+	public required string MapBypass { get; init; }
+	public required string MapUseLeaflet { get; init; }
 	public required string MapPickStart { get; init; }
 	public required string MapPickEnd { get; init; }
 	public required string MapPickStop { get; init; }

@@ -30,16 +30,29 @@ public static class MapSupport
 	private const string CrashedKey = "map.crashed";
 
 	private static (MapBlock Block, string Detail)? _check;
-	private static string? _pageBlock;
+
+	/// <summary>The person chose "Try anyway": for the rest of this run the checks are not applied (the page is told to load the map regardless).</summary>
+	public static bool Bypassed { get; private set; }
 
 	public static MapBlock Block =>
-		_pageBlock is not null
-			? MapBlock.Device
+		Bypassed
+			? MapBlock.None
 			: (_check ??= Evaluate()).Block;
 
 	/// <summary>The technical reason, for the log.</summary>
 	public static string Detail =>
-		_pageBlock ?? (_check ??= Evaluate()).Detail;
+		(_check ??= Evaluate()).Detail;
+
+	/// <summary>Try anyway: the checks stop applying and the attempt is marked like any other (a crash is remembered).</summary>
+	public static void Bypass()
+	{
+		DiagnosticLog.Write($"[Map] bypass chosen despite: {Detail}");
+
+		Bypassed = true;
+
+		Store(CrashedKey, false);
+		Store(PendingKey, true);
+	}
 
 	/// <summary>The page is about to be loaded: if the app ends before <see cref="Finish"/>, the next start knows.</summary>
 	public static void Begin() =>
@@ -49,22 +62,13 @@ public static class MapSupport
 	public static void Finish() =>
 		Store(PendingKey, false);
 
-	/// <summary>The user changed the key: one more try.</summary>
+	/// <summary>The key was changed: one more try after a crash.</summary>
 	public static void Retry()
 	{
 		Store(CrashedKey, false);
 		Store(PendingKey, false);
 
-		_pageBlock = null;
 		_check = null;
-	}
-
-	/// <summary>The page itself found it cannot draw (WebGL 2 missing and the like).</summary>
-	public static void ReportFromPage(string reason)
-	{
-		_pageBlock = reason;
-
-		DiagnosticLog.Write($"[Map] the page cannot draw the map: {reason}");
 	}
 
 	private static (MapBlock, string) Evaluate()

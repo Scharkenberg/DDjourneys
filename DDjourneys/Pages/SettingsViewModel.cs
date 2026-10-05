@@ -37,6 +37,7 @@ public sealed partial class SettingsViewModel : DisposableViewModel
 		OpenAboutCommand = new AsyncCommand(OpenAboutAsync);
 		CopyInterfacesCommand = new AsyncCommand(CopyInterfacesAsync);
 		SaveMapKeyCommand = new Command(SaveMapKey, () => MapKeyChanged);
+		SelectMapEngineCommand = new Command<string>(SelectMapEngine);
 
 		_mapKeyDraft = _settings.MapApiKey;
 
@@ -65,6 +66,25 @@ public sealed partial class SettingsViewModel : DisposableViewModel
 		!string.Equals(_mapKeyDraft.Trim(), _settings.MapApiKey, StringComparison.Ordinal);
 
 	public Command SaveMapKeyCommand { get; }
+
+	public Command<string> SelectMapEngineCommand { get; }
+
+	public bool MapEngineIsCarto =>
+		_settings.MapEngine == MapEngine.Carto;
+
+	public bool MapEngineIsLeaflet =>
+		_settings.MapEngine == MapEngine.Leaflet;
+
+	private void SelectMapEngine(string? id)
+	{
+		_settings.MapEngine =
+			string.Equals(id, MapAvailability.LeafletId, StringComparison.Ordinal)
+				? MapEngine.Leaflet
+				: MapEngine.Carto;
+
+		OnPropertyChanged(nameof(MapEngineIsCarto));
+		OnPropertyChanged(nameof(MapEngineIsLeaflet));
+	}
 
 	public string MapKeyStatus
 	{
@@ -97,6 +117,8 @@ public sealed partial class SettingsViewModel : DisposableViewModel
 				{
 					OnPropertyChanged(nameof(MapKeyStatus));
 					OnPropertyChanged(nameof(MapKeyChanged));
+					OnPropertyChanged(nameof(MapEngineIsCarto));
+					OnPropertyChanged(nameof(MapEngineIsLeaflet));
 				}
 			});
 

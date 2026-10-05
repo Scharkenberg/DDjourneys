@@ -1,5 +1,15 @@
 namespace DDjourneys.Support;
 
+/// <summary>The library that draws the map page: MapLibre GL with CARTO's vector styles, or Leaflet with raster tiles.</summary>
+public enum MapEngine
+{
+	/// <summary>Vector map (WebGL 2, needs the user's CARTO key), recoloured in the app's palette.</summary>
+	Carto,
+
+	/// <summary>Raster tiles, no key, no WebGL: works on old devices and web views.</summary>
+	Leaflet
+}
+
 /// <summary>
 /// Whether the map can be shown. The basemap is CARTO's and needs the user's own API key (Settings > Map): without one,
 /// or when CARTO does not accept it, the map is switched off and says why instead of showing a blank view.
@@ -37,7 +47,52 @@ public static class MapAvailability
 		_rejectedKey is { } rejected
 		&& string.Equals(rejected, Key, StringComparison.Ordinal);
 
-	public static bool IsAvailable => HasKey && !IsRejected;
+	/// <summary>Which library draws the map (Settings > Map).</summary>
+	public static MapEngine Engine
+	{
+		get
+		{
+			try
+			{
+				return string.Equals(Preferences.Default.Get(EnginePreferenceKey, string.Empty), LeafletId, StringComparison.Ordinal)
+					? MapEngine.Leaflet
+					: MapEngine.Carto;
+			}
+			catch (Exception)
+			{
+				return MapEngine.Carto;
+			}
+		}
+	}
+
+	/// <summary>Leaflet needs no key; the CARTO vector map needs a key CARTO accepts.</summary>
+	public static bool IsAvailable =>
+		Engine == MapEngine.Leaflet
+		|| (HasKey && !IsRejected);
+
+	/// <summary>Preferences value of <see cref="MapEngine.Leaflet"/> (the CARTO engine stores nothing but "carto").</summary>
+	public const string LeafletId = "leaflet";
+
+	public const string CartoId = "carto";
+
+	/// <summary>The preference the engine is stored in (<see cref="AppSettings.MapEngine"/> writes it).</summary>
+	public const string EnginePreferenceKey = "mapEngine";
+
+	/// <summary>Chooses the engine (as text, like every setting) and tells the open maps.</summary>
+	public static void SetEngine(MapEngine engine)
+	{
+		try
+		{
+			Preferences.Default.Set(EnginePreferenceKey, engine == MapEngine.Leaflet ? LeafletId : CartoId);
+		}
+		catch (Exception)
+		{
+			// Not stored: the map stays as it is.
+			return;
+		}
+
+		Changed?.Invoke(null, EventArgs.Empty);
+	}
 
 	/// <summary>The map page reports that CARTO refused the key.</summary>
 	public static void Reject()

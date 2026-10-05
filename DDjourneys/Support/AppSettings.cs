@@ -324,6 +324,17 @@ public sealed class AppSettings
 		}
 	}
 
+	/// <summary>The library that draws the map: "carto" (vector, needs a key) or "leaflet" (raster tiles, no key).</summary>
+	public MapEngine MapEngine
+	{
+		get => MapAvailability.Engine;
+		set
+		{
+			MapAvailability.SetEngine(value);
+			Changed?.Invoke(this, nameof(MapEngine));
+		}
+	}
+
 	// ----- Place search -----
 
 	public const int MinSearchDelayMs = 200;
