@@ -33,15 +33,18 @@ public sealed class TlmsVehicleProvider : ILiveVehicleProvider
 			.ConnectAsync(Endpoint, cancellationToken)
 			.ConfigureAwait(false);
 
-		byte[] request =
-			System.Text.Encoding.UTF8.GetBytes(
+		string requestJson =
 				new JsonObject
 				{
 					["lines"] = Wire.Array(filter.Lines.Select(line => (JsonNode?)line)),
 					["positions"] = new JsonArray(),
 					["regions"] = Wire.Array(filter.Region),
 					["enrich"] = false
-				}.ToJsonString());
+				}.ToJsonString();
+
+		DiagnosticLog.Api("TLMS", $"connect {Endpoint}, request:", requestJson);
+
+		byte[] request = System.Text.Encoding.UTF8.GetBytes(requestJson);
 
 		await socket
 			.SendAsync(
@@ -52,6 +55,7 @@ public sealed class TlmsVehicleProvider : ILiveVehicleProvider
 			.ConfigureAwait(false);
 
 		var buffer = new byte[16 * 1024];
+		int messages = 0;
 
 		try
 		{
@@ -64,7 +68,15 @@ public sealed class TlmsVehicleProvider : ILiveVehicleProvider
 
 				if (text is null)
 				{
+					DiagnosticLog.Write($"[TLMS] closed by the server after {messages} messages");
+
 					yield break;
+				}
+
+				// The first few messages show what the service sends; the rest would only fill the file.
+				if (++messages <= 3)
+				{
+					DiagnosticLog.Api("TLMS", $"message {messages}:", text);
 				}
 
 				foreach (LiveVehicle vehicle in Parse(text, filter))

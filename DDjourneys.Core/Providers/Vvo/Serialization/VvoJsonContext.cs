@@ -12,7 +12,8 @@ namespace DDjourneys.Core.Providers.Vvo.Serialization;
 [JsonSourceGenerationOptions(
 	PropertyNameCaseInsensitive = true,
 	DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-	Converters = [typeof(VvoDateTimeOffsetConverter)])]
+	Converters = new[] { typeof(VvoDateTimeOffsetConverter) })]
+[JsonSerializable(typeof(string))]
 [JsonSerializable(typeof(VvoPointResponse))]
 [JsonSerializable(typeof(VvoTripResponse))]
 [JsonSerializable(typeof(VvoDepartureResponse))]

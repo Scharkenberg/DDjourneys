@@ -214,10 +214,10 @@ public sealed class SchutzengelTrackerContractTests
 			};
 
 
-		object rawData =
-			new
+		System.Text.Json.Nodes.JsonObject rawData =
+			new()
 			{
-				source = "test"
+				["source"] = "test"
 			};
 
 
@@ -498,7 +498,7 @@ public sealed class SchutzengelTrackerContractTests
 			};
 
 
-		object raw =
+		System.Text.Json.Nodes.JsonObject raw =
 			SchutzengelRawDataTranslator.Translate(
 				route,
 				journey,
@@ -511,7 +511,7 @@ public sealed class SchutzengelTrackerContractTests
 
 		using JsonDocument document =
 			JsonDocument.Parse(
-				JsonSerializer.Serialize(raw));
+				raw.ToJsonString());
 
 
 		JsonElement root =
