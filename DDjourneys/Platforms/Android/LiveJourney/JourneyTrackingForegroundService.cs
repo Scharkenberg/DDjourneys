@@ -5,8 +5,6 @@ using Android.OS;
 
 using DDjourneys.Core.Tracking.Live;
 
-// The namespace is part of the generated Java class name of this service; it stays as it is
-// although the class no longer lives in a Schutzengel folder.
 namespace DDjourneys.Platforms.Android.LiveJourney;
 
 /// <summary>

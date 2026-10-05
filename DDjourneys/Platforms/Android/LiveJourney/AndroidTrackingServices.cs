@@ -31,10 +31,10 @@ internal sealed class AndroidLiveJourneySurface : ILiveJourneySurface
 internal sealed class AndroidTrackingRuntime : ITrackingRuntime
 {
 	public bool TryKeepAlive() =>
-		Schutzengel.JourneyTrackingForegroundService.TryStart();
+		JourneyTrackingForegroundService.TryStart();
 
 	public void Release() =>
-		Schutzengel.JourneyTrackingForegroundService.Stop();
+		JourneyTrackingForegroundService.Stop();
 }
 
 /// <summary>POST_NOTIFICATIONS (Android 13+) and the user's per-app notification switch.</summary>
