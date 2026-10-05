@@ -316,6 +316,26 @@ public sealed class PlaceStore
 	}
 
 
+	/// <summary>The saved connection between exactly these two places, if there is one.</summary>
+	public SavedRoute? FindSavedRoute(
+		Location from,
+		Location to)
+	{
+		ArgumentNullException.ThrowIfNull(from);
+		ArgumentNullException.ThrowIfNull(to);
+
+		lock (_gate)
+		{
+			string fromKey = KeyOf(from);
+			string toKey = KeyOf(to);
+
+			return _savedRoutes.FirstOrDefault(
+				route => KeyOf(route.From) == fromKey
+					&& KeyOf(route.To) == toKey);
+		}
+	}
+
+
 	public bool HasSavedRoute(
 		string name)
 	{

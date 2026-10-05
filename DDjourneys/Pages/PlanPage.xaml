@@ -326,36 +326,27 @@
 				</VerticalStackLayout>
 			</Border>
 
-			<!--  Search; saving the connection under a name sits next to it, where it belongs to the search  -->
+			<!--  Search; the bookmark of the connection sits next to it: filled when saved, one tap toggles  -->
 			<Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource SpaceS}">
 				<Button Command="{Binding SearchCommand}" Text="{localization:Tr Plan.SearchJourneys}" />
 
 				<Border
 					Grid.Column="1"
 					BackgroundColor="{DynamicResource AccentSoft}"
-					SemanticProperties.Description="{localization:Tr Plan.SaveRoute}"
+					SemanticProperties.Description="{Binding Bookmark.Description}"
 					StrokeShape="RoundRectangle 6"
 					StrokeThickness="0"
 					WidthRequest="52"
 					support:Dense.MinHeight="48"
 					support:Motion.Feedback="True">
-					<Border.Triggers>
-						<DataTrigger
-							Binding="{Binding CanSearch}"
-							TargetType="Border"
-							Value="False">
-							<Setter Property="Opacity" Value="0.35" />
-							<Setter Property="InputTransparent" Value="True" />
-						</DataTrigger>
-					</Border.Triggers>
 					<controls:Icon
-						Glyph="Bookmark"
+						Glyph="{Binding Bookmark.Glyph}"
 						HorizontalOptions="Center"
 						Size="22"
 						VerticalOptions="Center"
 						Color="{DynamicResource Accent}" />
 					<Border.GestureRecognizers>
-						<TapGestureRecognizer Command="{Binding SaveRouteCommand}" />
+						<TapGestureRecognizer Command="{Binding Bookmark.ToggleCommand}" />
 					</Border.GestureRecognizers>
 				</Border>
 			</Grid>

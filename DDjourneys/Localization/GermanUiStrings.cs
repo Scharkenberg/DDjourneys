@@ -62,6 +62,8 @@ public sealed class GermanUiStrings : IUiStrings
 		RouteNamePrompt = "Name für diese Verbindung",
 		SavedRoutes = "Gespeicherte Verbindungen",
 		ForgetSavedRoute = "Gespeicherte Verbindung entfernen",
+		RouteSaved = "Verbindung gespeichert",
+		RouteRemoved = "Verbindung aus den gespeicherten entfernt",
 		LocationPermissionDenied = "Für den Standort wird die Berechtigung benötigt.",
 		LocationUnavailable = "Der Standort konnte nicht bestimmt werden.",
 		NoStopNearby = "Keine Haltestelle in der Nähe gefunden.",

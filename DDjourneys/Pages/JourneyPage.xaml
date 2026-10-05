@@ -551,6 +551,9 @@
 					ActionGlyph="Share"
 					From="{Binding FromName}"
 					FromPlace="{Binding FromPlace}"
+					SecondaryCommand="{Binding Bookmark.ToggleCommand}"
+					SecondaryDescription="{Binding Bookmark.Description}"
+					SecondaryGlyph="{Binding Bookmark.Glyph}"
 					Subtitle="{Binding DayText}"
 					To="{Binding ToName}"
 					ToPlace="{Binding ToPlace}" />

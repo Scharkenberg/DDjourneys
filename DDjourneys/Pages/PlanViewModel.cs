@@ -225,9 +225,15 @@ public sealed partial class PlanViewModel : DisposableViewModel
 					}),
 				() => !IsLocating);
 
-		SaveRouteCommand =
-			new AsyncCommand(
-				() => SafeAsync(SaveRouteAsync));
+		Bookmark =
+			new RouteBookmark(
+				_store,
+				() => From is { } start
+					&& To is { } end
+					&& !SamePlace(start, end)
+						? (start, end)
+						: null,
+				TellAsync);
 
 		UseSavedRouteCommand =
 			new AsyncCommand<SavedRoute>(
@@ -266,8 +272,6 @@ public sealed partial class PlanViewModel : DisposableViewModel
 	public Func<Task>? OpenViaSearch { get; set; }
 
 	/// <summary>Asks for a name (title, message, suggestion); null when the passenger cancels.</summary>
-	public Func<string, string, string, Task<string?>>? AskName { get; set; }
-
 
 	public AsyncCommand PickFromCommand { get; }
 
@@ -308,7 +312,8 @@ public sealed partial class PlanViewModel : DisposableViewModel
 
 	public Command GoHomeCommand { get; }
 
-	public AsyncCommand SaveRouteCommand { get; }
+	/// <summary>Saves (and removes) the connection shown; the icon reflects whether it is saved.</summary>
+	public RouteBookmark Bookmark { get; }
 
 	public AsyncCommand<SavedRoute> UseSavedRouteCommand { get; }
 
@@ -1123,6 +1128,11 @@ public sealed partial class PlanViewModel : DisposableViewModel
 	{
 		SearchCommand
 			.RaiseCanExecuteChanged();
+
+		OnPropertyChanged(
+			nameof(CanSearch));
+
+		Bookmark.Refresh();
 	}
 
 
@@ -1306,45 +1316,6 @@ public sealed partial class PlanViewModel : DisposableViewModel
 		{
 			To = home;
 		}
-	}
-
-
-	private async Task SaveRouteAsync()
-	{
-		if (From is not { } origin
-			|| To is not { } destination)
-		{
-			await TellAsync(
-				_localization.CurrentStrings.Plan.StartAndDestinationRequired);
-
-			return;
-		}
-
-		if (AskName is null)
-		{
-			return;
-		}
-
-		PlanStrings strings =
-			_localization.CurrentStrings.Plan;
-
-		string? name =
-			(await AskName(
-				strings.SaveRoute,
-				strings.RouteNamePrompt,
-				$"{origin.Name} \u2192 {destination.Name}"))?.Trim();
-
-		if (string.IsNullOrEmpty(name))
-		{
-			return;
-		}
-
-		// Same name: replaced (see PlaceStore.AddSavedRoute).
-		_store.AddSavedRoute(
-			new SavedRoute(
-				name,
-				origin,
-				destination));
 	}
 
 

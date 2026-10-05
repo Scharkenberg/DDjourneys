@@ -46,10 +46,14 @@ public sealed class ResultsViewModel :
 
 	public ResultsViewModel(
 		JourneyService journeys,
-		AppSettings settings)
+		AppSettings settings,
+		PlaceStore places)
 	{
 		ArgumentNullException.ThrowIfNull(
 			journeys);
+
+		ArgumentNullException.ThrowIfNull(
+			places);
 
 		ArgumentNullException.ThrowIfNull(
 			settings);
@@ -57,6 +61,15 @@ public sealed class ResultsViewModel :
 		_journeys = journeys;
 		_settings = settings;
 		_localization = LocalizationService.Current;
+
+		Bookmark =
+			new RouteBookmark(
+				places,
+				() => _query is { } asked
+					? (asked.From, asked.To)
+					: null,
+				message => ShowError?.Invoke(message) ?? Task.CompletedTask,
+				hideWhenUnavailable: true);
 
 		ListenToLocalization(
 			_localization,
@@ -104,6 +117,9 @@ public sealed class ResultsViewModel :
 		_query;
 
 	public Func<string, Task>? ShowError { get; set; }
+
+	/// <summary>Saves (and removes) the searched connection; the icon shows whether it is saved.</summary>
+	public RouteBookmark Bookmark { get; }
 
 	public Command RefreshCommand { get; }
 
@@ -275,6 +291,8 @@ public sealed class ResultsViewModel :
 				journeyQuery))
 		{
 			_query = journeyQuery;
+
+			Bookmark.Refresh();
 
 			RouteText =
 				$"{StopLabel.Compose(journeyQuery.From)} \u2192 " +

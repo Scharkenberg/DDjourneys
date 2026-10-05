@@ -41,6 +41,7 @@ public enum IconGlyph
 	Locate,
 	Home,
 	Bookmark,
+	BookmarkFilled,
 	Document,
 	Image,
 	Map,
@@ -196,6 +197,9 @@ internal static class IconPaths
 
 			[IconGlyph.Bookmark] =
 				new("M7 3.5 H17 V20.5 L12 16.5 L7 20.5 Z"),
+
+			[IconGlyph.BookmarkFilled] =
+				new("M7 3.5 H17 V20.5 L12 16.5 L7 20.5 Z", true),
 
 			// A sheet with a folded corner and two text lines: an attachment or document.
 			[IconGlyph.Document] =

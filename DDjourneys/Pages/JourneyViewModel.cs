@@ -33,13 +33,27 @@ public sealed class JourneyViewModel :
 	private readonly ProviderRegistry _providers;
 
 
+	/// <summary>Saves (and removes) the connection this journey belongs to; empty when it was opened without a search.</summary>
+	public RouteBookmark Bookmark { get; }
+
 	public JourneyViewModel(
 		AppSettings settings,
 		IJourneyTracker tracker,
 		ProviderRegistry providers,
 		ContractSession contract,
-		JourneyService journeys)
+		JourneyService journeys,
+		PlaceStore places)
 	{
+		ArgumentNullException.ThrowIfNull(places);
+
+		Bookmark =
+			new RouteBookmark(
+				places,
+				() => _query is { } asked
+					? (asked.From, asked.To)
+					: null,
+				hideWhenUnavailable: true);
+
 		_journeys = journeys ?? throw new ArgumentNullException(nameof(journeys));
 
 		_providers = providers ?? throw new ArgumentNullException(nameof(providers));
@@ -553,6 +567,7 @@ public sealed class JourneyViewModel :
 				&& asked is JourneyQuery journeyQuery)
 			{
 				_query = journeyQuery;
+				Bookmark.Refresh();
 			}
 
 			Load(journey);

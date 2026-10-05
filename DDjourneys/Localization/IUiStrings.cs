@@ -78,6 +78,8 @@ public sealed class PlanStrings
 	public required string RouteNamePrompt { get; init; }
 	public required string SavedRoutes { get; init; }
 	public required string ForgetSavedRoute { get; init; }
+	public required string RouteSaved { get; init; }
+	public required string RouteRemoved { get; init; }
 	public required string LocationPermissionDenied { get; init; }
 	public required string LocationUnavailable { get; init; }
 	public required string NoStopNearby { get; init; }

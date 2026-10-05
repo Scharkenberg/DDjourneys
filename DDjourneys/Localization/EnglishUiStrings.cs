@@ -58,6 +58,8 @@ public sealed class EnglishUiStrings : IUiStrings
 		RouteNamePrompt = "Name for this route",
 		SavedRoutes = "Saved routes",
 		ForgetSavedRoute = "Remove saved route",
+		RouteSaved = "Route saved",
+		RouteRemoved = "Route removed from saved routes",
 		LocationPermissionDenied = "Location access is needed to use your position.",
 		LocationUnavailable = "Your position could not be determined.",
 		NoStopNearby = "No stop found near your position.",

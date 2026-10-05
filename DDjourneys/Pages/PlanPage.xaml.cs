@@ -53,15 +53,6 @@ public partial class PlanPage : ContentPage, IQueryAttributable
 				_localization.CurrentStrings.Common.SomethingWentWrong,
 				message,
 				_localization.CurrentStrings.Common.Ok);
-
-		vm.AskName = (title, message, suggestion) =>
-			DisplayPromptAsync(
-				title,
-				message,
-				_localization.CurrentStrings.Common.Ok,
-				_localization.CurrentStrings.Common.Cancel,
-				maxLength: 40,
-				initialValue: suggestion);
 	}
 
 	protected override void OnAppearing()
