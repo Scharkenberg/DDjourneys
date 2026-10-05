@@ -442,6 +442,18 @@ public sealed class EnglishUiStrings : IUiStrings
 		MinQueryLengthDescription = "Search from {0} characters",
 		RoutingEntry = "Route preferences",
 		RoutingEntryDescription = "Modes, transfers, walking, accessibility",
+		StartEntry = "Start in input mode",
+		StartEntryDescription = "Open straight to the destination search",
+		StartTitle = "Start",
+		StartInputMode = "Open in input mode",
+		StartInputModeDescription = "The app opens with the start filled in and the search for the destination ready for typing.",
+		StartFromTitle = "Start of the journey",
+		StartFromLocation = "My location",
+		StartFromLocationDescription = "The stop or address nearest to where you are",
+		StartFromPlace = "A place",
+		StartFromPlaceDescription = "A stop, a point of interest or an address",
+		StartPlaceNone = "Choose a place",
+		StartPlaceHint = "The place is kept per provider. Without one, your location is used.",
 		VersionPrefix = "DDjourneys {0} ({1})"
 	};
 

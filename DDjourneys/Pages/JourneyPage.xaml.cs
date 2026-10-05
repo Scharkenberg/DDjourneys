@@ -13,6 +13,9 @@ public partial class JourneyPage : ContentPage
 		Motion.Prepare(this);
 		BindingContext = _vm = vm;
 
+		// The notice badge in the card: bring the notices into view.
+		vm.ScrollToNotices = () => _ = PageScroll.ScrollToAsync(NoticesBlock, ScrollToPosition.Start, true);
+
 		vm.ChooseShareFormat = (title, cancel, options) =>
 			DisplayActionSheetAsync(title, cancel, null, options);
 	}

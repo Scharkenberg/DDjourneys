@@ -124,6 +124,16 @@ public sealed class JourneyViewModel :
 			new AsyncCommand(
 				OpenMapAsync);
 
+		Actions =
+			new JourneyActions
+			{
+				PdfCommand = OpenDocumentCommand,
+				HandOffCommand = HandOffCommand,
+				FollowCommand = new AsyncCommand(ToggleFollowAsync, null, ShowTrackingError),
+				PauseCommand = new AsyncCommand(TogglePauseAsync, null, ShowTrackingError),
+				NoticesCommand = new Command(() => ScrollToNotices?.Invoke())
+			};
+
 		Subscribe(
 			() => _contract.Changed += OnContractChanged,
 			() => _contract.Changed -= OnContractChanged);
@@ -197,6 +207,46 @@ public sealed class JourneyViewModel :
 		&& _journey is { Context.Length: > 0 }
 		&& _providers.Supports(ProviderCapabilities.JourneyExtras);
 
+	/// <summary>The journey's actions as icons for its overview card.</summary>
+	public JourneyActions Actions { get; }
+
+	/// <summary>Set by the page: brings the notices into view (the badge in the card).</summary>
+	public Action? ScrollToNotices { get; set; }
+
+	/// <summary>Following failed or is unavailable: the message stands alone (a followed journey shows it in its strip).</summary>
+	public bool ShowTrackingProblem =>
+		!IsFollowed && !string.IsNullOrWhiteSpace(TrackingStatus);
+
+	private void RefreshActions()
+	{
+		JourneyStrings journey = _localization.CurrentStrings.Journey;
+		TrackingStrings tracking = _localization.CurrentStrings.Tracking;
+
+		Actions.HasPdf = HasDocument;
+		Actions.HasHandOff = IsHandOffAvailable;
+		Actions.CanFollow = IsTrackingAvailable;
+		Actions.IsFollowed = IsFollowed;
+		Actions.CanPause = CanPause;
+		Actions.IsPaused = IsPaused;
+
+		Actions.PdfDescription = journey.OpenPdf;
+		Actions.HandOffDescription = journey.HandOff;
+		Actions.FollowDescription = IsFollowed ? tracking.StopFollowing : journey.FollowJourney;
+		Actions.PauseDescription = IsPaused ? tracking.Resume : journey.DeactivateTracking;
+
+		Actions.Touch();
+	}
+
+	private Task ToggleFollowAsync() =>
+		IsFollowed
+			? StopFollowingAsync()
+			: FollowJourneyAsync();
+
+	private Task TogglePauseAsync() =>
+		IsPaused || CanPause
+			? SetPausedAsync(!IsPaused)
+			: Task.CompletedTask;
+
 	public bool HasDocument =>
 		_query is not null
 		&& _journey is not null
@@ -255,6 +305,8 @@ public sealed class JourneyViewModel :
 				{
 					OnPropertyChanged(
 						nameof(IsHandOffAvailable));
+
+					RefreshActions();
 				}
 			});
 
@@ -281,6 +333,8 @@ public sealed class JourneyViewModel :
 
 		OnPropertyChanged(
 			nameof(IsHandOffAvailable));
+
+		RefreshActions();
 	}
 
 	public bool ExpertViewEnabled => _settings.ExpertView;
@@ -301,7 +355,14 @@ public sealed class JourneyViewModel :
 	public string? TrackingStatus
 	{
 		get => field;
-		private set => SetProperty(ref field, value);
+
+		private set
+		{
+			if (SetProperty(ref field, value))
+			{
+				OnPropertyChanged(nameof(ShowTrackingProblem));
+			}
+		}
 	}
 
 	private WatchedJourney? _followed;
@@ -374,6 +435,9 @@ public sealed class JourneyViewModel :
 		OnPropertyChanged(nameof(IsPaused));
 		OnPropertyChanged(nameof(CanPause));
 		OnPropertyChanged(nameof(CanFollow));
+		OnPropertyChanged(nameof(ShowTrackingProblem));
+
+		RefreshActions();
 
 		FollowJourneyCommand.RaiseCanExecuteChanged();
 		PauseCommand.RaiseCanExecuteChanged();
@@ -965,6 +1029,8 @@ public sealed class JourneyViewModel :
 			OnPropertyChanged(nameof(HasLegAlternatives));
 			OnPropertyChanged(nameof(HasDocument));
 
+			RefreshActions();
+
 			LoadError =
 				null;
 
@@ -1139,7 +1205,8 @@ public sealed class JourneyViewModel :
 			{
 				ShowEndpoints = false,
 				Passenger = _settings.Passenger,
-				MapCommand = OpenMapCommand
+				MapCommand = OpenMapCommand,
+				Actions = Actions
 			};
 
 

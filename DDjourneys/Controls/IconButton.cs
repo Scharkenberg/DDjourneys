@@ -53,6 +53,16 @@ public sealed class IconButton : ContentView
 			typeof(IconButton),
 			null);
 
+	/// <summary>Smallest touch target (44 by default); a row of several icons may use less.</summary>
+	public static readonly BindableProperty TargetSizeProperty =
+		BindableProperty.Create(
+			nameof(TargetSize),
+			typeof(double),
+			typeof(IconButton),
+			44d,
+			propertyChanged: (bindable, _, value) =>
+				((IconButton)bindable).ApplyTarget((double)value!));
+
 	private readonly Icon _icon = new();
 	private readonly Border _surface;
 
@@ -83,6 +93,18 @@ public sealed class IconButton : ContentView
 		Dense.SetMinWidth(_surface, 44);
 
 		Content = _surface;
+	}
+
+	public double TargetSize
+	{
+		get => (double)GetValue(TargetSizeProperty);
+		set => SetValue(TargetSizeProperty, value);
+	}
+
+	private void ApplyTarget(double size)
+	{
+		Dense.SetMinHeight(_surface, size);
+		Dense.SetMinWidth(_surface, size);
 	}
 
 	/// <summary>Which icon to show.</summary>

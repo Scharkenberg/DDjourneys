@@ -141,22 +141,80 @@
 								<localization:Tr Key="Journey.OnTime" />
 							</Label.Text>
 						</Label>
-						<Label
-							IsVisible="{Binding HasNotices}"
-							StyleClass="Caption"
-							Text="{Binding NoticesText}" />
 					</HorizontalStackLayout>
 
 				</VerticalStackLayout>
 
-				<controls:IconButton
+				<!--  Actions, anchored bottom right: notices (a badge, not a line), PDF, hand-over, follow, pause, map  -->
+				<HorizontalStackLayout
 					Grid.Column="1"
-					Command="{Binding MapCommand}"
-					Glyph="Map"
 					HorizontalOptions="End"
-					IsVisible="{Binding HasMap}"
-					SemanticProperties.Description="{localization:Tr Extras.MapShow}"
-					VerticalOptions="End" />
+					Spacing="0"
+					VerticalOptions="End">
+
+					<Border
+						Padding="6,3"
+						Margin="0,0,4,0"
+						BackgroundColor="{DynamicResource Raised}"
+						IsVisible="{Binding HasNotices}"
+						SemanticProperties.Description="{Binding NoticesText}"
+						StrokeShape="RoundRectangle 100"
+						StrokeThickness="0"
+						VerticalOptions="Center"
+						support:Motion.Feedback="True">
+						<HorizontalStackLayout Spacing="3">
+							<controls:Icon
+								Glyph="Warning"
+								Size="14"
+								VerticalOptions="Center"
+								Color="{DynamicResource InkMuted}" />
+							<Label
+								FontFamily="{DynamicResource FontSemibold}"
+								FontSize="{StaticResource FontCaption}"
+								Text="{Binding NoticeCount}"
+								TextColor="{DynamicResource InkMuted}"
+								VerticalOptions="Center" />
+						</HorizontalStackLayout>
+						<Border.GestureRecognizers>
+							<TapGestureRecognizer Command="{Binding Actions.NoticesCommand}" />
+						</Border.GestureRecognizers>
+					</Border>
+
+					<controls:IconButton
+						Command="{Binding Actions.PdfCommand}"
+						Glyph="Document"
+						IsVisible="{Binding Actions.HasPdf}"
+						SemanticProperties.Description="{Binding Actions.PdfDescription}"
+						TargetSize="40" />
+
+					<controls:IconButton
+						Command="{Binding Actions.HandOffCommand}"
+						Glyph="External"
+						IsVisible="{Binding Actions.HasHandOff}"
+						SemanticProperties.Description="{Binding Actions.HandOffDescription}"
+						TargetSize="40" />
+
+					<controls:IconButton
+						Command="{Binding Actions.PauseCommand}"
+						Glyph="{Binding Actions.PauseGlyph}"
+						IsVisible="{Binding Actions.ShowPause}"
+						SemanticProperties.Description="{Binding Actions.PauseDescription}"
+						TargetSize="40" />
+
+					<controls:IconButton
+						Command="{Binding Actions.FollowCommand}"
+						Glyph="{Binding Actions.FollowGlyph}"
+						IsVisible="{Binding Actions.CanFollow}"
+						SemanticProperties.Description="{Binding Actions.FollowDescription}"
+						TargetSize="40" />
+
+					<controls:IconButton
+						Command="{Binding MapCommand}"
+						Glyph="Map"
+						IsVisible="{Binding HasMap}"
+						SemanticProperties.Description="{localization:Tr Extras.MapShow}"
+						TargetSize="40" />
+				</HorizontalStackLayout>
 
 			</Grid>
 

@@ -1311,6 +1311,37 @@ public sealed partial class PlanViewModel : DisposableViewModel
 
 
 	/// <summary>
+	/// The input mode (a setting): the start is filled in, with the device position or the place chosen in the
+	/// settings, and the search for the destination opens, ready for typing. A start that cannot be had (no
+	/// permission, no position) leaves the start empty; the destination search opens anyway.
+	/// </summary>
+	public async Task StartInputModeAsync()
+	{
+		try
+		{
+			Location? start =
+				_settings.StartFrom == StartFromKind.Place && _settings.StartFromPlace is { } chosen
+					? chosen
+					: await FindStopNearMeAsync();
+
+			if (start is not null)
+			{
+				From = start;
+			}
+
+			if (OpenPlaceSearch is not null)
+			{
+				await OpenPlaceSearch(false);
+			}
+		}
+		catch (Exception ex)
+		{
+			DiagnosticLog.Write($"Input mode failed: {ex}");
+		}
+	}
+
+
+	/// <summary>
 	/// The quick action "take me home": from the stop nearest to the device to the home stop, now, and search.
 	/// Without a home the passenger is told to set one.
 	/// </summary>

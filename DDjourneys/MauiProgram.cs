@@ -195,6 +195,9 @@ public static class MauiProgram
 		builder.Services.AddTransient<JourneyPage>();
 		builder.Services.AddTransient<JourneyViewModel>();
 
+		builder.Services.AddTransient<StartSettingsPage>();
+		builder.Services.AddTransient<StartSettingsViewModel>();
+
 		builder.Services.AddTransient<SettingsPage>();
 		builder.Services.AddTransient<SettingsViewModel>();
 		builder.Services.AddTransient<AppearancePage>();

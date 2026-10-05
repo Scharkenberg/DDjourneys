@@ -102,7 +102,7 @@ public sealed record WidgetConfig
 			["ProviderId"] = ProviderId,
 			["From"] = PlaceNode(From),
 			["To"] = PlaceNode(To),
-			["Stop"] = LocationNode(Stop),
+			["Stop"] = LocationJson.ToNode(Stop),
 			["RadiusMeters"] = RadiusMeters,
 			["MaxRows"] = MaxRows,
 			["StopCount"] = StopCount,
@@ -142,7 +142,7 @@ public sealed record WidgetConfig
 				ProviderId = StoredJson.String(root, "ProviderId") ?? string.Empty,
 				From = ReadPlace(root, "From"),
 				To = ReadPlace(root, "To"),
-				Stop = StoredJson.TryGet(root, "Stop", out JsonElement stop) ? ReadLocation(stop) : null,
+				Stop = StoredJson.TryGet(root, "Stop", out JsonElement stop) ? LocationJson.FromElement(stop) : null,
 				RadiusMeters = Math.Clamp(Int(root, "RadiusMeters", fallback.RadiusMeters), 100, 5000),
 				MaxRows = Math.Clamp(Int(root, "MaxRows", 0), 0, MaxRowsLimit),
 				StopCount = Math.Clamp(Int(root, "StopCount", fallback.StopCount), 1, 6),
@@ -176,7 +176,7 @@ public sealed record WidgetConfig
 			: new JsonObject
 			{
 				["Here"] = place.IsHere,
-				["Place"] = LocationNode(place.Place)
+				["Place"] = LocationJson.ToNode(place.Place)
 			};
 
 	private static WidgetPlace? ReadPlace(JsonElement root, string name)
@@ -191,45 +191,11 @@ public sealed record WidgetConfig
 
 		Location? place =
 			StoredJson.TryGet(element, "Place", out JsonElement location)
-				? ReadLocation(location)
+				? LocationJson.FromElement(location)
 				: null;
 
 		return here || place is not null
 			? new WidgetPlace(place, here)
 			: null;
-	}
-
-	private static JsonNode? LocationNode(Location? place) =>
-		place is null
-			? null
-			: new JsonObject
-			{
-				["Id"] = place.Id,
-				["Name"] = place.Name,
-				["Place"] = place.Place,
-				["Latitude"] = place.Latitude,
-				["Longitude"] = place.Longitude,
-				["ProviderId"] = place.ProviderId,
-				["Kind"] = place.Kind.ToString()
-			};
-
-	private static Location? ReadLocation(JsonElement element)
-	{
-		if (element.ValueKind != JsonValueKind.Object
-			|| StoredJson.String(element, "Name") is not { Length: > 0 } name)
-		{
-			return null;
-		}
-
-		return new Location
-		{
-			Id = StoredJson.String(element, "Id"),
-			Name = name,
-			Place = StoredJson.String(element, "Place"),
-			Latitude = StoredJson.Number(element, "Latitude"),
-			Longitude = StoredJson.Number(element, "Longitude"),
-			ProviderId = StoredJson.String(element, "ProviderId") ?? string.Empty,
-			Kind = Enum.TryParse(StoredJson.String(element, "Kind"), out PlaceKind kind) ? kind : PlaceKind.Stop
-		};
 	}
 }

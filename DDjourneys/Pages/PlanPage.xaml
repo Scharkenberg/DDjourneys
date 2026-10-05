@@ -59,10 +59,10 @@
 
 					<Grid
 						Grid.Row="0"
-						ColumnDefinitions="*,44,44"
-						support:Dense.MinHeight="64">
+						ColumnDefinitions="*,38,38"
+						support:Dense.MinHeight="50">
 
-						<VerticalStackLayout support:Motion.Feedback="True" Spacing="2" VerticalOptions="Center">
+						<VerticalStackLayout support:Motion.Feedback="True" Spacing="0" VerticalOptions="Center">
 							<Label StyleClass="Caption" Text="{localization:Tr Plan.FromPlaceholder}" />
 
 							<controls:StopNameView
@@ -78,12 +78,14 @@
 						<controls:IconButton
 							Grid.Column="1"
 							Command="{Binding UseLocationFromCommand}"
+							TargetSize="38"
 							Glyph="Locate"
 							SemanticProperties.Description="{localization:Tr Plan.UseLocationFrom}" />
 
 						<controls:IconButton
 							Grid.Column="2"
 							Command="{Binding ToggleFromFavouriteCommand}"
+							TargetSize="38"
 							Glyph="{Binding FromStar}"
 							InputTransparent="{Binding NoFrom}"
 							Opacity="{Binding StarOpacityFrom}"
@@ -97,10 +99,10 @@
 
 					<Grid
 						Grid.Row="2"
-						ColumnDefinitions="*,44,44"
-						support:Dense.MinHeight="64">
+						ColumnDefinitions="*,38,38"
+						support:Dense.MinHeight="50">
 
-						<VerticalStackLayout support:Motion.Feedback="True" Spacing="2" VerticalOptions="Center">
+						<VerticalStackLayout support:Motion.Feedback="True" Spacing="0" VerticalOptions="Center">
 							<Label StyleClass="Caption" Text="{localization:Tr Plan.ToPlaceholder}" />
 
 							<controls:StopNameView
@@ -116,12 +118,14 @@
 						<controls:IconButton
 							Grid.Column="1"
 							Command="{Binding UseLocationToCommand}"
+							TargetSize="38"
 							Glyph="Locate"
 							SemanticProperties.Description="{localization:Tr Plan.UseLocationTo}" />
 
 						<controls:IconButton
 							Grid.Column="2"
 							Command="{Binding ToggleToFavouriteCommand}"
+							TargetSize="38"
 							Glyph="{Binding ToStar}"
 							InputTransparent="{Binding NoTo}"
 							Opacity="{Binding StarOpacityTo}"
@@ -139,10 +143,10 @@
 					<HorizontalStackLayout
 						Grid.Row="4"
 						Grid.ColumnSpan="2"
-						Padding="0,6"
+						Padding="0,2"
 						IsVisible="{Binding NoVia}"
 						Spacing="8"
-						support:Dense.MinHeight="44"
+						support:Dense.MinHeight="34"
 						support:Motion.Feedback="True"
 						SemanticProperties.Description="{localization:Tr Plan.AddVia}">
 						<controls:Icon
@@ -168,7 +172,8 @@
 						Command="{Binding SwapCommand}"
 						Glyph="SwapVertical"
 						SemanticProperties.Description="{localization:Tr Plan.SwapDescription}"
-						Size="24"
+						Size="22"
+						TargetSize="38"
 						VerticalOptions="Center" />
 
 				</Grid>
@@ -180,11 +185,11 @@
 				IsVisible="{Binding HasVia}"
 				StyleClass="Card">
 				<Grid
-					support:Dense.MinHeight="56"
-					support:Dense.Padding="14,6"
-					ColumnDefinitions="*,44">
+					support:Dense.MinHeight="46"
+					support:Dense.Padding="12,4"
+					ColumnDefinitions="*,38">
 
-					<VerticalStackLayout support:Motion.Feedback="True" Spacing="2" VerticalOptions="Center">
+					<VerticalStackLayout support:Motion.Feedback="True" Spacing="0" VerticalOptions="Center">
 						<Label StyleClass="Caption" Text="{localization:Tr Plan.Via}" />
 
 						<controls:StopNameView Place="{Binding ViaPlace}" Stop="{Binding ViaName}" />
@@ -197,6 +202,7 @@
 					<controls:IconButton
 						Grid.Column="1"
 						Command="{Binding ClearViaCommand}"
+							TargetSize="38"
 						Glyph="Close"
 						SemanticProperties.Description="{localization:Tr Plan.ClearVia}" />
 				</Grid>

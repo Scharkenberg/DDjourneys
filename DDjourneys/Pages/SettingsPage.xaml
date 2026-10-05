@@ -279,6 +279,30 @@
 						</Grid.GestureRecognizers>
 					</Grid>
 
+					<BoxView StyleClass="Divider" />
+
+					<Grid support:Motion.Feedback="True"
+						support:Dense.Padding="12,10"
+						ColumnDefinitions="*,Auto"
+						ColumnSpacing="10"
+						support:Dense.MinHeight="52">
+						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
+							<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.StartEntry}" />
+							<Label StyleClass="Caption" Text="{localization:Tr Settings.StartEntryDescription}" />
+						</VerticalStackLayout>
+
+						<controls:Icon
+							Grid.Column="1"
+							Glyph="ChevronRight"
+							Size="20"
+							VerticalOptions="Center"
+							Color="{DynamicResource InkMuted}" />
+
+						<Grid.GestureRecognizers>
+							<TapGestureRecognizer Command="{Binding OpenStartCommand}" />
+						</Grid.GestureRecognizers>
+					</Grid>
+
 				</VerticalStackLayout>
 			</Border>
 

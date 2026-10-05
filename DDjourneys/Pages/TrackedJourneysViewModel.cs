@@ -134,10 +134,17 @@ public sealed class TrackedRow
 /// <summary>The overview of all journeys the user follows.</summary>
 public sealed class TrackedJourneysViewModel : DisposableViewModel, IQueryAttributable
 {
-	private static readonly TimeSpan AutoRefreshInterval = TimeSpan.FromSeconds(60);
+	// How often fresh data is fetched depends on what is going on: a journey under way every 20 seconds, one about
+	// to start every 45, otherwise every 3 minutes; after a failure sooner. Between fetches the page follows the
+	// clock every 10 seconds (progress, "in progress", "arrived").
+	private static readonly TimeSpan LiveRefresh = TimeSpan.FromSeconds(20);
+	private static readonly TimeSpan SoonRefresh = TimeSpan.FromSeconds(45);
+	private static readonly TimeSpan IdleRefresh = TimeSpan.FromMinutes(3);
+	private static readonly TimeSpan RetryRefresh = TimeSpan.FromSeconds(15);
+	private static readonly TimeSpan SoonWindow = TimeSpan.FromMinutes(90);
 
 	/// <summary>How often an open course view moves on with the clock (between server polls).</summary>
-	private static readonly TimeSpan CourseTick = TimeSpan.FromSeconds(15);
+	private static readonly TimeSpan CourseTick = TimeSpan.FromSeconds(10);
 
 	private readonly IJourneyTracker _tracker;
 	private readonly LocalizationService _localization;
@@ -286,7 +293,7 @@ public sealed class TrackedJourneysViewModel : DisposableViewModel, IQueryAttrib
 			{
 				await Task.Delay(CourseTick, cancellationToken);
 
-				if (_courses.Count > 0)
+				if (_courses.Count > 0 || NeedsClock())
 				{
 					RebuildIfAlive();
 				}
@@ -319,11 +326,127 @@ public sealed class TrackedJourneysViewModel : DisposableViewModel, IQueryAttrib
 
 				NotificationsBlocked = !await _tracker.CanNotifyAsync(cancellationToken);
 
-				await Task.Delay(AutoRefreshInterval, cancellationToken);
+				await Task.Delay(NextRefreshDelay(), cancellationToken);
 			}
 		}
 		catch (OperationCanceledException)
 		{
+		}
+	}
+
+	/// <summary>How long until the next fetch: short while something is under way or about to start.</summary>
+	private TimeSpan NextRefreshDelay()
+	{
+		if (ErrorText is not null)
+		{
+			return RetryRefresh;
+		}
+
+		DateTimeOffset now = DateTimeOffset.UtcNow;
+		TimeSpan delay = IdleRefresh;
+
+		foreach (WatchedJourney journey in _tracker.Watched)
+		{
+			WatchedJourney current = Reconcile(journey, now);
+
+			if (current.Status == WatchStatus.Deactivated || current.Status == WatchStatus.Recent)
+			{
+				continue;
+			}
+
+			if (current.Phase is TrackingPhase.InProgress or TrackingPhase.AtInterchange or TrackingPhase.AtRisk)
+			{
+				return LiveRefresh;
+			}
+
+			if (current.Departure is { } departure && departure - now < SoonWindow)
+			{
+				delay = SoonRefresh < delay ? SoonRefresh : delay;
+			}
+		}
+
+		return delay;
+	}
+
+	/// <summary>Something is under way or starts soon: the rows have to follow the clock.</summary>
+	private bool NeedsClock()
+	{
+		DateTimeOffset now = DateTimeOffset.UtcNow;
+
+		return _tracker.Watched.Any(
+			journey =>
+			{
+				WatchedJourney current = Reconcile(journey, now);
+
+				return current.Status is WatchStatus.Active or WatchStatus.Planned
+					&& (current.Phase != TrackingPhase.Planned
+						|| (current.Departure is { } departure && departure - now < SoonWindow));
+			});
+	}
+
+	/// <summary>
+	/// What the clock says about a journey since the last answer of the service: a planned one whose time has come
+	/// is under way, one whose arrival has passed has arrived, and the progress moves on with the time. The next
+	/// answer of the service replaces all of it.
+	/// </summary>
+	private WatchedJourney Reconcile(WatchedJourney journey, DateTimeOffset now)
+	{
+		if (journey.Status is WatchStatus.Deactivated or WatchStatus.Recent
+			|| journey.Phase is TrackingPhase.Cancelled or TrackingPhase.Paused or TrackingPhase.Arrived
+			|| journey.Departure is not { } departure
+			|| journey.Arrival is not { } arrival
+			|| arrival <= departure)
+		{
+			return journey;
+		}
+
+		if (now >= arrival)
+		{
+			return journey with
+			{
+				Status = WatchStatus.Recent,
+				Phase = TrackingPhase.Arrived,
+				Progress = 1
+			};
+		}
+
+		if (now < departure)
+		{
+			return journey;
+		}
+
+		double elapsed =
+			_progressBase.TryGetValue(journey.PlanId, out (double Progress, DateTimeOffset At) known)
+				? (now - known.At) / (arrival - departure)
+				: 0;
+
+		double basis =
+			known.At == default
+				? Math.Max(journey.Progress, (now - departure) / (arrival - departure))
+				: known.Progress;
+
+		return journey with
+		{
+			Status = WatchStatus.Active,
+			Phase = journey.Phase == TrackingPhase.Planned ? TrackingPhase.InProgress : journey.Phase,
+			Progress = Math.Clamp(basis + elapsed, 0, 0.99)
+		};
+	}
+
+	/// <summary>The progress each journey had when it last changed, and when: the base for moving on with the clock.</summary>
+	private readonly Dictionary<string, (double Progress, DateTimeOffset At)> _progressBase = [];
+
+	private void NoteProgress()
+	{
+		DateTimeOffset now = DateTimeOffset.UtcNow;
+
+		foreach (WatchedJourney journey in _tracker.Watched)
+		{
+			if (!_progressBase.TryGetValue(journey.PlanId, out (double Progress, DateTimeOffset At) known)
+				|| Math.Abs(known.Progress - journey.Progress) > 0.0005)
+			{
+				_progressBase[journey.PlanId] = (journey.Progress, now);
+			}
 		}
 	}
 
@@ -423,7 +546,12 @@ public sealed class TrackedJourneysViewModel : DisposableViewModel, IQueryAttrib
 	// ----- Display -----
 
 	private void OnWatchedChanged(object? sender, EventArgs e) =>
-		MainThread.BeginInvokeOnMainThread(RebuildIfAlive);
+		MainThread.BeginInvokeOnMainThread(
+			() =>
+			{
+				NoteProgress();
+				RebuildIfAlive();
+			});
 
 	private void OnLocalizationChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e) =>
 		MainThread.BeginInvokeOnMainThread(RebuildIfAlive);
@@ -440,7 +568,11 @@ public sealed class TrackedJourneysViewModel : DisposableViewModel, IQueryAttrib
 	{
 		try
 		{
-			IReadOnlyList<WatchedJourney> journeys = _tracker.Watched;
+			NoteProgress();
+
+			DateTimeOffset now = DateTimeOffset.UtcNow;
+
+			IReadOnlyList<WatchedJourney> journeys = _tracker.Watched.Select(item => Reconcile(item, now)).ToList();
 			TrackingStrings strings = _localization.CurrentStrings.Tracking;
 
 			var sections = new List<TrackedSection>();

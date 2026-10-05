@@ -19,6 +19,7 @@ public partial class AppShell : Shell
 		Routing.RegisterRoute(Routes.Tracked, typeof(TrackedJourneysPage));
 		Routing.RegisterRoute(Routes.Expert, typeof(ExpertPage));
 		Routing.RegisterRoute(Routes.Routing, typeof(RoutingSettingsPage));
+		Routing.RegisterRoute(Routes.StartSettings, typeof(StartSettingsPage));
 		Routing.RegisterRoute(Routes.Providers, typeof(ProvidersPage));
 		Routing.RegisterRoute(Routes.Departures, typeof(DeparturesPage));
 		Routing.RegisterRoute(Routes.Run, typeof(RunPage));

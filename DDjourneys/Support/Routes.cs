@@ -21,6 +21,9 @@ public static class Routes
 	public const string FocusPlan = "FocusPlan";
 	public const string Expert = "expert";
 	public const string Routing = "routing";
+
+	/// <summary>The settings page for starting the app in input mode.</summary>
+	public const string StartSettings = "startsettings";
 	public const string Providers = "providers";
 	public const string Departures = "departures";
 	public const string Run = "run";
@@ -46,6 +49,9 @@ public static class Routes
 	public const string Target = "Target";
 	public const string TargetVia = "via";
 	public const string TargetDepartures = "departures";
+
+	/// <summary>The place search is for the default start of the input mode (any stop, address or point of interest).</summary>
+	public const string TargetStart = "start";
 
 	/// <summary>Query key: a stop (Location) the page is opened for.</summary>
 	public const string Stop = "Stop";

@@ -46,6 +46,18 @@ public sealed class ContractInbox
 		ContractEntry.Attach(this);
 	}
 
+	/// <summary>A request is waiting or being carried out.</summary>
+	public bool HasPending
+	{
+		get
+		{
+			lock (_gate)
+			{
+				return _queue.Count > 0 || _delivering;
+			}
+		}
+	}
+
 	/// <summary>Remembers a parsed request. A flood keeps only the newest few.</summary>
 	public void Submit(ContractParseResult result)
 	{
@@ -258,6 +270,18 @@ public static class ContractEntry
 	private static readonly Lock Gate = new();
 	private static readonly List<ContractParseResult> Early = [];
 	private static ContractInbox? _inbox;
+
+	/// <summary>A request from outside has arrived and is not done yet.</summary>
+	public static bool HasPending
+	{
+		get
+		{
+			lock (Gate)
+			{
+				return Early.Count > 0 || (_inbox?.HasPending ?? false);
+			}
+		}
+	}
 
 	/// <summary>Parses a link and hands it over. Never throws.</summary>
 	public static void SubmitUri(string? link) =>

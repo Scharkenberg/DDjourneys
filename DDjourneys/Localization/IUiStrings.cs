@@ -331,6 +331,18 @@ public sealed class SettingsStrings
 	public required string MinQueryLengthDescription { get; init; }
 	public required string RoutingEntry { get; init; }
 	public required string RoutingEntryDescription { get; init; }
+	public required string StartEntry { get; init; }
+	public required string StartEntryDescription { get; init; }
+	public required string StartTitle { get; init; }
+	public required string StartInputMode { get; init; }
+	public required string StartInputModeDescription { get; init; }
+	public required string StartFromTitle { get; init; }
+	public required string StartFromLocation { get; init; }
+	public required string StartFromLocationDescription { get; init; }
+	public required string StartFromPlace { get; init; }
+	public required string StartFromPlaceDescription { get; init; }
+	public required string StartPlaceNone { get; init; }
+	public required string StartPlaceHint { get; init; }
 	public required string VersionPrefix { get; init; }
 }
 

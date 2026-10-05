@@ -22,6 +22,7 @@ public enum IconGlyph
 	Warning,
 	Tune,
 	Bell,
+	BellFilled,
 	Search,
 	Close,
 	Clock,
@@ -130,6 +131,11 @@ internal static class IconPaths
 			[IconGlyph.Bell] =
 				new("M12 3 A6 6 0 0 1 18 9 C18 14.6 20 16.6 20 16.6 H4 C4 16.6 6 14.6 6 9 A6 6 0 0 1 12 3 Z "
 					+ "M9.8 19.6 A2.4 2.4 0 0 0 14.2 19.6"),
+
+			// The same bell, solid: a followed journey.
+			[IconGlyph.BellFilled] =
+				new("M12 3 A6 6 0 0 1 18 9 C18 14.6 20 16.6 20 16.6 H4 C4 16.6 6 14.6 6 9 A6 6 0 0 1 12 3 Z "
+					+ "M9.8 19.6 A2.4 2.4 0 0 0 14.2 19.6", true),
 
 			[IconGlyph.Search] =
 				new("M10.8 3.8 A7 7 0 1 0 10.8 17.8 A7 7 0 1 0 10.8 3.8 Z M15.9 15.9 L20.8 20.8"),

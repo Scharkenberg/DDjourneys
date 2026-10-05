@@ -452,6 +452,18 @@ public sealed class GermanUiStrings : IUiStrings
 		MinQueryLengthDescription = "Suche ab {0} Zeichen",
 		RoutingEntry = "Routenpräferenzen",
 		RoutingEntryDescription = "Verkehrsmittel, Umstiege, Gehen, Barrierefreiheit",
+		StartEntry = "Start im Eingabemodus",
+		StartEntryDescription = "Direkt die Zielsuche öffnen",
+		StartTitle = "Start",
+		StartInputMode = "Im Eingabemodus öffnen",
+		StartInputModeDescription = "Die App öffnet mit ausgefülltem Start und bereiter Zielsuche.",
+		StartFromTitle = "Start der Fahrt",
+		StartFromLocation = "Mein Standort",
+		StartFromLocationDescription = "Die Haltestelle oder Adresse in deiner Nähe",
+		StartFromPlace = "Ein Ort",
+		StartFromPlaceDescription = "Eine Haltestelle, ein POI oder eine Adresse",
+		StartPlaceNone = "Ort auswählen",
+		StartPlaceHint = "Der Ort wird je Anbieter gemerkt. Ohne Ort wird dein Standort verwendet.",
 		VersionPrefix = "DDjourneys {0} ({1})"
 	};
 

@@ -61,6 +61,38 @@ public partial class PlanPage : ContentPage, IQueryAttributable
 
 		_vm.Refresh();
 		Motion.EnterPage(this);
+
+		if (!_startHandled)
+		{
+			_startHandled = true;
+
+			_ = StartInputModeAsync();
+		}
+	}
+
+	/// <summary>Once per start of the app, not each time the planner shows again.</summary>
+	private static bool _startHandled;
+
+	/// <summary>
+	/// The setting "open in input mode". A request from outside (a link, a quick action, a notification) comes first:
+	/// it brings its own destination.
+	/// </summary>
+	private async Task StartInputModeAsync()
+	{
+		if (!_settings.StartInput)
+		{
+			return;
+		}
+
+		// Let an early request from outside arrive before deciding.
+		await Task.Delay(500);
+
+		if (ContractEntry.HasPending || AppShortcuts.IsBusy)
+		{
+			return;
+		}
+
+		await _vm.StartInputModeAsync();
 	}
 
 	/// <summary>An external request (contract): fill the planner and, when asked, search.</summary>

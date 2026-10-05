@@ -10,96 +10,107 @@
 	Title="{localization:Tr Departures.Title}"
 	x:DataType="local:DeparturesViewModel">
 
-	<RefreshView Command="{Binding RefreshCommand}" IsRefreshing="{Binding IsBusy}">
-		<ScrollView>
-			<VerticalStackLayout Padding="{DynamicResource PadPage}" Spacing="{DynamicResource SpaceM}">
+	<!--  The stop and the choice between departures and arrivals stay where they are; only the list below them scrolls  -->
+	<Grid RowDefinitions="Auto,*" RowSpacing="0">
 
-				<!--  Stop  -->
-				<Border Padding="0" StyleClass="Card">
-					<Grid
-						support:Dense.Padding="14,10"
-						support:Dense.MinHeight="56"
-						ColumnDefinitions="*,Auto,Auto"
-						ColumnSpacing="{DynamicResource SpaceS}"
-						SemanticProperties.Description="{localization:Tr Departures.Stop}">
+		<VerticalStackLayout Padding="12,8,12,0" Spacing="6">
 
-						<controls:StopNameView
-							Place="{Binding StopPlace}"
-							Stop="{Binding StopName}"
-							VerticalOptions="Center" />
+			<!--  Stop: one slim line  -->
+			<Border Padding="0" StyleClass="Card">
+				<Grid
+					support:Dense.Padding="12,4"
+					support:Dense.MinHeight="44"
+					ColumnDefinitions="*,Auto,Auto"
+					ColumnSpacing="0"
+					SemanticProperties.Description="{localization:Tr Departures.Stop}">
 
-						<controls:IconButton
-							Grid.Column="1"
-							Command="{Binding LocateCommand}"
-							Glyph="Locate"
-							SemanticProperties.Description="{localization:Tr Departures.UseMyLocation}" />
+					<controls:StopNameView
+						Compact="True"
+						Place="{Binding StopPlace}"
+						Stop="{Binding StopName}"
+						VerticalOptions="Center" />
 
-						<controls:IconButton
-							Grid.Column="2"
-							Command="{Binding RefreshCommand}"
-							Glyph="Refresh"
-							IsVisible="{Binding HasStop}"
-							SemanticProperties.Description="{localization:Tr Departures.Refresh}" />
+					<controls:IconButton
+						Grid.Column="1"
+						Command="{Binding LocateCommand}"
+						Glyph="Locate"
+						SemanticProperties.Description="{localization:Tr Departures.UseMyLocation}"
+						TargetSize="40" />
 
-						<Grid.GestureRecognizers>
-							<TapGestureRecognizer Command="{Binding PickStopCommand}" />
-						</Grid.GestureRecognizers>
-					</Grid>
-				</Border>
+					<controls:IconButton
+						Grid.Column="2"
+						Command="{Binding RefreshCommand}"
+						Glyph="Refresh"
+						IsVisible="{Binding HasStop}"
+						SemanticProperties.Description="{localization:Tr Departures.Refresh}"
+						TargetSize="40" />
 
-				<Label
-					IsVisible="{Binding HasZone}"
-					StyleClass="Caption"
-					Text="{Binding ZoneText}" />
+					<Grid.GestureRecognizers>
+						<TapGestureRecognizer Command="{Binding PickStopCommand}" />
+					</Grid.GestureRecognizers>
+				</Grid>
+			</Border>
 
-				<!--  Departures / arrivals and the moment: one card, built like the one of the journey planner  -->
-				<Border
-					Padding="0"
-					IsVisible="{Binding HasStop}"
-					StyleClass="Card">
-					<VerticalStackLayout>
-						<Grid
-							support:Dense.Padding="12,10"
-							ColumnDefinitions="*,*,Auto"
-							ColumnSpacing="{DynamicResource SpaceS}">
-							<Button
-								Command="{Binding DepartCommand}"
-								support:Dense.MinHeight="38"
-								StyleClass="Tonal"
-								support:Themed.IsOn="{Binding IsDeparture}"
-								support:Themed.OnBackground="Accent"
-								support:Themed.OnText="OnAccent"
-								Text="{localization:Tr Departures.DeparturesTab}" />
-							<Button
-								Grid.Column="1"
-								Command="{Binding ArriveCommand}"
-								support:Dense.MinHeight="38"
-								StyleClass="Tonal"
-								support:Themed.IsOn="{Binding IsArrival}"
-								support:Themed.OnBackground="Accent"
-								support:Themed.OnText="OnAccent"
-								Text="{localization:Tr Departures.ArrivalsTab}" />
-							<Button
-								Grid.Column="2"
-								Padding="14,0"
-								Command="{Binding NowCommand}"
-								IsEnabled="{Binding IsNotNow}"
-								support:Dense.MinHeight="38"
-								StyleClass="Tonal"
-								Text="{localization:Tr Departures.Now}" />
-						</Grid>
+			<Label
+				IsVisible="{Binding HasZone}"
+				StyleClass="Caption"
+				Text="{Binding ZoneText}" />
 
-						<BoxView StyleClass="Divider" />
+			<!--  Departures / arrivals / now: one slim row  -->
+			<Grid
+				ColumnDefinitions="*,*,Auto"
+				ColumnSpacing="{DynamicResource SpaceS}"
+				IsVisible="{Binding HasStop}">
+				<Button
+					Command="{Binding DepartCommand}"
+					support:Dense.MinHeight="34"
+					StyleClass="Tonal"
+					support:Themed.IsOn="{Binding IsDeparture}"
+					support:Themed.OnBackground="Accent"
+					support:Themed.OnText="OnAccent"
+					Text="{localization:Tr Departures.DeparturesTab}" />
+				<Button
+					Grid.Column="1"
+					Command="{Binding ArriveCommand}"
+					support:Dense.MinHeight="34"
+					StyleClass="Tonal"
+					support:Themed.IsOn="{Binding IsArrival}"
+					support:Themed.OnBackground="Accent"
+					support:Themed.OnText="OnAccent"
+					Text="{localization:Tr Departures.ArrivalsTab}" />
+				<Button
+					Grid.Column="2"
+					Padding="14,0"
+					Command="{Binding NowCommand}"
+					IsEnabled="{Binding IsNotNow}"
+					support:Dense.MinHeight="34"
+					StyleClass="Tonal"
+					Text="{localization:Tr Departures.Now}" />
+			</Grid>
 
+			<BoxView Margin="-12,2,-12,0" StyleClass="Divider" />
+		</VerticalStackLayout>
+
+		<RefreshView
+			Grid.Row="1"
+			Command="{Binding RefreshCommand}"
+			IsRefreshing="{Binding IsBusy}">
+			<ScrollView>
+				<VerticalStackLayout Padding="{DynamicResource PadPage}" Spacing="{DynamicResource SpaceM}">
+
+					<!--  The moment  -->
+					<Border
+						Padding="0"
+						IsVisible="{Binding HasStop}"
+						StyleClass="Card">
 						<controls:WhenPicker Date="{Binding Date}" Time="{Binding Time}" />
-					</VerticalStackLayout>
-				</Border>
+					</Border>
 
-				<Label
-					HorizontalTextAlignment="Center"
-					IsVisible="{Binding HasMessage}"
-					StyleClass="Caption"
-					Text="{Binding Message}" />
+					<Label
+						HorizontalTextAlignment="Center"
+						IsVisible="{Binding HasMessage}"
+						StyleClass="Caption"
+						Text="{Binding Message}" />
 
 				<!--  Departure rows  -->
 				<Border Padding="0" StyleClass="Card">
@@ -436,5 +447,6 @@
 
 			</VerticalStackLayout>
 		</ScrollView>
-	</RefreshView>
+		</RefreshView>
+	</Grid>
 </ContentPage>

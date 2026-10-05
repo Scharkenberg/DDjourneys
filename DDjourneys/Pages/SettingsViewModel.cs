@@ -29,6 +29,7 @@ public sealed class SettingsViewModel : DisposableViewModel
 		SelectLanguageCommand = new Command<string>(SelectLanguage);
 		ResetCommand = new Command(Reset);
 		OpenRoutingCommand = new AsyncCommand(OpenRoutingAsync);
+		OpenStartCommand = new AsyncCommand(OpenStartAsync);
 		OpenProvidersCommand = new AsyncCommand(OpenProvidersAsync);
 		ShareLogCommand = new AsyncCommand(ShareLogAsync);
 		ClearLogCommand = new Command(ClearLog);
@@ -38,6 +39,7 @@ public sealed class SettingsViewModel : DisposableViewModel
 	public Command<string> SelectLanguageCommand { get; }
 	public Command ResetCommand { get; }
 	public AsyncCommand OpenRoutingCommand { get; }
+	public AsyncCommand OpenStartCommand { get; }
 	public AsyncCommand OpenProvidersCommand { get; }
 	public AsyncCommand ShareLogCommand { get; }
 	public Command ClearLogCommand { get; }
@@ -395,6 +397,9 @@ public sealed class SettingsViewModel : DisposableViewModel
 
 	private static Task OpenRoutingAsync() =>
 		Shell.Current.GoToAsync(Routes.Routing);
+
+	private static Task OpenStartAsync() =>
+		Shell.Current.GoToAsync(Routes.StartSettings);
 
 	public string Version
 	{

@@ -61,7 +61,9 @@ public sealed partial class PlaceSearchViewModel : DisposableViewModel, IQueryAt
 	private PlaceKinds Kinds =>
 		_target is Routes.TargetDepartures or Routes.TargetVia
 			? PlaceKinds.Stops
-			: _settings.SearchKinds;
+			: _target == Routes.TargetStart
+				? PlaceKinds.Stops | PlaceKinds.Addresses | PlaceKinds.Pois
+				: _settings.SearchKinds;
 
 	/// <summary>Quiet time after the last keystroke before the endpoint is asked (a setting).</summary>
 	private TimeSpan Debounce => TimeSpan.FromMilliseconds(_settings.SearchDelayMs);
@@ -415,7 +417,11 @@ public sealed partial class PlaceSearchViewModel : DisposableViewModel, IQueryAt
 		{
 			try
 			{
-				_store.AddRecent(place);
+				// A default start is a setting, not a place the passenger went to.
+				if (_target != Routes.TargetStart)
+				{
+					_store.AddRecent(place);
+				}
 			}
 			catch (Exception ex)
 			{

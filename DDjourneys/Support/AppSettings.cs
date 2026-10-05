@@ -2,6 +2,8 @@ using DDjourneys.Core.Diagnostics;
 using System.Globalization;
 using DDjourneys.Core.Models;
 using DDjourneys.Core.Providers.Vvo;
+using DDjourneys.Core.Storage;
+using Location = DDjourneys.Core.Models.Location;
 
 namespace DDjourneys.Support;
 
@@ -215,6 +217,29 @@ public sealed class AppSettings
 		PlaceKinds.Stops
 		| (SearchAddresses ? PlaceKinds.Addresses : PlaceKinds.None)
 		| (SearchPois ? PlaceKinds.Pois : PlaceKinds.None);
+
+	// ----- Start in input mode -----
+
+	/// <summary>The app opens as if the passenger had tapped the start already: start filled, destination search ready.</summary>
+	public bool StartInput
+	{
+		get => Read("startInput", false);
+		set => Write("startInput", value);
+	}
+
+	/// <summary>What the start of the input mode is: the device position or a chosen place.</summary>
+	public StartFromKind StartFrom
+	{
+		get => Read("startFrom", StartFromKind.Location);
+		set => Write("startFrom", value);
+	}
+
+	/// <summary>The chosen start place (a stop, a point of interest or an address). Per provider: its ids mean nothing to another.</summary>
+	public Location? StartFromPlace
+	{
+		get => LocationJson.FromJson(Read(Scoped("startFromPlace"), string.Empty));
+		set => Write(Scoped("startFromPlace"), value is null ? string.Empty : LocationJson.ToJson(value));
+	}
 
 	// ----- Journey display -----
 
@@ -503,4 +528,14 @@ public sealed class AppSettings
 
 	private static string NormalizeCulture(string languageCode) =>
 	CultureInfo.GetCultureInfo(languageCode).Name;
+}
+
+/// <summary>The start of the input mode.</summary>
+public enum StartFromKind
+{
+	/// <summary>The stop or address nearest to the device.</summary>
+	Location = 0,
+
+	/// <summary>A place chosen in the settings.</summary>
+	Place
 }

@@ -37,6 +37,18 @@ public static class AppShortcuts
 	private static AppShortcut? _pending;
 	private static bool _delivering;
 
+	/// <summary>A quick action is waiting or being carried out.</summary>
+	public static bool IsBusy
+	{
+		get
+		{
+			lock (Gate)
+			{
+				return _pending is not null || _delivering;
+			}
+		}
+	}
+
 	public static string IdOf(AppShortcut shortcut) =>
 		shortcut == AppShortcut.Home
 			? HomeId
