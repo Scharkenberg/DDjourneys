@@ -421,7 +421,8 @@ internal static class SchutzengelPlanTranslator
 			result["platform"] =
 				new JsonObject
 				{
-					["type"] = "Steig",
+					// The reference client says "Gleis" for railtracks, "Steig" for everything else.
+					["type"] = stop.PlatformKind == PlatformKind.Railtrack ? "Gleis" : "Steig",
 					["name"] = stop.Platform
 				};
 		}
