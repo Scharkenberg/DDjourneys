@@ -4,18 +4,21 @@ using DDjourneys.Core.Models;
 
 namespace DDjourneys.Core.Providers.Trias;
 
-/// <summary>Builds the TRIAS 1.2 request documents (LocationInformation, Trip, StopEvent).</summary>
+/// <summary>
+/// Builds the TRIAS request documents (LocationInformation, Trip, StopEvent, TripInfo) for one schema version.
+/// Parameters follow the element order of the 1.4 schema (VDVde/TRIAS), which is a sequence.
+/// </summary>
 internal static class TriasRequests
 {
 	private static readonly XNamespace T = "trias";
 	private static readonly XNamespace S = "http://www.siri.org.uk/siri";
 
-	private static XDocument Envelope(XElement payload) =>
+	private static XDocument Envelope(XElement payload, TriasDialect dialect) =>
 		new(
 			new XDeclaration("1.0", "UTF-8", null),
 			new XElement(
 				T + "Trias",
-				new XAttribute("version", "1.2"),
+				new XAttribute("version", dialect.Version),
 				new XAttribute(XNamespace.Xmlns + "siri", S.NamespaceName),
 				new XElement(
 					T + "ServiceRequest",
@@ -104,29 +107,33 @@ internal static class TriasRequests
 	public static XDocument LocationByName(
 		string name,
 		PlaceKinds kinds,
-		int limit) =>
+		int limit,
+		TriasDialect dialect) =>
 		Envelope(
 			new XElement(
 				T + "LocationInformationRequest",
 				new XElement(
 					T + "InitialInput",
 					new XElement(T + "LocationName", name)),
-				Restrictions(kinds, limit)));
+				Restrictions(kinds, limit, dialect)),
+			dialect);
 
 	public static XDocument LocationByPosition(
 		double latitude,
 		double longitude,
 		PlaceKinds kinds,
-		int limit) =>
+		int limit,
+		TriasDialect dialect) =>
 		Envelope(
 			new XElement(
 				T + "LocationInformationRequest",
 				new XElement(
 					T + "InitialInput",
 					Position(latitude, longitude)),
-				Restrictions(kinds, limit)));
+				Restrictions(kinds, limit, dialect)),
+			dialect);
 
-	private static XElement Restrictions(PlaceKinds kinds, int limit)
+	private static XElement Restrictions(PlaceKinds kinds, int limit, TriasDialect dialect)
 	{
 		var restrictions = new XElement(T + "Restrictions");
 
@@ -147,13 +154,17 @@ internal static class TriasRequests
 
 		restrictions.Add(new XElement(T + "NumberOfResults", limit.ToString(CultureInfo.InvariantCulture)));
 
+		if (dialect.HasExtendedContent)
+		{
+			// Lets the stop results name their vehicle types.
+			restrictions.Add(new XElement(T + "IncludePtModes", "true"));
+		}
+
 		return restrictions;
 	}
 
-	public static XDocument Trip(JourneyQuery query)
+	public static XDocument Trip(JourneyQuery query, TriasDialect dialect)
 	{
-		RoutingPreferences routing = query.Routing;
-
 		var origin =
 			new XElement(
 				T + "Origin",
@@ -188,10 +199,22 @@ internal static class TriasRequests
 					new XElement(T + "ViaPoint", LocationParts(via))));
 		}
 
+		request.Add(TripParams(query, dialect));
+
+		return Envelope(request, dialect);
+	}
+
+	/// <summary>The Params element in schema order: filters, mobility, policy, content.</summary>
+	private static XElement TripParams(JourneyQuery query, TriasDialect dialect)
+	{
+		RoutingPreferences routing = query.Routing;
+
 		var parameters = new XElement(T + "Params");
 
+		// TripDataFilterGroup
 		parameters.Add(PtModeFilter(routing.Modes));
 
+		// TripMobilityFilterGroup: NoSingleStep, NoStairs, NoEscalator, NoElevator, NoRamp, LevelEntrance, ..., WalkSpeed
 		bool noStairs =
 			routing.AvoidStairs
 			|| routing.Accessibility != AccessibilityNeed.None;
@@ -224,6 +247,12 @@ internal static class TriasRequests
 			parameters.Add(new XElement(T + "NoElevator", "false"));
 		}
 
+		if (dialect.HasMobilityAdditions
+			&& routing.Entrance == EntranceNeed.NoStep)
+		{
+			parameters.Add(new XElement(T + "LevelEntrance", "true"));
+		}
+
 		parameters.Add(
 			new XElement(
 				T + "WalkSpeed",
@@ -236,17 +265,19 @@ internal static class TriasRequests
 					_ => "100"
 				}));
 
-		if (routing.MaxTransfers != MaxTransfers.Unlimited)
+		// TripPolicyGroup: NumberOfResults, ..., InterchangeLimit, AlgorithmType
+		parameters.Add(
+			new XElement(
+				T + "NumberOfResults",
+				Math.Clamp(query.MaxResults, 1, 10).ToString(CultureInfo.InvariantCulture)));
+
+		// A positive integer in the schema: "no transfers" cannot be asked for, the provider filters those out.
+		if (routing.MaxTransfers is MaxTransfers.Two or MaxTransfers.One)
 		{
 			parameters.Add(
 				new XElement(
-					T + "TransferLimit",
-					routing.MaxTransfers switch
-					{
-						MaxTransfers.Two => "2",
-						MaxTransfers.One => "1",
-						_ => "0"
-					}));
+					T + "InterchangeLimit",
+					routing.MaxTransfers == MaxTransfers.Two ? "2" : "1"));
 		}
 
 		string algorithm =
@@ -262,22 +293,24 @@ internal static class TriasRequests
 
 		parameters.Add(new XElement(T + "AlgorithmType", algorithm));
 
-		parameters.Add(
-			new XElement(
-				T + "NumberOfResults",
-				Math.Clamp(query.MaxResults, 1, 10).ToString(CultureInfo.InvariantCulture)));
-
+		// TripContentFilterGroup
 		parameters.Add(new XElement(T + "IncludeTrackSections", "true"));
 		parameters.Add(new XElement(T + "IncludeLegProjection", "true"));
+
+		if (dialect.HasExtendedContent)
+		{
+			parameters.Add(new XElement(T + "IncludeAccessibility", "true"));
+			parameters.Add(new XElement(T + "IncludeEstimatedTimes", "true"));
+			parameters.Add(new XElement(T + "IncludeSituationInfo", "true"));
+		}
+
 		parameters.Add(new XElement(T + "IncludeIntermediateStops", "true"));
 		parameters.Add(new XElement(T + "IncludeFares", "true"));
 
-		request.Add(parameters);
-
-		return Envelope(request);
+		return parameters;
 	}
 
-	public static XDocument StopEvents(DepartureQuery query)
+	public static XDocument StopEvents(DepartureQuery query, TriasDialect dialect)
 	{
 		var location =
 			new XElement(
@@ -294,12 +327,42 @@ internal static class TriasRequests
 		parameters.Add(new XElement(T + "StopEventType", query.IsArrival ? "arrival" : "departure"));
 		parameters.Add(new XElement(T + "IncludePreviousCalls", "true"));
 		parameters.Add(new XElement(T + "IncludeOnwardCalls", "true"));
+
 		parameters.Add(new XElement(T + "IncludeRealtimeData", "true"));
 
 		return Envelope(
 			new XElement(
 				T + "StopEventRequest",
 				location,
-				parameters));
+				parameters),
+			dialect);
+	}
+
+	/// <summary>
+	/// Asks for one vehicle run again: its calls with current estimates, the vehicle position and the situations.
+	/// </summary>
+	public static XDocument TripInfo(string journeyRef, string operatingDayRef, TriasDialect dialect)
+	{
+		var request =
+			new XElement(
+				T + "TripInfoRequest",
+				new XElement(T + "JourneyRef", journeyRef),
+				new XElement(T + "OperatingDayRef", operatingDayRef));
+
+		var parameters = new XElement(T + "Params");
+
+		parameters.Add(new XElement(T + "IncludeCalls", "true"));
+		parameters.Add(new XElement(T + "IncludeEstimatedTimes", "true"));
+		parameters.Add(new XElement(T + "IncludePosition", "true"));
+		parameters.Add(new XElement(T + "IncludeService", "true"));
+
+		if (dialect.HasExtendedContent)
+		{
+			parameters.Add(new XElement(T + "IncludeSituationInfo", "true"));
+		}
+
+		request.Add(parameters);
+
+		return Envelope(request, dialect);
 	}
 }

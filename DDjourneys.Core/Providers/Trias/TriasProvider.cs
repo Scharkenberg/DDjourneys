@@ -1,7 +1,9 @@
 using DDjourneys.Core.Api;
+using DDjourneys.Core.Diagnostics;
 using DDjourneys.Core.Models;
 using DDjourneys.Core.Providers.Abstractions;
 using Location = DDjourneys.Core.Models.Location;
+using System.Globalization;
 using System.Xml.Linq;
 
 namespace DDjourneys.Core.Providers.Trias;
@@ -64,13 +66,20 @@ public sealed class TriasProvider :
 			XDocument response =
 				await _client
 					.SendAsync(
-						TriasRequests.Trip(query),
+						TriasRequestKind.Trip,
+						dialect => TriasRequests.Trip(query, dialect),
 						cancellationToken,
 						Timeout(query.TimeoutSeconds))
 					.ConfigureAwait(false);
 
 			IReadOnlyList<Journey> journeys =
 				TriasMapper.MapJourneys(response, query.From, query.To);
+
+			// The schema cannot say "no transfers" (InterchangeLimit is a positive integer).
+			if (query.Routing.MaxTransfers == MaxTransfers.None)
+			{
+				journeys = [.. journeys.Where(journey => journey.Legs.Count <= 1)];
+			}
 
 			if (journeys.Count > 0)
 			{
@@ -120,7 +129,8 @@ public sealed class TriasProvider :
 		XDocument response =
 			await _client
 				.SendAsync(
-					TriasRequests.LocationByName(query, kinds, 12),
+					TriasRequestKind.Locations,
+					dialect => TriasRequests.LocationByName(query, kinds, 12, dialect),
 					cancellationToken,
 					timeout)
 				.ConfigureAwait(false);
@@ -140,7 +150,8 @@ public sealed class TriasProvider :
 		XDocument response =
 			await _client
 				.SendAsync(
-					TriasRequests.LocationByPosition(latitude, longitude, PlaceKinds.Stops, 10),
+					TriasRequestKind.Locations,
+					dialect => TriasRequests.LocationByPosition(latitude, longitude, PlaceKinds.Stops, 10, dialect),
 					cancellationToken,
 					timeout)
 				.ConfigureAwait(false);
@@ -160,7 +171,8 @@ public sealed class TriasProvider :
 		XDocument response =
 			await _client
 				.SendAsync(
-					TriasRequests.LocationByPosition(latitude, longitude, PlaceKinds.Addresses, 3),
+					TriasRequestKind.Locations,
+					dialect => TriasRequests.LocationByPosition(latitude, longitude, PlaceKinds.Addresses, 3, dialect),
 					cancellationToken,
 					timeout)
 				.ConfigureAwait(false);
@@ -186,7 +198,8 @@ public sealed class TriasProvider :
 		XDocument response =
 			await _client
 				.SendAsync(
-					TriasRequests.StopEvents(query),
+					TriasRequestKind.StopEvent,
+					dialect => TriasRequests.StopEvents(query, dialect),
 					cancellationToken,
 					Timeout(query.TimeoutSeconds))
 				.ConfigureAwait(false);
@@ -194,17 +207,55 @@ public sealed class TriasProvider :
 		return TriasMapper.MapBoard(response, query.Stop, query.IsArrival);
 	}
 
-	public Task<IReadOnlyList<RunStop>> GetRunAsync(
+	public async Task<IReadOnlyList<RunStop>> GetRunAsync(
 		Departure departure,
 		int timeoutSeconds = 15,
 		CancellationToken cancellationToken = default)
 	{
 		ArgumentNullException.ThrowIfNull(departure);
 
-		// The stop event already carried the whole run.
-		return Task.FromResult<IReadOnlyList<RunStop>>(
-			departure.ProviderData is TriasRunData run
-				? run.Stops
-				: []);
+		if (departure.ProviderData is not TriasRunData run)
+		{
+			return [];
+		}
+
+		if (run.JourneyRef is not { } journeyRef)
+		{
+			return run.Stops;
+		}
+
+		// The stop event carried the run as it was then; TripInfo has the current estimates.
+		string day =
+			run.OperatingDayRef
+			?? departure.Scheduled.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+
+		try
+		{
+			XDocument response =
+				await _client
+					.SendAsync(
+						TriasRequestKind.TripInfo,
+						dialect => TriasRequests.TripInfo(journeyRef, day, dialect),
+						cancellationToken,
+						Timeout(timeoutSeconds))
+					.ConfigureAwait(false);
+
+			IReadOnlyList<RunStop> stops = TriasMapper.MapRun(response, departure.StopId);
+
+			if (stops.Count > 0)
+			{
+				return stops;
+			}
+		}
+		catch (ApiException ex)
+		{
+			DiagnosticLog.Write($"[TRIAS] TripInfo failed, using the stop event's run: {ex.Detail}");
+		}
+		catch (InvalidOperationException ex)
+		{
+			DiagnosticLog.Write($"[TRIAS] TripInfo unreadable, using the stop event's run: {ex.Message}");
+		}
+
+		return run.Stops;
 	}
 }

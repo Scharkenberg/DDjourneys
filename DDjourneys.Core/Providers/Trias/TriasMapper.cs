@@ -1,12 +1,16 @@
 using System.Globalization;
 using System.Xml.Linq;
+using DDjourneys.Core.Diagnostics;
 using DDjourneys.Core.Models;
 using Location = DDjourneys.Core.Models.Location;
 
 namespace DDjourneys.Core.Providers.Trias;
 
 /// <summary>The stops of a run as they came with a stop event; kept in <c>Departure.ProviderData</c>.</summary>
-internal sealed record TriasRunData(IReadOnlyList<RunStop> Stops);
+internal sealed record TriasRunData(
+	IReadOnlyList<RunStop> Stops,
+	string? JourneyRef = null,
+	string? OperatingDayRef = null);
 
 /// <summary>TRIAS XML to the app's models. Elements are read by local name and every field is optional.</summary>
 internal static class TriasMapper
@@ -455,13 +459,52 @@ internal static class TriasMapper
 	{
 		Station origin = ToStation(from);
 		Station destination = ToStation(to);
+		IReadOnlyDictionary<string, string> situations = SituationTexts(document);
 
 		return
 			[.. document
 				.Deep("TripResult")
-				.Select(result => MapJourney(result, origin, destination))
+				.Select(result => MapJourney(result, origin, destination, situations))
 				.OfType<Journey>()];
 	}
+
+	// ---------- Situations ----------
+
+	/// <summary>
+	/// The situation messages of a response by situation number. They sit once in the response context
+	/// (<c>Situations/PtSituation</c>, SIRI SX) and are referenced from legs and stops by <c>SituationFullRef</c>.
+	/// </summary>
+	private static IReadOnlyDictionary<string, string> SituationTexts(XDocument document)
+	{
+		var texts = new Dictionary<string, string>(StringComparer.Ordinal);
+
+		foreach (XElement situation in document.Deep("PtSituation"))
+		{
+			string? number = situation.ChildText("SituationNumber");
+
+			string? text =
+				situation.ChildLabel("Summary")
+				?? situation.ChildLabel("Description")
+				?? situation.ChildLabel("Detail");
+
+			if (number is not null && text is not null)
+			{
+				texts[number] = text;
+			}
+		}
+
+		return texts;
+	}
+
+	/// <summary>The messages a scope refers to, each once.</summary>
+	private static IReadOnlyList<string> SituationsOf(
+		IEnumerable<XElement> references,
+		IReadOnlyDictionary<string, string> situations) =>
+		[.. references
+			.Select(reference => reference.ChildText("SituationNumber"))
+			.Where(number => number is not null && situations.ContainsKey(number))
+			.Select(number => situations[number!])
+			.Distinct()];
 
 	private static Station ToStation(Location place) =>
 		new()
@@ -474,7 +517,11 @@ internal static class TriasMapper
 			Longitude = place.Longitude
 		};
 
-	private static Journey? MapJourney(XElement result, Station origin, Station destination)
+	private static Journey? MapJourney(
+		XElement result,
+		Station origin,
+		Station destination,
+		IReadOnlyDictionary<string, string> situations)
 	{
 		XElement? trip = result.Child("Trip");
 
@@ -493,7 +540,7 @@ internal static class TriasMapper
 		{
 			if (tripLeg.Child("TimedLeg") is { } timed)
 			{
-				JourneyLeg leg = MapTimedLeg(tripLeg, timed);
+				JourneyLeg leg = MapTimedLeg(tripLeg, timed, situations);
 				int index = legs.Count;
 
 				legs.Add(leg);
@@ -537,11 +584,15 @@ internal static class TriasMapper
 			ProviderId = TriasProviderInfo.Id,
 			ProviderData = result,
 			PlannedDuration = trip.Child("Duration").Duration(),
-			Fares = MapFares(result)
+			Fares = MapFares(result),
+			Notices = SituationsOf(trip.Children("SituationFullRef"), situations)
 		};
 	}
 
-	private static JourneyLeg MapTimedLeg(XElement tripLeg, XElement timed)
+	private static JourneyLeg MapTimedLeg(
+		XElement tripLeg,
+		XElement timed,
+		IReadOnlyDictionary<string, string> situations)
 	{
 		XElement? service = timed.Child("Service");
 		TransitMode mode = MapMode(Properties(service).Child("Mode"), Properties(service));
@@ -588,7 +639,10 @@ internal static class TriasMapper
 			ArrivalPlatformKind = toBay is null ? PlatformKind.Unknown : toKind,
 			IsCancelled = IsCancelled(service),
 			Vehicle = MapVehicle(service, line),
-			Notices = Attributes(service, line.Name),
+			Notices =
+				[.. Attributes(service, line.Name)
+					.Concat(SituationsOf(timed.Deep("SituationFullRef"), situations))
+					.Distinct()],
 			Id = tripLeg.ChildText("LegId"),
 			ProviderData = tripLeg
 		};
@@ -859,7 +913,11 @@ internal static class TriasMapper
 					Platform = bay,
 					PlatformKind = bay is null ? PlatformKind.Unknown : KindFor(mode),
 					State = StateOf(planned, estimated, cancelled),
-					ProviderData = new TriasRunData(runStops)
+					ProviderData =
+						new TriasRunData(
+							runStops,
+							service.ChildText("JourneyRef"),
+							service.ChildText("OperatingDayRef"))
 				});
 		}
 
@@ -890,8 +948,64 @@ internal static class TriasMapper
 			Position = position,
 			Scheduled = planned,
 			Realtime = estimated,
-			State = StateOf(planned, estimated, cancelled)
+			State = StateOf(planned, estimated, cancelled),
+			Occupancy = MapOccupancy(call.ChildText("Occupancy"))
 		};
+	}
+
+	// ---------- Trip info ----------
+
+	/// <summary>
+	/// The calls of one run from a TripInfo answer: <c>PreviousCall</c>, the vehicle position,
+	/// <c>OnwardCall</c>. The call at <paramref name="currentStopId"/> is marked as the current one.
+	/// The vehicle position, when the server sent one, is written to the log.
+	/// </summary>
+	public static IReadOnlyList<RunStop> MapRun(XDocument document, string currentStopId)
+	{
+		XElement? result = document.Deep("TripInfoResult").FirstOrDefault();
+
+		if (result is null)
+		{
+			return [];
+		}
+
+		XElement? service = result.Child("Service");
+		TransitMode mode = MapMode(Properties(service).Child("Mode"), Properties(service));
+
+		var stops = new List<RunStop>();
+
+		foreach (XElement element in result.Elements())
+		{
+			RunPosition? position =
+				element.Name.LocalName switch
+				{
+					"PreviousCall" => RunPosition.Previous,
+					"OnwardCall" => RunPosition.Onward,
+					_ => null
+				};
+
+			if (position is not { } kind)
+			{
+				continue;
+			}
+
+			RunStop stop = MapRunStop(element.Child("CallAtStop") ?? element, kind, mode);
+
+			stops.Add(
+				string.Equals(stop.Station.Id, currentStopId, StringComparison.Ordinal)
+					? MapRunStop(element.Child("CallAtStop") ?? element, RunPosition.Current, mode)
+					: stop);
+		}
+
+		if (result.Child("CurrentPosition") is { } vehicle
+			&& vehicle.Child("GeoPosition") is { } point)
+		{
+			DiagnosticLog.Write(
+				$"[TRIAS] vehicle at {point.ChildText("Latitude")}, {point.ChildText("Longitude")}"
+				+ $" progress {vehicle.ChildText("Progress")}");
+		}
+
+		return stops;
 	}
 
 	// ---------- Errors ----------
