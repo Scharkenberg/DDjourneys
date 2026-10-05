@@ -324,6 +324,27 @@ public sealed class FareRow
 
 	public bool HasDescription =>
 		!string.IsNullOrWhiteSpace(Description);
+
+	/// <summary>"Zones: Dresden, Radebeul".</summary>
+	public string? ZonesText { get; init; }
+
+	public bool HasZones =>
+		!string.IsNullOrWhiteSpace(ZonesText);
+
+	/// <summary>Conditions printed with the ticket.</summary>
+	public string? NotesText { get; init; }
+
+	public bool HasNotes =>
+		!string.IsNullOrWhiteSpace(NotesText);
+
+	/// <summary>"For: Adult, Child".</summary>
+	public string? ValidForText { get; init; }
+
+	public bool HasValidFor =>
+		!string.IsNullOrWhiteSpace(ValidForText);
+
+	public string AccessibilityText =>
+		$"{Name}, {PriceText}";
 }
 
 

@@ -357,6 +357,16 @@ internal static class TriasMapper
 		};
 	}
 
+	/// <summary>TRIAS 1.4 <c>OccupancyEnumeration</c>: low, moderate, high.</summary>
+	private static OccupancyLevel MapOccupancy(string? value) =>
+		value?.Trim().ToLowerInvariant() switch
+		{
+			"low" => OccupancyLevel.Low,
+			"moderate" => OccupancyLevel.Medium,
+			"high" => OccupancyLevel.High,
+			_ => OccupancyLevel.Unknown
+		};
+
 	private static bool IsCancelled(XElement? service) =>
 		service.Child("Cancelled").Flag();
 
@@ -560,6 +570,7 @@ internal static class TriasMapper
 			ArrivalPlatform = toBay,
 			ArrivalPlatformKind = toBay is null ? PlatformKind.Unknown : toKind,
 			IsCancelled = IsCancelled(service),
+			Occupancy = MapOccupancy(service.ChildText("Occupancy")),
 			Notices = Attributes(service, line.Name),
 			Id = tripLeg.ChildText("LegId"),
 			ProviderData = tripLeg
@@ -636,6 +647,7 @@ internal static class TriasMapper
 			Kind = kind,
 			Path = MapPath(walk),
 			IsGuaranteed = guaranteed,
+			IsEnsured = guaranteed,
 			From = start,
 			To = end,
 			ProviderData = tripLeg
@@ -669,6 +681,7 @@ internal static class TriasMapper
 				Kind = transfer.Kind,
 				Path = transfer.Path,
 				IsGuaranteed = transfer.IsGuaranteed,
+				IsEnsured = transfer.IsEnsured,
 				From = transfer.From,
 				To = transfer.To,
 				ProviderData = transfer.ProviderData
@@ -678,9 +691,69 @@ internal static class TriasMapper
 
 	// ---------- Fares ----------
 
+	/// <summary>A ticket valid for a day (duration P1D or the word "Tages"/"day") is a day ticket.</summary>
+	private static FareKind KindOf(string name, string? duration) =>
+		duration is "P1D" or "PT24H"
+		|| name.Contains("tages", StringComparison.OrdinalIgnoreCase)
+		|| name.Contains("day", StringComparison.OrdinalIgnoreCase)
+			? FareKind.Day
+			: name.Contains("einzel", StringComparison.OrdinalIgnoreCase)
+				|| name.Contains("single", StringComparison.OrdinalIgnoreCase)
+					? FareKind.Single
+					: FareKind.Other;
+
+	/// <summary>
+	/// TRIAS 1.4 quotes tickets in <c>TripFares/Ticket</c> (TicketName, Price, Currency, TariffLevel, ValidFor,
+	/// ValidityDurationText, SaleUrl); the passed fare zones are in <c>PassedZones</c>. Older servers used
+	/// <c>FareProduct</c>, which is still read.
+	/// </summary>
 	private static IReadOnlyList<JourneyFare> MapFares(XElement result)
 	{
 		var fares = new List<JourneyFare>();
+
+		foreach (XElement tripFares in result.Deep("TripFares"))
+		{
+			string? zones =
+				string.Join(
+					", ",
+					tripFares.Deep("FareZoneText")
+						.Select(zone => zone.Text())
+						.OfType<string>()
+						.Distinct()) is { Length: > 0 } joined
+					? joined
+					: null;
+
+			foreach (XElement ticket in tripFares.Children("Ticket"))
+			{
+				string? name = ticket.ChildText("TicketName") ?? ticket.ChildText("TicketId");
+
+				if (name is null)
+				{
+					continue;
+				}
+
+				string? level = ticket.ChildLabel("TariffLevelLabel") ?? ticket.ChildText("TariffLevel");
+				string? validity = ticket.ChildLabel("ValidityDurationText");
+
+				string? validFor =
+					string.Join(", ", ticket.Children("ValidFor").Select(item => item.Text()).OfType<string>()) is { Length: > 0 } who
+						? who
+						: null;
+
+				fares.Add(
+					new JourneyFare
+					{
+						Name = name,
+						Kind = KindOf(name, ticket.ChildText("ValidityDuration")),
+						Price = ticket.Child("Price").Decimal(),
+						Currency = ticket.ChildText("Currency") ?? "EUR",
+						Description = string.Join(" · ", new[] { level, validity }.Where(part => !string.IsNullOrWhiteSpace(part))) is { Length: > 0 } text ? text : null,
+						Zones = zones,
+						ValidFor = validFor,
+						Url = ticket.Child("SaleUrl").ChildText("Url") ?? ticket.Child("InfoUrl").ChildText("Url")
+					});
+			}
+		}
 
 		foreach (XElement product in result.Deep("FareProduct"))
 		{
@@ -691,14 +764,12 @@ internal static class TriasMapper
 				continue;
 			}
 
-			decimal? price = product.Child("Price").Decimal();
-
-			// A price may arrive in cents when the server says so; EUR with two decimals is the usual form.
 			fares.Add(
 				new JourneyFare
 				{
 					Name = name,
-					Price = price,
+					Kind = KindOf(name, null),
+					Price = product.Child("Price").Decimal(),
 					Currency = product.ChildText("Currency") ?? "EUR",
 					Description = product.ChildLabel("TariffLevelName")
 						?? product.ChildText("TariffLevel")

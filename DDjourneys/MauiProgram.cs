@@ -69,6 +69,12 @@ public static class MauiProgram
 		// Opt-in only: without the developer option nothing is logged and a leftover file is removed.
 		DiagnosticLog.Enabled = settings.LogToFile;
 
+		if (DiagnosticLog.Enabled)
+		{
+			DiagnosticLog.Write(
+				$"[App] {AppInfo.Current.Name} {AppInfo.Current.VersionString} on {DeviceInfo.Current.Platform} {DeviceInfo.Current.VersionString}, provider '{settings.ProviderId}'");
+		}
+
 		if (!DiagnosticLog.Enabled)
 		{
 			DiagnosticLog.Delete();

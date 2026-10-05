@@ -251,6 +251,9 @@ public static class VvoJourneyMapper
 			ProviderData =
 				route,
 
+			Fares =
+				VvoFareMapper.Map(route),
+
 			Context =
 				string.IsNullOrWhiteSpace(sessionId)
 					? null

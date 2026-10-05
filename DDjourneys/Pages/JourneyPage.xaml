@@ -720,35 +720,78 @@
 
 			</VerticalStackLayout>
 
+			<!--  Tickets: one tonal tile per ticket, the price large on the right  -->
 			<Border
 				Padding="12"
 				IsVisible="{Binding HasFares}"
 				StyleClass="Card">
 
 				<VerticalStackLayout Spacing="{DynamicResource SpaceS}">
-					<Label StyleClass="Section" Text="{localization:Tr Extras.FaresTitle}" />
+					<HorizontalStackLayout Spacing="8">
+						<controls:Icon
+							Glyph="Ticket"
+							Size="18"
+							VerticalOptions="Center"
+							Color="{DynamicResource Accent}" />
+						<Label
+							StyleClass="Section"
+							Text="{localization:Tr Extras.FaresTitle}"
+							VerticalOptions="Center" />
+					</HorizontalStackLayout>
 
-					<VerticalStackLayout BindableLayout.ItemsSource="{Binding Fares}">
+					<VerticalStackLayout BindableLayout.ItemsSource="{Binding Fares}" Spacing="{DynamicResource SpaceS}">
 						<BindableLayout.ItemTemplate>
 							<DataTemplate x:DataType="support:FareRow">
-								<Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="12" Padding="0,4">
-									<Label
-										FontFamily="{DynamicResource FontSemibold}"
-										Text="{Binding Name}" />
-									<Label
-										Grid.Column="1"
-										FontFamily="{DynamicResource FontSemibold}"
-										Text="{Binding PriceText}" />
-									<Label
-										Grid.Row="1"
-										Grid.ColumnSpan="2"
-										IsVisible="{Binding HasDescription}"
-										StyleClass="Caption"
-										Text="{Binding Description}" />
-								</Grid>
+								<Border
+									Padding="12,10"
+									BackgroundColor="{DynamicResource AccentSoft}"
+									SemanticProperties.Description="{Binding AccessibilityText}"
+									StrokeShape="RoundRectangle 10"
+									StrokeThickness="0">
+									<Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="2">
+										<Label
+											FontFamily="{DynamicResource FontSemibold}"
+											Text="{Binding Name}"
+											VerticalOptions="Center" />
+										<Label
+											Grid.Column="1"
+											Grid.RowSpan="2"
+											FontFamily="{DynamicResource FontSemibold}"
+											FontSize="{StaticResource FontTitle}"
+											Text="{Binding PriceText}"
+											TextColor="{DynamicResource Accent}"
+											VerticalOptions="Center" />
+										<Label
+											Grid.Row="1"
+											IsVisible="{Binding HasDescription}"
+											StyleClass="Caption"
+											Text="{Binding Description}" />
+										<Label
+											Grid.Row="2"
+											Grid.ColumnSpan="2"
+											IsVisible="{Binding HasZones}"
+											StyleClass="Caption"
+											Text="{Binding ZonesText}" />
+										<Label
+											Grid.Row="3"
+											Grid.ColumnSpan="2"
+											IsVisible="{Binding HasValidFor}"
+											StyleClass="Caption"
+											Text="{Binding ValidForText}" />
+										<Label
+											Grid.Row="4"
+											Grid.ColumnSpan="2"
+											IsVisible="{Binding HasNotes}"
+											LineBreakMode="WordWrap"
+											StyleClass="Faint"
+											Text="{Binding NotesText}" />
+									</Grid>
+								</Border>
 							</DataTemplate>
 						</BindableLayout.ItemTemplate>
 					</VerticalStackLayout>
+
+					<Label StyleClass="Faint" Text="{localization:Tr Extras.FareNotAll}" />
 				</VerticalStackLayout>
 			</Border>
 

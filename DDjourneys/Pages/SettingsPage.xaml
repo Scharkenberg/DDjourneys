@@ -521,6 +521,12 @@
 						<VerticalStackLayout IsVisible="{Binding HasLog}">
 							<BoxView StyleClass="Divider" />
 
+							<Label
+								Margin="12,8,12,0"
+								LineBreakMode="CharacterWrap"
+								StyleClass="Faint"
+								Text="{Binding LogInfo}" />
+
 							<FlexLayout
 								AlignContent="Start"
 								AlignItems="Start"

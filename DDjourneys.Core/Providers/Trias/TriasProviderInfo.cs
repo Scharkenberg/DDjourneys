@@ -16,10 +16,11 @@ public static class TriasProviderInfo
 			"VVO (TRIAS)",
 			"Verkehrsverbund Oberelbe, TRIAS interface",
 			"Sachsen",
-			"Dresden · Meßen · Pirna · Bautzen · Görlitz",
+			"Dresden · Meißen · Pirna · Bautzen · Görlitz",
 			ProviderCapabilities.Journeys
 			| ProviderCapabilities.Places
 			| ProviderCapabilities.Platforms
+			| ProviderCapabilities.Occupancy
 			| ProviderCapabilities.RoutingPreferences
 			| ProviderCapabilities.Departures
 			| ProviderCapabilities.Fares

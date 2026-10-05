@@ -19,8 +19,28 @@ public static class DiagnosticLog
 	/// <summary>Full path of the log file; null: nothing is written.</summary>
 	public static string? FilePath { get; set; }
 
-	/// <summary>Whether lines are written at all.</summary>
-	public static bool Enabled { get; set; }
+	/// <summary>Whether lines are written at all. Switching it on writes a first line, so the file exists at once.</summary>
+	public static bool Enabled
+	{
+		get => _enabled;
+		set
+		{
+			bool switchedOn = value && !_enabled;
+
+			_enabled = value;
+
+			if (switchedOn)
+			{
+				LastError = null;
+				Write("[Log] started");
+			}
+		}
+	}
+
+	private static bool _enabled;
+
+	/// <summary>Why the last write failed (null: it did not); shown next to the log path so a failure is not silent.</summary>
+	public static string? LastError { get; private set; }
 
 	public static void Write(string message)
 	{
@@ -38,6 +58,11 @@ public static class DiagnosticLog
 
 			lock (Gate)
 			{
+				if (Path.GetDirectoryName(path) is { Length: > 0 } directory)
+				{
+					Directory.CreateDirectory(directory);
+				}
+
 				if (File.Exists(path)
 					&& new FileInfo(path).Length > MaxBytes)
 				{
@@ -47,9 +72,10 @@ public static class DiagnosticLog
 				File.AppendAllText(path, line + Environment.NewLine);
 			}
 		}
-		catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+		catch (Exception ex)
 		{
-			// Logging must never disturb the app.
+			// Logging must never disturb the app; the reason is kept for the settings page.
+			LastError = $"{ex.GetType().Name}: {ex.Message}";
 		}
 	}
 

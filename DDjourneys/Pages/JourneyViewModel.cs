@@ -914,16 +914,27 @@ public sealed class JourneyViewModel :
 				.Select(
 					fare => new FareRow
 					{
-						Name = fare.Name,
+						Name =
+							fare.Kind switch
+							{
+								FareKind.Single => _localization.CurrentStrings.Extras.FareSingle,
+								FareKind.Day => _localization.CurrentStrings.Extras.FareDay,
+								_ => fare.Name
+							},
 						PriceText =
 							fare.Price is { } price
-								? string.Format(
-									CultureInfo.CurrentCulture,
-									"{0:N2} {1}",
-									price,
-									fare.Currency)
+								? Format.Price(price, fare.Currency)
 								: string.Empty,
-						Description = fare.Description
+						Description = fare.Description,
+						ZonesText =
+							fare.Zones is { Length: > 0 } zones
+								? $"{_localization.CurrentStrings.Extras.FareZones}: {zones}"
+								: null,
+						NotesText = fare.Notes,
+						ValidForText =
+							fare.ValidFor is { Length: > 0 } who
+								? $"{_localization.CurrentStrings.Extras.FareValidFor}: {who}"
+								: null
 					})];
 
 		Notices =

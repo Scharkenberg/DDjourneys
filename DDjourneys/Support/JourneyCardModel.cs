@@ -130,6 +130,27 @@ public sealed class JourneyCardModel : ObservableObject
 
 	public string TransfersText => _transfersText;
 
+	/// <summary>The cheapest single price the provider quotes ("2,70 €"), or null when it quotes none.</summary>
+	public string? PriceText
+	{
+		get
+		{
+			JourneyFare? fare =
+				Journey.Fares
+					.Where(item => item.Price is not null)
+					.OrderBy(item => item.Kind == FareKind.Single ? 0 : item.Kind == FareKind.Day ? 2 : 1)
+					.ThenBy(item => item.Price)
+					.FirstOrDefault();
+
+			return fare is { Price: { } price }
+				? Format.Price(price, fare.Currency)
+				: null;
+		}
+	}
+
+	public bool HasPrice =>
+		PriceText is not null;
+
 	public string? DepartureDelay { get; }
 	public string? ArrivalDelay { get; }
 

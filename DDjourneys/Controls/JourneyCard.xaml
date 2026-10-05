@@ -38,6 +38,28 @@
 						HorizontalTextAlignment="Center"
 						StyleClass="Caption"
 						Text="{Binding TransfersText}" />
+					<!--  Price: a soft pill (not tappable)  -->
+					<Border
+						Padding="10,2"
+						BackgroundColor="{DynamicResource AccentSoft}"
+						HorizontalOptions="Center"
+						IsVisible="{Binding HasPrice}"
+						StrokeShape="RoundRectangle 100"
+						StrokeThickness="0">
+						<HorizontalStackLayout Spacing="6">
+							<controls:Icon
+								Glyph="Ticket"
+								Size="14"
+								VerticalOptions="Center"
+								Color="{DynamicResource Accent}" />
+							<Label
+								FontFamily="{DynamicResource FontSemibold}"
+								FontSize="{StaticResource FontCaption}"
+								Text="{Binding PriceText}"
+								TextColor="{DynamicResource Accent}"
+								VerticalOptions="Center" />
+						</HorizontalStackLayout>
+					</Border>
 				</VerticalStackLayout>
 
 				<VerticalStackLayout

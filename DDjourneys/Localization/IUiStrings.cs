@@ -563,6 +563,11 @@ public sealed class ExtrasStrings
 	public required string OptLowestFare { get; init; }
 	public required string OptNote { get; init; }
 	public required string FaresTitle { get; init; }
+	public required string FareSingle { get; init; }
+	public required string FareDay { get; init; }
+	public required string FareZones { get; init; }
+	public required string FareValidFor { get; init; }
+	public required string FareNotAll { get; init; }
 	public required string PdfFailed { get; init; }
 	public required string LiveHowTitle { get; init; }
 	public required string LiveHowText { get; init; }

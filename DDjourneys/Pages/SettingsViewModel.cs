@@ -283,17 +283,44 @@ public sealed class SettingsViewModel : DisposableViewModel
 		{
 			_settings.LogToFile = value;
 			OnPropertyChanged();
-			OnPropertyChanged(nameof(HasLog));
+			RefreshLog();
 		}
 	}
 
-	/// <summary>There is a log file to share or delete.</summary>
-	public bool HasLog => DiagnosticLog.Exists;
+	/// <summary>There is a log (or one is being written) to share or delete.</summary>
+	public bool HasLog => LogToFile || DiagnosticLog.Exists;
+
+	/// <summary>Where the log file is, how big it is, and why writing failed if it did.</summary>
+	public string LogInfo
+	{
+		get
+		{
+			string path = DiagnosticLog.FilePath ?? "-";
+
+			string size =
+				DiagnosticLog.Exists && DiagnosticLog.FilePath is { } file
+					? $" ({new FileInfo(file).Length / 1024.0:0.#} KB)"
+					: string.Empty;
+
+			return DiagnosticLog.LastError is { } error
+				? $"{path}{size}\n{error}"
+				: $"{path}{size}";
+		}
+	}
+
+	/// <summary>Called when the page appears: the file may have grown or appeared since.</summary>
+	public void RefreshLog()
+	{
+		OnPropertyChanged(nameof(HasLog));
+		OnPropertyChanged(nameof(LogInfo));
+	}
 
 	private async Task ShareLogAsync()
 	{
 		if (!DiagnosticLog.Exists || DiagnosticLog.FilePath is not { } path)
 		{
+			RefreshLog();
+
 			return;
 		}
 
@@ -306,7 +333,7 @@ public sealed class SettingsViewModel : DisposableViewModel
 	private void ClearLog()
 	{
 		DiagnosticLog.Delete();
-		OnPropertyChanged(nameof(HasLog));
+		RefreshLog();
 	}
 
 	// ----- Place search -----

@@ -42,6 +42,7 @@ public enum IconGlyph
 	Home,
 	Bookmark,
 	BookmarkFilled,
+	Ticket,
 	Document,
 	Image,
 	Map,
@@ -197,6 +198,10 @@ internal static class IconPaths
 
 			[IconGlyph.Bookmark] =
 				new("M7 3.5 H17 V20.5 L12 16.5 L7 20.5 Z"),
+
+			// A ticket with the two notches of a perforation: tickets and prices.
+			[IconGlyph.Ticket] =
+				new("M3.5 7.5 H20.5 V10.5 A1.5 1.5 0 0 0 20.5 13.5 V16.5 H3.5 V13.5 A1.5 1.5 0 0 0 3.5 10.5 Z M14.5 7.5 V9 M14.5 11.25 V12.75 M14.5 15 V16.5"),
 
 			[IconGlyph.BookmarkFilled] =
 				new("M7 3.5 H17 V20.5 L12 16.5 L7 20.5 Z", true),
