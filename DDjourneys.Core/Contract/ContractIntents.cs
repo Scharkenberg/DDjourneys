@@ -5,7 +5,7 @@ namespace DDjourneys.Core.Contract;
 
 /// <summary>
 /// The things apps already know how to send, read as the short form <c>go</c> (to a destination, from where the user
-/// starts): a <c>geo:</c> link (maps, browsers, messengers) and shared text (the share sheet). Pure, like the parser.
+/// starts): a <c>geo:</c> link (maps, browsers, messengers). Shared text is deliberately not read: a share target is matched by MIME type only. Pure, like the parser.
 /// </summary>
 public static partial class ContractIntents
 {
@@ -88,30 +88,6 @@ public static partial class ContractIntents
 		}
 
 		return ContractParser.Parse(bag);
-	}
-
-	/// <summary>Shared text: its first line is the destination. Null when there is nothing usable (a URL is not a place).</summary>
-	public static ContractParseResult? FromSharedText(string? text)
-	{
-		string? line =
-			text?
-				.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-				.FirstOrDefault();
-
-		if (string.IsNullOrWhiteSpace(line)
-			|| line.Length > ContractLimits.MaxValueLength
-			|| line.Contains("://", StringComparison.Ordinal)
-			|| line.Any(char.IsControl))
-		{
-			return null;
-		}
-
-		return ContractParser.Parse(
-			new Dictionary<string, string?>
-			{
-				["command"] = "go",
-				["to"] = line
-			});
 	}
 
 	private static (double Latitude, double Longitude)? Coordinates(string text)

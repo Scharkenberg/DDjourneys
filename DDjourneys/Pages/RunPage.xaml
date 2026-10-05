@@ -40,7 +40,7 @@
 					<controls:IconButton
 						Grid.Column="2"
 						Command="{Binding OpenMapCommand}"
-						Glyph="Map"
+						Glyph="MapPin"
 						HorizontalOptions="End"
 						IsVisible="{Binding CanShowMap}"
 						SemanticProperties.Description="{localization:Tr Extras.MapShow}"

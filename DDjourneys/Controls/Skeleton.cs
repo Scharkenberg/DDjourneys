@@ -147,10 +147,10 @@ public sealed partial class Skeleton : ContentView
 		{
 			while (Handler is not null)
 			{
-				if (!Motion.Enabled || !IsVisible || !IsLoaded)
+				if (!Motion.Enabled || !Motion.IsShowing(this))
 				{
 					Opacity = 1;
-					await Task.Delay(500);
+					await Motion.WaitUntilWorthAnimatingAsync(this);
 					continue;
 				}
 

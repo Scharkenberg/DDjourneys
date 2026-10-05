@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Runtime.ExceptionServices;
 using System.Xml;
 using System.Xml.Linq;
+using DDjourneys.Core.Diagnostics;
 using DDjourneys.Core.Api;
 using DDjourneys.Core.Diagnostics;
 
@@ -20,7 +21,7 @@ namespace DDjourneys.Core.Providers.Trias;
 public sealed class TriasClient
 {
 	private const string Endpoint =
-		"http://efa.vvo-online.de:8080/std3/trias";
+		InterfaceSchemas.TriasUrl;
 
 	private static readonly TimeSpan Reprobe = TimeSpan.FromMinutes(30);
 

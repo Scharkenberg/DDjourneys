@@ -184,10 +184,12 @@ public static class ContractCapabilities
 			new("app", "DDjourneys"),
 			new("app.version", appVersion),
 			new("scheme", ContractVersion.Scheme),
+			new("contract", ContractVersion.Current.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+			new("journey.schema", JourneyPayload.SchemaVersion.ToString(System.Globalization.CultureInfo.InvariantCulture)),
 			new("oldest", ContractVersion.Oldest.ToString(System.Globalization.CultureInfo.InvariantCulture)),
 			new("commands", string.Join(',', Enum.GetValues<ContractCommand>().Select(command => command.Name()))),
 			new("android.action", ContractVersion.AndroidAction),
 			new("keywords", string.Join(',', ContractKeywords.Here, ContractKeywords.Home, ContractKeywords.Start)),
-			new("android.intents", "view:ddjourneys,view:geo,send:text/plain")
+			new("android.intents", "view:ddjourneys,view:geo")
 		];
 }

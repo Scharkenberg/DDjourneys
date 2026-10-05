@@ -49,7 +49,16 @@ public enum ProviderCapabilities
 	Fares = 8192,
 
 	/// <summary>The router can optimise for fastest, fewest changes, least walking or lowest fare.</summary>
-	RouteOptimisation = 16384
+	RouteOptimisation = 16384,
+
+	/// <summary>Fares are priced for the traveller category the passenger names (youth, child, senior).</summary>
+	PassengerFares = 32768,
+
+	/// <summary>The router honours the walking time to a stop and plans from and to nearby stops.</summary>
+	WalkToStops = 65536,
+
+	/// <summary>The router can leave out journeys with a fare supplement.</summary>
+	SupplementFilter = 131072
 }
 
 /// <summary>A place a map can start at: the central city of a provider's area.</summary>

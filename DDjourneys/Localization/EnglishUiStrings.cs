@@ -167,7 +167,7 @@ public sealed class EnglishUiStrings : IUiStrings
 		OptFewestChanges = "Fewest changes",
 		OptLeastWalking = "Least walking",
 		OptLowestFare = "Lowest fare",
-		OptNote = "Only the VVO (TRIAS) provider honours this choice; other providers always search for the fastest route.",
+		OptNote = "Applies to the next search with this provider.",
 		FaresTitle = "Tickets and prices",
 		FareSingle = "Single ticket",
 		FareDay = "Day ticket",
@@ -277,8 +277,10 @@ public sealed class EnglishUiStrings : IUiStrings
 
 	public JourneyStrings Journey { get; } = new()
 	{
-		LegEarlier = "Earlier alternative",
-		LegLater = "Later alternative",
+		LegEarlier = "Earlier",
+		LegLater = "Later",
+		LegEarlierHint = "Find an earlier alternative for this ride",
+		LegLaterHint = "Find a later alternative for this ride",
 		LegNone = "No alternative found for this ride.",
 		OpenPdf = "Open as PDF",
 		AlternativeShown = "Showing an alternative connection. Search again to go back.",
@@ -372,7 +374,7 @@ public sealed class EnglishUiStrings : IUiStrings
 		MapKeyStatusMissing = "No key: the map is off",
 		MapKeyStatusInvalid = "CARTO did not accept this key",
 		MapKeyStatusSet = "Key saved",
-		About = "About",
+		About = "About DDjourneys",
 		ThemeSystem = "System",
 		ThemeLight = "Light",
 		ThemeDark = "Dark",
@@ -425,7 +427,7 @@ public sealed class EnglishUiStrings : IUiStrings
 			"Subtle transitions and effects",
 		TechnicalDetails = "Technical details",
 		TechnicalDetailsDescription =
-			"Show extra detail in notices",
+			"Add the technical cause to error messages and notices",
 		Results = "Results",
 		ResultsDescription = "Journeys per search",
 		RequestTimeout = "Request timeout",
@@ -444,9 +446,9 @@ public sealed class EnglishUiStrings : IUiStrings
 		ResetJourneySettings = "Reset journey settings",
 		JourneyDisplay = "Journey display",
 		Occupancy = "Occupancy",
-		OccupancyDescription = "Dots showing how full a vehicle is",
+		OccupancyDescription = "Dots in journey details showing how full a vehicle is",
 		Platforms = "Platforms and tracks",
-		PlatformsDescription = "Show Steig and Gleis at stops and interchanges",
+		PlatformsDescription = "Show platform and track numbers in journey details",
 		ExpandStops = "Show all stops",
 		ExpandStopsDescription = "Open the intermediate stops of every ride",
 		ExpertView = "Expert view",
@@ -476,7 +478,12 @@ public sealed class EnglishUiStrings : IUiStrings
 		StartFromPlaceDescription = "A stop, a point of interest or an address",
 		StartPlaceNone = "Choose a place",
 		StartPlaceHint = "The place is kept per provider. Without one, your location is used.",
-		VersionPrefix = "DDjourneys {0} ({1})"
+		VersionPrefix = "DDjourneys {0} ({1})",
+		AboutEntryDescription = "What the app does and how to use it",
+		InterfaceVersions = "Interface versions",
+		InterfaceVersionsDescription = "The versions of every interface this build uses: the services, the stored data and the contract. Add them to a bug report.",
+		CopyInterfaces = "Copy versions",
+		InterfacesCopied = "Copied to clipboard"
 	};
 
 	public RoutingStrings Routing { get; } = new()

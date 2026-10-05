@@ -25,6 +25,7 @@ public static class Routes
 	/// <summary>The settings page for starting the app in input mode.</summary>
 	public const string StartSettings = "startsettings";
 	public const string Providers = "providers";
+	public const string About = "about";
 	public const string Departures = "departures";
 	public const string Run = "run";
 	public const string Disruptions = "disruptions";

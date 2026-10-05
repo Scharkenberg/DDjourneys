@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using DDjourneys.Core.Api;
+using DDjourneys.Core.Diagnostics;
 using DDjourneys.Core.Models;
 using DDjourneys.Core.Providers.Abstractions;
 using Location = DDjourneys.Core.Models.Location;
@@ -14,7 +15,7 @@ namespace DDjourneys.Core.Providers.OpenData;
 public sealed class DresdenOpenDataProvider : IOpenDataProvider
 {
 	private const string Base =
-		"https://kommisdd.dresden.de/net4/public/ogcapi/collections";
+		InterfaceSchemas.OpenDataUrl;
 
 	private const string AccessibilityLayer = "L1233";
 

@@ -14,6 +14,8 @@ namespace DDjourneys.Platforms.Android;
 /// </summary>
 internal static class AndroidShortcuts
 {
+	private const string SignatureKey = "shortcuts.signature";
+
 	public static void Publish(Activity activity)
 	{
 		try
@@ -26,11 +28,21 @@ internal static class AndroidShortcuts
 
 			ExtrasStrings strings = LocalizationService.Current.CurrentStrings.Extras;
 
+			// Publishing is a call into the system every time: only when the labels or the app changed.
+			string signature = $"{AppInfo.Current.BuildString}|{strings.ShortcutHome}|{strings.ShortcutDepartures}";
+
+			if (Preferences.Default.Get(SignatureKey, string.Empty) == signature)
+			{
+				return;
+			}
+
 			manager.SetDynamicShortcuts(
 			[
 				Build(activity, AppShortcut.Home, strings.ShortcutHome, "ic_shortcut_home", 0),
 				Build(activity, AppShortcut.DeparturesHere, strings.ShortcutDepartures, "ic_shortcut_departures", 1)
 			]);
+
+			Preferences.Default.Set(SignatureKey, signature);
 		}
 		catch (Exception ex)
 		{

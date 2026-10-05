@@ -1,3 +1,4 @@
+using CommunityToolkit.Maui.Alerts;
 using DDjourneys.Core.Diagnostics;
 using DDjourneys.Core.Providers;
 using DDjourneys.Localization;
@@ -33,6 +34,8 @@ public sealed partial class SettingsViewModel : DisposableViewModel
 		OpenProvidersCommand = new AsyncCommand(OpenProvidersAsync);
 		ShareLogCommand = new AsyncCommand(ShareLogAsync);
 		ClearLogCommand = new Command(ClearLog);
+		OpenAboutCommand = new AsyncCommand(OpenAboutAsync);
+		CopyInterfacesCommand = new AsyncCommand(CopyInterfacesAsync);
 		SaveMapKeyCommand = new Command(SaveMapKey, () => MapKeyChanged);
 
 		_mapKeyDraft = _settings.MapApiKey;
@@ -105,6 +108,11 @@ public sealed partial class SettingsViewModel : DisposableViewModel
 	public AsyncCommand OpenProvidersCommand { get; }
 	public AsyncCommand ShareLogCommand { get; }
 	public Command ClearLogCommand { get; }
+	public AsyncCommand OpenAboutCommand { get; }
+	public AsyncCommand CopyInterfacesCommand { get; }
+
+	/// <summary>Build and the version of every interface, as the log file starts with it (see <see cref="AppInterfaces"/>).</summary>
+	public string InterfaceReport => field ??= AppInterfaces.Report();
 
 	/// <summary>Name of the selected provider, shown on the entry row.</summary>
 	public string ProviderText =>
@@ -454,6 +462,16 @@ public sealed partial class SettingsViewModel : DisposableViewModel
 
 	public const double MaxSearchDelay = AppSettings.MaxSearchDelayMs;
 
+	private static Task OpenAboutAsync() =>
+		Shell.Current.GoToAsync(Routes.About);
+
+	private async Task CopyInterfacesAsync()
+	{
+		await Clipboard.Default.SetTextAsync(InterfaceReport);
+
+		await Toast.Make(_localization.CurrentStrings.Settings.InterfacesCopied).Show();
+	}
+
 	private static Task OpenProvidersAsync() =>
 		Shell.Current.GoToAsync(Routes.Providers);
 
@@ -566,8 +584,6 @@ public sealed partial class SettingsViewModel : DisposableViewModel
 		OnPropertyChanged(nameof(ExactPosition));
 		OnPropertyChanged(nameof(ShowPlatforms));
 		OnPropertyChanged(nameof(ExpandStops));
-		OnPropertyChanged(nameof(ExpertView));
-		OnPropertyChanged(nameof(HasLog));
 		OnPropertyChanged(nameof(SearchDelayMs));
 		OnPropertyChanged(nameof(SearchDelayText));
 		OnPropertyChanged(nameof(MinQueryLength));

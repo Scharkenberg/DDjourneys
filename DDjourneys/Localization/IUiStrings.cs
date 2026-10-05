@@ -163,6 +163,8 @@ public sealed class JourneyStrings
 {
 	public required string LegEarlier { get; init; }
 	public required string LegLater { get; init; }
+	public required string LegEarlierHint { get; init; }
+	public required string LegLaterHint { get; init; }
 	public required string LegNone { get; init; }
 	public required string OpenPdf { get; init; }
 	public required string AlternativeShown { get; init; }
@@ -352,6 +354,11 @@ public sealed class SettingsStrings
 	public required string StartPlaceNone { get; init; }
 	public required string StartPlaceHint { get; init; }
 	public required string VersionPrefix { get; init; }
+	public required string AboutEntryDescription { get; init; }
+	public required string InterfaceVersions { get; init; }
+	public required string InterfaceVersionsDescription { get; init; }
+	public required string CopyInterfaces { get; init; }
+	public required string InterfacesCopied { get; init; }
 }
 
 public sealed class TransportStrings

@@ -41,7 +41,7 @@
 										Color="{DynamicResource Accent}" />
 
 									<Grid.GestureRecognizers>
-										<TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type local:AppearanceViewModel}}, Path=SelectModeCommand}" CommandParameter="{Binding Id}" />
+										<TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type local:AppearanceViewModel}}, x:DataType=local:AppearanceViewModel, Path=SelectModeCommand}" CommandParameter="{Binding Id}" />
 									</Grid.GestureRecognizers>
 								</Grid>
 
@@ -134,7 +134,7 @@
 										Color="{DynamicResource Accent}" />
 
 									<Grid.GestureRecognizers>
-										<TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type local:AppearanceViewModel}}, Path=SelectColorCommand}" CommandParameter="{Binding Id}" />
+										<TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type local:AppearanceViewModel}}, x:DataType=local:AppearanceViewModel, Path=SelectColorCommand}" CommandParameter="{Binding Id}" />
 									</Grid.GestureRecognizers>
 								</Grid>
 
@@ -176,7 +176,7 @@
 										Color="{DynamicResource Accent}" />
 
 									<Grid.GestureRecognizers>
-										<TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type local:AppearanceViewModel}}, Path=SelectFontCommand}" CommandParameter="{Binding Id}" />
+										<TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type local:AppearanceViewModel}}, x:DataType=local:AppearanceViewModel, Path=SelectFontCommand}" CommandParameter="{Binding Id}" />
 									</Grid.GestureRecognizers>
 								</Grid>
 
@@ -218,7 +218,7 @@
 										Color="{DynamicResource Accent}" />
 
 									<Grid.GestureRecognizers>
-										<TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type local:AppearanceViewModel}}, Path=SelectDensityCommand}" CommandParameter="{Binding Id}" />
+										<TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type local:AppearanceViewModel}}, x:DataType=local:AppearanceViewModel, Path=SelectDensityCommand}" CommandParameter="{Binding Id}" />
 									</Grid.GestureRecognizers>
 								</Grid>
 
@@ -264,7 +264,7 @@
 										Color="{DynamicResource Accent}" />
 
 									<Grid.GestureRecognizers>
-										<TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type local:AppearanceViewModel}}, Path=SelectMaterialCommand}" CommandParameter="{Binding Id}" />
+										<TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type local:AppearanceViewModel}}, x:DataType=local:AppearanceViewModel, Path=SelectMaterialCommand}" CommandParameter="{Binding Id}" />
 									</Grid.GestureRecognizers>
 								</Grid>
 
@@ -310,7 +310,7 @@
 										Color="{DynamicResource Accent}" />
 
 									<Grid.GestureRecognizers>
-										<TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type local:AppearanceViewModel}}, Path=SelectMaterialSurfacesCommand}" CommandParameter="{Binding Id}" />
+										<TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type local:AppearanceViewModel}}, x:DataType=local:AppearanceViewModel, Path=SelectMaterialSurfacesCommand}" CommandParameter="{Binding Id}" />
 									</Grid.GestureRecognizers>
 								</Grid>
 

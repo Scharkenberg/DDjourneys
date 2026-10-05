@@ -24,7 +24,7 @@ internal sealed partial class SchutzengelResponse(HttpStatusCode statusCode, Jso
 internal sealed class SchutzengelApi
 {
 	private const string BaseUrl =
-		"https://m.dvb.de/schutzengel/";
+		InterfaceSchemas.SchutzengelUrl;
 
 	private const string BrowserUserAgent =
 		"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +

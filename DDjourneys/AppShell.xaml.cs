@@ -10,6 +10,9 @@ public partial class AppShell : Shell
 	{
 		InitializeComponent();
 
+		// Up and showing a page for a few seconds: this start counts as finished (see StartupGuard).
+		Navigated += OnFirstNavigated;
+
 		// Pushed pages are routes only. Only the home page is a ShellContent.
 		Routing.RegisterRoute(Routes.PlaceSearch, typeof(PlaceSearchPage));
 		Routing.RegisterRoute(Routes.Results, typeof(ResultsPage));
@@ -21,6 +24,7 @@ public partial class AppShell : Shell
 		Routing.RegisterRoute(Routes.Routing, typeof(RoutingSettingsPage));
 		Routing.RegisterRoute(Routes.StartSettings, typeof(StartSettingsPage));
 		Routing.RegisterRoute(Routes.Providers, typeof(ProvidersPage));
+		Routing.RegisterRoute(Routes.About, typeof(AboutPage));
 		Routing.RegisterRoute(Routes.Departures, typeof(DeparturesPage));
 		Routing.RegisterRoute(Routes.Run, typeof(RunPage));
 		Routing.RegisterRoute(Routes.Disruptions, typeof(DisruptionsPage));
@@ -29,6 +33,13 @@ public partial class AppShell : Shell
 		Routing.RegisterRoute(Routes.Map, typeof(MapPage));
 
 		Navigating += OnNavigating;
+	}
+
+	private void OnFirstNavigated(object? sender, ShellNavigatedEventArgs e)
+	{
+		Navigated -= OnFirstNavigated;
+
+		Dispatcher.DispatchDelayed(TimeSpan.FromSeconds(3), StartupGuard.Complete);
 	}
 
 	/// <summary>

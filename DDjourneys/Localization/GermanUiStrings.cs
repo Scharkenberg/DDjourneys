@@ -171,7 +171,7 @@ public sealed class GermanUiStrings : IUiStrings
 		OptFewestChanges = "Wenigste Umstiege",
 		OptLeastWalking = "Wenigster Fußweg",
 		OptLowestFare = "Niedrigster Preis",
-		OptNote = "Nur der Anbieter VVO (TRIAS) berücksichtigt diese Auswahl; andere Anbieter suchen immer die schnellste Verbindung.",
+		OptNote = "Gilt für die nächste Suche bei diesem Anbieter.",
 		FaresTitle = "Tickets und Preise",
 		FareSingle = "Einzelfahrt",
 		FareDay = "Tageskarte",
@@ -284,6 +284,8 @@ public sealed class GermanUiStrings : IUiStrings
 	{
 		LegEarlier = "Früher",
 		LegLater = "Später",
+		LegEarlierHint = "Frühere Alternative für diese Fahrt suchen",
+		LegLaterHint = "Spätere Alternative für diese Fahrt suchen",
 		LegNone = "Keine Alternative für diese Fahrt gefunden.",
 		OpenPdf = "Als PDF öffnen",
 		AlternativeShown = "Eine alternative Verbindung wird angezeigt. Neu suchen, um zurückzukehren.",
@@ -381,7 +383,7 @@ public sealed class GermanUiStrings : IUiStrings
 		MapKeyStatusMissing = "Kein Schlüssel: die Karte ist aus",
 		MapKeyStatusInvalid = "CARTO hat diesen Schlüssel nicht akzeptiert",
 		MapKeyStatusSet = "Schlüssel gespeichert",
-		About = "Info",
+		About = "Über DDjourneys",
 		ThemeSystem = "System",
 		ThemeLight = "Hell",
 		ThemeDark = "Dunkel",
@@ -434,7 +436,7 @@ public sealed class GermanUiStrings : IUiStrings
 			"Unaufdringliche \u00dcberg\u00e4nge und Effekte",
 		TechnicalDetails = "Technische Details",
 		TechnicalDetailsDescription =
-			"Zus\u00e4tzliche Details in Hinweisen anzeigen",
+			"Technische Ursache bei Fehlern und Hinweisen anzeigen",
 		Results = "Ergebnisse",
 		ResultsDescription = "Verbindungen pro Suche",
 		RequestTimeout = "Zeitlimit",
@@ -454,9 +456,9 @@ public sealed class GermanUiStrings : IUiStrings
 			"Verbindungseinstellungen zur\u00fccksetzen",
 		JourneyDisplay = "Verbindungsanzeige",
 		Occupancy = "Auslastung",
-		OccupancyDescription = "Punkte zeigen, wie voll ein Fahrzeug ist",
+		OccupancyDescription = "Punkte in den Verbindungsdetails zeigen, wie voll ein Fahrzeug ist",
 		Platforms = "Steige und Gleise",
-		PlatformsDescription = "Steig und Gleis an Halten und Umstiegen anzeigen",
+		PlatformsDescription = "Steig- und Gleisnummern in den Verbindungsdetails anzeigen",
 		ExpandStops = "Alle Halte zeigen",
 		ExpandStopsDescription = "Zwischenhalte jeder Fahrt aufgeklappt anzeigen",
 		ExpertView = "Expertenansicht",
@@ -486,7 +488,12 @@ public sealed class GermanUiStrings : IUiStrings
 		StartFromPlaceDescription = "Eine Haltestelle, ein POI oder eine Adresse",
 		StartPlaceNone = "Ort auswählen",
 		StartPlaceHint = "Der Ort wird je Anbieter gemerkt. Ohne Ort wird dein Standort verwendet.",
-		VersionPrefix = "DDjourneys {0} ({1})"
+		VersionPrefix = "DDjourneys {0} ({1})",
+		AboutEntryDescription = "Was die App kann und wie man sie benutzt",
+		InterfaceVersions = "Schnittstellenversionen",
+		InterfaceVersionsDescription = "Die Versionen aller Schnittstellen dieser Version: Dienste, gespeicherte Daten und Contract. Gehören in jeden Fehlerbericht.",
+		CopyInterfaces = "Versionen kopieren",
+		InterfacesCopied = "In die Zwischenablage kopiert"
 	};
 
 	public RoutingStrings Routing { get; } = new()

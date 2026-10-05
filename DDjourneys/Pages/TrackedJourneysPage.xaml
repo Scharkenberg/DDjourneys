@@ -177,7 +177,7 @@
 
 															<controls:IconButton
 																Command="{Binding MapCommand}"
-																Glyph="Map"
+																Glyph="MapPin"
 																IsVisible="{Binding HasMap}"
 																SemanticProperties.Description="{localization:Tr Tracking.ShowOnMap}"
 																TargetSize="{StaticResource HitIconTight}" />

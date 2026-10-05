@@ -23,6 +23,9 @@ public static class MauiProgram
 {
 	public static MauiApp CreateMauiApp()
 	{
+		// First of all: remembers whether the last start finished (a crash while starting leads to a safe start).
+		StartupGuard.Begin();
+
 		var builder = MauiApp.CreateBuilder();
 
 		builder
@@ -53,6 +56,7 @@ public static class MauiProgram
 		AppStorage.Upgrade();
 
 		var settings = new AppSettings();
+		ApiClient.DefaultTimeout = TimeSpan.FromSeconds(settings.TimeoutSeconds);
 
 		try
 		{
@@ -66,8 +70,15 @@ public static class MauiProgram
 			DiagnosticLog.FilePath = null;
 		}
 
+		DiagnosticLog.StartInfo = AppInterfaces.Report;
+
 		// Opt-in only: without the developer option nothing is logged and a leftover file is removed.
 		DiagnosticLog.Enabled = settings.LogToFile;
+
+		if (StartupGuard.IsSafeStart)
+		{
+			DiagnosticLog.Write($"[Start] {StartupGuard.FailedStarts} starts in a row did not finish: safe start");
+		}
 
 		if (DiagnosticLog.Enabled)
 		{
@@ -216,6 +227,7 @@ public static class MauiProgram
 		builder.Services.AddTransient<ExpertViewModel>();
 
 		builder.Services.AddTransient<ProvidersPage>();
+		builder.Services.AddTransient<AboutPage>();
 		builder.Services.AddTransient<ProvidersViewModel>();
 
 		builder.Services.AddTransient<DeparturesPage>();

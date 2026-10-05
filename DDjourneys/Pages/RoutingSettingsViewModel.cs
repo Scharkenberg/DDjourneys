@@ -1,4 +1,6 @@
 using DDjourneys.Core.Models;
+using DDjourneys.Core.Providers;
+using DDjourneys.Core.Providers.Abstractions;
 using DDjourneys.Localization;
 using DDjourneys.Support;
 
@@ -8,16 +10,23 @@ namespace DDjourneys.Pages;
 public sealed partial class RoutingSettingsViewModel : DisposableViewModel
 {
 	private readonly AppSettings _settings;
+	private readonly ProviderRegistry _providers;
 	private readonly LocalizationService _localization;
 
-	public RoutingSettingsViewModel(AppSettings settings)
+	public RoutingSettingsViewModel(AppSettings settings, ProviderRegistry providers)
 	{
 		ArgumentNullException.ThrowIfNull(settings);
+		ArgumentNullException.ThrowIfNull(providers);
 
 		_settings = settings;
+		_providers = providers;
 		_localization = LocalizationService.Current;
 
 		ListenToLocalization(_localization, OnLocalizationChanged);
+
+		Subscribe(
+			() => _providers.SelectionChanged += OnProviderChanged,
+			() => _providers.SelectionChanged -= OnProviderChanged);
 
 		Modes =
 			(List<ToggleOption>)
@@ -190,6 +199,34 @@ public sealed partial class RoutingSettingsViewModel : DisposableViewModel
 	public IReadOnlyList<ToggleOption> More { get; }
 
 	public Command ResetCommand { get; }
+
+	// ----- What the selected provider can do with a preference. A control that would change nothing is not shown. -----
+
+	/// <summary>Walking time to a stop and nearby stops.</summary>
+	public bool ShowWalkToStops => _providers.Supports(ProviderCapabilities.WalkToStops);
+
+	/// <summary>Who the tickets are for.</summary>
+	public bool ShowPassenger => _providers.Supports(ProviderCapabilities.PassengerFares);
+
+	/// <summary>Fastest, fewest changes, least walking, lowest fare.</summary>
+	public bool ShowOptimisation => _providers.Supports(ProviderCapabilities.RouteOptimisation);
+
+	/// <summary>Journeys without fare supplements.</summary>
+	public bool ShowExtraCharge => _providers.Supports(ProviderCapabilities.SupplementFilter);
+
+	private void OnProviderChanged(object? sender, string providerId) =>
+		MainThread.BeginInvokeOnMainThread(
+			() =>
+			{
+				if (!IsDisposed)
+				{
+					OnPropertyChanged(nameof(ShowWalkToStops));
+					OnPropertyChanged(nameof(ShowPassenger));
+					OnPropertyChanged(nameof(ShowOptimisation));
+					OnPropertyChanged(nameof(ShowExtraCharge));
+					RefreshAll();
+				}
+			});
 
 	public const double MaxFootpath = AppSettings.MaxFootpathMinutes;
 

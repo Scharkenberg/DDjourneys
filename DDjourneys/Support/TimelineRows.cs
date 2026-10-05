@@ -177,6 +177,23 @@ public sealed partial class LegRow : TimelineRow
 	public bool HasDirection =>
 		Direction is not null;
 
+	/// <summary>The provider can swap this ride for an earlier or later one (set by the journey page).</summary>
+	public bool CanSwapRide
+	{
+		get;
+		set
+		{
+			if (SetProperty(ref field, value))
+			{
+				OnPropertyChanged(nameof(HasActions));
+			}
+		}
+	}
+
+	/// <summary>Anything to show in the action row below the line.</summary>
+	public bool HasActions =>
+		CanShowLive || CanSwapRide;
+
 	/// <summary>The line is a plain number, so its vehicles can be looked up on the live page.</summary>
 	public bool CanShowLive =>
 		int.TryParse(

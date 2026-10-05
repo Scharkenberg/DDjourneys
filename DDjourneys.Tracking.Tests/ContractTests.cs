@@ -586,12 +586,31 @@ public sealed class ContractIntentsTests
 	[InlineData("0,0?z=12")]
 	public void A_geo_link_without_a_place_is_ignored(string part) =>
 		Assert.Null(ContractIntents.FromGeo(part));
+}
+
+public sealed class ContractCapabilityKeyTests
+{
+	private static string Value(string key) =>
+		ContractCapabilities.Values("1.2.3").Single(pair => pair.Key == key).Value;
 
 	[Fact]
-	public void Shared_text_is_a_destination_unless_it_is_a_link()
+	public void The_versions_are_part_of_the_answer()
 	{
-		Assert.Equal("Hellerau", ContractIntents.FromSharedText("Hellerau\nmore text")!.Request!.To!.Name);
-		Assert.Null(ContractIntents.FromSharedText("https://example.org/page"));
-		Assert.Null(ContractIntents.FromSharedText("   "));
+		Assert.Equal(ContractVersion.Current.ToString(), Value("contract"));
+		Assert.Equal(ContractVersion.Oldest.ToString(), Value("oldest"));
+		Assert.Equal(JourneyPayload.SchemaVersion.ToString(), Value("journey.schema"));
+		Assert.Equal("1.2.3", Value("app.version"));
+	}
+
+	[Fact]
+	public void The_app_does_not_offer_itself_for_shared_text() =>
+		Assert.Equal("view:ddjourneys,view:geo", Value("android.intents"));
+
+	[Fact]
+	public void Every_key_is_unique()
+	{
+		string[] keys = [.. ContractCapabilities.Values("1").Select(pair => pair.Key)];
+
+		Assert.Equal(keys.Length, keys.Distinct(StringComparer.Ordinal).Count());
 	}
 }

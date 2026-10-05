@@ -51,7 +51,70 @@ public static class Motion
 	private static readonly ConditionalWeakTable<VisualElement, Quiet> Quiets = [];
 
 	/// <summary>The app setting, and the OS: "remove animations" always wins.</summary>
-	public static bool Enabled { get; private set; } = true;
+	public static bool Enabled
+	{
+		get => _enabled;
+		private set
+		{
+			if (_enabled == value)
+			{
+				return;
+			}
+
+			_enabled = value;
+
+			// Whoever waits for animations to come back is woken now instead of polling.
+			Interlocked.Exchange(ref _enabledSignal, NewSignal()).TrySetResult();
+		}
+	}
+
+	private static bool _enabled = true;
+	private static TaskCompletionSource _enabledSignal = NewSignal();
+
+	private static TaskCompletionSource NewSignal() =>
+		new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+	/// <summary>
+	/// Waits until a looping animation has a reason to run again: animations are switched on, or a long pause has
+	/// passed (so a view that was removed meanwhile is not held alive for ever).
+	/// </summary>
+	internal static async Task WaitUntilWorthAnimatingAsync(VisualElement view)
+	{
+		if (!Enabled)
+		{
+			TaskCompletionSource signal = _enabledSignal;
+
+			if (!Enabled)
+			{
+				await Task.WhenAny(signal.Task, Task.Delay(TimeSpan.FromSeconds(30)));
+			}
+
+			return;
+		}
+
+		// Off screen, or on a page that is under another one: nothing to animate, check again later.
+		await Task.Delay(1500);
+	}
+
+	/// <summary>False for a view that is hidden, not loaded, or on a page that is not the one the user sees.</summary>
+	internal static bool IsShowing(VisualElement view)
+	{
+		if (!view.IsVisible || !view.IsLoaded)
+		{
+			return false;
+		}
+
+		Element? parent = view;
+
+		while (parent is not null and not Page)
+		{
+			parent = parent.Parent;
+		}
+
+		return parent is not Page page
+			|| Shell.Current is not { } shell
+			|| ReferenceEquals(shell.CurrentPage, page);
+	}
 
 	public static void Bind(AppSettings settings)
 	{
@@ -528,9 +591,9 @@ public static class Motion
 		{
 			while (view.Handler is not null)
 			{
-				if (!Enabled || !view.IsVisible || !view.IsLoaded)
+				if (!Enabled || !IsShowing(view))
 				{
-					await Task.Delay(800);
+					await WaitUntilWorthAnimatingAsync(view);
 					continue;
 				}
 

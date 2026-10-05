@@ -485,7 +485,7 @@
 
 										<controls:IconButton
 											Grid.Column="2"
-											Command="{Binding Source={RelativeSource AncestorType={x:Type local:PlanViewModel}}, Path=ForgetLineCommand}"
+											Command="{Binding Source={RelativeSource AncestorType={x:Type local:PlanViewModel}}, x:DataType=local:PlanViewModel, Path=ForgetLineCommand}"
 											CommandParameter="{Binding .}"
 											Glyph="Close"
 											SemanticProperties.Description="{localization:Tr Plan.ForgetSearch}"
@@ -493,7 +493,7 @@
 											TargetSize="{StaticResource HitIconTight}" />
 
 										<Grid.GestureRecognizers>
-											<TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type local:PlanViewModel}}, Path=UseLineCommand}" CommandParameter="{Binding .}" />
+											<TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type local:PlanViewModel}}, x:DataType=local:PlanViewModel, Path=UseLineCommand}" CommandParameter="{Binding .}" />
 										</Grid.GestureRecognizers>
 									</Grid>
 

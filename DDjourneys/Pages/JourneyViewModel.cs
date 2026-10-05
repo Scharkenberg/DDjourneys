@@ -1304,6 +1304,11 @@ public sealed partial class JourneyViewModel :
 				journey,
 				options))
 		{
+			if (row is LegRow leg)
+			{
+				leg.CanSwapRide = HasLegAlternatives;
+			}
+
 			Rows.Add(row);
 		}
 

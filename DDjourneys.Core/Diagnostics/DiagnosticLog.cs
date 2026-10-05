@@ -33,11 +33,33 @@ public static class DiagnosticLog
 			{
 				LastError = null;
 				Write("[Log] started");
+				WriteStartInfo();
 			}
 		}
 	}
 
 	private static bool _enabled;
+
+	/// <summary>
+	/// Lines that start every log: build and interface versions (<see cref="InterfaceSchemas"/>), set by the app so a bug
+	/// report names what it was made with. Not part of the log while logging is off.
+	/// </summary>
+	public static Func<string>? StartInfo { get; set; }
+
+	private static void WriteStartInfo()
+	{
+		try
+		{
+			foreach (string line in (StartInfo?.Invoke() ?? string.Empty).Split('\n', StringSplitOptions.RemoveEmptyEntries))
+			{
+				Write("[Info] " + line.TrimEnd());
+			}
+		}
+		catch (Exception ex)
+		{
+			Write($"[Info] unavailable: {ex.Message}");
+		}
+	}
 
 	/// <summary>Why the last write failed (null: it did not); shown next to the log path so a failure is not silent.</summary>
 	public static string? LastError { get; private set; }

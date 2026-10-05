@@ -16,7 +16,7 @@ namespace DDjourneys.Core.Providers.Tlms;
 /// </summary>
 public sealed class TlmsVehicleProvider : ILiveVehicleProvider
 {
-	private static readonly Uri Endpoint = new("wss://socket.tlm.solutions");
+	private static readonly Uri Endpoint = new(InterfaceSchemas.TlmsUrl);
 
 	private const int MaxMessageBytes = 1 << 20;
 

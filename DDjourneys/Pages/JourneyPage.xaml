@@ -87,7 +87,7 @@
 
 				<VerticalStackLayout
 					Grid.Column="2"
-					Padding="0,4,0,10"
+					Padding="0,4,0,12"
 					Spacing="4">
 
 					<controls:StopNameView Place="{Binding Place}" Stop="{Binding Name}" />
@@ -146,7 +146,7 @@
 
 				<VerticalStackLayout
 					Grid.Column="2"
-					Padding="0,4,0,6"
+					Padding="0,4,0,8"
 					Spacing="2">
 
 					<controls:StopNameView
@@ -193,8 +193,8 @@
 
 				<VerticalStackLayout
 					Grid.Column="2"
-					Padding="0,0,0,8"
-					Spacing="3">
+					Padding="0,2,0,12"
+					Spacing="6">
 
 					<Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
 
@@ -275,38 +275,48 @@
 						support:Motion.Breathe="True"
 						TextColor="{DynamicResource Accent}" />
 
-					<FlexLayout AlignContent="Start" AlignItems="Start" Wrap="Wrap">
-						<Button
-							Margin="0,0,8,8"
-							Padding="12,0"
-							Command="{Binding Source={RelativeSource AncestorType={x:Type local:JourneyViewModel}}, x:DataType=local:JourneyViewModel, Path=ShowLiveCommand}"
-							CommandParameter="{Binding .}"
-							FontSize="{StaticResource FontCaption}"
-							IsVisible="{Binding CanShowLive}"
+					<!--  Ride actions: live position of this vehicle (pin), earlier and later alternative  -->
+					<HorizontalStackLayout IsVisible="{Binding HasActions}" Spacing="{StaticResource SpaceS}">
+
+						<Border
+							Padding="0"
 							support:Dense.MinHeight="{StaticResource HitButton}"
-							StyleClass="Tonal"
-							Text="{localization:Tr Extras.LiveShow}" />
+							support:Dense.MinWidth="{StaticResource HitButton}"
+							support:Themed.Background="AccentSoft"
+							IsVisible="{Binding CanShowLive}"
+							StrokeShape="RoundRectangle 6"
+							StrokeThickness="0">
+							<controls:IconButton
+								Command="{Binding Source={RelativeSource AncestorType={x:Type local:JourneyViewModel}}, x:DataType=local:JourneyViewModel, Path=ShowLiveCommand}"
+								CommandParameter="{Binding .}"
+								Glyph="MapPin"
+								SemanticProperties.Description="{localization:Tr Extras.LiveShow}"
+								Size="20"
+								TargetSize="{StaticResource HitButton}" />
+						</Border>
+
 						<Button
-							Margin="0,0,8,8"
-							Padding="12,0"
+							Padding="14,0"
 							Command="{Binding Source={RelativeSource AncestorType={x:Type local:JourneyViewModel}}, x:DataType=local:JourneyViewModel, Path=LegEarlierCommand}"
 							CommandParameter="{Binding .}"
 							FontSize="{StaticResource FontCaption}"
-							IsVisible="{Binding Source={RelativeSource AncestorType={x:Type local:JourneyViewModel}}, x:DataType=local:JourneyViewModel, Path=HasLegAlternatives}"
+							IsVisible="{Binding CanSwapRide}"
+							SemanticProperties.Description="{localization:Tr Journey.LegEarlierHint}"
 							support:Dense.MinHeight="{StaticResource HitButton}"
 							StyleClass="Tonal"
 							Text="{localization:Tr Journey.LegEarlier}" />
+
 						<Button
-							Margin="0,0,8,8"
-							Padding="12,0"
+							Padding="14,0"
 							Command="{Binding Source={RelativeSource AncestorType={x:Type local:JourneyViewModel}}, x:DataType=local:JourneyViewModel, Path=LegLaterCommand}"
 							CommandParameter="{Binding .}"
 							FontSize="{StaticResource FontCaption}"
-							IsVisible="{Binding Source={RelativeSource AncestorType={x:Type local:JourneyViewModel}}, x:DataType=local:JourneyViewModel, Path=HasLegAlternatives}"
+							IsVisible="{Binding CanSwapRide}"
+							SemanticProperties.Description="{localization:Tr Journey.LegLaterHint}"
 							support:Dense.MinHeight="{StaticResource HitButton}"
 							StyleClass="Tonal"
 							Text="{localization:Tr Journey.LegLater}" />
-					</FlexLayout>
+					</HorizontalStackLayout>
 
 					<HorizontalStackLayout support:Motion.Feedback="True"
 						IsVisible="{Binding HasIntermediates}"
@@ -358,8 +368,8 @@
 
 				<VerticalStackLayout
 					Grid.Column="2"
-					Padding="0,4,0,10"
-					Spacing="2">
+					Padding="0,4,0,12"
+					Spacing="4">
 
 					<!--  Walk: dashed outline with the walking icon, like the walk heading on the followed-journeys page  -->
 					<Border
@@ -489,8 +499,8 @@
 
 				<VerticalStackLayout
 					Grid.Column="2"
-					Padding="0,46,0,10"
-					Spacing="3">
+					Padding="0,46,0,12"
+					Spacing="4">
 
 					<controls:StopNameView Place="{Binding Place}" Stop="{Binding Name}" />
 
@@ -595,7 +605,7 @@
 
 				<controls:NoticeCard
 					Grid.Column="2"
-					Margin="0,2,0,8"
+					Margin="0,4,0,12"
 					Expanded="{Binding Expanded}"
 					Technical="{Binding Technical}"
 					Text="{Binding Text}" />

@@ -67,7 +67,7 @@
 									Color="{DynamicResource Accent}" />
 
 								<Grid.GestureRecognizers>
-									<TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type local:SettingsViewModel}}, Path=SelectLanguageCommand}" CommandParameter="{Binding Code}" />
+									<TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type local:SettingsViewModel}}, x:DataType=local:SettingsViewModel, Path=SelectLanguageCommand}" CommandParameter="{Binding Code}" />
 								</Grid.GestureRecognizers>
 							</Grid>
 						</DataTemplate>
@@ -596,9 +596,51 @@
 							</FlexLayout>
 						</VerticalStackLayout>
 
+
+						<BoxView StyleClass="Divider" />
+
+						<VerticalStackLayout support:Dense.Padding="12,8" Spacing="6">
+							<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.InterfaceVersions}" />
+							<Label StyleClass="Caption" Text="{localization:Tr Settings.InterfaceVersionsDescription}" />
+							<Label
+								FontSize="{StaticResource FontMicro}"
+								LineBreakMode="CharacterWrap"
+								Text="{Binding InterfaceReport}" />
+							<Button
+								Command="{Binding CopyInterfacesCommand}"
+								HorizontalOptions="Start"
+								StyleClass="Tonal"
+								Text="{localization:Tr Settings.CopyInterfaces}" />
+						</VerticalStackLayout>
+
 					</VerticalStackLayout>
 
 				</VerticalStackLayout>
+			</Border>
+
+			<Border Padding="0" StyleClass="Card">
+				<Grid support:Motion.Feedback="True"
+					support:Dense.Padding="12,8"
+					ColumnDefinitions="*,Auto"
+					ColumnSpacing="10"
+					support:Dense.MinHeight="{StaticResource HitRow}"
+					SemanticProperties.Description="{localization:Tr Settings.About}">
+					<VerticalStackLayout Spacing="1" VerticalOptions="Center">
+						<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.About}" />
+						<Label StyleClass="Caption" Text="{localization:Tr Settings.AboutEntryDescription}" />
+					</VerticalStackLayout>
+
+					<controls:Icon
+						Grid.Column="1"
+						Glyph="Info"
+						Size="20"
+						VerticalOptions="Center"
+						Color="{DynamicResource InkMuted}" />
+
+					<Grid.GestureRecognizers>
+						<TapGestureRecognizer Command="{Binding OpenAboutCommand}" />
+					</Grid.GestureRecognizers>
+				</Grid>
 			</Border>
 
 			<Label

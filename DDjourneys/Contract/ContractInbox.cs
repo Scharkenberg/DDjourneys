@@ -125,6 +125,8 @@ public sealed class ContractInbox
 	{
 		if (parsed.Failure is { } failure)
 		{
+			DiagnosticLog.Write($"[Contract v{ContractVersion.Current}] refused: {failure.Code.Name()}: {failure.Message}");
+
 			await _responder
 				.SendAsync(ContractReply.Failure(failure), failure.Callbacks ?? ContractCallbacks.None)
 				.ConfigureAwait(false);
@@ -136,8 +138,12 @@ public sealed class ContractInbox
 
 		if (IsDoubleDelivery(request))
 		{
+			DiagnosticLog.Write($"[Contract v{ContractVersion.Current}] {request.Command.Name()} dropped: same request twice within {DuplicateWindow.TotalSeconds:0} s");
+
 			return;
 		}
+
+		DiagnosticLog.Write($"[Contract v{ContractVersion.Current}] {request.Command.Name()} accepted (request version {request.Version})");
 
 		try
 		{

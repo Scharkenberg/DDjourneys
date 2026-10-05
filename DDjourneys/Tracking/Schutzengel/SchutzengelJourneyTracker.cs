@@ -1,3 +1,4 @@
+using DDjourneys.Core.Api;
 using DDjourneys.Core.Diagnostics;
 using System.Diagnostics;
 using System.Globalization;
@@ -107,7 +108,7 @@ internal sealed partial class SchutzengelJourneyTracker : IJourneyTracker, ITrac
 		_access = access ?? throw new ArgumentNullException(nameof(access));
 
 		// A client this class created is also this class's to dispose.
-		_ownedHttp = http is null ? new HttpClient() : null;
+		_ownedHttp = http is null ? new HttpClient(ApiClient.CreateHandler(), disposeHandler: true) : null;
 
 		_api =
 			new SchutzengelApi(

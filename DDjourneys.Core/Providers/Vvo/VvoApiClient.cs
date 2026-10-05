@@ -15,7 +15,7 @@ namespace DDjourneys.Core.Providers.Vvo;
 public sealed class VvoApiClient
 {
 	private const string BaseUrl =
-		"https://webapi.vvo-online.de";
+		InterfaceSchemas.VvoWebApiUrl;
 
 	private readonly ApiClient _apiClient;
 

@@ -60,6 +60,19 @@ public static class WindowPlacement
 		return timer;
 	}
 
+	/// <summary>Forgets the saved size and position (the next window opens at its default).</summary>
+	internal static void Forget()
+	{
+		try
+		{
+			Preferences.Default.Remove(Key);
+		}
+		catch (Exception ex)
+		{
+			DiagnosticLog.Write($"Window placement not forgotten: {ex.Message}");
+		}
+	}
+
 	private static void Restore(Window window)
 	{
 		double width = DefaultWidth;

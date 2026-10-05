@@ -1,1 +1,79 @@
 # DDjourneys
+
+DDjourneys is a journey planner for buses, trams and trains in and around Dresden. You tell it where you are going and when, and it shows you how to get there, what is late, and where your vehicle is right now. It runs on Android phones and on Windows.
+
+I wrote it because I wanted something like the old Android app oeffi, but made for the timetable data of the Verkehrsverbund Oberelbe (VVO) and in a shape that fits current phones. It is not an official app of the VVO or the DVB, and it is not made by either of them.
+
+## Getting started
+
+Open the app and you land on the planner. Tap the field for the start and type a few letters, for example "Hauptbahnhof". Pick the stop from the list. Do the same for the destination, say "Hellerau". Press the search button and you get a list of journeys.
+
+If you are standing at the start, tap the small location symbol next to the start field instead of typing. The app asks for permission to use your position and then fills in the stop nearest to you. If you would rather start from the exact address you are at, there is a switch for that under Settings, in the place search section.
+
+Below the fields you can change the time. The row of buttons moves it back an hour, back a quarter of an hour, to now, forward a quarter of an hour or forward an hour. Next to the time you choose whether you want to leave at that time or arrive by it. If you have to be at work at 8:30, choose "Arrive by", set 8:30, and the app works backwards.
+
+Stops, addresses and sights all work as start or destination. In the settings you can switch addresses and sights off if you only want stops.
+
+## The list of journeys
+
+Each journey in the list shows the times, the stops, and a row of small tags with the lines you ride. Swipe that row sideways if it does not fit. At the bottom of the list you can ask for earlier or later journeys. The bookmark symbol saves the route, so you find it again at the top of the planner under saved routes. Routes you searched for before are listed there too.
+
+## One journey in detail
+
+Tap a journey to see it as a timeline. Every ride has a line, a direction, the stops where you get on and off, the platform, and the delay if there is one. Dots next to a time show how full the vehicle is, when the provider knows. At a change the app tells you how long you wait, whether you have to walk to another stop, and when the connection is tight or already lost.
+
+Below the line of each ride there are up to three buttons. "Earlier" and "Later" look for another vehicle for that ride alone and keep the rest of your journey. The button with the map pin opens a map with the vehicle of this ride on it. That works for lines with a plain number, such as tram 11 or bus 61, and only when somebody has reported the position of the vehicle, so a vehicle can be missing even though it is running.
+
+The bell in the top card follows the journey, which is explained further down. The other symbols there share the journey as text or as a picture, open it as a PDF, or hand it to another app. The map symbol shows the whole route on a map without following a vehicle. Tickets and prices are at the bottom; the app shows the single and day ticket the provider quotes for this journey, and nothing else, because the provider quotes nothing else.
+
+## Departures
+
+Open departures from the planner and choose a stop. You get the next departures with their delays. Switch to arrivals if you are waiting for someone. Tap a departure to see all stops of that vehicle's run. The section "Around this stop" opens a map of the surroundings, tells you how accessible the stop is according to the city, and lists the lines that serve it.
+
+## Disruptions
+
+The disruptions page lists what the VVO reports: construction work, diversions, cancelled services. Tap an entry to read it. Entries that the journey planner takes into account are marked as such.
+
+## Following a journey
+
+If you press the bell on a journey, the app watches it for you. Shortly before you leave it sends a notification, and it sends another when something changes, such as a delay that makes you miss a connection or a vehicle that is cancelled. While you are on the way, a notification shows the next stop and when to get off. You can pause or stop following at any time. The page "Followed journeys" lists everything you follow.
+
+Following works with the VVO provider only. The app hands the journey to a service run by the DVB, which keeps watching it. That service gives the app an anonymous token instead of an account. There is no login, and I never see who you are.
+
+## Map
+
+The map needs a key from CARTO, the company that makes the map background. The app does not come with a key of its own. Without a key the map stays off and the app says so. You get a key on the CARTO website, then paste it under Settings, Map. Everything else in the app works without it.
+
+When the map shows the surroundings, stops appear once you zoom in. Tap a stop to see its departures or to plan a journey to or from it.
+
+## Android widgets and quick actions
+
+On Android you can put widgets on your home screen: a route you travel often, the departures or arrivals of one stop, the stops around you with their distance, or the next departures from the stops around you. Each widget has its own settings, such as its provider, its title and how many rows it shows. A tap on a widget refreshes it. Android allows widgets to update every thirty minutes at most, and widgets in the background use the last position the phone knows unless you allow location access all the time.
+
+Press and hold the app icon to find two quick actions. "Take me home" plans a journey from the stop nearest to you to your home stop. "Departures from here" shows the departures at the stop nearest to you. You set your home stop in the planner. On Windows the same actions are in the jump list of the app.
+
+## Settings
+
+Under Appearance you choose light, dark or the system setting, a colour set, a font, and how tightly the screens are packed. On Windows you can also choose a window material. Language is German or English. Route preferences cover the kinds of vehicles, how many changes you accept, how fast you walk, and what you need for accessibility. Options that the selected provider cannot use do not appear. The provider page lets you switch between the VVO and the TRIAS interface of the VVO. The second one is marked as experimental because it does less and I have tested it less.
+
+Under Start you can make the app open with the start already filled in and the destination search ready, so that a trip home takes two taps.
+
+## Using it from other apps
+
+Other apps can open DDjourneys with a link, for example `ddjourneys://go?to=Hellerau` plans a journey to Hellerau starting now. Any app that sends a map location, a `geo:` link, can hand the place to DDjourneys on Android. The details for developers are in `docs/EXTERNAL_CONTRACT.md`.
+
+## Where the data comes from
+
+Journeys, departures and disruptions come from the interfaces of the VVO. Following a journey uses the DVB service mentioned above. Live positions come from the TLMS community network, which collects radio telegrams and GPS positions, so it is incomplete by nature. Accessibility of stops and service points come from the open data of the city of Dresden. The map background comes from CARTO and OpenStreetMap. The timetable data belongs to the VVO and the DVB.
+
+## Privacy
+
+The app has no account, no advertising and no analytics. It keeps your settings, places and routes on your phone. Your position is used only when you ask for it, when a widget or a quick action needs it, and is sent to the VVO as a coordinate to find the nearest stop. Searches go to the VVO as you type. Nothing is sent to me.
+
+## When something does not work
+
+Under Settings you find Developer options. If you switch them on you can record a log file that lists every request the app makes and what came back. Delete it when you are done. The log starts with the version of the app and the version of every interface it talks to, which makes it much easier to find the cause. If you report a problem on the project page on GitHub, github.com/Scharkenberg/DDjourneys, attach the log and say what you did.
+
+## Licence
+
+DDjourneys is free software under the MIT licence. The text is in the file LICENSE.txt.

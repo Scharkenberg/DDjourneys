@@ -1,4 +1,5 @@
 using DDjourneys.Core.Diagnostics;
+using DDjourneys.Core.Api;
 using System.Globalization;
 using DDjourneys.Core.Models;
 using DDjourneys.Core.Providers.Vvo;
@@ -131,7 +132,7 @@ public sealed class AppSettings
 		set => Write("animations", value);
 	}
 
-	/// <summary>Shows the seconds-precise time line and technical notice details.</summary>
+	/// <summary>Adds the technical cause (status line, start of the answer) to error messages and shows technical parts of notices.</summary>
 	public bool ShowTechnicalDetails
 	{
 		get => Read("technical", false);
@@ -186,7 +187,11 @@ public sealed class AppSettings
 	public int TimeoutSeconds
 	{
 		get => Math.Clamp(Read("timeout", 15), 5, 60);
-		set => Write("timeout", Math.Clamp(value, 5, 60));
+		set
+		{
+			Write("timeout", Math.Clamp(value, 5, 60));
+			ApiClient.DefaultTimeout = TimeSpan.FromSeconds(TimeoutSeconds);
+		}
 	}
 
 	// ----- Places -----
@@ -488,13 +493,13 @@ public sealed class AppSettings
 		ShowWalkingLegs = true;
 		ExpandNotices = false;
 		TimeoutSeconds = 15;
+		DefaultLeadMinutes = 5;
 		ShowOccupancy = true;
 		SearchAddresses = true;
 		SearchPois = true;
 		ExactPosition = false;
 		ShowPlatforms = true;
 		ExpandStops = false;
-		ExpertView = true;
 		SearchDelayMs = 500;
 		MinQueryLength = MinQueryLengthFloor;
 		ResetRoutingDefaults();

@@ -19,15 +19,13 @@ namespace DDjourneys.Platforms.Android;
 [IntentFilter(
 	[ContractVersion.AndroidAction],
 	Categories = [Intent.CategoryDefault])]
-// Map links (geo:) and the share sheet: "take me there" without knowing anything about this app.
+// Map links (geo:): "take me there" from any app that shows a place. There is no filter for plain text
+// shares: Android matches a share target by MIME type only, never by what the text says, so a text/plain
+// filter would put the app into every share sheet on the device.
 [IntentFilter(
 	[Intent.ActionView],
 	Categories = [Intent.CategoryDefault, Intent.CategoryBrowsable],
 	DataScheme = "geo")]
-[IntentFilter(
-	[Intent.ActionSend],
-	Categories = [Intent.CategoryDefault],
-	DataMimeType = "text/plain")]
 [Activity(Theme = "@style/Maui.SplashTheme", MainLauncher = true, Exported = true, LaunchMode = LaunchMode.SingleTop, ConfigurationChanges = ConfigChanges.ScreenSize | ConfigChanges.Orientation | ConfigChanges.UiMode | ConfigChanges.ScreenLayout | ConfigChanges.SmallestScreenSize | ConfigChanges.Density)]
 public class MainActivity : MauiAppCompatActivity
 {
@@ -71,7 +69,10 @@ public class MainActivity : MauiAppCompatActivity
 
 		SystemBars.Apply(this, Support.Theme.IsDark);
 
-		AndroidShortcuts.Publish(this);
+		if (!StartupGuard.IsSafeStart)
+		{
+			AndroidShortcuts.Publish(this);
+		}
 
 		// Off the UI thread and after the first frame: the tracking graph is built here on a cold start.
 		_ = Task.Run(ResumeTrackingAsync);
@@ -138,7 +139,8 @@ public class MainActivity : MauiAppCompatActivity
 	{
 		try
 		{
-			await Task.Delay(400).ConfigureAwait(false);
+			// After starts that did not finish the first screen comes first: tracking resumes later.
+			await Task.Delay(StartupGuard.IsSafeStart ? TimeSpan.FromSeconds(20) : TimeSpan.FromMilliseconds(400)).ConfigureAwait(false);
 
 			// Resolving the tracker creates it (and attaches it to the bridge) on a cold start.
 			_ = Service<IJourneyTracker>();

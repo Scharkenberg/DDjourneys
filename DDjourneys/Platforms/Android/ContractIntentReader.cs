@@ -22,18 +22,12 @@ internal static class ContractIntentReader
 				return ContractParser.ParseUri(data.ToString());
 			}
 
-			// A map link ("geo:51.05,13.73?q=Hellerau") or shared text: the short form "go", to that place.
+			// A map link ("geo:51.05,13.73?q=Hellerau"): the short form "go", to that place.
 			if (intent.Action == Intent.ActionView
 				&& intent.Data is { } geo
 				&& string.Equals(geo.Scheme, "geo", StringComparison.OrdinalIgnoreCase))
 			{
 				return ContractIntents.FromGeo(geo.SchemeSpecificPart);
-			}
-
-			if (intent.Action == Intent.ActionSend
-				&& intent.Type is "text/plain")
-			{
-				return ContractIntents.FromSharedText(intent.GetStringExtra(Intent.ExtraText));
 			}
 
 			if (intent.Action != ContractVersion.AndroidAction)

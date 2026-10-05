@@ -14,8 +14,14 @@ public sealed class ApiClient : IDisposable
 	/// Budget used when the caller passes none. The HttpClient itself has no timeout of its own,
 	/// otherwise it would cap every per-call timeout longer than its fixed value.
 	/// </summary>
-	private static readonly TimeSpan DefaultTimeout =
-		TimeSpan.FromSeconds(15);
+	private static TimeSpan _defaultTimeout = TimeSpan.FromSeconds(15);
+
+	/// <summary>The app's "request timeout" setting: the budget of every call that names none (5..60 s).</summary>
+	public static TimeSpan DefaultTimeout
+	{
+		get => _defaultTimeout;
+		set => _defaultTimeout = TimeSpan.FromSeconds(Math.Clamp(value.TotalSeconds, 5, 60));
+	}
 
 	public ApiClient()
 	{
@@ -402,10 +408,25 @@ public sealed class ApiClient : IDisposable
 			: null;
 	}
 
+	/// <summary>
+	/// The handler every client of the app uses: compressed answers (the trip lists are large JSON that packs to a
+	/// fifth), pooled connections that are renewed now and then (DNS changes, mobile networks) and dropped when idle.
+	/// </summary>
+	public static SocketsHttpHandler CreateHandler() =>
+		new()
+		{
+			AutomaticDecompression =
+				System.Net.DecompressionMethods.GZip
+				| System.Net.DecompressionMethods.Deflate
+				| System.Net.DecompressionMethods.Brotli,
+			PooledConnectionLifetime = TimeSpan.FromMinutes(5),
+			PooledConnectionIdleTimeout = TimeSpan.FromMinutes(1)
+		};
+
 	private static HttpClient CreateHttpClient()
 	{
 		var client =
-			new HttpClient
+			new HttpClient(CreateHandler(), disposeHandler: true)
 			{
 				Timeout =
 					Timeout.InfiniteTimeSpan
