@@ -43,7 +43,7 @@ public sealed class DisruptionRow : ObservableObject
 		Html = HtmlOf(change.DescriptionHtml, change.Description);
 
 		Lines =
-			[.. change.Lines.Select(line => new DisruptionLineRow(line))];
+			(change.Lines.Select(line => new DisruptionLineRow(line))).ToList();
 	}
 
 	public DisruptionRow(NetworkBanner banner)

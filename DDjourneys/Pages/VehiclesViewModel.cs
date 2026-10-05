@@ -173,7 +173,7 @@ public sealed class VehiclesViewModel : DisposableViewModel, IQueryAttributable
 		_vehicles = vehicles;
 		_localization = LocalizationService.Current;
 
-		Chips = [.. TramLines.Select(line => new LineChip(line))];
+		Chips = (TramLines.Select(line => new LineChip(line))).ToList();
 
 		StartCommand =
 			new AsyncCommand(

@@ -59,11 +59,11 @@ public sealed class ChoiceGroup
 		_set = set;
 
 		Options =
-			[.. options.Select(
+			(options.Select(
 				option => new ChoiceOption(
 					this,
 					option.Code,
-					option.Title))];
+					option.Title))).ToList();
 
 		Refresh();
 	}

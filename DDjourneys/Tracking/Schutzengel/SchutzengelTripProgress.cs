@@ -439,7 +439,7 @@ internal sealed class TripTimeline
 
 			IReadOnlyList<TripStop> source =
 				episode.IsIndividual || episode.Stops.Count < 2
-					? [episode.From, episode.To]
+					? new List<TripStop> { episode.From, episode.To }
 					: episode.Stops;
 
 			int next = -1;
@@ -648,7 +648,7 @@ internal sealed class TripTimeline
 			{
 				From = fromStop,
 				To = toStop,
-				Stops = [fromStop, toStop]
+				Stops = new List<TripStop> { fromStop, toStop }
 			};
 		}
 

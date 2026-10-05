@@ -92,8 +92,8 @@ public static class MapScenes
 		}
 
 		return
-			[.. new[] { Position(leg.From), Position(leg.To) }
-				.OfType<(double Latitude, double Longitude)>()];
+			(new[] { Position(leg.From), Position(leg.To) }
+				.OfType<(double Latitude, double Longitude)>()).ToList();
 	}
 
 	// ----- Journey -----
@@ -277,7 +277,7 @@ public static class MapScenes
 		{
 			lines.Add(
 				new MapLine(
-					[.. located.Select(item => item.Position!.Value)],
+					(located.Select(item => item.Position!.Value)).ToList(),
 					color,
 					false,
 					5));
@@ -336,7 +336,7 @@ public static class MapScenes
 		{
 			Fit = fit,
 			Markers =
-				[.. vehicles
+				(vehicles
 					.Select(
 						vehicle =>
 						{
@@ -360,7 +360,7 @@ public static class MapScenes
 										string.Format(CultureInfo.CurrentCulture, strings.LiveRun, vehicle.Run),
 										delay
 									}.Where(part => part.Length > 0)));
-						})]
+						})).ToList()
 		};
 	}
 
@@ -390,7 +390,7 @@ public static class MapScenes
 		{
 			lines.Add(
 				new MapLine(
-					[.. points.Select(point => (point.Latitude, point.Longitude))],
+					(points.Select(point => (point.Latitude, point.Longitude))).ToList(),
 					color,
 					false,
 					5,

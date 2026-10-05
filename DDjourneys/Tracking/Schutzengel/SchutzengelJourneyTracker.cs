@@ -693,7 +693,7 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 			if (notices.StatusCode != HttpStatusCode.NoContent
 				&& notices.Root.ValueKind == JsonValueKind.Array)
 			{
-				entry.Notices = [.. SchutzengelNotices.Parse(notices.Root)];
+				entry.Notices = (SchutzengelNotices.Parse(notices.Root)).ToList();
 				entry.NoticeCount = notices.Root.GetArrayLength();
 				entry.NoticesLoaded = true;
 			}
@@ -792,7 +792,7 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 		string? chosen =
 			LivePlanSelector.Choose(
 				_preferredLive,
-				[.. underway.Select(item => item.View.PlanId), .. upcoming.Select(item => item.PlanId)]);
+				underway.Select(item => item.View.PlanId).Concat(upcoming.Select(item => item.PlanId)).ToList());
 
 		WatchEntry? focus = null;
 		WatchedJourney? focusView = null;
@@ -820,7 +820,7 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 				.ToDictionary(item => item.Key, item => item.Value.Timeline!, StringComparer.Ordinal);
 
 		effects.ShouldRun = run;
-		effects.Forgotten = [.. _pendingForgotten];
+		effects.Forgotten = (_pendingForgotten).ToList();
 		_pendingForgotten.Clear();
 
 		if (!SameWatchlist(_watched, views))

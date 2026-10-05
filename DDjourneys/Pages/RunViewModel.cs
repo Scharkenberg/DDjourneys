@@ -219,7 +219,7 @@ public sealed class RunViewModel : DisposableViewModel, IQueryAttributable
 			bool shown =
 				await MapScenes.OpenAsync(
 					MapScenes.FromRun(
-						[.. Rows.Select(row => row.Stop)],
+						(Rows.Select(row => row.Stop)).ToList(),
 						departure.Line.Mode,
 						Rows.ToList().FindIndex(row => row.IsCurrent)),
 					Title);
@@ -258,14 +258,14 @@ public sealed class RunViewModel : DisposableViewModel, IQueryAttributable
 					Mode = _departure?.Line.Mode ?? TransitMode.Unknown,
 					Direction = Direction,
 					Course =
-						[.. Rows
+						(Rows
 							.Where(row => row.Stop.Station.Latitude is not null && row.Stop.Station.Longitude is not null)
 							.Select(
 								row => new CoursePoint(
 									row.Stop.Station.Latitude!.Value,
 									row.Stop.Station.Longitude!.Value,
 									row.Stop.Effective,
-									row.Name))]
+									row.Name))).ToList()
 				};
 
 			if (target.IsUsable)

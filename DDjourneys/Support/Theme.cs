@@ -39,7 +39,7 @@ public static class Theme
 
 	/// <summary>The page background of the palette in effect; the system bars wear it.</summary>
 	public static Color BarColor =>
-		Solid.TryGetValue("Bg", out Color color)
+		Solid.TryGetValue("Bg", out Color? color) && color is not null
 			? color
 			: IsDark
 				? Colors.Black
@@ -165,7 +165,7 @@ public static class Theme
 
 	/// <summary>A colour of the palette currently in effect (for code that draws outside the view tree).</summary>
 	public static Color ColorOf(string key, Color fallback) =>
-		Solid.TryGetValue(key, out Color color)
+		Solid.TryGetValue(key, out Color? color) && color is not null
 			? color
 			: Current.TryGetValue(key, out object? value) && value is Color current ? current : fallback;
 

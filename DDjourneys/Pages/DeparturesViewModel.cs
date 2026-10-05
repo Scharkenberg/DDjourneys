@@ -874,7 +874,7 @@ public sealed class DeparturesViewModel : DisposableViewModel
 						timeout: TimeSpan.FromSeconds(_settings.TimeoutSeconds));
 
 				found =
-					[.. stops
+					(stops
 						.Take(10)
 						.Select(
 							stop =>
@@ -886,7 +886,7 @@ public sealed class DeparturesViewModel : DisposableViewModel
 											? (int)Math.Round(
 												GeoMath.DistanceMeters(here.Latitude, here.Longitude, latitude, longitude))
 											: 0
-								})];
+								})).ToList();
 			}
 
 			Nearby.Clear();
@@ -1047,7 +1047,7 @@ public sealed class DeparturesViewModel : DisposableViewModel
 		try
 		{
 			await MapScenes.OpenAsync(
-				MapScenes.FromStops(null, [], [row.Point]),
+				MapScenes.FromStops(null, Array.Empty<DDjourneys.Core.Models.Location>(), new[] { row.Point }),
 				row.Name);
 		}
 		catch (Exception ex)

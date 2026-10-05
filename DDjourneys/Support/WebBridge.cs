@@ -32,7 +32,7 @@ public static class WebBridge
 			await MainThread.InvokeOnMainThreadAsync(
 				() => web.InvokeJavaScriptAsync<string>(
 					function,
-					null,
+					StringInfo,
 					[command, json],
 					[StringInfo, StringInfo]));
 		}

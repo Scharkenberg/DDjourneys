@@ -116,12 +116,12 @@ public sealed class ProvidersViewModel : DisposableViewModel
 			_localization.CurrentStrings;
 
 		Groups =
-			[.. _registry.Providers
+			(_registry.Providers
 				.GroupBy(provider => provider.Region)
 				.Select(
 					group => new ProviderGroup(
 						group.Key,
-						[.. group.Select(
+						(group.Select(
 							provider =>
 							{
 								ProviderRow? row = null;
@@ -129,13 +129,13 @@ public sealed class ProvidersViewModel : DisposableViewModel
 								row =
 									new ProviderRow(
 										provider,
-										[.. Labels
+										(Labels
 											.Where(label => provider.Supports(label.Flag))
-											.Select(label => label.Label(strings))],
+											.Select(label => label.Label(strings))).ToList(),
 										new Command(() => Select(row!)));
 
 								return row;
-							})]))];
+							})).ToList()))).ToList();
 
 		RefreshSelection();
 	}

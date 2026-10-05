@@ -73,8 +73,10 @@ internal static class SystemBars
 
 			if (OperatingSystem.IsAndroidVersionAtLeast(29))
 			{
+#pragma warning disable CA1422 // obsolete from API 35, still the way to switch the scrim off below it
 				window.NavigationBarContrastEnforced = false;
 				window.StatusBarContrastEnforced = false;
+#pragma warning restore CA1422
 			}
 
 			if (window.DecorView is { } decor

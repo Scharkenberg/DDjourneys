@@ -57,10 +57,10 @@ public sealed class VvoJourneyProvider :
 			new VvoTripRequest
 			{
 				Origin =
-					query.From.Id,
+					query.From.Id ?? string.Empty,
 
 				Destination =
-					query.To.Id,
+					query.To.Id ?? string.Empty,
 
 				Time =
 					query.DateTime,
@@ -401,10 +401,10 @@ public sealed class VvoJourneyProvider :
 			new VvoPrevNextRequest
 			{
 				Origin =
-					query.From.Id,
+					query.From.Id ?? string.Empty,
 
 				Destination =
-					query.To.Id,
+					query.To.Id ?? string.Empty,
 
 				SessionId =
 					currentJourney.Context,

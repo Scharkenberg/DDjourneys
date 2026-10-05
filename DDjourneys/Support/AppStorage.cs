@@ -35,7 +35,8 @@ public sealed class PreferencesKeyValueStore(IPreferences? preferences = null) :
 public static class AppStorage
 {
 	public static IReadOnlyList<StorageMigration> Migrations { get; } =
-	[
+	new List<StorageMigration>
+		{
 		new StorageMigration(
 			1,
 			"appearance",
@@ -50,7 +51,7 @@ public static class AppStorage
 			2,
 			"place lists",
 			store => new PlaceStore(store).Normalize())
-	];
+		};
 
 	/// <summary>Runs the pending migrations; never throws.</summary>
 	public static void Upgrade()
