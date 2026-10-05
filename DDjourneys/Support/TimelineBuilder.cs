@@ -39,7 +39,7 @@ public static class TimelineBuilder
 
 		if (journey.Legs.Count == 0)
 		{
-			return Array.Empty<TimelineItem>();
+			return (TimelineItem[])[];
 		}
 
 		var items =
@@ -217,11 +217,10 @@ public static class TimelineBuilder
 			&& departs < arrives + (walkTime ?? TimeSpan.Zero);
 
 		string[] notes =
-			transfers
+			[.. transfers
 				.SelectMany(transfer => transfer.Notices)
 				.Where(n => !string.IsNullOrWhiteSpace(n))
-				.Distinct()
-				.ToArray();
+				.Distinct()];
 
 		// With real-time times on either side the arithmetic decides: the next vehicle leaves after the previous one
 		// arrived plus the walk, so the change is not endangered, whatever the provider's timetable-based flag says
@@ -316,12 +315,11 @@ public static class TimelineBuilder
 		Journey journey,
 		int? previousLegIndex,
 		int? nextLegIndex) =>
-		journey.Transfers
+		[.. journey.Transfers
 			.Where(
 				transfer =>
 					transfer.PreviousLegIndex
 						== previousLegIndex
 					&& transfer.NextLegIndex
-						== nextLegIndex)
-			.ToArray();
+						== nextLegIndex)];
 }

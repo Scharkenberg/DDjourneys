@@ -25,9 +25,11 @@ public static partial class ContractParser
 	[GeneratedRegex("^[A-Za-z0-9_-]{1,24}:[A-Za-z0-9_.:-]{1,64}$")]
 	private static partial Regex StopKeyShape();
 
-	private static readonly Regex LineShape = new(@"^[\p{L}\p{N}][\p{L}\p{N} ,;/.+-]{0,63}$", RegexOptions.Compiled);
+	[GeneratedRegex(@"^[\p{L}\p{N}][\p{L}\p{N} ,;/.+-]{0,63}$")]
+	private static partial Regex LineShape();
 
-	private static readonly Regex NumbersShape = new(@"^\d{1,4}([ ,;]+\d{1,4}){0,9}$", RegexOptions.Compiled);
+	[GeneratedRegex(@"^\d{1,4}([ ,;]+\d{1,4}){0,9}$")]
+	private static partial Regex NumbersShape();
 
 	[GeneratedRegex("^[\\x21-\\x7E]{1,64}$")]
 	private static partial Regex ReferenceShape();
@@ -581,8 +583,8 @@ public static partial class ContractParser
 			return null;
 		}
 
-		if (!LineShape.IsMatch(text)
-			|| (numbersOnly && !NumbersShape.IsMatch(text)))
+		if (!LineShape().IsMatch(text)
+			|| (numbersOnly && !NumbersShape().IsMatch(text)))
 		{
 			throw new Refusal(
 				ContractErrorCode.InvalidParameter,

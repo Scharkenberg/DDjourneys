@@ -207,10 +207,10 @@ public sealed class JourneyWindowTests
 
 	/// <summary>Departure minutes of the day, every 10 minutes.</summary>
 	private static int[] Minutes(int hour, int minute, int count) =>
-		Enumerable.Range(0, count).Select(i => hour * 60 + minute + i * 10).ToArray();
+		[.. Enumerable.Range(0, count).Select(i => hour * 60 + minute + i * 10)];
 
 	private static int[] Starts(IEnumerable<Journey> journeys) =>
-		journeys.Select(journey => (int)(JourneyWindow.PlannedStart(journey)!.Value - Day).TotalMinutes).ToArray();
+		[.. journeys.Select(journey => (int)(JourneyWindow.PlannedStart(journey)!.Value - Day).TotalMinutes)];
 
 	/// <summary>
 	/// Line 1 every 10 minutes from 05:00 to 23:50, 20 minutes long. A search answers four journeys
@@ -240,10 +240,10 @@ public sealed class JourneyWindowTests
 
 			DateTimeOffset[] starts =
 				query.SearchMode == JourneySearchMode.Arrival && !ignoreTime
-					? all.Where(start => start + Ride <= time).TakeLast(answerSize).ToArray()
-					: all.Where(start => start >= time).Take(answerSize).ToArray();
+					? [.. all.Where(start => start + Ride <= time).TakeLast(answerSize)]
+					: [.. all.Where(start => start >= time).Take(answerSize)];
 
-			return Task.FromResult(JourneyResult.Success(starts.Select(Build).ToArray()));
+			return Task.FromResult(JourneyResult.Success([.. starts.Select(Build)]));
 		}
 
 		private static Journey Build(DateTimeOffset start)

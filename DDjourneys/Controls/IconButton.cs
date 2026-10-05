@@ -8,7 +8,7 @@ namespace DDjourneys.Controls;
 /// A tappable icon with a full-size touch target and a soft pressed state. Used wherever a text
 /// glyph used to stand in for a button, so every control in the app shares one icon family.
 /// </summary>
-public sealed class IconButton : ContentView
+public sealed partial class IconButton : ContentView
 {
 	public static readonly BindableProperty GlyphProperty =
 		BindableProperty.Create(
@@ -156,15 +156,8 @@ public sealed class IconButton : ContentView
 
 	private void OnCommandChanged(ICommand? previous, ICommand? next)
 	{
-		if (previous is not null)
-		{
-			previous.CanExecuteChanged -= OnCanExecuteChanged;
-		}
-
-		if (next is not null)
-		{
-			next.CanExecuteChanged += OnCanExecuteChanged;
-		}
+		previous?.CanExecuteChanged -= OnCanExecuteChanged;
+		next?.CanExecuteChanged += OnCanExecuteChanged;
 
 		RefreshEnabled();
 	}

@@ -65,8 +65,8 @@ public sealed class ContractReply
 			failure.Code,
 			failure.Message,
 			failure.Parameter is null
-				? Array.Empty<KeyValuePair<string, string>>()
-				: new[] { new KeyValuePair<string, string>("parameter", failure.Parameter) });
+				? []
+				: [new KeyValuePair<string, string>("parameter", failure.Parameter)]);
 	}
 
 	public static ContractReply Failure(

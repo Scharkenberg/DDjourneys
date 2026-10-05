@@ -7,7 +7,7 @@ namespace DDjourneys.Support;
 /// The actions of a journey as icons in its overview card: the PDF, handing it to another app, following it,
 /// pausing the following, and the notices. The journey page owns the state; the card only shows it.
 /// </summary>
-public sealed class JourneyActions : ObservableObject
+public sealed partial class JourneyActions : ObservableObject
 {
 	public ICommand? PdfCommand { get; init; }
 
@@ -22,26 +22,26 @@ public sealed class JourneyActions : ObservableObject
 
 	public bool HasPdf
 	{
-		get => field;
+		get;
 		set => SetProperty(ref field, value);
 	}
 
 	public bool HasHandOff
 	{
-		get => field;
+		get;
 		set => SetProperty(ref field, value);
 	}
 
 	/// <summary>The provider can follow journeys at all.</summary>
 	public bool CanFollow
 	{
-		get => field;
+		get;
 		set => SetProperty(ref field, value);
 	}
 
 	public bool IsFollowed
 	{
-		get => field;
+		get;
 		set
 		{
 			if (SetProperty(ref field, value))
@@ -54,13 +54,13 @@ public sealed class JourneyActions : ObservableObject
 	/// <summary>Following can be paused (it is followed, running, and not already over).</summary>
 	public bool CanPause
 	{
-		get => field;
+		get;
 		set => SetProperty(ref field, value);
 	}
 
 	public bool IsPaused
 	{
-		get => field;
+		get;
 		set
 		{
 			if (SetProperty(ref field, value))
@@ -86,25 +86,25 @@ public sealed class JourneyActions : ObservableObject
 
 	public string PdfDescription
 	{
-		get => field;
+		get;
 		set => SetProperty(ref field, value);
 	} = string.Empty;
 
 	public string HandOffDescription
 	{
-		get => field;
+		get;
 		set => SetProperty(ref field, value);
 	} = string.Empty;
 
 	public string FollowDescription
 	{
-		get => field;
+		get;
 		set => SetProperty(ref field, value);
 	} = string.Empty;
 
 	public string PauseDescription
 	{
-		get => field;
+		get;
 		set => SetProperty(ref field, value);
 	} = string.Empty;
 

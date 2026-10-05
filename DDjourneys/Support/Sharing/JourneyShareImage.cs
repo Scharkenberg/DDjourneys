@@ -679,7 +679,7 @@ public static class JourneyShareImage
 				}
 
 				current = face;
-				builder.Append(rune.ToString());
+				builder.Append(rune);
 			}
 
 			if (current is not null && builder.Length > 0)

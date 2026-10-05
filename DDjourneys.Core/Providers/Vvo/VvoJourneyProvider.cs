@@ -10,7 +10,7 @@ namespace DDjourneys.Core.Providers.Vvo;
 /// <summary>
 /// Provides journey planning using the VVO WebAPI.
 /// </summary>
-public sealed class VvoJourneyProvider :
+public sealed partial class VvoJourneyProvider :
 	IJourneyProvider,
 	IJourneyContinuationProvider,
 	IJourneyExtrasProvider,
@@ -86,12 +86,12 @@ public sealed class VvoJourneyProvider :
 			VvoTripResponse? response =
 				await _apiClient.GetTripsAsync(
 					request,
-					cancellationToken,
 					TimeSpan.FromSeconds(
 						Math.Clamp(
 							query.TimeoutSeconds,
 							5,
-							60)))
+							60)),
+					cancellationToken)
 				.ConfigureAwait(false);
 
 
@@ -107,7 +107,7 @@ public sealed class VvoJourneyProvider :
 			if (response.Routes.Count == 0)
 			{
 				return JourneyResult.Success(
-					Array.Empty<Journey>());
+					[]);
 			}
 
 
@@ -179,9 +179,9 @@ public sealed class VvoJourneyProvider :
 
 		DateTimeOffset requestedTime =
 			target.Departure
-			?? target.Legs
-				.FirstOrDefault()
-				?.ScheduledDeparture
+			?? (target.Legs.Count > 0
+				? target.Legs[0].ScheduledDeparture
+				: null)
 			?? DateTimeOffset.UtcNow;
 
 
@@ -212,8 +212,8 @@ public sealed class VvoJourneyProvider :
 		VvoTripResponse? response =
 			await _apiClient.GetTripsAsync(
 				request,
-				cancellationToken,
-				TimeSpan.FromSeconds(15))
+				TimeSpan.FromSeconds(15),
+				cancellationToken)
 			.ConfigureAwait(false);
 
 
@@ -317,8 +317,8 @@ public sealed class VvoJourneyProvider :
 
 		return (
 			Route: route,
-			SessionId: response.SessionId,
-			Status: response.Status);
+			response.SessionId,
+			response.Status);
 	}
 
 
@@ -446,12 +446,12 @@ public sealed class VvoJourneyProvider :
 			VvoTripResponse? response =
 				await _apiClient.GetPreviousNextTripsAsync(
 					request,
-					cancellationToken,
 					TimeSpan.FromSeconds(
 						Math.Clamp(
 							query.TimeoutSeconds,
 							5,
-							60)))
+							60)),
+					cancellationToken)
 				.ConfigureAwait(false);
 
 
@@ -465,7 +465,7 @@ public sealed class VvoJourneyProvider :
 			if (response.Routes.Count == 0)
 			{
 				return JourneyResult.Success(
-					Array.Empty<Journey>());
+					[]);
 			}
 
 
@@ -559,12 +559,12 @@ public sealed class VvoJourneyProvider :
 			VvoTripResponse? response =
 				await _apiClient.GetLegAlternativeAsync(
 					request,
-					cancellationToken,
 					TimeSpan.FromSeconds(
 						Math.Clamp(
 							query.TimeoutSeconds,
 							5,
-							60)))
+							60)),
+					cancellationToken)
 				.ConfigureAwait(false);
 
 			if (response is null)
@@ -576,7 +576,7 @@ public sealed class VvoJourneyProvider :
 			if (response.Routes.Count == 0)
 			{
 				return JourneyResult.Success(
-					Array.Empty<Journey>());
+					[]);
 			}
 
 			IReadOnlyList<Journey> journeys =
@@ -631,7 +631,7 @@ public sealed class VvoJourneyProvider :
 			return null;
 		}
 
-		return _apiClient.BuildTripPdfUri(
+		return VvoApiClient.BuildTripPdfUri(
 			journey.Id,
 			journey.Context,
 			query.From.Id!,
@@ -645,8 +645,8 @@ public sealed class VvoJourneyProvider :
 
 
 	// A VVO session id looks like "367417461:efa4".
-	private static readonly System.Text.RegularExpressions.Regex SessionShape =
-		new(@"^\d+:[A-Za-z0-9]+$");
+	[System.Text.RegularExpressions.GeneratedRegex(@"^\d+:[A-Za-z0-9]+$")]
+	private static partial System.Text.RegularExpressions.Regex SessionShape();
 
 
 	/// <inheritdoc />
@@ -663,7 +663,7 @@ public sealed class VvoJourneyProvider :
 			$"from={query.From.Id} to={query.To.Id} via={query.Via?.Id} time={query.DateTime:O} arrival={query.SearchMode == JourneySearchMode.Arrival}");
 
 		if (string.IsNullOrWhiteSpace(journey.Context)
-			|| !SessionShape.IsMatch(journey.Context))
+			|| !SessionShape().IsMatch(journey.Context))
 		{
 			DiagnosticLog.Write(
 				$"[VVO PDF] the session id '{journey.Context}' does not look like a VVO session id (digits, colon, letters); asking anyway");
@@ -683,7 +683,7 @@ public sealed class VvoJourneyProvider :
 		}
 
 		var attempts =
-			_apiClient.BuildTripPdfAttempts(
+			VvoApiClient.BuildTripPdfAttempts(
 				journey.Id,
 				journey.Context,
 				query.From.Id!,
@@ -698,12 +698,12 @@ public sealed class VvoJourneyProvider :
 			await _apiClient
 				.DownloadTripPdfAsync(
 					attempts,
-					cancellationToken,
 					TimeSpan.FromSeconds(
 						Math.Clamp(
 							query.TimeoutSeconds,
 							5,
-							60)))
+							60)),
+					cancellationToken)
 				.ConfigureAwait(false);
 
 		return pdf is null
@@ -798,7 +798,7 @@ public sealed class VvoJourneyProvider :
 	}
 
 
-	private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Journey, RoutingPreferences> RoutingByJourney = new();
+	private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Journey, RoutingPreferences> RoutingByJourney = [];
 
 	private static void RememberRouting(IReadOnlyList<Journey> journeys, RoutingPreferences routing)
 	{
@@ -1059,8 +1059,6 @@ public sealed class VvoJourneyProvider :
 			return journeys;
 		}
 
-		return journeys
-			.Take(maximum)
-			.ToArray();
+		return [.. journeys.Take(maximum)];
 	}
 }

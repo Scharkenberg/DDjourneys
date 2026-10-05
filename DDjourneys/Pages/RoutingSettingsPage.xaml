@@ -121,7 +121,7 @@
 						<Label StyleClass="Caption" Text="{Binding FootpathText}" />
 
 						<Slider
-							Maximum="{Binding MaxFootpath}"
+							Maximum="{x:Static local:RoutingSettingsViewModel.MaxFootpath}"
 							Minimum="0"
 							SemanticProperties.Description="{localization:Tr Routing.Footpath}"
 							Value="{Binding FootpathMinutes}" />

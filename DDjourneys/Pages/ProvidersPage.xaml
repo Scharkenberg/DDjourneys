@@ -53,7 +53,7 @@
 															IsVisible="{Binding IsExperimental}"
 															StyleClass="Chip"
 															VerticalOptions="Center">
-															<Label StyleClass="Faint" Text="{Binding ExperimentalText}" />
+															<Label StyleClass="Faint" Text="{localization:Tr Provider.Experimental}" />
 														</Border>
 													</HorizontalStackLayout>
 

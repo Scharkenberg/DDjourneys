@@ -43,7 +43,7 @@ public sealed class ProviderRegistry
 	/// <summary>The selected provider; falls back to the first one when the stored id is unknown.</summary>
 	public ProviderInfo? Selected =>
 		Find(SelectedId)
-		?? Providers.FirstOrDefault();
+		?? (Providers.Count > 0 ? Providers[0] : null);
 
 	public string SelectedId
 	{
@@ -58,7 +58,7 @@ public sealed class ProviderRegistry
 			_selectedId ??= _load?.Invoke();
 
 			return Find(_selectedId)?.Id
-				?? Providers.FirstOrDefault()?.Id
+				?? (Providers.Count > 0 ? Providers[0].Id : null)
 				?? string.Empty;
 		}
 	}

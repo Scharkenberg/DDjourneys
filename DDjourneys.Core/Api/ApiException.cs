@@ -10,7 +10,13 @@ namespace DDjourneys.Core.Api;
 /// callers show their own localized text then, and <see cref="Detail"/> still carries the cause for logs.
 /// For an error response it holds the status line and the start of the response body.
 /// </remarks>
-public class ApiException : Exception
+public class ApiException(
+	string message,
+	int? statusCode = null,
+	bool isTransient = false,
+	string? responseBody = null,
+	Exception? innerException = null,
+	TimeSpan? retryAfter = null) : Exception(message, innerException)
 {
 	/// <summary>How much of an error body is copied into <see cref="Exception.Message"/>.</summary>
 	public const int MaxBodyCharactersInMessage = 300;
@@ -18,24 +24,24 @@ public class ApiException : Exception
 	/// <summary>
 	/// HTTP status code returned by the server.
 	/// </summary>
-	public int? StatusCode { get; }
+	public int? StatusCode { get; } = statusCode;
 
 
 	/// <summary>
 	/// Indicates whether retrying the request may succeed.
 	/// </summary>
-	public bool IsTransient { get; }
+	public bool IsTransient { get; } = isTransient;
 
 
 	/// <summary>
 	/// Complete response body returned by the server, if available.
 	/// </summary>
-	public string? ResponseBody { get; }
+	public string? ResponseBody { get; } = responseBody;
 
 	/// <summary>
 	/// Server requested delay before retrying the request.
 	/// </summary>
-	public TimeSpan? RetryAfter { get; }
+	public TimeSpan? RetryAfter { get; } = retryAfter;
 
 	/// <summary>
 	/// Text for logs and diagnostic UI: the message, or the cause when there is no message.
@@ -45,24 +51,6 @@ public class ApiException : Exception
 			? Message
 			: InnerException?.Message
 				?? string.Empty;
-
-	/// <summary>
-	/// Creates a new API exception.
-	/// </summary>
-	public ApiException(
-		string message,
-		int? statusCode = null,
-		bool isTransient = false,
-		string? responseBody = null,
-		Exception? innerException = null,
-		TimeSpan? retryAfter = null)
-		: base(message, innerException)
-	{
-		StatusCode = statusCode;
-		IsTransient = isTransient;
-		ResponseBody = responseBody;
-		RetryAfter = retryAfter;
-	}
 
 	/// <summary>
 	/// Creates the exception for a non-success response; the message names the status and quotes the

@@ -22,12 +22,12 @@ public static class Theme
 	private static readonly string[] BrushKeys = ["Outline", "Accent", "Surface", "Raised", "Ink", "InkMuted", "AccentSoft", "OnAccent"];
 
 	// Everything currently written to Application.Resources by the theme (colours, brushes, fonts).
-	private static readonly Dictionary<string, object> Current = new();
+	private static readonly Dictionary<string, object> Current = [];
 
 	// The palette as chosen, before a window material made parts of it translucent: what drawing code and
 	// native chrome (status bar, share image) must use.
-	private static readonly Dictionary<string, Color> Solid = new();
-	private static readonly ConditionalWeakTable<Element, StampBox> Stamps = new();
+	private static readonly Dictionary<string, Color> Solid = [];
+	private static readonly ConditionalWeakTable<Element, StampBox> Stamps = [];
 
 	private static Application? _app;
 	private static AppSettings? _settings;
@@ -269,10 +269,7 @@ public static class Theme
 			{
 				DiagnosticLog.Write($"Theme fade-in skipped: {ex.Message}");
 
-				if (page is not null)
-				{
-					page.Opacity = 1;
-				}
+				page?.Opacity = 1;
 			}
 		}
 	}

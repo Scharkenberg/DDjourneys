@@ -14,7 +14,7 @@ using Microsoft.Maui.ApplicationModel.DataTransfer;
 
 namespace DDjourneys.Pages;
 
-public sealed class JourneyViewModel :
+public sealed partial class JourneyViewModel :
 	DisposableViewModel,
 	IQueryAttributable
 {
@@ -146,7 +146,7 @@ public sealed class JourneyViewModel :
 	/// </summary>
 	public string? LoadError
 	{
-		get => field;
+		get;
 
 		private set
 		{
@@ -256,7 +256,7 @@ public sealed class JourneyViewModel :
 	/// <summary>Result of the last alternative lookup ("shown", "none found"); empty otherwise.</summary>
 	public string AlternativeStatus
 	{
-		get => field;
+		get;
 
 		private set
 		{
@@ -278,7 +278,7 @@ public sealed class JourneyViewModel :
 	/// <summary>Why the hand-over failed; empty otherwise.</summary>
 	public string HandOffStatus
 	{
-		get => field;
+		get;
 
 		private set
 		{
@@ -354,7 +354,7 @@ public sealed class JourneyViewModel :
 
 	public string? TrackingStatus
 	{
-		get => field;
+		get;
 
 		private set
 		{
@@ -470,7 +470,7 @@ public sealed class JourneyViewModel :
 				? _tracker.Find(original)?.PlanId
 				: null;
 
-		WatchedJourney watched = await _tracker.FollowAsync(_journey, default, replaces);
+		WatchedJourney watched = await _tracker.FollowAsync(_journey, replaces, default);
 
 		// The followed journey's map (and its vehicles) needs the rides with their boarding stops.
 		FollowedRides.Save(watched.PlanId, _journey);
@@ -532,7 +532,7 @@ public sealed class JourneyViewModel :
 	/// <summary>Start and destination, split so the header can put the city under the name.</summary>
 	public string FromName
 	{
-		get => field;
+		get;
 		private set => SetProperty(
 			ref field,
 			value);
@@ -541,7 +541,7 @@ public sealed class JourneyViewModel :
 
 	public string? FromPlace
 	{
-		get => field;
+		get;
 		private set => SetProperty(
 			ref field,
 			value);
@@ -550,7 +550,7 @@ public sealed class JourneyViewModel :
 
 	public string ToName
 	{
-		get => field;
+		get;
 		private set => SetProperty(
 			ref field,
 			value);
@@ -559,7 +559,7 @@ public sealed class JourneyViewModel :
 
 	public string? ToPlace
 	{
-		get => field;
+		get;
 		private set => SetProperty(
 			ref field,
 			value);
@@ -572,7 +572,7 @@ public sealed class JourneyViewModel :
 
 	public JourneyCardModel? Summary
 	{
-		get => field;
+		get;
 
 		private set =>
 			SetProperty(
@@ -583,7 +583,7 @@ public sealed class JourneyViewModel :
 
 	public string RouteText
 	{
-		get => field;
+		get;
 
 		private set =>
 			SetProperty(
@@ -595,7 +595,7 @@ public sealed class JourneyViewModel :
 
 	public string DayText
 	{
-		get => field;
+		get;
 
 		private set =>
 			SetProperty(
@@ -607,7 +607,7 @@ public sealed class JourneyViewModel :
 
 	public IReadOnlyList<NoticeRow> Notices
 	{
-		get => field;
+		get;
 
 		private set
 		{
@@ -630,7 +630,7 @@ public sealed class JourneyViewModel :
 	/// <summary>Tickets and prices the provider quotes (empty when it quotes none).</summary>
 	public IReadOnlyList<FareRow> Fares
 	{
-		get => field;
+		get;
 
 		private set
 		{
@@ -653,7 +653,7 @@ public sealed class JourneyViewModel :
 	/// <summary>The section starts collapsed: the preferred ticket is in its header, the rest on demand.</summary>
 	public bool FaresExpanded
 	{
-		get => field;
+		get;
 
 		private set
 		{
@@ -686,7 +686,7 @@ public sealed class JourneyViewModel :
 	/// <summary>The ticket for the passenger set in the options, named under the section title.</summary>
 	public string FaresSummaryName
 	{
-		get => field;
+		get;
 
 		private set =>
 			SetProperty(
@@ -699,7 +699,7 @@ public sealed class JourneyViewModel :
 	/// <summary>Its price, shown in the section header.</summary>
 	public string FaresSummaryPrice
 	{
-		get => field;
+		get;
 
 		private set =>
 			SetProperty(
@@ -712,7 +712,7 @@ public sealed class JourneyViewModel :
 	/// <summary>"Zones: Dresden, Radebeul": the zones are the same for every ticket, so they are said once.</summary>
 	public string? FaresZonesText
 	{
-		get => field;
+		get;
 
 		private set
 		{
@@ -734,7 +734,7 @@ public sealed class JourneyViewModel :
 	/// <summary>The conditions the provider prints with its tickets, each once.</summary>
 	public string? FaresNotesText
 	{
-		get => field;
+		get;
 
 		private set
 		{
@@ -822,7 +822,7 @@ public sealed class JourneyViewModel :
 			Journey? next =
 				result.Journeys.FirstOrDefault(
 					candidate => candidate.Id == journey.Id)
-				?? result.Journeys.FirstOrDefault();
+				?? (result.Journeys.Count > 0 ? result.Journeys[0] : null);
 
 			if (next is null)
 			{
@@ -1092,7 +1092,8 @@ public sealed class JourneyViewModel :
 				: fare.ValidFor;
 
 		Fares =
-			journey.Fares
+			(List<FareRow>)
+			[.. journey.Fares
 				.OrderBy(
 					fare => ReferenceEquals(fare, preferred)
 						? 0
@@ -1137,8 +1138,7 @@ public sealed class JourneyViewModel :
 							ReferenceEquals(
 								fare,
 								preferred)
-					})
-				.ToList();
+					})];
 
 		FaresSummaryName =
 			preferred is null
@@ -1271,7 +1271,8 @@ public sealed class JourneyViewModel :
 
 
 		Notices =
-			journey.Notices
+			(List<NoticeRow>)
+			[.. journey.Notices
 				.Where(
 					n =>
 						!string.IsNullOrWhiteSpace(n)
@@ -1292,8 +1293,7 @@ public sealed class JourneyViewModel :
 
 							Technical =
 								options.Technical
-						})
-				.ToList();
+						})];
 
 
 		Rows.Clear();

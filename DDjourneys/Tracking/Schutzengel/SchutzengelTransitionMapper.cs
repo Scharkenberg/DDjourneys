@@ -48,14 +48,13 @@ internal static class SchutzengelTransitionMapper
 
 
 		JourneyTransfer[] journeyTransfers =
-			journey.Transfers
+			[.. journey.Transfers
 				.Where(
 					transfer =>
 						transfer.PreviousLegIndex
 							== movementIndex
 						&& transfer.NextLegIndex
-							== movementIndex + 1)
-				.ToArray();
+							== movementIndex + 1)];
 
 
 		var result =
@@ -81,7 +80,7 @@ internal static class SchutzengelTransitionMapper
 				&& journeyTransfer.Path.Count > 0
 					? DDjourneys.Core.Serialization.Wire.Array(
 						journeyTransfer.Path.Select(point => (JsonNode?)PointObject(point)))
-					: new JsonArray();
+					: [];
 
 
 			result.Add(
@@ -148,21 +147,17 @@ internal static class SchutzengelTransitionMapper
 		JourneyLeg next)
 	{
 		DateTimeOffset? previousTime =
-			previous.Stops
-				.LastOrDefault()
+			(previous.Stops.Count > 0 ? previous.Stops[^1] : null)
 				?.RealtimeArrival
-			?? previous.Stops
-				.LastOrDefault()
+			?? (previous.Stops.Count > 0 ? previous.Stops[^1] : null)
 				?.ScheduledArrival
 			?? previous.EffectiveArrival;
 
 
 		DateTimeOffset? nextTime =
-			next.Stops
-				.FirstOrDefault()
+			(next.Stops.Count > 0 ? next.Stops[0] : null)
 				?.RealtimeDeparture
-			?? next.Stops
-				.FirstOrDefault()
+			?? (next.Stops.Count > 0 ? next.Stops[0] : null)
 				?.ScheduledDeparture
 			?? next.EffectiveDeparture;
 

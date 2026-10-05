@@ -125,7 +125,7 @@ public sealed class WidgetLoader(
 		{
 			Title = title,
 			UpdatedAt = DateTimeOffset.UtcNow,
-			Rows = result.Journeys.Select(journey => WidgetSnapshots.ForJourney(journey, all)).ToList()
+			Rows = (List<WidgetRow>)[.. result.Journeys.Select(journey => WidgetSnapshots.ForJourney(journey, all))]
 		};
 	}
 
@@ -157,10 +157,10 @@ public sealed class WidgetLoader(
 
 		IReadOnlyList<Location> stops =
 			await locations
-				.SearchByCoordinatesAsync(here.Latitude, here.Longitude, cancellationToken, Timeout)
+				.SearchByCoordinatesAsync(here.Latitude, here.Longitude, Timeout, cancellationToken)
 				.ConfigureAwait(false);
 
-		return stops.FirstOrDefault();
+		return stops.Count > 0 ? stops[0] : null;
 	}
 
 	// ---------- Departures and arrivals of one stop ----------
@@ -190,7 +190,7 @@ public sealed class WidgetLoader(
 			Title = stop.Name,
 			UpdatedAt = DateTimeOffset.UtcNow,
 			Message = list.Count == 0 ? (arrival ? strings.NoArrivals : strings.NoDepartures) : string.Empty,
-			Rows = list.Select(departure => WidgetSnapshots.ForDeparture(departure, all)).ToList()
+			Rows = (List<WidgetRow>)[.. list.Select(departure => WidgetSnapshots.ForDeparture(departure, all))]
 		};
 	}
 
@@ -218,12 +218,12 @@ public sealed class WidgetLoader(
 		IReadOnlyList<string> lines = config.LineFilter;
 
 		return
-			board.Departures
+			(List<Departure>)
+			[.. board.Departures
 				.Where(
 					departure => lines.Count == 0
 						|| lines.Contains(departure.Line.Name, StringComparer.OrdinalIgnoreCase))
-				.Take(limit)
-				.ToList();
+				.Take(limit)];
 	}
 
 	// ---------- Around the device ----------
@@ -268,7 +268,7 @@ public sealed class WidgetLoader(
 			{
 				Title = title,
 				UpdatedAt = DateTimeOffset.UtcNow,
-				Rows = stops.Take(wanted).Select(stop => WidgetSnapshots.ForStop(stop, strings)).ToList()
+				Rows = (List<WidgetRow>)[.. stops.Take(wanted).Select(stop => WidgetSnapshots.ForStop(stop, strings))]
 			};
 		}
 
@@ -295,7 +295,7 @@ public sealed class WidgetLoader(
 					{
 						DiagnosticLog.Write($"Widget: departures of {stop.Stop.Name} failed: {ex.Message}");
 
-						boards[index] = new List<Departure>();
+						boards[index] = (List<Departure>)[];
 					}
 					finally
 					{
@@ -341,11 +341,12 @@ public sealed class WidgetLoader(
 		{
 			IReadOnlyList<Location> stops =
 				await locations
-					.SearchByCoordinatesAsync(latitude, longitude, cancellationToken, Timeout)
+					.SearchByCoordinatesAsync(latitude, longitude, Timeout, cancellationToken)
 					.ConfigureAwait(false);
 
 			found =
-				stops
+				(List<NearbyStop>)
+				[.. stops
 					.Select(
 						stop => new NearbyStop
 						{
@@ -355,10 +356,9 @@ public sealed class WidgetLoader(
 									? (int)Math.Round(GeoMath.DistanceMeters(latitude, longitude, lat, lon))
 									: 0
 						})
-					.Where(stop => stop.DistanceMeters <= radius)
-					.ToList();
+					.Where(stop => stop.DistanceMeters <= radius)];
 		}
 
-		return found.OrderBy(stop => stop.DistanceMeters).ToList();
+		return (List<NearbyStop>)[.. found.OrderBy(stop => stop.DistanceMeters)];
 	}
 }

@@ -4,7 +4,7 @@ namespace DDjourneys.Controls;
 /// "Start → destination" as a page header: both stops with their city on a second, fainter line.
 /// Wraps instead of truncating, so long names stay readable on a phone.
 /// </summary>
-public sealed class RouteView : ContentView
+public sealed partial class RouteView : ContentView
 {
 	public static readonly BindableProperty FromProperty =
 		BindableProperty.Create(

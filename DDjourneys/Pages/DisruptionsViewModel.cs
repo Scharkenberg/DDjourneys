@@ -26,7 +26,7 @@ public sealed record DisruptionLineRow(
 /// the period and a short excerpt; the full text opens on its own page, so nothing in the list changes height or
 /// moves when an entry is tapped.
 /// </summary>
-public sealed class DisruptionRow : ObservableObject
+public sealed partial class DisruptionRow : ObservableObject
 {
 	private const int ExcerptLength = 160;
 
@@ -44,7 +44,7 @@ public sealed class DisruptionRow : ObservableObject
 		Html = HtmlOf(change.DescriptionHtml, change.Description);
 
 		Lines =
-			(change.Lines.Select(line => new DisruptionLineRow(line))).ToList();
+			(List<DisruptionLineRow>)[.. change.Lines.Select(line => new DisruptionLineRow(line))];
 	}
 
 	public DisruptionRow(NetworkBanner banner)
@@ -94,9 +94,6 @@ public sealed class DisruptionRow : ObservableObject
 		}
 	}
 
-	public string AffectsRoutingText =>
-		LocalizationService.Current.CurrentStrings.Disruptions.AffectsRouting;
-
 	/// <summary>First part of the description on one line, for the list.</summary>
 	public string Excerpt
 	{
@@ -124,7 +121,9 @@ public sealed class DisruptionRow : ObservableObject
 		get
 		{
 			DisruptionPeriod? period =
-				_change?.Periods.FirstOrDefault();
+				_change is { Periods: [var first, ..] }
+					? first
+					: null;
 
 			if (period is null)
 			{
@@ -182,7 +181,7 @@ public sealed class DisruptionRow : ObservableObject
 /// Route changes of the network (rc): construction, detours and short-term disruptions, filterable by line
 /// and, when opened from a departure, limited to the changes of that departure.
 /// </summary>
-public sealed class DisruptionsViewModel : DisposableViewModel, IQueryAttributable
+public sealed partial class DisruptionsViewModel : DisposableViewModel, IQueryAttributable
 {
 	private readonly NetworkService _network;
 	private readonly LocalizationService _localization;
@@ -240,7 +239,7 @@ public sealed class DisruptionsViewModel : DisposableViewModel, IQueryAttributab
 
 	public bool ShortTermOnly
 	{
-		get => field;
+		get;
 
 		set
 		{
@@ -253,7 +252,7 @@ public sealed class DisruptionsViewModel : DisposableViewModel, IQueryAttributab
 
 	public string Filter
 	{
-		get => field;
+		get;
 
 		set
 		{
@@ -269,13 +268,13 @@ public sealed class DisruptionsViewModel : DisposableViewModel, IQueryAttributab
 
 	public bool IsBusy
 	{
-		get => field;
+		get;
 		private set => SetProperty(ref field, value);
 	}
 
 	public string Message
 	{
-		get => field;
+		get;
 
 		private set
 		{

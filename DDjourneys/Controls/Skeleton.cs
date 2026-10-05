@@ -9,7 +9,7 @@ namespace DDjourneys.Controls;
 /// two opacities) so the wait reads as "something is coming" rather than "nothing is there". With animations off
 /// they stay still.
 /// </summary>
-public sealed class Skeleton : ContentView
+public sealed partial class Skeleton : ContentView
 {
 	public static readonly BindableProperty CountProperty =
 		BindableProperty.Create(
@@ -55,12 +55,12 @@ public sealed class Skeleton : ContentView
 
 		var times = new Grid
 		{
-			ColumnDefinitions = new ColumnDefinitionCollection
-			{
+			ColumnDefinitions =
+			[
 				new ColumnDefinition(GridLength.Auto),
 				new ColumnDefinition(GridLength.Star),
 				new ColumnDefinition(GridLength.Auto)
-			},
+			],
 			ColumnSpacing = 12
 		};
 
@@ -70,11 +70,11 @@ public sealed class Skeleton : ContentView
 
 		var places = new Grid
 		{
-			ColumnDefinitions = new ColumnDefinitionCollection
-			{
+			ColumnDefinitions =
+			[
 				new ColumnDefinition(GridLength.Star),
 				new ColumnDefinition(GridLength.Star)
-			}
+			]
 		};
 
 		places.Add(Bar(stop, 12), 0);

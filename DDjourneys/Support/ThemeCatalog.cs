@@ -53,12 +53,12 @@ public static class ThemeCatalog
 
 	private static List<ThemeDef> Build()
 	{
-		var list = new List<ThemeDef>
-		{
+		List<ThemeDef> list =
+		[
 			New("light", "Light", "Bright surfaces", "Helle Flächen", false, true, "#F2F4F5", "#FFFFFF", "#DFE6E9", "#B4C1C7", "#0F1A1F", "#4A5960", "#0B6E8A", "#FFFFFF", "#D3E9F0", "#15803D", "#9A5B00", "#B91C1C"),
 			New("dark", "Dark", "Solarized-style dark", "Dunkles Solarized", true, true, "#0C1418", "#16232A", "#23343E", "#456070", "#E9EFF1", "#A2B3BC", "#5CC0DA", "#06222B", "#1B3E4A", "#4ADE80", "#FFC94D", "#F87171"),
 			New("amoled", "Dark AMOLED", "Pure black surfaces", "Reines Schwarz", true, true, "#000000", "#000000", "#16232A", "#647985", "#F2F6F8", "#AFBFC7", "#5CC0DA", "#06222B", "#12323C", "#4ADE80", "#FFC94D", "#F87171"),
-		};
+		];
 
 		// Added themes: dark ones are followed by their AMOLED variant.
 		list.Add(New("nord", "Nord", "Cool arctic blues", "Kühles Arktisblau", true, false, "#242933", "#2E3440", "#3B4252", "#74839E", "#ECEFF4", "#AEBBD0", "#88C0D0", "#1B2330", "#34495A", "#A3BE8C", "#EBCB8B", "#E5848C"));

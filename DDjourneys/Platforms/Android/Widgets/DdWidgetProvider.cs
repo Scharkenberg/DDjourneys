@@ -72,35 +72,35 @@ public abstract class DdWidgetProvider : AppWidgetProvider
 }
 
 [BroadcastReceiver(Name = WidgetNames.Route, Label = "@string/widget_route_label", Exported = true)]
-[IntentFilter(new[] { AppWidgetManager.ActionAppwidgetUpdate })]
+[IntentFilter([AppWidgetManager.ActionAppwidgetUpdate])]
 [MetaData("android.appwidget.provider", Resource = "@xml/widget_route_info")]
 public sealed class RouteWidgetProvider : DdWidgetProvider
 {
 }
 
 [BroadcastReceiver(Name = WidgetNames.Departures, Label = "@string/widget_departures_label", Exported = true)]
-[IntentFilter(new[] { AppWidgetManager.ActionAppwidgetUpdate })]
+[IntentFilter([AppWidgetManager.ActionAppwidgetUpdate])]
 [MetaData("android.appwidget.provider", Resource = "@xml/widget_departures_info")]
 public sealed class DeparturesWidgetProvider : DdWidgetProvider
 {
 }
 
 [BroadcastReceiver(Name = WidgetNames.Arrivals, Label = "@string/widget_arrivals_label", Exported = true)]
-[IntentFilter(new[] { AppWidgetManager.ActionAppwidgetUpdate })]
+[IntentFilter([AppWidgetManager.ActionAppwidgetUpdate])]
 [MetaData("android.appwidget.provider", Resource = "@xml/widget_arrivals_info")]
 public sealed class ArrivalsWidgetProvider : DdWidgetProvider
 {
 }
 
 [BroadcastReceiver(Name = WidgetNames.Nearby, Label = "@string/widget_nearby_label", Exported = true)]
-[IntentFilter(new[] { AppWidgetManager.ActionAppwidgetUpdate })]
+[IntentFilter([AppWidgetManager.ActionAppwidgetUpdate])]
 [MetaData("android.appwidget.provider", Resource = "@xml/widget_nearby_info")]
 public sealed class NearbyWidgetProvider : DdWidgetProvider
 {
 }
 
 [BroadcastReceiver(Name = WidgetNames.NearbyDepartures, Label = "@string/widget_nearby_departures_label", Exported = true)]
-[IntentFilter(new[] { AppWidgetManager.ActionAppwidgetUpdate })]
+[IntentFilter([AppWidgetManager.ActionAppwidgetUpdate])]
 [MetaData("android.appwidget.provider", Resource = "@xml/widget_nearby_departures_info")]
 public sealed class NearbyDeparturesWidgetProvider : DdWidgetProvider
 {

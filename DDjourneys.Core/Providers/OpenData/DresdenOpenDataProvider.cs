@@ -33,8 +33,8 @@ public sealed class DresdenOpenDataProvider : IOpenDataProvider
 	/// <inheritdoc />
 	public async Task<IReadOnlyList<StopAccessibility>> GetStopAccessibilityAsync(
 		Location stop,
-		CancellationToken cancellationToken = default,
-		TimeSpan? timeout = null)
+		TimeSpan? timeout = null,
+		CancellationToken cancellationToken = default)
 	{
 		ArgumentNullException.ThrowIfNull(stop);
 
@@ -50,8 +50,8 @@ public sealed class DresdenOpenDataProvider : IOpenDataProvider
 				latitude,
 				longitude,
 				150,
-				cancellationToken,
-				timeout)
+				timeout,
+				cancellationToken)
 				.ConfigureAwait(false);
 
 		List<StopAccessibility> all =
@@ -76,8 +76,8 @@ public sealed class DresdenOpenDataProvider : IOpenDataProvider
 		double latitude,
 		double longitude,
 		int radiusMeters = 3000,
-		CancellationToken cancellationToken = default,
-		TimeSpan? timeout = null)
+		TimeSpan? timeout = null,
+		CancellationToken cancellationToken = default)
 	{
 		IReadOnlyList<Feature> features =
 			await QueryAsync(
@@ -85,8 +85,8 @@ public sealed class DresdenOpenDataProvider : IOpenDataProvider
 				latitude,
 				longitude,
 				radiusMeters,
-				cancellationToken,
-				timeout)
+				timeout,
+				cancellationToken)
 				.ConfigureAwait(false);
 
 		return
@@ -169,8 +169,8 @@ public sealed class DresdenOpenDataProvider : IOpenDataProvider
 		double latitude,
 		double longitude,
 		int radiusMeters,
-		CancellationToken cancellationToken,
-		TimeSpan? timeout)
+		TimeSpan? timeout,
+		CancellationToken cancellationToken)
 	{
 		double dLatitude = radiusMeters / 111_320.0;
 		double dLongitude = radiusMeters / (111_320.0 * Math.Cos(latitude * Math.PI / 180));
@@ -182,7 +182,7 @@ public sealed class DresdenOpenDataProvider : IOpenDataProvider
 
 		string json =
 			await _apiClient
-				.GetAsync(uri, cancellationToken, timeout)
+				.GetAsync(uri, timeout, cancellationToken)
 				.ConfigureAwait(false);
 
 		return ParseFeatures(json);

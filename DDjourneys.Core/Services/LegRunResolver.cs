@@ -108,7 +108,7 @@ public sealed class LegRunResolver(DepartureService departures)
 		ArgumentNullException.ThrowIfNull(leg);
 
 		IReadOnlyList<CoursePoint> course =
-			RunCourse
+			[.. RunCourse
 				.Isolate(stops, departure.Scheduled)
 				.Where(
 					stop => stop.Station.Latitude is { } lat
@@ -119,8 +119,7 @@ public sealed class LegRunResolver(DepartureService departures)
 						stop.Station.Latitude!.Value,
 						stop.Station.Longitude!.Value,
 						stop.Effective,
-						stop.Station.Name))
-				.ToList();
+						stop.Station.Name))];
 
 		var target =
 			new TrackTarget

@@ -71,7 +71,7 @@ public static class WidgetSnapshots
 
 		// A journey that starts on foot: the stop to walk to (where the vehicle is boarded) is what matters most, so it
 		// leads the row; the walk, the arrival and the rest follow in the second line.
-		JourneyLeg? firstLeg = journey.Legs.FirstOrDefault();
+		JourneyLeg? firstLeg = journey.Legs.Count > 0 ? journey.Legs[0] : null;
 
 		bool walksFirst =
 			first is not null

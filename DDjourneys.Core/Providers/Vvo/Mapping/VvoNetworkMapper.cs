@@ -7,7 +7,7 @@ using DDjourneys.Core.Providers.Vvo.Models;
 namespace DDjourneys.Core.Providers.Vvo.Mapping;
 
 /// <summary>Maps the departure monitor, route change, line and map DTOs of the VVO WebAPI to the app's models.</summary>
-public static class VvoNetworkMapper
+public static partial class VvoNetworkMapper
 {
 	public static DepartureBoard MapBoard(
 		VvoDepartureResponse response,
@@ -248,22 +248,30 @@ public static class VvoNetworkMapper
 			return string.Empty;
 		}
 
-		string text = LineBreaksRx.Replace(html, "\n");
+		string text = LineBreaksRx().Replace(html, "\n");
 
-		text = TagsRx.Replace(text, string.Empty);
+		text = TagsRx().Replace(text, string.Empty);
 		text = WebUtility.HtmlDecode(text);
 		text = text.Replace(' ', ' ');
-		text = SpacesRx.Replace(text, " ");
-		text = NewlineSpacesRx.Replace(text, "\n");
-		text = BlankLinesRx.Replace(text, "\n\n");
+		text = SpacesRx().Replace(text, " ");
+		text = NewlineSpacesRx().Replace(text, "\n");
+		text = BlankLinesRx().Replace(text, "\n\n");
 
 		return text.Trim();
 	}
 
-	// Plain static fields: the regex source generator does not run in this solution.
-	private static readonly Regex LineBreaksRx = new(@"<\s*(br\s*/?|/p|/div|/li|/h\d)\s*>", RegexOptions.IgnoreCase | RegexOptions.Compiled);
-	private static readonly Regex TagsRx = new(@"<[^>]+>", RegexOptions.Compiled);
-	private static readonly Regex SpacesRx = new(@"[ \t\r\f\v]+", RegexOptions.Compiled);
-	private static readonly Regex NewlineSpacesRx = new(@" *\n *", RegexOptions.Compiled);
-	private static readonly Regex BlankLinesRx = new(@"\n{3,}", RegexOptions.Compiled);
+	[GeneratedRegex(@"<\s*(br\s*/?|/p|/div|/li|/h\d)\s*>", RegexOptions.IgnoreCase)]
+	private static partial Regex LineBreaksRx();
+
+	[GeneratedRegex(@"<[^>]+>")]
+	private static partial Regex TagsRx();
+
+	[GeneratedRegex(@"[ \t\r\f\v]+")]
+	private static partial Regex SpacesRx();
+
+	[GeneratedRegex(@" *\n *")]
+	private static partial Regex NewlineSpacesRx();
+
+	[GeneratedRegex(@"\n{3,}")]
+	private static partial Regex BlankLinesRx();
 }

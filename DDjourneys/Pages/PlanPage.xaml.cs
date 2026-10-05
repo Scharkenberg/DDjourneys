@@ -259,8 +259,7 @@ public partial class PlanPage : ContentPage, IQueryAttributable
 		object? sender,
 		TappedEventArgs e)
 	{
-		if ((sender as BindableObject)?.BindingContext
-			is PlaceChip { Place: var place })
+		if (sender is BindableObject { BindingContext: PlaceChip { Place: var place } })
 		{
 			if (sender is VisualElement chip)
 			{

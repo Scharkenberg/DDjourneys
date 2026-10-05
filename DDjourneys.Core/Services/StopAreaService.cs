@@ -40,11 +40,11 @@ public sealed class StopAreaService(
 
 		IReadOnlyList<Location> stops =
 			await locations
-				.SearchByCoordinatesAsync(latitude, longitude, cancellationToken, TimeSpan.FromSeconds(8))
+				.SearchByCoordinatesAsync(latitude, longitude, TimeSpan.FromSeconds(8), cancellationToken)
 				.ConfigureAwait(false);
 
 		return
-			stops
+			[.. stops
 				.Where(stop => stop.Latitude is not null && stop.Longitude is not null)
 				.Select(
 					stop => new NearbyStop
@@ -55,7 +55,6 @@ public sealed class StopAreaService(
 								GeoMath.DistanceMeters(latitude, longitude, stop.Latitude!.Value, stop.Longitude!.Value))
 					})
 				.Where(stop => stop.DistanceMeters <= radiusMeters)
-				.OrderBy(stop => stop.DistanceMeters)
-				.ToList();
+				.OrderBy(stop => stop.DistanceMeters)];
 	}
 }

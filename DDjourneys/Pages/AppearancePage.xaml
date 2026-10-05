@@ -231,13 +231,13 @@
 
 			<Label
 				Margin="{DynamicResource SectionGap}"
-				IsVisible="{Binding ShowMaterial}"
+				IsVisible="{x:Static support:Material.Available}"
 				StyleClass="Section"
 				Text="{localization:Tr Settings.MaterialHeader}" />
 
 			<Border
 				Padding="0"
-				IsVisible="{Binding ShowMaterial}"
+				IsVisible="{x:Static support:Material.Available}"
 				StyleClass="Card">
 				<VerticalStackLayout BindableLayout.ItemsSource="{Binding Materials}">
 					<BindableLayout.ItemTemplate>
@@ -277,13 +277,13 @@
 
 			<Label
 				Margin="{DynamicResource SectionGap}"
-				IsVisible="{Binding ShowMaterial}"
+				IsVisible="{x:Static support:Material.Available}"
 				StyleClass="Section"
 				Text="{localization:Tr Settings.SurfacesHeader}" />
 
 			<Border
 				Padding="0"
-				IsVisible="{Binding ShowMaterial}"
+				IsVisible="{x:Static support:Material.Available}"
 				StyleClass="Card">
 				<VerticalStackLayout BindableLayout.ItemsSource="{Binding MaterialSurfaces}">
 					<BindableLayout.ItemTemplate>
@@ -322,7 +322,7 @@
 			</Border>
 
 			<Label
-				IsVisible="{Binding ShowMaterial}"
+				IsVisible="{x:Static support:Material.Available}"
 				Margin="4,0,0,0"
 				StyleClass="Caption"
 				Text="{localization:Tr Settings.MaterialNote}" />

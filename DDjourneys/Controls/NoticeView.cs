@@ -13,7 +13,7 @@ namespace DDjourneys.Controls;
 /// through <see cref="LinkTapped"/> so the app decides what to do with it (see <see cref="NoticeLinks"/>); a tap
 /// on a picture opens the page's own image viewer.
 /// </summary>
-public sealed class NoticeView : ContentView
+public sealed partial class NoticeView : ContentView
 {
 	public static readonly BindableProperty HtmlProperty =
 		BindableProperty.Create(

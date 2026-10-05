@@ -419,7 +419,7 @@ public sealed partial class PlanViewModel : DisposableViewModel
 
 	public Location? From
 	{
-		get => field;
+		get;
 
 		set
 		{
@@ -457,7 +457,7 @@ public sealed partial class PlanViewModel : DisposableViewModel
 	/// <summary>Stop the journey has to pass through (optional).</summary>
 	public Location? Via
 	{
-		get => field;
+		get;
 
 		set
 		{
@@ -507,7 +507,7 @@ public sealed partial class PlanViewModel : DisposableViewModel
 
 	public Location? To
 	{
-		get => field;
+		get;
 
 		set
 		{
@@ -604,7 +604,7 @@ public sealed partial class PlanViewModel : DisposableViewModel
 	/// <summary>True while the list is cut short; the toggle then offers the rest.</summary>
 	public bool CanExpandRoutes
 	{
-		get => field;
+		get;
 
 		private set => SetProperty(
 			ref field,
@@ -614,7 +614,7 @@ public sealed partial class PlanViewModel : DisposableViewModel
 
 	public bool ShowAllRoutes
 	{
-		get => field;
+		get;
 
 		set
 		{
@@ -716,7 +716,7 @@ public sealed partial class PlanViewModel : DisposableViewModel
 
 	public DateTime MinDate
 	{
-		get => field;
+		get;
 
 		private set => SetProperty(
 			ref field,
@@ -754,7 +754,7 @@ public sealed partial class PlanViewModel : DisposableViewModel
 
 	public bool IsArrival
 	{
-		get => field;
+		get;
 
 		set
 		{
@@ -785,7 +785,7 @@ public sealed partial class PlanViewModel : DisposableViewModel
 
 	public bool IsNow
 	{
-		get => field;
+		get;
 
 		private set
 		{

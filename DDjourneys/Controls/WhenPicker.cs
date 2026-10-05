@@ -9,7 +9,7 @@ namespace DDjourneys.Controls;
 /// to a row of its own instead of being cut off. The journey planner and the departure board use this one control,
 /// so both adapt in exactly the same way.
 /// </summary>
-public sealed class WhenPicker : ContentView
+public sealed partial class WhenPicker : ContentView
 {
 	public static readonly BindableProperty DateProperty =
 		BindableProperty.Create(

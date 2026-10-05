@@ -11,7 +11,7 @@ public static class FontCatalog
 	public const string OpenSansId = "opensans";
 	public const string InterTightId = "intertight";
 
-	public static IReadOnlyList<string> Ids { get; } = new List<string> { SystemId, OpenSansId, InterTightId };
+	public static IReadOnlyList<string> Ids { get; } = (string[])[SystemId, OpenSansId, InterTightId];
 
 	public static string Normalize(string? id) =>
 		Ids.FirstOrDefault(i => string.Equals(i, id, StringComparison.OrdinalIgnoreCase))

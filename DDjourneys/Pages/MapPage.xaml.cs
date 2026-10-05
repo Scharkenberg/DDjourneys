@@ -153,20 +153,20 @@ public partial class MapPage : ContentPage, IQueryAttributable
 	/// <summary>Centre: the device position, else the last stop viewed, else the central city of the provider.</summary>
 	private async Task StartExploringAsync()
 	{
-		(double Latitude, double Longitude, int Zoom, bool Me) centre = await FindCentreAsync();
+		(double latitude, double longitude, int zoom, bool me) = await FindCentreAsync();
 
 		var markers = new List<MapMarker>();
 
-		if (centre.Me)
+		if (me)
 		{
-			markers.Add(new MapMarker("me", centre.Latitude, centre.Longitude, string.Empty, MapMarkerKind.Me));
+			markers.Add(new MapMarker("me", latitude, longitude, string.Empty, MapMarkerKind.Me));
 		}
 
 		_scene = new MapScene { Markers = markers, Fit = false };
 		_centered = true;
 
 		await Map.ShowAsync(_scene);
-		await Map.SetModeAsync(explore: true, pick: _pick, centre.Latitude, centre.Longitude, centre.Zoom);
+		await Map.SetModeAsync(explore: true, pick: _pick, latitude, longitude, zoom);
 	}
 
 	private async Task<(double Latitude, double Longitude, int Zoom, bool Me)> FindCentreAsync()
@@ -348,7 +348,7 @@ public partial class MapPage : ContentPage, IQueryAttributable
 		}
 		else if (choice == strings.MapJourneyFromHere)
 		{
-			await _planner.FromAsync(stop);
+			await PlannerLauncher.FromAsync(stop);
 		}
 	}
 
@@ -377,7 +377,7 @@ public partial class MapPage : ContentPage, IQueryAttributable
 				IReadOnlyList<Location> near =
 					await _locations.SearchByCoordinatesAsync(point.Latitude, point.Longitude, timeout: LocateWait);
 
-				place = near.FirstOrDefault(stop => stop.IsStation) ?? near.FirstOrDefault();
+				place = near.FirstOrDefault(stop => stop.IsStation) ?? (near.Count > 0 ? near[0] : null);
 			}
 
 			if (place is null)

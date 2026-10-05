@@ -518,7 +518,7 @@ internal static class LiveJourneyNotification
 		if (!string.IsNullOrEmpty(planId))
 		{
 			Intent target =
-				new Intent(context, typeof(global::DDjourneys.MainActivity))
+				new Intent(context, typeof(global::DDjourneys.Platforms.Android.MainActivity))
 					.SetAction(ActionOpen)!
 					.PutExtra(ExtraPlanId, planId)!
 					.SetFlags(ActivityFlags.NewTask | ActivityFlags.SingleTop | ActivityFlags.ClearTop)!;

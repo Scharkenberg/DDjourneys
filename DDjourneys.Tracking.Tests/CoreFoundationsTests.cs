@@ -221,7 +221,7 @@ public sealed class CoreFoundationsTests
 	{
 		var provider = new FakeProvider("alpha", JourneyResult.Success([SomeJourney()]));
 
-		var service = new JourneyService(new IJourneyProvider[] { provider });
+		var service = new JourneyService([provider]);
 
 		JourneyResult result =
 			await service.SearchAsync(
@@ -240,7 +240,7 @@ public sealed class CoreFoundationsTests
 	{
 		var provider = new FakeProvider("alpha", JourneyResult.Success([SomeJourney()]));
 
-		var service = new JourneyService(new IJourneyProvider[] { provider });
+		var service = new JourneyService([provider]);
 
 		JourneyResult result =
 			await service.SearchAsync(
@@ -257,7 +257,7 @@ public sealed class CoreFoundationsTests
 	[Fact]
 	public async Task Without_providers_the_search_fails()
 	{
-		var service = new JourneyService(Array.Empty<IJourneyProvider>());
+		var service = new JourneyService([]);
 
 		JourneyResult result =
 			await service.SearchAsync(

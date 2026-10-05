@@ -246,8 +246,11 @@ internal sealed class TripTimeline
 			return false;
 		}
 
-		timeline = new TripTimeline(ReadInt(root, "data_version"), Normalize(episodes));
-		timeline._ensured = previous?._ensured ?? [];
+		timeline =
+			new TripTimeline(ReadInt(root, "data_version"), Normalize(episodes))
+			{
+				_ensured = previous?._ensured ?? []
+			};
 		return true;
 	}
 
@@ -353,10 +356,9 @@ internal sealed class TripTimeline
 		else
 		{
 			List<TripStop> timed =
-				episode.Stops
+				[.. episode.Stops
 					.Where(stop => stop.Effective.HasValue)
-					.OrderBy(stop => stop.Effective)
-					.ToList();
+					.OrderBy(stop => stop.Effective)];
 
 			int upcoming = timed.FindIndex(stop => stop.Effective > now);
 
@@ -439,7 +441,7 @@ internal sealed class TripTimeline
 
 			IReadOnlyList<TripStop> source =
 				episode.IsIndividual || episode.Stops.Count < 2
-					? new List<TripStop> { episode.From, episode.To }
+					? (List<TripStop>)[episode.From, episode.To]
 					: episode.Stops;
 
 			int next = -1;
@@ -648,7 +650,7 @@ internal sealed class TripTimeline
 			{
 				From = fromStop,
 				To = toStop,
-				Stops = new List<TripStop> { fromStop, toStop }
+				Stops = (List<TripStop>)[fromStop, toStop]
 			};
 		}
 

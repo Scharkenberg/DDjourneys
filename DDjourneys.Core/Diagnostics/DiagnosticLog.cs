@@ -14,7 +14,7 @@ public static class DiagnosticLog
 	/// <summary>Longest slice of an API body that is logged.</summary>
 	public const int MaxBodyChars = 2000;
 
-	private static readonly object Gate = new();
+	private static readonly Lock Gate = new();
 
 	/// <summary>Full path of the log file; null: nothing is written.</summary>
 	public static string? FilePath { get; set; }

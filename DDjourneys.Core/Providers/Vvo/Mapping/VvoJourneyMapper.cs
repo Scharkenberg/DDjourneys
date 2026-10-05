@@ -22,11 +22,11 @@ public static class VvoJourneyMapper
 		Station? originStation = VvoStopMapper.ToStation(origin);
 		Station? destinationStation = VvoStopMapper.ToStation(destination);
 
-		return response.Routes
-			.Select(route => MapJourney(route, response.SessionId, originStation, destinationStation, requested, arrival))
-			.Where(journey => journey is not null)
-			.Select(journey => journey!)
-			.ToArray();
+		return
+			[.. response.Routes
+				.Select(route => MapJourney(route, response.SessionId, originStation, destinationStation, requested, arrival))
+				.Where(journey => journey is not null)
+				.Select(journey => journey!)];
 	}
 
 	private static Journey? MapJourney(
@@ -89,6 +89,16 @@ public static class VvoJourneyMapper
 			int legIndex =
 				legs.Count;
 
+			var firstStop =
+				partialRoute.RegularStops.Count > 0
+					? partialRoute.RegularStops[0]
+					: null;
+
+			var lastStop =
+				partialRoute.RegularStops.Count > 0
+					? partialRoute.RegularStops[^1]
+					: null;
+
 			DiagnosticLog.Write(
 	$"""
 	[VVO LEG]
@@ -99,11 +109,11 @@ public static class VvoJourneyMapper
 	Path points:
 	  {path.Count}
 	FirstStop:
-	  {partialRoute.RegularStops.FirstOrDefault()?.Name}
-	  {partialRoute.RegularStops.FirstOrDefault()?.DepartureTime}
+	  {firstStop?.Name}
+	  {firstStop?.DepartureTime}
 	LastStop:
-	  {partialRoute.RegularStops.LastOrDefault()?.Name}
-	  {partialRoute.RegularStops.LastOrDefault()?.ArrivalTime}
+	  {lastStop?.Name}
+	  {lastStop?.ArrivalTime}
 	""");
 
 			legs.Add(leg);
@@ -137,10 +147,10 @@ public static class VvoJourneyMapper
 			!walkOnly && i < mappedParts.Count;
 			i++)
 		{
-			var part =
+			var (partRoute, _, _) =
 				mappedParts[i];
 
-			if (!VvoTransferMapper.IsTransfer(part.Route))
+			if (!VvoTransferMapper.IsTransfer(partRoute))
 			{
 				continue;
 			}
@@ -185,12 +195,12 @@ public static class VvoJourneyMapper
 
 			transfers.Add(
 	VvoTransferMapper.MapTransfer(
-		part.Route,
+		partRoute,
 		previousLeg,
 		previousLegIndex,
 		nextLeg,
 		nextLegIndex,
-		VvoPathMapper.MapPath(route, part.Route)));
+		VvoPathMapper.MapPath(route, partRoute)));
 		}
 
 

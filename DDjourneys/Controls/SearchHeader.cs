@@ -7,7 +7,7 @@ namespace DDjourneys.Controls;
 /// a caption line (date or search mode) and one action button on the right. Results and the single
 /// connection use it, so both pages start with exactly the same block.
 /// </summary>
-public sealed class SearchHeader : ContentView
+public sealed partial class SearchHeader : ContentView
 {
 	/// <summary>Size of the two stop names; shared by every page that shows the searched connection.</summary>
 	public const string NameFontSizeKey = "FontSubtitle";

@@ -10,7 +10,7 @@ namespace DDjourneys.Core.Providers.Vvo.Mapping;
 /// conditions come as <c>TicketNotes</c>. Weekly, monthly, reduced and Deutschland tickets are not part of the
 /// answer, so they are not invented here.
 /// </summary>
-public static class VvoFareMapper
+public static partial class VvoFareMapper
 {
 	public static IReadOnlyList<JourneyFare> Map(
 		VvoRoute route)
@@ -60,8 +60,7 @@ public static class VvoFareMapper
 
 		string number =
 			new string(
-				text.Where(character => char.IsAsciiDigit(character) || character is ',' or '.')
-					.ToArray())
+				[.. text.Where(character => char.IsAsciiDigit(character) || character is ',' or '.')])
 				.Replace(',', '.');
 
 		return decimal.TryParse(
@@ -87,6 +86,9 @@ public static class VvoFareMapper
 			: text.ReplaceLineEndings(" ").Trim();
 
 	/// <summary>"TZ Dresden (1), TZ Radebeul (2)" -> "Dresden, Radebeul".</summary>
+	[System.Text.RegularExpressions.GeneratedRegex(@"^TZ\s|\s*\(\d+\)")]
+	private static partial System.Text.RegularExpressions.Regex ZoneNoise();
+
 	private static string? CleanZones(
 		string? text)
 	{
@@ -97,7 +99,7 @@ public static class VvoFareMapper
 
 		string[] zones =
 			[.. text.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-				.Select(zone => System.Text.RegularExpressions.Regex.Replace(zone, @"^TZ\s|\s*\(\d+\)", string.Empty).Trim())
+				.Select(zone => ZoneNoise().Replace(zone, string.Empty).Trim())
 				.Where(zone => zone.Length > 0)
 				.Distinct()];
 

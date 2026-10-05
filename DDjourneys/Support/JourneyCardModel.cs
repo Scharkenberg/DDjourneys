@@ -33,7 +33,7 @@ public static class ModeColors
 }
 
 /// <summary>Display-ready view of a Journey for the results list.</summary>
-public sealed class JourneyCardModel : ObservableObject
+public sealed partial class JourneyCardModel : ObservableObject
 {
 	private readonly LocalizationService _localization;
 

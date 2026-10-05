@@ -100,7 +100,7 @@
 											<Label
 												IsVisible="{Binding IsCancelled}"
 												StyleClass="Cancelled"
-												Text="{Binding CancelledText}" />
+												Text="{localization:Tr Departures.Cancelled}" />
 										</VerticalStackLayout>
 
 										<HorizontalStackLayout

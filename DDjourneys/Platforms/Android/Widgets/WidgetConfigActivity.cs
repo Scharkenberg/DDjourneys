@@ -33,14 +33,14 @@ namespace DDjourneys.Platforms.Android.Widgets;
 	Exported = true,
 	ExcludeFromRecents = true,
 	Theme = "@android:style/Theme.DeviceDefault.Light")]
-[IntentFilter(new[] { AppWidgetManager.ActionAppwidgetConfigure })]
+[IntentFilter([AppWidgetManager.ActionAppwidgetConfigure])]
 public sealed class WidgetConfigActivity : Activity
 {
 	private const int LocationRequest = 1;
 
 	private int _widgetId = AppWidgetManager.InvalidAppwidgetId;
 	private WidgetConfig _config = new();
-	private WidgetStrings _strings = LocalizationService.Current.CurrentStrings.Widgets;
+	private readonly WidgetStrings _strings = LocalizationService.Current.CurrentStrings.Widgets;
 	private LinearLayout _form = null!;
 	private EditText? _lines;
 	private EditText? _title;
@@ -384,7 +384,7 @@ public sealed class WidgetConfigActivity : Activity
 			(_, _) =>
 			{
 				RequestPermissions(
-					new[] { global::Android.Manifest.Permission.AccessFineLocation, global::Android.Manifest.Permission.AccessCoarseLocation },
+					[global::Android.Manifest.Permission.AccessFineLocation, global::Android.Manifest.Permission.AccessCoarseLocation],
 					LocationRequest);
 			};
 

@@ -9,6 +9,9 @@ namespace DDjourneys.Tracking.Tests;
 /// <summary>Journey identity, the single ride/transfer definition and the extracted sub-mappers.</summary>
 public sealed class JourneyStructureTests
 {
+	private static readonly string[] DresdenAndPirna = ["Dresden", "Pirna"];
+	private static readonly string[] TwoEmptyZones = ["", ""];
+
 	private static readonly DateTimeOffset Base = new(2026, 10, 3, 8, 0, 0, TimeSpan.Zero);
 
 	// ----- Ride versus transfer -----
@@ -185,8 +188,8 @@ public sealed class JourneyStructureTests
 	{
 		Assert.Equal(290, SchutzengelTariffMapper.ParsePrice("2,90"));
 		Assert.Equal(0, SchutzengelTariffMapper.ParsePrice(null));
-		Assert.Equal(new[] { "Dresden", "Pirna" }, SchutzengelTariffMapper.ZoneStrings("TZ Dresden (10), Pirna(20)"));
-		Assert.Equal(new[] { "", "" }, SchutzengelTariffMapper.ZoneStrings(null));
+		Assert.Equal(DresdenAndPirna, SchutzengelTariffMapper.ZoneStrings("TZ Dresden (10), Pirna(20)"));
+		Assert.Equal(TwoEmptyZones, SchutzengelTariffMapper.ZoneStrings(null));
 	}
 
 	[Fact]

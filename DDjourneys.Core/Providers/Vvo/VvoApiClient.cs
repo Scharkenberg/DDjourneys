@@ -35,13 +35,13 @@ public sealed class VvoApiClient
 	/// </summary>
 	public Task<VvoPointResponse?> FindPointsAsync(
 		string query,
-		CancellationToken cancellationToken = default,
-		TimeSpan? timeout = null) =>
+		TimeSpan? timeout = null,
+		CancellationToken cancellationToken = default) =>
 		FindPointsAsync(
 			query,
 			new VvoPointFinderOptions(),
-			cancellationToken,
-			timeout);
+			timeout,
+			cancellationToken);
 
 
 	/// <summary>
@@ -50,8 +50,8 @@ public sealed class VvoApiClient
 	public Task<VvoPointResponse?> FindPointsAsync(
 		string query,
 		VvoPointFinderOptions options,
-		CancellationToken cancellationToken = default,
-		TimeSpan? timeout = null)
+		TimeSpan? timeout = null,
+		CancellationToken cancellationToken = default)
 	{
 		ArgumentException.ThrowIfNullOrWhiteSpace(
 			query);
@@ -59,8 +59,8 @@ public sealed class VvoApiClient
 		return QueryPointsAsync(
 			query,
 			options,
-			cancellationToken,
-			timeout);
+			timeout,
+			cancellationToken);
 	}
 
 
@@ -70,8 +70,8 @@ public sealed class VvoApiClient
 	public Task<VvoPointResponse?> FindPointsByCoordinatesAsync(
 		double easting,
 		double northing,
-		CancellationToken cancellationToken = default,
-		TimeSpan? timeout = null) =>
+		TimeSpan? timeout = null,
+		CancellationToken cancellationToken = default) =>
 		QueryPointsAsync(
 			FormattableString.Invariant($"coord:{Math.Round(easting):F0}:{Math.Round(northing):F0}"),
 			new VvoPointFinderOptions
@@ -80,15 +80,15 @@ public sealed class VvoApiClient
 				StopsOnly = false,
 				AssignedStops = true
 			},
-			cancellationToken,
-			timeout);
+			timeout,
+			cancellationToken);
 
 
 	private async Task<VvoPointResponse?> QueryPointsAsync(
 		string query,
 		VvoPointFinderOptions options,
-		CancellationToken cancellationToken,
-		TimeSpan? timeout)
+		TimeSpan? timeout,
+		CancellationToken cancellationToken)
 	{
 		string requestUri =
 			$"{BaseUrl}/tr/pointfinder" +
@@ -104,8 +104,8 @@ public sealed class VvoApiClient
 		string json =
 			await _apiClient.GetAsync(
 				requestUri,
-				cancellationToken,
-				timeout)
+				timeout,
+				cancellationToken)
 				.ConfigureAwait(false);
 
 		VvoPointResponse? response =
@@ -130,8 +130,8 @@ public sealed class VvoApiClient
 	/// </summary>
 	public async Task<VvoTripResponse?> GetTripsAsync(
 		VvoTripRequest request,
-		CancellationToken cancellationToken = default,
-		TimeSpan? timeout = null)
+		TimeSpan? timeout = null,
+		CancellationToken cancellationToken = default)
 	{
 		ArgumentNullException.ThrowIfNull(
 			request);
@@ -148,8 +148,8 @@ public sealed class VvoApiClient
 			await _apiClient.PostJsonAsync(
 				requestUri,
 				jsonRequest,
-				cancellationToken,
-				timeout)
+				timeout,
+				cancellationToken)
 				.ConfigureAwait(false);
 
 		VvoTripResponse? response =
@@ -169,8 +169,8 @@ public sealed class VvoApiClient
 	/// </summary>
 	public async Task<VvoTripResponse?> GetPreviousNextTripsAsync(
 		VvoPrevNextRequest request,
-		CancellationToken cancellationToken = default,
-		TimeSpan? timeout = null)
+		TimeSpan? timeout = null,
+		CancellationToken cancellationToken = default)
 	{
 		ArgumentNullException.ThrowIfNull(
 			request);
@@ -187,8 +187,8 @@ public sealed class VvoApiClient
 			await _apiClient.PostJsonAsync(
 				requestUri,
 				jsonRequest,
-				cancellationToken,
-				timeout)
+				timeout,
+				cancellationToken)
 				.ConfigureAwait(false);
 
 		VvoTripResponse? response =
@@ -206,29 +206,29 @@ public sealed class VvoApiClient
 	/// <summary>Departure monitor: departures (or arrivals) at a stop.</summary>
 	public Task<VvoDepartureResponse?> GetDeparturesAsync(
 		VvoDepartureRequest request,
-		CancellationToken cancellationToken = default,
-		TimeSpan? timeout = null) =>
+		TimeSpan? timeout = null,
+		CancellationToken cancellationToken = default) =>
 		PostAsync(
 			"dm",
 			request,
 			VvoJsonContext.Default.VvoDepartureRequest,
 			VvoJsonContext.Default.VvoDepartureResponse,
-			cancellationToken,
-			timeout);
+			timeout,
+			cancellationToken);
 
 
 	/// <summary>Stops of the run a departure belongs to.</summary>
 	public Task<VvoRunResponse?> GetDepartureRunAsync(
 		VvoDepartureRunRequest request,
-		CancellationToken cancellationToken = default,
-		TimeSpan? timeout = null) =>
+		TimeSpan? timeout = null,
+		CancellationToken cancellationToken = default) =>
 		PostAsync(
 			"dm/trip",
 			request,
 			VvoJsonContext.Default.VvoDepartureRunRequest,
 			VvoJsonContext.Default.VvoRunResponse,
-			cancellationToken,
-			timeout);
+			timeout,
+			cancellationToken);
 
 
 	/// <summary>One way of asking dm/trip; the wire format of "time" is what differs.</summary>
@@ -319,8 +319,8 @@ public sealed class VvoApiClient
 	public async Task<VvoRunResponse?> GetDepartureRunAsync(
 		IReadOnlyList<VvoRunAttempt> attempts,
 		Func<VvoRunResponse, bool> accept,
-		CancellationToken cancellationToken = default,
-		TimeSpan? timeout = null)
+		TimeSpan? timeout = null,
+		CancellationToken cancellationToken = default)
 	{
 		ArgumentNullException.ThrowIfNull(attempts);
 		ArgumentNullException.ThrowIfNull(accept);
@@ -336,8 +336,8 @@ public sealed class VvoApiClient
 			{
 				string json =
 					attempt.Method == HttpMethod.Get
-						? await _apiClient.GetAsync(attempt.Uri, cancellationToken, timeout).ConfigureAwait(false)
-						: await _apiClient.PostJsonAsync(attempt.Uri, attempt.Body ?? "{}", cancellationToken, timeout).ConfigureAwait(false);
+						? await _apiClient.GetAsync(attempt.Uri, timeout, cancellationToken).ConfigureAwait(false)
+						: await _apiClient.PostJsonAsync(attempt.Uri, attempt.Body ?? "{}", timeout, cancellationToken).ConfigureAwait(false);
 
 				VvoRunResponse? response =
 					JsonSerializer.Deserialize(json, VvoJsonContext.Default.VvoRunResponse);
@@ -394,49 +394,49 @@ public sealed class VvoApiClient
 	/// <summary>The connection with one leg replaced by an earlier or later alternative.</summary>
 	public Task<VvoTripResponse?> GetLegAlternativeAsync(
 		VvoPrevNextMoveRequest request,
-		CancellationToken cancellationToken = default,
-		TimeSpan? timeout = null) =>
+		TimeSpan? timeout = null,
+		CancellationToken cancellationToken = default) =>
 		PostAsync(
 			"tr/prevnextmove",
 			request,
 			VvoJsonContext.Default.VvoPrevNextMoveRequest,
 			VvoJsonContext.Default.VvoTripResponse,
-			cancellationToken,
-			timeout);
+			timeout,
+			cancellationToken);
 
 
 	/// <summary>Route changes and network notices.</summary>
 	public Task<VvoRouteChangesResponse?> GetRouteChangesAsync(
 		VvoRouteChangesRequest request,
-		CancellationToken cancellationToken = default,
-		TimeSpan? timeout = null) =>
+		TimeSpan? timeout = null,
+		CancellationToken cancellationToken = default) =>
 		PostAsync(
 			"rc",
 			request,
 			VvoJsonContext.Default.VvoRouteChangesRequest,
 			VvoJsonContext.Default.VvoRouteChangesResponse,
-			cancellationToken,
-			timeout);
+			timeout,
+			cancellationToken);
 
 
 	/// <summary>Lines that currently have a route change.</summary>
 	public Task<VvoChangedLinesResponse?> GetChangedLinesAsync(
-		CancellationToken cancellationToken = default,
-		TimeSpan? timeout = null) =>
+		TimeSpan? timeout = null,
+		CancellationToken cancellationToken = default) =>
 		PostAsync(
 			"rc/lines",
 			new VvoChangedLinesRequest(),
 			VvoJsonContext.Default.VvoChangedLinesRequest,
 			VvoJsonContext.Default.VvoChangedLinesResponse,
-			cancellationToken,
-			timeout);
+			timeout,
+			cancellationToken);
 
 
 	/// <summary>Lines that serve a stop.</summary>
 	public Task<VvoStopLinesResponse?> GetStopLinesAsync(
 		string stopId,
-		CancellationToken cancellationToken = default,
-		TimeSpan? timeout = null)
+		TimeSpan? timeout = null,
+		CancellationToken cancellationToken = default)
 	{
 		ArgumentException.ThrowIfNullOrWhiteSpace(
 			stopId);
@@ -446,36 +446,36 @@ public sealed class VvoApiClient
 			new VvoStopLinesRequest { StopId = stopId },
 			VvoJsonContext.Default.VvoStopLinesRequest,
 			VvoJsonContext.Default.VvoStopLinesResponse,
-			cancellationToken,
-			timeout);
+			timeout,
+			cancellationToken);
 	}
 
 
 	/// <summary>Map markers inside a box of GK4 coordinates.</summary>
 	public Task<VvoMapPinsResponse?> GetMapPinsAsync(
 		VvoMapPinsRequest request,
-		CancellationToken cancellationToken = default,
-		TimeSpan? timeout = null) =>
+		TimeSpan? timeout = null,
+		CancellationToken cancellationToken = default) =>
 		PostAsync(
 			"map/pins",
 			request,
 			VvoJsonContext.Default.VvoMapPinsRequest,
 			VvoJsonContext.Default.VvoMapPinsResponse,
-			cancellationToken,
-			timeout);
+			timeout,
+			cancellationToken);
 
 
 	/// <summary>The polygons of the tariff zones.</summary>
 	public Task<VvoMapPolygonsResponse?> GetTariffPolygonsAsync(
-		CancellationToken cancellationToken = default,
-		TimeSpan? timeout = null) =>
+		TimeSpan? timeout = null,
+		CancellationToken cancellationToken = default) =>
 		PostAsync(
 			"map/polygons",
 			new VvoMapPolygonsRequest(),
 			VvoJsonContext.Default.VvoMapPolygonsRequest,
 			VvoJsonContext.Default.VvoMapPolygonsResponse,
-			cancellationToken,
-			timeout);
+			timeout,
+			cancellationToken);
 
 
 	/// <summary>One way of asking for the PDF: a label for the log and the address.</summary>
@@ -483,7 +483,7 @@ public sealed class VvoApiClient
 
 
 	/// <summary>Address of the PDF of a planned trip (the first, most complete attempt).</summary>
-	public Uri BuildTripPdfUri(
+	public static Uri BuildTripPdfUri(
 		string routeId,
 		string sessionId,
 		string origin,
@@ -511,7 +511,7 @@ public sealed class VvoApiClient
 	/// settings, without via, and finally with the session id's colon unescaped. Identical addresses are
 	/// listed once.
 	/// </summary>
-	public IReadOnlyList<VvoPdfAttempt> BuildTripPdfAttempts(
+	public static IReadOnlyList<VvoPdfAttempt> BuildTripPdfAttempts(
 		string routeId,
 		string sessionId,
 		string origin,
@@ -587,8 +587,8 @@ public sealed class VvoApiClient
 	/// </summary>
 	public async Task<byte[]?> DownloadTripPdfAsync(
 		IReadOnlyList<VvoPdfAttempt> attempts,
-		CancellationToken cancellationToken = default,
-		TimeSpan? timeout = null)
+		TimeSpan? timeout = null,
+		CancellationToken cancellationToken = default)
 	{
 		ArgumentNullException.ThrowIfNull(attempts);
 
@@ -605,8 +605,8 @@ public sealed class VvoApiClient
 						.GetBytesAsync(
 							attempt.Uri.AbsoluteUri,
 							"application/pdf, */*",
-							cancellationToken,
-							timeout)
+							timeout,
+							cancellationToken)
 						.ConfigureAwait(false);
 
 				bool isPdf =
@@ -654,8 +654,8 @@ public sealed class VvoApiClient
 		TRequest request,
 		JsonTypeInfo<TRequest> requestInfo,
 		JsonTypeInfo<TResponse> responseInfo,
-		CancellationToken cancellationToken,
-		TimeSpan? timeout)
+		TimeSpan? timeout,
+		CancellationToken cancellationToken)
 		where TResponse : class
 	{
 		ArgumentNullException.ThrowIfNull(
@@ -667,8 +667,8 @@ public sealed class VvoApiClient
 				JsonSerializer.Serialize(
 					request,
 					requestInfo),
-				cancellationToken,
-				timeout)
+				timeout,
+				cancellationToken)
 				.ConfigureAwait(false);
 
 		TResponse? response =

@@ -3,10 +3,10 @@ namespace DDjourneys.Core.Models;
 /// <summary>
 /// Composes the display label of a stop: the name always followed by its city/region.
 /// </summary>
-public static class StopLabel
+public static partial class StopLabel
 {
-	private static readonly System.Text.RegularExpressions.Regex TrailingParenthesis =
-		new(@"^(?<name>.*\S)\s*\((?<place>[^\d()]{3,40})\)$", System.Text.RegularExpressions.RegexOptions.Compiled);
+	[System.Text.RegularExpressions.GeneratedRegex(@"^(?<name>.*\S)\s*\((?<place>[^\d()]{3,40})\)$")]
+	private static partial System.Text.RegularExpressions.Regex TrailingParenthesis();
 
 	/// <summary>
 	/// The one presentation of a stop, address or place of interest: the name without the city and the city on its own
@@ -21,7 +21,7 @@ public static class StopLabel
 
 		if (city is null)
 		{
-			System.Text.RegularExpressions.Match match = TrailingParenthesis.Match(text);
+			System.Text.RegularExpressions.Match match = TrailingParenthesis().Match(text);
 
 			if (match.Success)
 			{

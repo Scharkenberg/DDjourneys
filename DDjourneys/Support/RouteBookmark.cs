@@ -11,7 +11,7 @@ namespace DDjourneys.Support;
 /// the next tap removes, and the icon says which of the two it is. Never disabled; without both places the tap
 /// tells why instead. The planner, the results and the connection page share this.
 /// </summary>
-public sealed class RouteBookmark : ObservableObject
+public sealed partial class RouteBookmark : ObservableObject
 {
 	private readonly PlaceStore _store;
 	private readonly Func<(Location From, Location To)?> _route;

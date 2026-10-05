@@ -101,20 +101,20 @@ public sealed record WidgetConfig
 	public string ToJson() =>
 		new JsonObject
 		{
-			["Kind"] = (int)Kind,
-			["Title"] = Title,
-			["ProviderId"] = ProviderId,
-			["From"] = PlaceNode(From),
-			["To"] = PlaceNode(To),
-			["Stop"] = LocationJson.ToNode(Stop),
-			["RadiusMeters"] = RadiusMeters,
-			["MaxRows"] = MaxRows,
-			["StopCount"] = StopCount,
-			["PerStop"] = PerStop,
-			["Lines"] = Lines,
-			["Modes"] = (int)Modes,
-			["AutoRefresh"] = AutoRefresh,
-			["IntervalMinutes"] = IntervalMinutes
+			[nameof(Kind)] = (int)Kind,
+			[nameof(Title)] = Title,
+			[nameof(ProviderId)] = ProviderId,
+			[nameof(From)] = PlaceNode(From),
+			[nameof(To)] = PlaceNode(To),
+			[nameof(Stop)] = LocationJson.ToNode(Stop),
+			[nameof(RadiusMeters)] = RadiusMeters,
+			[nameof(MaxRows)] = MaxRows,
+			[nameof(StopCount)] = StopCount,
+			[nameof(PerStop)] = PerStop,
+			[nameof(Lines)] = Lines,
+			[nameof(Modes)] = (int)Modes,
+			[nameof(AutoRefresh)] = AutoRefresh,
+			[nameof(IntervalMinutes)] = IntervalMinutes
 		}.ToJsonString();
 
 	/// <summary>Reads a stored configuration; null when the text is not one.</summary>
@@ -175,7 +175,7 @@ public sealed record WidgetConfig
 			? value.GetBoolean()
 			: fallback;
 
-	private static JsonNode? PlaceNode(WidgetPlace? place) =>
+	private static JsonObject? PlaceNode(WidgetPlace? place) =>
 		place is null
 			? null
 			: new JsonObject

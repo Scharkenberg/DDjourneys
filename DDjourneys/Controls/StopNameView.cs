@@ -9,7 +9,7 @@ namespace DDjourneys.Controls;
 /// The second line disappears when there is no city, or when the name already ends with it
 /// ("Hauptbahnhof, Dresden"), so rows never keep an empty gap.
 /// </summary>
-public sealed class StopNameView : ContentView
+public sealed partial class StopNameView : ContentView
 {
 	public static readonly BindableProperty StopProperty =
 		BindableProperty.Create(

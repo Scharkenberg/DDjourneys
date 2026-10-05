@@ -13,8 +13,8 @@ public interface ILocationProvider
 	/// </summary>
 	Task<IReadOnlyList<Location>> SearchAsync(
 		string query,
-		CancellationToken cancellationToken = default,
-		TimeSpan? timeout = null);
+		TimeSpan? timeout = null,
+		CancellationToken cancellationToken = default);
 
 	/// <summary>
 	/// Searches for the given kinds of places. A provider that knows addresses and points of interest
@@ -23,14 +23,14 @@ public interface ILocationProvider
 	async Task<IReadOnlyList<Location>> SearchAsync(
 		string query,
 		PlaceKinds kinds,
-		CancellationToken cancellationToken = default,
-		TimeSpan? timeout = null)
+		TimeSpan? timeout = null,
+		CancellationToken cancellationToken = default)
 	{
 		IReadOnlyList<Location> found =
 			await SearchAsync(
 				query,
-				cancellationToken,
-				timeout)
+				timeout,
+				cancellationToken)
 				.ConfigureAwait(false);
 
 		return kinds == PlaceKinds.All
@@ -45,8 +45,8 @@ public interface ILocationProvider
 	Task<IReadOnlyList<Location>> SearchByCoordinatesAsync(
 		double latitude,
 		double longitude,
-		CancellationToken cancellationToken = default,
-		TimeSpan? timeout = null);
+		TimeSpan? timeout = null,
+		CancellationToken cancellationToken = default);
 
 	/// <summary>
 	/// The address at a position (e.g. the device's), or null when the provider has none. Lets a journey
@@ -55,7 +55,7 @@ public interface ILocationProvider
 	Task<Location?> ResolveAddressAsync(
 		double latitude,
 		double longitude,
-		CancellationToken cancellationToken = default,
-		TimeSpan? timeout = null) =>
+		TimeSpan? timeout = null,
+		CancellationToken cancellationToken = default) =>
 		Task.FromResult<Location?>(null);
 }

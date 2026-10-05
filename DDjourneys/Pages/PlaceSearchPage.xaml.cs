@@ -83,7 +83,7 @@ public partial class PlaceSearchPage : ContentPage
 
 	private void PlaceTapped(object? sender, TappedEventArgs e)
 	{
-		if (sender is VisualElement row && (sender as BindableObject)?.BindingContext is PlaceRow place)
+		if (sender is VisualElement { BindingContext: PlaceRow place } row)
 		{
 			HideKeyboard();
 			_ = Motion.TapAsync(row);

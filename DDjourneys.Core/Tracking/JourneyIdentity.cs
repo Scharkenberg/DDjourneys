@@ -50,7 +50,7 @@ public sealed record JourneyIdentity
 	{
 		ArgumentNullException.ThrowIfNull(journey);
 
-		List<JourneyLeg> rides = journey.Rides.ToList();
+		List<JourneyLeg> rides = [.. journey.Rides];
 
 		if (rides.Count == 0)
 		{
@@ -61,7 +61,7 @@ public sealed record JourneyIdentity
 			new JourneyIdentity
 			{
 				ProviderId = journey.ProviderId,
-				Rides = rides.Select(ToRide).ToArray()
+				Rides = [.. rides.Select(ToRide)]
 			};
 
 		return identity.Key is null ? null : identity;

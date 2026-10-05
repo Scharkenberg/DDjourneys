@@ -28,11 +28,7 @@ public static class VvoCoordinateConverter
 	{
 		double[] result =
 			Gk4ToWgs84.Value.MathTransform.Transform(
-				new[]
-				{
-					easting,
-					northing
-				});
+				[easting, northing]);
 
 		return (
 			Latitude: result[1],
@@ -60,11 +56,7 @@ public static class VvoCoordinateConverter
 
 		double[] gk4 =
 			Gk4ToWgs84.Value.MathTransform.Inverse().Transform(
-				new[]
-				{
-					longitude,
-					latitude
-				});
+				[longitude, latitude]);
 
 		if (gk4[0] is < MinEasting or >= MaxEasting
 			|| gk4[1] is < MinNorthing or >= MaxNorthing)

@@ -189,8 +189,8 @@
 						<Label StyleClass="Caption" Text="{Binding MaxResultsText}" />
 
 						<Slider
-							Maximum="{Binding MaxResultsLimit}"
-							Minimum="{Binding MinResults}"
+							Maximum="{x:Static local:SettingsViewModel.MaxResultsLimit}"
+							Minimum="{x:Static local:SettingsViewModel.MinResults}"
 							SemanticProperties.Description="{localization:Tr Settings.Results}"
 							Value="{Binding MaxResults}" />
 					</VerticalStackLayout>
@@ -478,8 +478,8 @@
 						<Label StyleClass="Caption" Text="{Binding SearchDelayText}" />
 
 						<Slider
-							Maximum="{Binding MaxSearchDelay}"
-							Minimum="{Binding MinSearchDelay}"
+							Maximum="{x:Static local:SettingsViewModel.MaxSearchDelay}"
+							Minimum="{x:Static local:SettingsViewModel.MinSearchDelay}"
 							SemanticProperties.Description="{localization:Tr Settings.SearchDelay}"
 							Value="{Binding SearchDelayMs}" />
 					</VerticalStackLayout>
@@ -492,8 +492,8 @@
 						<Label StyleClass="Caption" Text="{Binding MinQueryLengthText}" />
 
 						<Slider
-							Maximum="{Binding MinQueryLengthCeiling}"
-							Minimum="{Binding MinQueryLengthFloor}"
+							Maximum="{x:Static local:SettingsViewModel.MinQueryLengthCeiling}"
+							Minimum="{x:Static local:SettingsViewModel.MinQueryLengthFloor}"
 							SemanticProperties.Description="{localization:Tr Settings.MinQueryLength}"
 							Value="{Binding MinQueryLength}" />
 					</VerticalStackLayout>

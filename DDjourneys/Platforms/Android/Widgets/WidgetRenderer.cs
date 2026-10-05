@@ -77,7 +77,7 @@ internal static class WidgetRenderer
 	}
 
 	/// <summary>The rows that fit; a stop header left without its departures is not shown.</summary>
-	private static IReadOnlyList<WidgetRow> Fit(IReadOnlyList<WidgetRow> rows, int limit)
+	private static List<WidgetRow> Fit(IReadOnlyList<WidgetRow> rows, int limit)
 	{
 		List<WidgetRow> fitted = [.. rows.Take(limit)];
 

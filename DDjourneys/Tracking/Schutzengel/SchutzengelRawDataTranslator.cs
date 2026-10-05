@@ -83,7 +83,7 @@ internal static class SchutzengelRawDataTranslator
 			movementIndex < movementParts.Count;
 			movementIndex++)
 		{
-			var movement =
+			(int movementRawIndex, VvoPartialRoute movementRoute, JourneyLeg movementLeg) =
 				movementParts[movementIndex];
 
 
@@ -99,14 +99,14 @@ internal static class SchutzengelRawDataTranslator
 					route,
 					journey,
 					movementIndex,
-					movement.RawIndex,
+					movementRawIndex,
 					nextRawIndex);
 
 
 			partialConnections.Add(
 				PartialConnectionObject(
-					movement.Route,
-					movement.Leg,
+					movementRoute,
+					movementLeg,
 					transitions,
 					serverTime));
 		}

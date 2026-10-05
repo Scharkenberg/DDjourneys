@@ -33,13 +33,13 @@ public sealed class VvoLocationProvider : ILocationProvider, IProviderDescriptor
 	/// <inheritdoc />
 	public Task<IReadOnlyList<Location>> SearchAsync(
 		string query,
-		CancellationToken cancellationToken = default,
-		TimeSpan? timeout = null) =>
+		TimeSpan? timeout = null,
+		CancellationToken cancellationToken = default) =>
 		SearchAsync(
 			query,
 			PlaceKinds.Stops,
-			cancellationToken,
-			timeout);
+			timeout,
+			cancellationToken);
 
 
 	/// <summary>
@@ -49,8 +49,8 @@ public sealed class VvoLocationProvider : ILocationProvider, IProviderDescriptor
 	public async Task<IReadOnlyList<Location>> SearchAsync(
 		string query,
 		PlaceKinds kinds,
-		CancellationToken cancellationToken = default,
-		TimeSpan? timeout = null)
+		TimeSpan? timeout = null,
+		CancellationToken cancellationToken = default)
 	{
 		ArgumentException.ThrowIfNullOrWhiteSpace(query);
 
@@ -67,13 +67,13 @@ public sealed class VvoLocationProvider : ILocationProvider, IProviderDescriptor
 				{
 					StopsOnly = !places
 				},
-				cancellationToken,
-				timeout)
+				timeout,
+				cancellationToken)
 			.ConfigureAwait(false);
 
 		if (response is null)
 		{
-			return Array.Empty<Location>();
+			return [];
 		}
 
 		cancellationToken.ThrowIfCancellationRequested();
@@ -82,11 +82,11 @@ public sealed class VvoLocationProvider : ILocationProvider, IProviderDescriptor
 		IReadOnlyList<VvoPoint> points =
 			response.Points;
 
-		return points
-			.Where(point => !string.IsNullOrWhiteSpace(point.Id) && !string.IsNullOrWhiteSpace(point.Name))
-			.Where(point => kinds.HasFlag(point.Kind.ToFlag()))
-			.Select(Map)
-			.ToArray();
+		return
+			[.. points
+				.Where(point => !string.IsNullOrWhiteSpace(point.Id) && !string.IsNullOrWhiteSpace(point.Name))
+				.Where(point => kinds.HasFlag(point.Kind.ToFlag()))
+				.Select(Map)];
 	}
 
 
@@ -94,39 +94,39 @@ public sealed class VvoLocationProvider : ILocationProvider, IProviderDescriptor
 	public async Task<IReadOnlyList<Location>> SearchByCoordinatesAsync(
 		double latitude,
 		double longitude,
-		CancellationToken cancellationToken = default,
-		TimeSpan? timeout = null)
+		TimeSpan? timeout = null,
+		CancellationToken cancellationToken = default)
 	{
 		if (!VvoCoordinateConverter.TryToGk4(
 			latitude,
 			longitude,
 			out (double Easting, double Northing) gk4))
 		{
-			return Array.Empty<Location>();
+			return [];
 		}
 
 		VvoPointResponse? response =
 			await _apiClient.FindPointsByCoordinatesAsync(
 				gk4.Easting,
 				gk4.Northing,
-				cancellationToken,
-				timeout)
+				timeout,
+				cancellationToken)
 				.ConfigureAwait(false);
 
 		if (response is null)
 		{
-			return Array.Empty<Location>();
+			return [];
 		}
 
 		cancellationToken.ThrowIfCancellationRequested();
 
 		// Stops only (the VVO router has no use for a bare coordinate), nearest first; a stop
 		// without coordinates cannot be ranked and goes last.
-		return response.Points
-			.Where(point => point.IsStop && !string.IsNullOrWhiteSpace(point.Name))
-			.Select(Map)
-			.OrderBy(stop => DistanceSquared(stop, latitude, longitude))
-			.ToArray();
+		return
+			[.. response.Points
+				.Where(point => point.IsStop && !string.IsNullOrWhiteSpace(point.Name))
+				.Select(Map)
+				.OrderBy(stop => DistanceSquared(stop, latitude, longitude))];
 	}
 
 
@@ -134,8 +134,8 @@ public sealed class VvoLocationProvider : ILocationProvider, IProviderDescriptor
 	public async Task<Location?> ResolveAddressAsync(
 		double latitude,
 		double longitude,
-		CancellationToken cancellationToken = default,
-		TimeSpan? timeout = null)
+		TimeSpan? timeout = null,
+		CancellationToken cancellationToken = default)
 	{
 		if (!VvoCoordinateConverter.TryToGk4(
 			latitude,
@@ -149,8 +149,8 @@ public sealed class VvoLocationProvider : ILocationProvider, IProviderDescriptor
 			await _apiClient.FindPointsByCoordinatesAsync(
 				gk4.Easting,
 				gk4.Northing,
-				cancellationToken,
-				timeout)
+				timeout,
+				cancellationToken)
 				.ConfigureAwait(false);
 
 		cancellationToken.ThrowIfCancellationRequested();

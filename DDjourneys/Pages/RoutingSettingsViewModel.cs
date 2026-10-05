@@ -5,7 +5,7 @@ using DDjourneys.Support;
 namespace DDjourneys.Pages;
 
 /// <summary>Route preferences: what the planner has to respect on the next search.</summary>
-public sealed class RoutingSettingsViewModel : DisposableViewModel
+public sealed partial class RoutingSettingsViewModel : DisposableViewModel
 {
 	private readonly AppSettings _settings;
 	private readonly LocalizationService _localization;
@@ -20,8 +20,8 @@ public sealed class RoutingSettingsViewModel : DisposableViewModel
 		ListenToLocalization(_localization, OnLocalizationChanged);
 
 		Modes =
-			new List<ToggleOption>
-			{
+			(List<ToggleOption>)
+			[
 				Mode(ModeFilter.Tram, s => s.Tram),
 				Mode(ModeFilter.CityBus, s => s.CityBus),
 				Mode(ModeFilter.IntercityBus, s => s.IntercityBus),
@@ -30,94 +30,94 @@ public sealed class RoutingSettingsViewModel : DisposableViewModel
 				Mode(ModeFilter.Cableway, s => s.Cableway),
 				Mode(ModeFilter.Ferry, s => s.Ferry),
 				Mode(ModeFilter.HailedSharedTaxi, s => s.HailedSharedTaxi)
-			};
+			];
 
 		Transfers =
 			new ChoiceGroup(
-				new List<(int Code, Func<string> Title)>
-				{
+				(List<(int Code, Func<string> Title)>)
+				[
 					((int)MaxTransfers.Unlimited, () => Strings.TransfersUnlimited),
 					((int)MaxTransfers.Two, () => Strings.TransfersTwo),
 					((int)MaxTransfers.One, () => Strings.TransfersOne),
 					((int)MaxTransfers.None, () => Strings.TransfersNone)
-				},
+				],
 				() => (int)_settings.MaxTransfers,
 				value => _settings.MaxTransfers = (MaxTransfers)value);
 
 		Pace =
 			new ChoiceGroup(
-				new List<(int Code, Func<string> Title)>
-				{
+				(List<(int Code, Func<string> Title)>)
+				[
 					((int)WalkingPace.VerySlow, () => Strings.PaceVerySlow),
 					((int)WalkingPace.Slow, () => Strings.PaceSlow),
 					((int)WalkingPace.Normal, () => Strings.PaceNormal),
 					((int)WalkingPace.Fast, () => Strings.PaceFast),
 					((int)WalkingPace.VeryFast, () => Strings.PaceVeryFast)
-				},
+				],
 				() => (int)_settings.WalkingPace,
 				value => _settings.WalkingPace = (WalkingPace)value);
 
 		Accessibility =
 			new ChoiceGroup(
-				new List<(int Code, Func<string> Title)>
-				{
+				(List<(int Code, Func<string> Title)>)
+				[
 					((int)AccessibilityNeed.None, () => Strings.AccessNone),
 					((int)AccessibilityNeed.Medium, () => Strings.AccessMedium),
 					((int)AccessibilityNeed.High, () => Strings.AccessHigh)
-				},
+				],
 				() => (int)_settings.Accessibility,
 				value => _settings.Accessibility = (AccessibilityNeed)value);
 
 		Optimisation =
 			new ChoiceGroup(
-				new List<(int Code, Func<string> Title)>
-				{
+				(List<(int Code, Func<string> Title)>)
+				[
 					((int)RouteOptimisation.Fastest, () => ExtraStrings.OptFastest),
 					((int)RouteOptimisation.FewestChanges, () => ExtraStrings.OptFewestChanges),
 					((int)RouteOptimisation.LeastWalking, () => ExtraStrings.OptLeastWalking),
 					((int)RouteOptimisation.LowestFare, () => ExtraStrings.OptLowestFare)
-				},
+				],
 				() => (int)_settings.Optimisation,
 				value => _settings.Optimisation = (RouteOptimisation)value);
 
 		Entrance =
 			new ChoiceGroup(
-				new List<(int Code, Func<string> Title)>
-				{
+				(List<(int Code, Func<string> Title)>)
+				[
 					((int)EntranceNeed.Any, () => Strings.EntranceAny),
 					((int)EntranceNeed.SmallStep, () => Strings.EntranceSmallStep),
 					((int)EntranceNeed.NoStep, () => Strings.EntranceNoStep)
-				},
+				],
 				() => (int)_settings.Entrance,
 				value => _settings.Entrance = (EntranceNeed)value);
 
 		Passenger =
 			new ChoiceGroup(
-				new List<(int Code, Func<string> Title)>
-				{
+				(List<(int Code, Func<string> Title)>)
+				[
 					((int)PassengerCategory.Adult, () => ExtraStrings.PassengerAdult),
 					((int)PassengerCategory.Youth, () => ExtraStrings.PassengerYouth),
 					((int)PassengerCategory.Child, () => ExtraStrings.PassengerChild),
 					((int)PassengerCategory.Senior, () => ExtraStrings.PassengerSenior)
-				},
+				],
 				() => (int)_settings.Passenger,
 				value => _settings.Passenger = (PassengerCategory)value);
 
 		ExtraCharge =
 			new ChoiceGroup(
-				new List<(int Code, Func<string> Title)>
-				{
+				(List<(int Code, Func<string> Title)>)
+				[
 					((int)ExtraChargeFilter.Any, () => Strings.ExtraChargeAny),
 					((int)ExtraChargeFilter.None, () => Strings.ExtraChargeNone),
 					((int)ExtraChargeFilter.LocalTraffic, () => Strings.ExtraChargeLocal)
-				},
+				],
 				() => (int)_settings.ExtraCharge,
 				value => _settings.ExtraCharge = (ExtraChargeFilter)value);
 
 		Walking =
-			new List<ToggleOption>
-			{
-				new ToggleOption(
+			(List<ToggleOption>)
+			[
+				new(
 					() => Strings.AlternativeStops,
 					() => Strings.AlternativeStopsDescription,
 					() => _settings.AlternativeStops,
@@ -126,12 +126,12 @@ public sealed class RoutingSettingsViewModel : DisposableViewModel
 						_settings.AlternativeStops = value;
 						return true;
 					})
-			};
+			];
 
 		More =
-			new List<ToggleOption>
-			{
-				new ToggleOption(
+			(List<ToggleOption>)
+			[
+				new(
 					() => Strings.AvoidStairs,
 					() => Strings.AvoidStairsDescription,
 					() => _settings.AvoidStairs,
@@ -140,7 +140,7 @@ public sealed class RoutingSettingsViewModel : DisposableViewModel
 						_settings.AvoidStairs = value;
 						return true;
 					}),
-				new ToggleOption(
+				new(
 					() => Strings.AvoidEscalators,
 					() => Strings.AvoidEscalatorsDescription,
 					() => _settings.AvoidEscalators,
@@ -149,7 +149,7 @@ public sealed class RoutingSettingsViewModel : DisposableViewModel
 						_settings.AvoidEscalators = value;
 						return true;
 					}),
-				new ToggleOption(
+				new(
 					() => Strings.FewestTransfers,
 					() => Strings.FewestTransfersDescription,
 					() => _settings.FewestTransfers,
@@ -158,7 +158,7 @@ public sealed class RoutingSettingsViewModel : DisposableViewModel
 						_settings.FewestTransfers = value;
 						return true;
 					})
-			};
+			];
 
 		ResetCommand = new Command(Reset);
 	}
@@ -191,7 +191,7 @@ public sealed class RoutingSettingsViewModel : DisposableViewModel
 
 	public Command ResetCommand { get; }
 
-	public double MaxFootpath => AppSettings.MaxFootpathMinutes;
+	public const double MaxFootpath = AppSettings.MaxFootpathMinutes;
 
 	public double FootpathMinutes
 	{

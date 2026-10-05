@@ -11,7 +11,7 @@ using DDjourneys.Support;
 namespace DDjourneys.Pages;
 
 /// <summary>One vehicle on the live list; updated in place as new positions arrive.</summary>
-public sealed class VehicleRow : ObservableObject
+public sealed partial class VehicleRow : ObservableObject
 {
 	public VehicleRow(LiveVehicle vehicle)
 	{
@@ -23,12 +23,7 @@ public sealed class VehicleRow : ObservableObject
 
 	public string Key { get; }
 
-	public LiveVehicle Vehicle
-	{
-		get => field;
-
-		private set => field = value;
-	}
+	public LiveVehicle Vehicle { get; private set; }
 
 	public string LineText =>
 		string.Format(
@@ -120,7 +115,7 @@ public sealed class VehicleRow : ObservableObject
 
 
 /// <summary>Live positions of the vehicles of chosen lines (TLMS), on a map and in a list.</summary>
-public sealed class VehiclesViewModel : DisposableViewModel, IQueryAttributable
+public sealed partial class VehiclesViewModel : DisposableViewModel, IQueryAttributable
 {
 	private const int MaxRows = 300;
 
@@ -252,7 +247,7 @@ public sealed class VehiclesViewModel : DisposableViewModel, IQueryAttributable
 
 	public string LineFilter
 	{
-		get => field;
+		get;
 
 		set => SetProperty(ref field, value ?? string.Empty);
 	} = string.Empty;
@@ -260,7 +255,7 @@ public sealed class VehiclesViewModel : DisposableViewModel, IQueryAttributable
 	/// <summary>Entries that were not line numbers and were left out; empty when the input was fine.</summary>
 	public string InputHint
 	{
-		get => field;
+		get;
 
 		private set
 		{
@@ -276,7 +271,7 @@ public sealed class VehiclesViewModel : DisposableViewModel, IQueryAttributable
 
 	public bool IsStreaming
 	{
-		get => field;
+		get;
 
 		private set
 		{
@@ -293,7 +288,7 @@ public sealed class VehiclesViewModel : DisposableViewModel, IQueryAttributable
 
 	public string Status
 	{
-		get => field;
+		get;
 
 		private set
 		{
@@ -383,7 +378,7 @@ public sealed class VehiclesViewModel : DisposableViewModel, IQueryAttributable
 		SceneChanged?.Invoke(
 			this,
 			_slots.Count > 0
-				? MapScenes.FromTracks(_slots.Select(slot => slot.Target).ToList(), _slots.Select(slot => slot.Matched).ToList(), false)
+				? MapScenes.FromTracks((List<TrackTarget>)[.. _slots.Select(slot => slot.Target)], (List<LiveVehicle?>)[.. _slots.Select(slot => slot.Matched)], false)
 				: MapScenes.FromVehicles(
 					Rows.Select(row => row.Vehicle),
 					fit));
@@ -454,7 +449,7 @@ public sealed class VehiclesViewModel : DisposableViewModel, IQueryAttributable
 		SceneChanged?.Invoke(
 			this,
 			_slots.Count > 0
-				? MapScenes.FromTracks(_slots.Select(slot => slot.Target).ToList(), _slots.Select(_ => (LiveVehicle?)null).ToList(), true)
+				? MapScenes.FromTracks((List<TrackTarget>)[.. _slots.Select(slot => slot.Target)], (List<LiveVehicle?>)[.. _slots.Select(_ => (LiveVehicle?)null)], true)
 				: new MapScene { Fit = false });
 
 		IsStreaming = true;

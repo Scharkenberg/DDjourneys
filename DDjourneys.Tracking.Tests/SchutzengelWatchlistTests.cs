@@ -8,6 +8,8 @@ namespace DDjourneys.Tracking.Tests;
 
 public sealed class SchutzengelWatchlistTests
 {
+	private static readonly int[] OneAndTwo = [1, 2];
+
 	private static readonly DateTimeOffset Base = new(2026, 10, 2, 8, 0, 0, TimeSpan.Zero);
 
 	// ----- Trip progress -----
@@ -262,8 +264,8 @@ public sealed class SchutzengelWatchlistTests
 		broadcaster.Publish(1);
 		broadcaster.Publish(2);
 
-		Assert.Equal(new[] { 1, 2 }, await first);
-		Assert.Equal(new[] { 1, 2 }, await second);
+		Assert.Equal(OneAndTwo, await first);
+		Assert.Equal(OneAndTwo, await second);
 	}
 
 	// ----- Transport -----

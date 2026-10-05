@@ -140,7 +140,7 @@ public sealed partial class PlaceSearchViewModel : DisposableViewModel, IQueryAt
 
 	public string Query
 	{
-		get => field;
+		get;
 		set
 		{
 			if (SetProperty(ref field, value ?? string.Empty))
@@ -152,14 +152,14 @@ public sealed partial class PlaceSearchViewModel : DisposableViewModel, IQueryAt
 
 	public bool IsSearching
 	{
-		get => field;
+		get;
 		private set => SetProperty(ref field, value);
 	}
 
 	/// <summary>Hint, "nothing found" or error. Empty when there is nothing to say.</summary>
 	public string Message
 	{
-		get => field;
+		get;
 		private set => SetProperty(ref field, value);
 	} = string.Empty;
 
@@ -306,9 +306,9 @@ public sealed partial class PlaceSearchViewModel : DisposableViewModel, IQueryAt
 				found =
 					await _locations.SearchAsync(
 						text,
-						token,
 						TimeSpan.FromSeconds(_settings.TimeoutSeconds),
-						Kinds);
+						Kinds,
+						token);
 
 				Remember(key, found);
 			}

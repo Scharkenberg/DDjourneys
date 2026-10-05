@@ -89,7 +89,7 @@ public partial class JourneyPage : ContentPage
 
 	private void StopsToggled(object? sender, TappedEventArgs e)
 	{
-		if ((sender as BindableObject)?.BindingContext is LegRow leg)
+		if (sender is BindableObject { BindingContext: LegRow leg })
 		{
 			_vm.ToggleStopsCommand.Execute(leg);
 		}

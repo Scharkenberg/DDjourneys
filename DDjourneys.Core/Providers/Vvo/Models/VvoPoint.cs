@@ -60,7 +60,7 @@ public sealed class VvoPoint
 	/// Remaining provider-specific fields.
 	/// </summary>
 	public IReadOnlyList<string> AdditionalData { get; init; }
-		= Array.Empty<string>();
+		= [];
 
 
 	/// <summary>
@@ -149,7 +149,7 @@ public sealed class VvoPoint
 			AdditionalData =
 				fields.Length > 6
 					? fields[6..]
-					: Array.Empty<string>()
+					: []
 		};
 	}
 

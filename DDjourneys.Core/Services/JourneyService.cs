@@ -52,7 +52,7 @@ public sealed class JourneyService
 
 
 	/// <summary>The providers eligible for the current selection, in registration order.</summary>
-	private IEnumerable<IJourneyProvider> _providers =>
+	private IEnumerable<IJourneyProvider> Providers =>
 		_registry is null
 			? _all
 			: _all.Where(_registry.IsSelected);
@@ -71,7 +71,7 @@ public sealed class JourneyService
 		var outcomes = new Outcomes();
 
 		foreach (IJourneyProvider provider
-			in _providers)
+			in Providers)
 		{
 			if (!IsSuitable(
 				provider,
@@ -138,7 +138,7 @@ public sealed class JourneyService
 		var outcomes = new Outcomes();
 
 		foreach (IJourneyProvider provider
-			in _providers)
+			in Providers)
 		{
 			if (!IsSuitable(
 					provider,
@@ -175,7 +175,7 @@ public sealed class JourneyService
 			outcomes.Add(
 				page.Failure
 				?? JourneyResult.Success(
-					Array.Empty<Journey>()));
+					[]));
 		}
 
 		return outcomes.Best()

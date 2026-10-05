@@ -30,7 +30,7 @@ public sealed class PlannerLauncher(
 	}
 
 	/// <summary>Journey from this place; the destination is asked for.</summary>
-	public Task FromAsync(Location origin)
+	public static Task FromAsync(Location origin)
 	{
 		ArgumentNullException.ThrowIfNull(origin);
 
@@ -63,7 +63,7 @@ public sealed class PlannerLauncher(
 			IReadOnlyList<Location> stops =
 				await locations.SearchByCoordinatesAsync(here.Latitude, here.Longitude, timeout: Wait);
 
-			return stops.FirstOrDefault(stop => stop.IsStation) ?? stops.FirstOrDefault();
+			return stops.FirstOrDefault(stop => stop.IsStation) ?? (stops.Count > 0 ? stops[0] : null);
 		}
 		catch (Exception ex)
 		{

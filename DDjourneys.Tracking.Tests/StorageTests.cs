@@ -6,6 +6,8 @@ namespace DDjourneys.Tracking.Tests;
 /// <summary>Versioned storage: tolerant lists and step-by-step migration.</summary>
 public sealed class StorageTests
 {
+	private static readonly string[] Postplatz = ["Postplatz"];
+
 	private sealed class MemoryStore : IKeyValueStore
 	{
 		public Dictionary<string, string> Values { get; } = [];
@@ -33,7 +35,7 @@ public sealed class StorageTests
 	[Fact]
 	public void A_written_list_reads_back_as_a_versioned_envelope()
 	{
-		string json = StoredJson.Write(new[] { "Postplatz" }, name => new System.Text.Json.Nodes.JsonObject { ["Name"] = name });
+		string json = StoredJson.Write(Postplatz, name => new System.Text.Json.Nodes.JsonObject { ["Name"] = name });
 		StoredRead<string> read = StoredJson.Read(json, Name);
 
 		Assert.Contains("\"v\":2", json);

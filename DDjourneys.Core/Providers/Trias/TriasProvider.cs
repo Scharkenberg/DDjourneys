@@ -117,15 +117,15 @@ public sealed class TriasProvider :
 
 	public Task<IReadOnlyList<Location>> SearchAsync(
 		string query,
-		CancellationToken cancellationToken = default,
-		TimeSpan? timeout = null) =>
-		SearchAsync(query, PlaceKinds.Stops, cancellationToken, timeout);
+		TimeSpan? timeout = null,
+		CancellationToken cancellationToken = default) =>
+		SearchAsync(query, PlaceKinds.Stops, timeout, cancellationToken);
 
 	public async Task<IReadOnlyList<Location>> SearchAsync(
 		string query,
 		PlaceKinds kinds,
-		CancellationToken cancellationToken = default,
-		TimeSpan? timeout = null)
+		TimeSpan? timeout = null,
+		CancellationToken cancellationToken = default)
 	{
 		ArgumentException.ThrowIfNullOrWhiteSpace(query);
 
@@ -149,8 +149,8 @@ public sealed class TriasProvider :
 	public async Task<IReadOnlyList<Location>> SearchByCoordinatesAsync(
 		double latitude,
 		double longitude,
-		CancellationToken cancellationToken = default,
-		TimeSpan? timeout = null)
+		TimeSpan? timeout = null,
+		CancellationToken cancellationToken = default)
 	{
 		XDocument response =
 			await _client
@@ -170,8 +170,8 @@ public sealed class TriasProvider :
 	public async Task<Location?> ResolveAddressAsync(
 		double latitude,
 		double longitude,
-		CancellationToken cancellationToken = default,
-		TimeSpan? timeout = null)
+		TimeSpan? timeout = null,
+		CancellationToken cancellationToken = default)
 	{
 		XDocument response =
 			await _client

@@ -97,7 +97,7 @@ public static class NoticeText
 	public static string Plain(IReadOnlyList<NoticeBlock> blocks) =>
 		string.Join(". ", blocks.Select(b => string.Concat(b.Spans.Select(s => s.Text))));
 
-	private static IReadOnlyList<NoticeSpan> Spans(string line, bool technical)
+	private static List<NoticeSpan> Spans(string line, bool technical)
 	{
 		var spans = new List<NoticeSpan>();
 

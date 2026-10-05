@@ -300,9 +300,9 @@ internal static class SchutzengelNotices
 			result.Add(new SchutzengelNotice(title, message, SchutzengelTime.Read(time)));
 		}
 
-		return result
-			.OrderBy(notice => notice.Time ?? DateTimeOffset.MinValue)
-			.ToList();
+		return
+			(List<SchutzengelNotice>)
+			[.. result.OrderBy(notice => notice.Time ?? DateTimeOffset.MinValue)];
 	}
 }
 

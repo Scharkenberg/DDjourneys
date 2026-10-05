@@ -6,25 +6,18 @@ using DDjourneys.Support;
 namespace DDjourneys.Pages;
 
 /// <summary>One provider as the list shows it.</summary>
-public sealed class ProviderRow : ObservableObject
+public sealed partial class ProviderRow(
+	ProviderInfo info,
+	IReadOnlyList<string> capabilities,
+	Command select) : ObservableObject
 {
-	public ProviderRow(
-		ProviderInfo info,
-		IReadOnlyList<string> capabilities,
-		Command select)
-	{
-		Info = info;
-		Capabilities = capabilities;
-		SelectCommand = select;
-	}
-
-	public ProviderInfo Info { get; }
+	public ProviderInfo Info { get; } = info;
 
 	public string Name => Info.Name;
 
 	public bool IsExperimental => Info.IsExperimental;
 
-	public string ExperimentalText =>
+	private static string ExperimentalText =>
 		LocalizationService.Current.CurrentStrings.Provider.Experimental;
 
 	public string FullName => Info.FullName;
@@ -32,11 +25,11 @@ public sealed class ProviderRow : ObservableObject
 	public string Coverage => Info.Coverage;
 
 	/// <summary>Localized labels of what the provider supports.</summary>
-	public IReadOnlyList<string> Capabilities { get; }
+	public IReadOnlyList<string> Capabilities { get; } = capabilities;
 
 	public bool IsSelected
 	{
-		get => field;
+		get;
 		internal set =>
 			SetProperty(
 				ref field,
@@ -59,7 +52,7 @@ public sealed record ProviderGroup(
 
 
 /// <summary>Provider picker. Lists whatever the registry holds, grouped by region, so new providers need no UI work.</summary>
-public sealed class ProvidersViewModel : DisposableViewModel
+public sealed partial class ProvidersViewModel : DisposableViewModel
 {
 	private static readonly (ProviderCapabilities Flag, Func<IUiStrings, string> Label)[] Labels =
 	[
@@ -97,7 +90,7 @@ public sealed class ProvidersViewModel : DisposableViewModel
 
 	public IReadOnlyList<ProviderGroup> Groups
 	{
-		get => field;
+		get;
 		private set =>
 			SetProperty(
 				ref field,
@@ -116,12 +109,14 @@ public sealed class ProvidersViewModel : DisposableViewModel
 			_localization.CurrentStrings;
 
 		Groups =
-			(_registry.Providers
+			(List<ProviderGroup>)
+			[.. _registry.Providers
 				.GroupBy(provider => provider.Region)
 				.Select(
 					group => new ProviderGroup(
 						group.Key,
-						(group.Select(
+						(List<ProviderRow>)
+						[.. group.Select(
 							provider =>
 							{
 								ProviderRow? row = null;
@@ -129,13 +124,14 @@ public sealed class ProvidersViewModel : DisposableViewModel
 								row =
 									new ProviderRow(
 										provider,
-										(Labels
+										(List<string>)
+										[.. Labels
 											.Where(label => provider.Supports(label.Flag))
-											.Select(label => label.Label(strings))).ToList(),
+											.Select(label => label.Label(strings))],
 										new Command(() => Select(row!)));
 
 								return row;
-							})).ToList()))).ToList();
+							})]))];
 
 		RefreshSelection();
 	}

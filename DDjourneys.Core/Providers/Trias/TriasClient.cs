@@ -73,7 +73,7 @@ public sealed class TriasClient
 			try
 			{
 				XDocument response =
-					await PostAsync(build(dialect), cancellationToken, timeout)
+					await PostAsync(build(dialect), timeout, cancellationToken)
 						.ConfigureAwait(false);
 
 				if (IsAccepted(response, out string? reason))
@@ -161,16 +161,16 @@ public sealed class TriasClient
 
 	private async Task<XDocument> PostAsync(
 		XDocument request,
-		CancellationToken cancellationToken,
-		TimeSpan? timeout)
+		TimeSpan? timeout,
+		CancellationToken cancellationToken)
 	{
 		string response =
 			await _apiClient
 				.PostXmlAsync(
 					Endpoint,
 					request.Declaration + Environment.NewLine + request.Root,
-					cancellationToken,
-					timeout)
+					timeout,
+					cancellationToken)
 				.ConfigureAwait(false);
 
 		try

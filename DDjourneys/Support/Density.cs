@@ -14,8 +14,8 @@ namespace DDjourneys.Support;
 /// </summary>
 public static class Density
 {
-	private static readonly ConditionalWeakTable<Page, StampBox> Stamps = new();
-	private static readonly Dictionary<string, object> Current = new();
+	private static readonly ConditionalWeakTable<Page, StampBox> Stamps = [];
+	private static readonly Dictionary<string, object> Current = [];
 
 	private static Application? _app;
 	private static AppSettings? _settings;

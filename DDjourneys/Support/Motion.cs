@@ -39,16 +39,16 @@ public static class Motion
 	private const int CascadeCap = 8;
 
 	private static readonly object Marker = new();
-	private static readonly ConditionalWeakTable<Page, object> Entered = new();
+	private static readonly ConditionalWeakTable<Page, object> Entered = [];
 
 	/// <summary>Views that are being animated in right now: a second entrance on the same view is skipped.</summary>
-	private static readonly ConditionalWeakTable<VisualElement, object> Playing = new();
+	private static readonly ConditionalWeakTable<VisualElement, object> Playing = [];
 
 	/// <summary>Views whose entrance has played (once per instance, so recycled list cells do not replay it).</summary>
-	private static readonly ConditionalWeakTable<VisualElement, object> Seen = new();
+	private static readonly ConditionalWeakTable<VisualElement, object> Seen = [];
 
-	private static readonly ConditionalWeakTable<VisualElement, object> Breathing = new();
-	private static readonly ConditionalWeakTable<VisualElement, Quiet> Quiets = new();
+	private static readonly ConditionalWeakTable<VisualElement, object> Breathing = [];
+	private static readonly ConditionalWeakTable<VisualElement, Quiet> Quiets = [];
 
 	/// <summary>The app setting, and the OS: "remove animations" always wins.</summary>
 	public static bool Enabled { get; private set; } = true;
@@ -804,7 +804,7 @@ public static class Motion
 	}
 
 	/// <summary>The top-level sections of a scrolling page (the children of its single layout), if it has that shape.</summary>
-	private static IEnumerable<IView> SectionsOf(VisualElement content)
+	private static IView[] SectionsOf(VisualElement content)
 	{
 		Layout? layout =
 			content switch

@@ -151,7 +151,7 @@ public sealed class TrackedRow
 }
 
 /// <summary>The overview of all journeys the user follows.</summary>
-public sealed class TrackedJourneysViewModel : DisposableViewModel, IQueryAttributable
+public sealed partial class TrackedJourneysViewModel : DisposableViewModel, IQueryAttributable
 {
 	// How often fresh data is fetched depends on what is going on: a journey under way every 20 seconds, one about
 	// to start every 45, otherwise every 3 minutes; after a failure sooner. Between fetches the page follows the
@@ -200,13 +200,13 @@ public sealed class TrackedJourneysViewModel : DisposableViewModel, IQueryAttrib
 
 	public IReadOnlyList<TrackedSection> Sections
 	{
-		get => field;
+		get;
 		private set => SetProperty(ref field, value);
 	} = [];
 
 	public bool HasItems
 	{
-		get => field;
+		get;
 		private set
 		{
 			if (SetProperty(ref field, value))
@@ -221,13 +221,13 @@ public sealed class TrackedJourneysViewModel : DisposableViewModel, IQueryAttrib
 
 	public bool IsRefreshing
 	{
-		get => field;
+		get;
 		set => SetProperty(ref field, value);
 	}
 
 	public string? ErrorText
 	{
-		get => field;
+		get;
 		private set
 		{
 			if (SetProperty(ref field, value))
@@ -241,14 +241,14 @@ public sealed class TrackedJourneysViewModel : DisposableViewModel, IQueryAttrib
 
 	public bool NotificationsBlocked
 	{
-		get => field;
+		get;
 		private set => SetProperty(ref field, value);
 	}
 
 	/// <summary>Choices for the live notification; empty where the platform has none.</summary>
 	public IReadOnlyList<LiveOption> LiveOptions
 	{
-		get => field;
+		get;
 		private set
 		{
 			if (SetProperty(ref field, value))
@@ -595,7 +595,7 @@ public sealed class TrackedJourneysViewModel : DisposableViewModel, IQueryAttrib
 
 			DateTimeOffset now = DateTimeOffset.UtcNow;
 
-			IReadOnlyList<WatchedJourney> journeys = _tracker.Watched.Select(item => Reconcile(item, now)).ToList();
+			List<WatchedJourney> journeys = [.. _tracker.Watched.Select(item => Reconcile(item, now))];
 
 			if (journeys.Count > 0)
 			{
@@ -633,7 +633,7 @@ public sealed class TrackedJourneysViewModel : DisposableViewModel, IQueryAttrib
 	}
 
 	/// <summary>The same as chips: a line each, the mark of a guaranteed change between; the line under way is highlighted.</summary>
-	private static IReadOnlyList<LinePart> LinePartsOf(WatchedJourney journey, TrackingStrings strings)
+	private static List<LinePart> LinePartsOf(WatchedJourney journey, TrackingStrings strings)
 	{
 		string[] lines = [.. journey.Lines.Where(item => !string.IsNullOrWhiteSpace(item))];
 
@@ -820,9 +820,9 @@ public sealed class TrackedJourneysViewModel : DisposableViewModel, IQueryAttrib
 			DismissNoticeText = strings.DismissNotice,
 			HistoryTitle = strings.NoticeHistory,
 			History =
-				(journey.Notices ?? [])
-					.Select(item => new HistoryRow(Format.TimeOrDash(item.Time), item.Text, item.IsProblem))
-					.ToList(),
+				(List<HistoryRow>)
+				[.. (journey.Notices ?? [])
+					.Select(item => new HistoryRow(Format.TimeOrDash(item.Time), item.Text, item.IsProblem))],
 			DismissNoticeCommand = new AsyncCommand(() => _tracker.DismissNoticeAsync(journey.PlanId), null, ShowError),
 			ToggleCourseCommand = new Command(() => ToggleCourse(journey)),
 			ToggleExpandedCommand = new Command(() => ToggleExpanded(journey)),
@@ -852,7 +852,7 @@ public sealed class TrackedJourneysViewModel : DisposableViewModel, IQueryAttrib
 	}
 
 	/// <summary>"Automatic" plus every journey that can still be live (not completed, not paused).</summary>
-	private IReadOnlyList<LiveOption> CreateLiveOptions(
+	private List<LiveOption> CreateLiveOptions(
 		IReadOnlyList<WatchedJourney> journeys,
 		TrackingStrings strings)
 	{
@@ -905,7 +905,7 @@ public sealed class TrackedJourneysViewModel : DisposableViewModel, IQueryAttrib
 	}
 
 	/// <summary>The course as flat rows: a heading per ride or walk, then its stops.</summary>
-	private IReadOnlyList<CourseRow> CreateCourse(string planId, TrackingStrings strings)
+	private List<CourseRow> CreateCourse(string planId, TrackingStrings strings)
 	{
 		if (_tracker.GetTrip(planId) is not { IsEmpty: false } trip)
 		{

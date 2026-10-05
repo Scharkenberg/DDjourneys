@@ -13,7 +13,7 @@ namespace DDjourneys.Controls;
 /// active app theme and needs the user's CARTO key (<see cref="MapAvailability"/>): without a usable one the map is
 /// replaced by a quiet notice. Give it a <see cref="MapScene"/>; it keeps the scene and re-applies it when needed.
 /// </summary>
-public sealed class MapView : ContentView
+public sealed partial class MapView : ContentView
 {
 	/// <summary>Height of the free strip below the map (see the constructor).</summary>
 	public const double StripHeight = 32;
@@ -92,10 +92,10 @@ public sealed class MapView : ContentView
 			new Button
 			{
 				HorizontalOptions = LayoutOptions.Center,
-				Text = LocalizationService.Current.CurrentStrings.Extras.MapKeyOpenSettings
+				Text = LocalizationService.Current.CurrentStrings.Extras.MapKeyOpenSettings,
+				StyleClass = ["Tonal"]
 			};
 
-		settings.StyleClass = ["Tonal"];
 		settings.Clicked += async (_, _) => await Shell.Current.GoToAsync(Routes.Settings);
 
 		_notice =

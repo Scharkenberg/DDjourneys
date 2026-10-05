@@ -178,7 +178,7 @@ internal sealed class PlacePickerDialog
 			{
 				found =
 					await _locations
-						.SearchAsync(query, token, TimeSpan.FromSeconds(8), _kinds)
+						.SearchAsync(query, TimeSpan.FromSeconds(8), _kinds, token)
 						.ConfigureAwait(false);
 			}
 

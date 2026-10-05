@@ -7,7 +7,7 @@ using Location = DDjourneys.Core.Models.Location;
 namespace DDjourneys.Pages;
 
 /// <summary>"Start in input mode": whether the app opens with the start filled in and the destination search ready, and what the start is.</summary>
-public sealed class StartSettingsViewModel : DisposableViewModel
+public sealed partial class StartSettingsViewModel : DisposableViewModel
 {
 	private readonly AppSettings _settings;
 	private readonly LocalizationService _localization;

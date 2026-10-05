@@ -7,7 +7,7 @@ using Microsoft.Maui.ApplicationModel.DataTransfer;
 namespace DDjourneys.Pages;
 
 /// <summary>Thin, two-way view over <see cref="AppSettings"/>. Persisting is AppSettings' job.</summary>
-public sealed class SettingsViewModel : DisposableViewModel
+public sealed partial class SettingsViewModel : DisposableViewModel
 {
 	private readonly AppSettings _settings;
 	private readonly LocalizationService _localization;
@@ -217,9 +217,9 @@ public sealed class SettingsViewModel : DisposableViewModel
 			_localization.CurrentStrings.Settings.RequestTimeoutDescription,
 			_settings.TimeoutSeconds);
 
-	public double MinResults => AppSettings.MinResults;
+	public const double MinResults = AppSettings.MinResults;
 
-	public double MaxResultsLimit => AppSettings.MaxResultsLimit;
+	public const double MaxResultsLimit = AppSettings.MaxResultsLimit;
 
 	public bool DefaultArrival
 	{
@@ -355,26 +355,26 @@ public sealed class SettingsViewModel : DisposableViewModel
 	public bool HasLog => LogToFile || DiagnosticLog.Exists;
 
 	/// <summary>Where the log file is, how big it is, and why writing failed if it did.</summary>
-	public string LogInfo
+	public string LogInfo { get; private set; } = DescribeLog();
+
+	private static string DescribeLog()
 	{
-		get
-		{
-			string path = DiagnosticLog.FilePath ?? "-";
+		string path = DiagnosticLog.FilePath ?? "-";
 
-			string size =
-				DiagnosticLog.Exists && DiagnosticLog.FilePath is { } file
-					? $" ({new FileInfo(file).Length / 1024.0:0.#} KB)"
-					: string.Empty;
+		string size =
+			DiagnosticLog.Exists && DiagnosticLog.FilePath is { } file
+				? $" ({new FileInfo(file).Length / 1024.0:0.#} KB)"
+				: string.Empty;
 
-			return DiagnosticLog.LastError is { } error
-				? $"{path}{size}\n{error}"
-				: $"{path}{size}";
-		}
+		return DiagnosticLog.LastError is { } error
+			? $"{path}{size}\n{error}"
+			: $"{path}{size}";
 	}
 
 	/// <summary>Called when the page appears: the file may have grown or appeared since.</summary>
 	public void RefreshLog()
 	{
+		LogInfo = DescribeLog();
 		OnPropertyChanged(nameof(HasLog));
 		OnPropertyChanged(nameof(LogInfo));
 	}
@@ -446,13 +446,13 @@ public sealed class SettingsViewModel : DisposableViewModel
 			_localization.CurrentStrings.Settings.MinQueryLengthDescription,
 			_settings.MinQueryLength);
 
-	public double MinQueryLengthFloor => AppSettings.MinQueryLengthFloor;
+	public const double MinQueryLengthFloor = AppSettings.MinQueryLengthFloor;
 
-	public double MinQueryLengthCeiling => AppSettings.MinQueryLengthCeiling;
+	public const double MinQueryLengthCeiling = AppSettings.MinQueryLengthCeiling;
 
-	public double MinSearchDelay => AppSettings.MinSearchDelayMs;
+	public const double MinSearchDelay = AppSettings.MinSearchDelayMs;
 
-	public double MaxSearchDelay => AppSettings.MaxSearchDelayMs;
+	public const double MaxSearchDelay = AppSettings.MaxSearchDelayMs;
 
 	private static Task OpenProvidersAsync() =>
 		Shell.Current.GoToAsync(Routes.Providers);

@@ -19,7 +19,7 @@ public sealed class LiveTrackingTests
 		Assert.Equal("b", LivePlanSelector.Choose("b", eligible));
 		Assert.Equal("a", LivePlanSelector.Choose("gone", eligible));
 		Assert.Equal("a", LivePlanSelector.Choose(null, eligible));
-		Assert.Null(LivePlanSelector.Choose("b", Array.Empty<string>()));
+		Assert.Null(LivePlanSelector.Choose("b", []));
 	}
 
 	// ----- Course -----
@@ -37,7 +37,7 @@ public sealed class LiveTrackingTests
 		Assert.False(ride.IsWalk);
 		Assert.Equal("11", ride.Line);
 		Assert.Equal(
-			new[] { TrackedStopState.Passed, TrackedStopState.Current, TrackedStopState.Next },
+			[TrackedStopState.Passed, TrackedStopState.Current, TrackedStopState.Next],
 			ride.Stops.Select(stop => stop.State));
 
 		Assert.All(trip.Segments.Skip(1), segment => Assert.False(segment.IsCurrent || segment.IsPassed));
@@ -66,7 +66,7 @@ public sealed class LiveTrackingTests
 
 		Assert.True(walk.IsWalk);
 		Assert.True(walk.IsCurrent);
-		Assert.Equal(new[] { TrackedStopState.Current, TrackedStopState.Next }, walk.Stops.Select(stop => stop.State));
+		Assert.Equal([TrackedStopState.Current, TrackedStopState.Next], walk.Stops.Select(stop => stop.State));
 	}
 
 	[Fact]

@@ -61,7 +61,7 @@ public sealed class LegRunResolverTests
 	{
 		Departure departure = Dep("7", "Weixdorf", TimeSpan.Zero);
 
-		RunStop Run(string id, double lat, TimeSpan offset, RunPosition position) =>
+		static RunStop Run(string id, double lat, TimeSpan offset, RunPosition position) =>
 			new()
 			{
 				Station = Stop(id, id, lat, 13.7),

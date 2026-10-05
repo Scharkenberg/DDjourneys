@@ -92,9 +92,7 @@ public partial class ResultsPage : ContentPage
 		object? sender,
 		TappedEventArgs e)
 	{
-		if (sender is VisualElement card
-			&& (sender as BindableObject)?.BindingContext
-				is JourneyCardModel model)
+		if (sender is VisualElement { BindingContext: JourneyCardModel model } card)
 		{
 			_ = Motion.TapAsync(card);
 			_vm.OpenJourneyCommand.Execute(model.Journey);

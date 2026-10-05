@@ -127,12 +127,9 @@ internal static class WidgetUpdater
 
 		try
 		{
-			WidgetLoader? loader = IPlatformApplication.Current?.Services.GetService<WidgetLoader>();
-
-			if (loader is null)
-			{
-				throw new InvalidOperationException("The widget loader is not available.");
-			}
+			WidgetLoader loader =
+				IPlatformApplication.Current?.Services.GetService<WidgetLoader>()
+				?? throw new InvalidOperationException("The widget loader is not available.");
 
 			using var limit = new CancellationTokenSource(FetchLimit);
 

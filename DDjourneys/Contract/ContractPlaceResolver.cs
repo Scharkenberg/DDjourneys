@@ -175,14 +175,14 @@ public sealed class ContractPlaceResolver(
 		if (place.Name is { } name)
 		{
 			IReadOnlyList<Location> found =
-				await locations.SearchAsync(name, cancellationToken, LookupTimeout).ConfigureAwait(false);
+				await locations.SearchAsync(name, LookupTimeout, cancellationToken: cancellationToken).ConfigureAwait(false);
 
 			Location? best =
 				found.FirstOrDefault(
 					candidate => candidate.IsStation
 						&& string.Equals(candidate.Name, name, StringComparison.OrdinalIgnoreCase))
 				?? found.FirstOrDefault(candidate => candidate.IsStation)
-				?? found.FirstOrDefault();
+				?? (found.Count > 0 ? found[0] : null);
 
 			return best
 				?? throw new ContractRefusal(

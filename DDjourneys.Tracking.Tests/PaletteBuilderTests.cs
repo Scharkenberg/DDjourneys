@@ -5,11 +5,10 @@ namespace DDjourneys.Tracking.Tests;
 public sealed class PaletteBuilderTests
 {
 	public static TheoryData<string> Seeds =>
-		new()
-		{
-			"#000000", "#FFFFFF", "#808080", "#FF0000", "#00FF00", "#0000FF", "#FFFF00",
-			"#6750A4", "#D0BCFF", "#1B6EF3", "#0B6E8A", "#FFD400", "#B91C1C", "#5CC0DA"
-		};
+	[
+		"#000000", "#FFFFFF", "#808080", "#FF0000", "#00FF00", "#0000FF", "#FFFF00",
+		"#6750A4", "#D0BCFF", "#1B6EF3", "#0B6E8A", "#FFD400", "#B91C1C", "#5CC0DA"
+	];
 
 	[Theory]
 	[MemberData(nameof(Seeds))]
@@ -21,7 +20,9 @@ public sealed class PaletteBuilderTests
 		{
 			foreach (bool solarized in new[] { false, true })
 			{
-				foreach (bool black in dark ? new[] { false, true } : new[] { false })
+				bool[] blacks = dark ? [false, true] : [false];
+
+				foreach (bool black in blacks)
 				foreach (bool tint in new[] { false, true })
 				{
 					PaletteColors p = PaletteBuilder.Build(seed, dark, solarized, black, tint);

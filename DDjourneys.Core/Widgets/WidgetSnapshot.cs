@@ -109,12 +109,12 @@ public sealed record WidgetSnapshot
 	public string ToJson() =>
 		new JsonObject
 		{
-			["Title"] = Title,
-			["UpdatedAt"] = UpdatedAt?.ToString("O", System.Globalization.CultureInfo.InvariantCulture),
-			["Message"] = Message,
+			[nameof(Title)] = Title,
+			[nameof(UpdatedAt)] = UpdatedAt?.ToString("O", System.Globalization.CultureInfo.InvariantCulture),
+			[nameof(Message)] = Message,
 			["Stale"] = IsStale,
-			["Requested"] = Requested,
-			["Rows"] =
+			[nameof(Requested)] = Requested,
+			[nameof(Rows)] =
 				Wire.Array(
 					Rows.Select(
 						row => (JsonNode?)new JsonObject

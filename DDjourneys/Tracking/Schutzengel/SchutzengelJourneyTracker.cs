@@ -32,7 +32,7 @@ namespace DDjourneys.Tracking.Schutzengel;
 /// All state is guarded by <see cref="_gate"/>. Events, notifications and the foreground service are
 /// only touched after the gate has been released.
 /// </summary>
-internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCallbacks, IDisposable
+internal sealed partial class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCallbacks, IDisposable
 {
 	private static readonly TimeSpan SyncInterval = TimeSpan.FromSeconds(60);
 	private static readonly TimeSpan RenderInterval = TimeSpan.FromSeconds(10);
@@ -54,7 +54,6 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 	private readonly ITrackingRuntime _runtime;
 	private readonly INotificationAccess _access;
 	private readonly HttpClient? _ownedHttp;
-	private readonly SchutzengelTokenStore _tokens = new();
 
 	private readonly SemaphoreSlim _gate = new(1, 1);
 	private readonly Dictionary<string, WatchEntry> _entries = new(StringComparer.Ordinal);
@@ -66,7 +65,7 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 
 	private readonly List<string> _pendingForgotten = [];
 
-	private readonly object _runtimeGate = new();
+	private readonly Lock _runtimeGate = new();
 
 	private volatile IReadOnlyList<WatchedJourney> _watched = [];
 
@@ -80,7 +79,7 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 	private volatile string? _livePlanId;
 
 	// Immutable copy of the cached trips for readers outside the gate (GetTrip).
-	private volatile IReadOnlyDictionary<string, TripTimeline> _timelines =
+	private volatile Dictionary<string, TripTimeline> _timelines =
 		new Dictionary<string, TripTimeline>(StringComparer.Ordinal);
 
 	private readonly Func<int>? _defaultLeadMinutes;
@@ -113,9 +112,9 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 		_api =
 			new SchutzengelApi(
 				http ?? _ownedHttp!,
-				_tokens.GetAsync,
-				_tokens.SetAsync,
-				_tokens.RemoveToken);
+				SchutzengelTokenStore.GetAsync,
+				SchutzengelTokenStore.SetAsync,
+				SchutzengelTokenStore.RemoveToken);
 
 		// Platform components that DI does not create reach the tracker through the bridge.
 		_bridge.Attach(this);
@@ -202,8 +201,8 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 
 	public async Task<WatchedJourney> FollowAsync(
 		Journey journey,
-		CancellationToken cancellationToken = default,
-		string? replacesPlanId = null)
+		string? replacesPlanId = null,
+		CancellationToken cancellationToken = default)
 	{
 		ArgumentNullException.ThrowIfNull(journey);
 
@@ -366,19 +365,13 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 	/// <summary>Entry point for the actions of the live presentation (buttons, swipe).</summary>
 	public Task HandleActionAsync(string action, string planId)
 	{
-		switch (action)
+		return action switch
 		{
-			case TrackingActions.Pause:
-				return SetActiveAsync(planId, false);
-
-			case TrackingActions.Resume:
-				return SetActiveAsync(planId, true);
-
-			case TrackingActions.Stop:
-				return DeleteAsync(planId);
-
-			case TrackingActions.Dismissed:
-				return RunAsync(
+			TrackingActions.Pause => SetActiveAsync(planId, false),
+			TrackingActions.Resume => SetActiveAsync(planId, true),
+			TrackingActions.Stop => DeleteAsync(planId),
+			TrackingActions.Dismissed =>
+				RunAsync(
 					() =>
 					{
 						if (_entries.TryGetValue(planId, out WatchEntry? entry))
@@ -390,11 +383,9 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 						// monitor" and would stop the keep-alive while the journey is still under way.
 						return Task.FromResult(Recompute());
 					},
-					CancellationToken.None);
-
-			default:
-				return Task.CompletedTask;
-		}
+					CancellationToken.None),
+			_ => Task.CompletedTask
+		};
 	}
 
 	/// <summary>Called when the app comes to the foreground: refreshes and resumes monitoring.</summary>
@@ -432,13 +423,9 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 		}
 
 		(VvoRoute Route, string? SessionId, VvoStatus? Status)? connection =
-			await vvo.GetSchutzengelConnectionAsync(journey, cancellationToken).ConfigureAwait(false);
-
-		if (connection is null)
-		{
-			throw new InvalidOperationException(
+			await vvo.GetSchutzengelConnectionAsync(journey, cancellationToken).ConfigureAwait(false)
+			?? throw new InvalidOperationException(
 				"The selected connection is no longer offered by the timetable service.");
-		}
 
 		System.Text.Json.Nodes.JsonObject rawData =
 			SchutzengelRawDataTranslator.Translate(
@@ -693,7 +680,7 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 			if (notices.StatusCode != HttpStatusCode.NoContent
 				&& notices.Root.ValueKind == JsonValueKind.Array)
 			{
-				entry.Notices = (SchutzengelNotices.Parse(notices.Root)).ToList();
+				entry.Notices = [.. SchutzengelNotices.Parse(notices.Root)];
 				entry.NoticeCount = notices.Root.GetArrayLength();
 				entry.NoticesLoaded = true;
 			}
@@ -792,7 +779,7 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 		string? chosen =
 			LivePlanSelector.Choose(
 				_preferredLive,
-				underway.Select(item => item.View.PlanId).Concat(upcoming.Select(item => item.PlanId)).ToList());
+				(List<string>)[.. underway.Select(item => item.View.PlanId).Concat(upcoming.Select(item => item.PlanId))]);
 
 		WatchEntry? focus = null;
 		WatchedJourney? focusView = null;
@@ -820,7 +807,7 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 				.ToDictionary(item => item.Key, item => item.Value.Timeline!, StringComparer.Ordinal);
 
 		effects.ShouldRun = run;
-		effects.Forgotten = (_pendingForgotten).ToList();
+		effects.Forgotten = [.. _pendingForgotten];
 		_pendingForgotten.Clear();
 
 		if (!SameWatchlist(_watched, views))
@@ -1075,10 +1062,10 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 			info.Options.ToWatchOptions(),
 			periodic,
 			entry.Summary?.EnsuredChanges,
-			entry.Notices
+			(List<WatchedNotice>)
+			[.. entry.Notices
 				.OrderByDescending(item => item.Time ?? DateTimeOffset.MinValue)
-				.Select(item => new WatchedNotice(item.Time, item.Text, item.Severity != SchutzengelNoticeSeverity.Information))
-				.ToList());
+				.Select(item => new WatchedNotice(item.Time, item.Text, item.Severity != SchutzengelNoticeSeverity.Information))]);
 	}
 
 	private void RaiseTransitions(
@@ -1402,7 +1389,7 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 			_ => 3
 		};
 
-	private static bool SameWatchlist(IReadOnlyList<WatchedJourney> left, IReadOnlyList<WatchedJourney> right)
+	private static bool SameWatchlist(IReadOnlyList<WatchedJourney> left, List<WatchedJourney> right)
 	{
 		if (left.Count != right.Count)
 		{
@@ -1659,7 +1646,7 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 
 		public TripTimeline? Timeline { get; set; }
 
-		public IReadOnlyList<SchutzengelNotice> Notices { get; set; } = [];
+		public List<SchutzengelNotice> Notices { get; set; } = [];
 
 		public int NoticeCount { get; set; }
 
@@ -1690,7 +1677,7 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 
 		public List<JourneyTrackingEvent> Events { get; } = [];
 
-		public IReadOnlyList<string> Forgotten { get; set; } = [];
+		public List<string> Forgotten { get; set; } = [];
 
 		public bool WatchlistChanged { get; set; }
 
