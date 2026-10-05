@@ -110,7 +110,7 @@ public sealed class WidgetLoader(
 		{
 			Title = title,
 			UpdatedAt = DateTimeOffset.UtcNow,
-			Rows = [.. result.Journeys.Select(journey => WidgetSnapshots.ForJourney(journey, all))]
+			Rows = result.Journeys.Select(journey => WidgetSnapshots.ForJourney(journey, all)).ToList()
 		};
 	}
 
@@ -174,7 +174,7 @@ public sealed class WidgetLoader(
 			Title = stop.Name,
 			UpdatedAt = DateTimeOffset.UtcNow,
 			Message = list.Count == 0 ? (arrival ? strings.NoArrivals : strings.NoDepartures) : string.Empty,
-			Rows = [.. list.Select(departure => WidgetSnapshots.ForDeparture(departure, all))]
+			Rows = list.Select(departure => WidgetSnapshots.ForDeparture(departure, all)).ToList()
 		};
 	}
 
@@ -202,11 +202,12 @@ public sealed class WidgetLoader(
 		IReadOnlyList<string> lines = config.LineFilter;
 
 		return
-			[.. board.Departures
+			board.Departures
 				.Where(
 					departure => lines.Count == 0
 						|| lines.Contains(departure.Line.Name, StringComparer.OrdinalIgnoreCase))
-				.Take(limit)];
+				.Take(limit)
+				.ToList();
 	}
 
 	// ---------- Around the device ----------
@@ -250,7 +251,7 @@ public sealed class WidgetLoader(
 			{
 				Title = title,
 				UpdatedAt = DateTimeOffset.UtcNow,
-				Rows = [.. stops.Take(Fetch).Select(stop => WidgetSnapshots.ForStop(stop, strings))]
+				Rows = stops.Take(Fetch).Select(stop => WidgetSnapshots.ForStop(stop, strings)).ToList()
 			};
 		}
 
@@ -277,7 +278,7 @@ public sealed class WidgetLoader(
 					{
 						DiagnosticLog.Write($"Widget: departures of {stop.Stop.Name} failed: {ex.Message}");
 
-						boards[index] = [];
+						boards[index] = new List<Departure>();
 					}
 					finally
 					{
@@ -327,7 +328,7 @@ public sealed class WidgetLoader(
 					.ConfigureAwait(false);
 
 			found =
-				[.. stops
+				stops
 					.Select(
 						stop => new NearbyStop
 						{
@@ -337,9 +338,10 @@ public sealed class WidgetLoader(
 									? (int)Math.Round(GeoMath.DistanceMeters(latitude, longitude, lat, lon))
 									: 0
 						})
-					.Where(stop => stop.DistanceMeters <= radius)];
+					.Where(stop => stop.DistanceMeters <= radius)
+					.ToList();
 		}
 
-		return [.. found.OrderBy(stop => stop.DistanceMeters)];
+		return found.OrderBy(stop => stop.DistanceMeters).ToList();
 	}
 }

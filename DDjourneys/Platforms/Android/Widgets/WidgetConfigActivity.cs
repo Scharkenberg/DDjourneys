@@ -90,7 +90,9 @@ public sealed class WidgetConfigActivity : Activity
 		WidgetStrings s = _strings;
 		IUiStrings all = LocalizationService.Current.CurrentStrings;
 
-		var scroll = new ScrollView(this) { FitsSystemWindows = true };
+		var scroll = new ScrollView(this);
+
+		scroll.SetFitsSystemWindows(true);
 
 		_form = new LinearLayout(this) { Orientation = WidgetOrientation.Vertical };
 		_form.SetPadding(Dp(20), Dp(16), Dp(20), Dp(24));
@@ -292,7 +294,7 @@ public sealed class WidgetConfigActivity : Activity
 			return;
 		}
 
-		var allow = new Button(this) { Text = LocalizationService.Current.CurrentStrings.Plan.UseMyLocation };
+		var allow = new Button(this) { Text = LocalizationService.Current.CurrentStrings.Departures.UseMyLocation };
 		allow.Click +=
 			(_, _) =>
 			{

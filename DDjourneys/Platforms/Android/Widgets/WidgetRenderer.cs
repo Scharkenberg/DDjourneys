@@ -129,7 +129,7 @@ internal static class WidgetRenderer
 		}
 
 		views.SetTextViewText(updated, text);
-		views.SetTextColor(updated, WidgetResources.ColorValue(context, color));
+		views.SetTextColor(updated, WidgetResources.ColorOf(context, color));
 		views.SetViewVisibility(updated, text.Length > 0 ? ViewStates.Visible : ViewStates.Gone);
 	}
 
@@ -173,7 +173,7 @@ internal static class WidgetRenderer
 		if (showMain)
 		{
 			views.SetTextViewText(main, row.Main);
-			views.SetTextColor(main, WidgetResources.ColorValue(context, header ? "widget_accent" : "widget_ink"));
+			views.SetTextColor(main, WidgetResources.ColorOf(context, header ? "widget_accent" : "widget_ink"));
 		}
 
 		bool showSub = detail == WidgetDetail.Full && row.Sub.Length > 0;
@@ -192,7 +192,7 @@ internal static class WidgetRenderer
 		if (showDelay)
 		{
 			views.SetTextViewText(delay, row.Delay);
-			views.SetTextColor(delay, WidgetResources.ColorValue(context, row.DelayLevel == WidgetDelay.Cancelled ? "widget_cancelled" : "widget_late"));
+			views.SetTextColor(delay, WidgetResources.ColorOf(context, row.DelayLevel == WidgetDelay.Cancelled ? "widget_cancelled" : "widget_late"));
 		}
 
 		views.SetViewVisibility(time, row.Time.Length > 0 ? ViewStates.Visible : ViewStates.Gone);
@@ -201,7 +201,7 @@ internal static class WidgetRenderer
 		// A late or cancelled departure shows it in the time too, so even the smallest widget says so.
 		views.SetTextColor(
 			time,
-			WidgetResources.ColorValue(
+			WidgetResources.ColorOf(
 				context,
 				header
 					? "widget_muted"

@@ -38,6 +38,7 @@ internal static class AndroidShortcuts
 		}
 	}
 
+	[System.Runtime.Versioning.SupportedOSPlatform("android25.0")]
 	private static ShortcutInfo Build(Activity activity, AppShortcut shortcut, string label, string icon, int rank)
 	{
 		var intent =

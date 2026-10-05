@@ -20,9 +20,13 @@ internal static class WidgetResources
 	public static int Color(Context context, string name) =>
 		Find(context, name, "color");
 
-	/// <summary>The colour as an ARGB value, for text colours and tints (night mode follows the configuration).</summary>
+	/// <summary>The colour as an ARGB value, for tints (night mode follows the configuration).</summary>
 	public static int ColorValue(Context context, string name) =>
 		context.GetColor(Color(context, name));
+
+	/// <summary>The colour as an Android colour, for text colours.</summary>
+	public static global::Android.Graphics.Color ColorOf(Context context, string name) =>
+		new(ColorValue(context, name));
 
 	private static int Find(Context context, string name, string type)
 	{
