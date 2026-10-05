@@ -1,5 +1,4 @@
 using Microsoft.Maui.Handlers;
-using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 
@@ -49,10 +48,10 @@ internal static class NativeStyling
 
 		foreach (string key in ThicknessKeys)
 		{
-			box.Resources[key] = new Thickness(0);
+			box.Resources[key] = new global::Microsoft.UI.Xaml.Thickness(0);
 		}
 
-		box.BorderThickness = new Thickness(0);
+		box.BorderThickness = new global::Microsoft.UI.Xaml.Thickness(0);
 		box.Background = new SolidColorBrush(global::Microsoft.UI.Colors.Transparent);
 
 		// The template reads the resources when it is applied; re-apply if it already was.

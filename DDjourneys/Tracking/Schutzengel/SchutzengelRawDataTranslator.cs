@@ -220,10 +220,6 @@ internal static class SchutzengelRawDataTranslator
 	}
 
 
-	private static bool IsRealtimeControlled		};
-	}
-
-
 	private static bool IsRealtimeControlled(
 		VvoPartialRoute route)
 	{

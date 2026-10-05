@@ -131,10 +131,6 @@ internal static class SchutzengelPlanTranslator
 	}
 
 
-	private static JsonObject IndividualEpisode		};
-	}
-
-
 	private static JsonObject IndividualEpisode(
 		JourneyLeg leg)
 	{
@@ -174,10 +170,6 @@ internal static class SchutzengelPlanTranslator
 			["durationSeconds"] = durationSeconds,
 			["polyline"] = BuildPolyline(leg.Path)
 		};
-	}
-
-
-	private static void AddInterLegTransfer		};
 	}
 
 
@@ -330,10 +322,6 @@ internal static class SchutzengelPlanTranslator
 			["durationSeconds"] = seconds,
 			["polyline"] = BuildPolyline(path)
 		};
-	}
-
-
-	private static StopTime[] BuildStops		};
 	}
 
 
