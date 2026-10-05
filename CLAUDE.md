@@ -21,6 +21,10 @@ Journey planner for DVB/VVO (Dresden), .NET 11 MAUI / C# 15. Repo: `Scharkenberg
 ## Providers
 - Everything a provider's ids or meaning touch is kept per provider: `PlaceStore` (recents, favourites, searched and saved routes, home) and the routing preferences in `AppSettings`. VVO keeps the original keys, every other provider uses `<key>@<provider id>`. `PlaceStore` reloads on `ProviderRegistry.SelectionChanged`; the Departures, Disruptions, Vehicles, Plan and PlaceSearch view models drop their provider-bound state on it. Any new provider-bound cache or list must do the same.
 
+## TRIAS (VDV 431-2, schema v1.4, checked against github.com/VDVde/TRIAS)
+- A `Service` keeps its line data in `ServiceSection` (LineRef, DirectionRef, Mode/PtMode, PublishedLineName, OperatorRef); `TriasMapper.Properties` reads the first section, or the service itself for older flat responses. Destination, JourneyRef, Attribute and the status flags stay on the service.
+- Journey stops are identified by stop place (`StationId`: first three DHID parts), the platform is a detail. Changes are `InterchangeLeg` (`InterchangeMode`: walk, protectedConnection, guaranteedConnection, remainInVehicle; `WalkDuration`, `BufferTime`) or `ContinuousLeg`; only the connection modes are guaranteed.
+
 ## Logging and developer options
 - No `Debug.WriteLine`, no always-on files. Everything diagnostic goes through `DiagnosticLog.Write/Api`, which writes only while Settings > Developer options > "Log to file" is on (`AppSettings.LogToFile`, needs `DeveloperOptions`). Switching it off, or the developer options off, deletes the file; so does a start with it off. `ApiClient`, `SchutzengelApi`, TLMS and notice links log their exchanges; new external API code must too.
 - Expert view (raw provider data) is a developer option as well.

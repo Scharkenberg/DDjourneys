@@ -84,10 +84,32 @@ internal static class TriasMapper
 
 	// ---------- Stops, modes ----------
 
+	/// <summary>
+	/// A DHID names a platform with five parts ("de:14612:28:2:3"); its first three are the stop place
+	/// ("de:14612:28"). Journey stops are identified by the place, so two legs at different platforms of one
+	/// station are one stop (the platform is a detail), and the place id is what the requests take.
+	/// </summary>
+	private static string StationId(string? reference)
+	{
+		if (string.IsNullOrWhiteSpace(reference))
+		{
+			return string.Empty;
+		}
+
+		string[] parts = reference.Split(':');
+
+		return parts.Length > 3
+			&& parts[0].Length == 2
+			&& parts[1].All(char.IsAsciiDigit)
+			&& parts[2].All(char.IsAsciiDigit)
+				? string.Join(':', parts.Take(3))
+				: reference;
+	}
+
 	private static Station MapStop(XElement? call, string idName, string nameName, string? platform, PlatformKind platformKind) =>
 		new()
 		{
-			Id = call.ChildText(idName) ?? string.Empty,
+			Id = StationId(call.ChildText(idName)),
 			ProviderId = TriasProviderInfo.Id,
 			Name = call.ChildLabel(nameName) ?? call.ChildText(idName) ?? string.Empty,
 			Platform = platform,
@@ -286,7 +308,18 @@ internal static class TriasMapper
 	/// The visible line name. TRIAS 1.2 calls it <c>PublishedServiceName</c> (1.1: <c>PublishedLineName</c>); the
 	/// product category and the mode text are the fallbacks, never the word "Unknown".
 	/// </summary>
-	private static string LineName(XElement? service) =>
+	/// <summary>
+	/// TRIAS 1.4 puts the line properties (LineRef, DirectionRef, Mode, PublishedLineName, OperatorRef) into the
+	/// <c>ServiceSection</c>s of a service; a service can have several (the line name changes along the journey).
+	/// Older versions put them directly under the service. The first section describes where the leg starts.
+	/// </summary>
+	private static XElement? Properties(XElement? service) =>
+		service.Child("ServiceSection") ?? service;
+
+	private static string LineName(XElement? owner) =>
+		LineNameOf(Properties(owner));
+
+	private static string LineNameOf(XElement? service) =>
 		service.ChildLabel("PublishedServiceName")
 		?? service.ChildLabel("PublishedLineName")
 		?? service.Child("ProductCategory").ChildText("ShortName")
@@ -310,15 +343,19 @@ internal static class TriasMapper
 			: null;
 	}
 
-	private static TransitLine MapService(XElement? service, TransitMode mode) =>
-		new()
+	private static TransitLine MapService(XElement? service, TransitMode mode)
+	{
+		XElement? section = Properties(service);
+
+		return new()
 		{
 			Name = LineName(service),
 			Mode = mode,
-			Operator = service.ChildText("OperatorRef"),
+			Operator = section.ChildText("OperatorRef"),
 			Destination = service.ChildLabel("DestinationText"),
-			DirectionId = service.ChildText("DirectionRef")
+			DirectionId = section.ChildText("DirectionRef")
 		};
+	}
 
 	private static bool IsCancelled(XElement? service) =>
 		service.Child("Cancelled").Flag();
@@ -480,7 +517,7 @@ internal static class TriasMapper
 	private static JourneyLeg MapTimedLeg(XElement tripLeg, XElement timed)
 	{
 		XElement? service = timed.Child("Service");
-		TransitMode mode = MapMode(service.Child("Mode"), service);
+		TransitMode mode = MapMode(Properties(service).Child("Mode"), Properties(service));
 		XElement? board = timed.Child("LegBoard");
 		XElement? alight = timed.Child("LegAlight");
 
@@ -552,9 +589,9 @@ internal static class TriasMapper
 		Station Point(string name) =>
 			new()
 			{
-				Id = walk.Child(name).Child("LocationRef").ChildText("StopPointRef")
-					?? walk.Child(name).Child("LocationRef").ChildText("StopPlaceRef")
-					?? string.Empty,
+				Id = StationId(
+					walk.Child(name).Child("LocationRef").ChildText("StopPointRef")
+					?? walk.Child(name).Child("LocationRef").ChildText("StopPlaceRef")),
 				ProviderId = TriasProviderInfo.Id,
 				Name = walk.Child(name).Child("LocationRef").ChildLabel("LocationName")
 					?? location?.Name
@@ -563,20 +600,44 @@ internal static class TriasMapper
 				Longitude = walk.Child(name).Child("LocationRef").Child("GeoPosition").Child("Longitude").Number()
 			};
 
-		bool interchange = tripLeg.Child("InterchangeLeg") is not null;
-		TimeSpan duration = walk.Child("Duration").Duration() ?? TimeSpan.Zero;
+		// TRIAS 1.4: InterchangeMode is walk | protectedConnection | guaranteedConnection | remainInVehicle | ...
+		// (ContinuousMode for a continuous leg). Only the last three are promises of the operator.
+		string mode = walk.ChildText("InterchangeMode") ?? walk.ChildText("ContinuousMode") ?? string.Empty;
+		bool remain = mode.Equals("remainInVehicle", StringComparison.OrdinalIgnoreCase);
+		bool guaranteed =
+			remain
+			|| mode.Equals("protectedConnection", StringComparison.OrdinalIgnoreCase)
+			|| mode.Equals("guaranteedConnection", StringComparison.OrdinalIgnoreCase);
+
+		// Duration is the whole change; WalkDuration the walking part of it, BufferTime the reserve.
+		TimeSpan duration = walk.Child("WalkDuration").Duration() ?? walk.Child("Duration").Duration() ?? TimeSpan.Zero;
+
+		Station start = Point("LegStart");
+		Station end = Point("LegEnd");
+		bool sameStation = string.Equals(start.Id, end.Id, StringComparison.OrdinalIgnoreCase);
+
+		TransferKind kind =
+			remain
+				? TransferKind.SameStop
+				: guaranteed
+					? TransferKind.Waiting
+					: !sameStation
+						? TransferKind.Walk
+						: duration > TimeSpan.Zero || tripLeg.Child("InterchangeLeg") is not null
+							? TransferKind.PlatformChange
+							: TransferKind.SameStop;
 
 		return new JourneyTransfer
 		{
-			Location = location ?? Point("LegStart"),
+			Location = location ?? start,
 			PreviousLegIndex = previous,
 			NextLegIndex = next,
 			Duration = duration < TimeSpan.Zero ? TimeSpan.Zero : duration,
-			Kind = interchange ? TransferKind.PlatformChange : TransferKind.Walk,
+			Kind = kind,
 			Path = MapPath(walk),
-			IsGuaranteed = true,
-			From = Point("LegStart"),
-			To = Point("LegEnd"),
+			IsGuaranteed = guaranteed,
+			From = start,
+			To = end,
 			ProviderData = tripLeg
 		};
 	}
@@ -668,7 +729,7 @@ internal static class TriasMapper
 			name ??= thisCall.ChildLabel("StopPointName");
 
 			XElement? service = stopEvent.Child("Service");
-			TransitMode mode = MapMode(service.Child("Mode"), service);
+			TransitMode mode = MapMode(Properties(service).Child("Mode"), Properties(service));
 
 			(DateTimeOffset? planned, DateTimeOffset? estimated) =
 				Times(thisCall, arrival ? "ServiceArrival" : "ServiceDeparture");
