@@ -59,10 +59,13 @@
 
 					<Grid
 						Grid.Row="0"
-						ColumnDefinitions="*,36,36,36"
-						support:Dense.MinHeight="{StaticResource HitRow}">
+						support:Dense.MinHeight="{StaticResource HitRow}"
+						ColumnDefinitions="*,36,36,36">
 
-						<VerticalStackLayout support:Motion.Feedback="True" Spacing="0" VerticalOptions="Center">
+						<VerticalStackLayout
+							support:Motion.Feedback="True"
+							Spacing="0"
+							VerticalOptions="Center">
 							<Label StyleClass="Caption" Text="{localization:Tr Plan.FromPlaceholder}" />
 
 							<controls:StopNameView
@@ -78,9 +81,9 @@
 						<controls:IconButton
 							Grid.Column="1"
 							Command="{Binding UseLocationFromCommand}"
-							TargetSize="{StaticResource HitIconTight}"
 							Glyph="Locate"
-							SemanticProperties.Description="{localization:Tr Plan.UseLocationFrom}" />
+							SemanticProperties.Description="{localization:Tr Plan.UseLocationFrom}"
+							TargetSize="{StaticResource HitIconTight}" />
 
 						<controls:IconButton
 							Grid.Column="2"
@@ -92,11 +95,11 @@
 						<controls:IconButton
 							Grid.Column="3"
 							Command="{Binding ToggleFromFavouriteCommand}"
-							TargetSize="{StaticResource HitIconTight}"
 							Glyph="{Binding FromStar}"
 							InputTransparent="{Binding NoFrom}"
 							Opacity="{Binding StarOpacityFrom}"
-							SemanticProperties.Description="{localization:Tr Plan.ToggleFavouriteFrom}" />
+							SemanticProperties.Description="{localization:Tr Plan.ToggleFavouriteFrom}"
+							TargetSize="{StaticResource HitIconTight}" />
 					</Grid>
 
 					<BoxView
@@ -106,10 +109,13 @@
 
 					<Grid
 						Grid.Row="2"
-						ColumnDefinitions="*,36,36,36"
-						support:Dense.MinHeight="{StaticResource HitRow}">
+						support:Dense.MinHeight="{StaticResource HitRow}"
+						ColumnDefinitions="*,36,36,36">
 
-						<VerticalStackLayout support:Motion.Feedback="True" Spacing="0" VerticalOptions="Center">
+						<VerticalStackLayout
+							support:Motion.Feedback="True"
+							Spacing="0"
+							VerticalOptions="Center">
 							<Label StyleClass="Caption" Text="{localization:Tr Plan.ToPlaceholder}" />
 
 							<controls:StopNameView
@@ -125,9 +131,9 @@
 						<controls:IconButton
 							Grid.Column="1"
 							Command="{Binding UseLocationToCommand}"
-							TargetSize="{StaticResource HitIconTight}"
 							Glyph="Locate"
-							SemanticProperties.Description="{localization:Tr Plan.UseLocationTo}" />
+							SemanticProperties.Description="{localization:Tr Plan.UseLocationTo}"
+							TargetSize="{StaticResource HitIconTight}" />
 
 						<controls:IconButton
 							Grid.Column="2"
@@ -139,11 +145,11 @@
 						<controls:IconButton
 							Grid.Column="3"
 							Command="{Binding ToggleToFavouriteCommand}"
-							TargetSize="{StaticResource HitIconTight}"
 							Glyph="{Binding ToStar}"
 							InputTransparent="{Binding NoTo}"
 							Opacity="{Binding StarOpacityTo}"
-							SemanticProperties.Description="{localization:Tr Plan.ToggleFavouriteTo}" />
+							SemanticProperties.Description="{localization:Tr Plan.ToggleFavouriteTo}"
+							TargetSize="{StaticResource HitIconTight}" />
 					</Grid>
 
 					<!--  A stop over is added where it happens: between start and destination  -->
@@ -158,11 +164,11 @@
 						Grid.Row="4"
 						Grid.ColumnSpan="2"
 						Padding="0,2"
-						IsVisible="{Binding NoVia}"
-						Spacing="8"
 						support:Dense.MinHeight="{StaticResource HitButton}"
 						support:Motion.Feedback="True"
-						SemanticProperties.Description="{localization:Tr Plan.AddVia}">
+						IsVisible="{Binding NoVia}"
+						SemanticProperties.Description="{localization:Tr Plan.AddVia}"
+						Spacing="8">
 						<controls:Icon
 							Glyph="Plus"
 							Size="18"
@@ -203,7 +209,10 @@
 					support:Dense.Padding="12,4"
 					ColumnDefinitions="*,38">
 
-					<VerticalStackLayout support:Motion.Feedback="True" Spacing="0" VerticalOptions="Center">
+					<VerticalStackLayout
+						support:Motion.Feedback="True"
+						Spacing="0"
+						VerticalOptions="Center">
 						<Label StyleClass="Caption" Text="{localization:Tr Plan.Via}" />
 
 						<controls:StopNameView Place="{Binding ViaPlace}" Stop="{Binding ViaName}" />
@@ -216,9 +225,9 @@
 					<controls:IconButton
 						Grid.Column="1"
 						Command="{Binding ClearViaCommand}"
-							TargetSize="{StaticResource HitIconTight}"
 						Glyph="Close"
-						SemanticProperties.Description="{localization:Tr Plan.ClearVia}" />
+						SemanticProperties.Description="{localization:Tr Plan.ClearVia}"
+						TargetSize="{StaticResource HitIconTight}" />
 				</Grid>
 			</Border>
 
@@ -233,22 +242,22 @@
 
 						<Button
 							Grid.Column="0"
-							Command="{Binding DepartCommand}"
 							support:Dense.MinHeight="{StaticResource HitButton}"
-							StyleClass="Tonal"
 							support:Themed.IsOn="{Binding IsDeparture}"
 							support:Themed.OnBackground="Accent"
 							support:Themed.OnText="OnAccent"
+							Command="{Binding DepartCommand}"
+							StyleClass="Tonal"
 							Text="{localization:Tr Plan.Departure}" />
 
 						<Button
 							Grid.Column="1"
-							Command="{Binding ArriveCommand}"
 							support:Dense.MinHeight="{StaticResource HitButton}"
-							StyleClass="Tonal"
 							support:Themed.IsOn="{Binding IsArrival}"
 							support:Themed.OnBackground="Accent"
 							support:Themed.OnText="OnAccent"
+							Command="{Binding ArriveCommand}"
+							StyleClass="Tonal"
 							Text="{localization:Tr Plan.Arrival}" />
 					</Grid>
 
@@ -272,61 +281,61 @@
 						<Button
 							Grid.Column="0"
 							Padding="0"
+							support:Dense.MinHeight="{StaticResource HitButton}"
 							Command="{Binding NudgeCommand}"
 							CommandParameter="-60"
 							FontSize="{StaticResource FontCaption}"
 							LineBreakMode="NoWrap"
 							MinimumWidthRequest="0"
-							support:Dense.MinHeight="{StaticResource HitButton}"
 							StyleClass="Tonal"
 							Text="&#x2212;1 h" />
 
 						<Button
 							Grid.Column="1"
 							Padding="0"
+							support:Dense.MinHeight="{StaticResource HitButton}"
 							Command="{Binding NudgeCommand}"
 							CommandParameter="-15"
 							FontSize="{StaticResource FontCaption}"
 							LineBreakMode="NoWrap"
 							MinimumWidthRequest="0"
-							support:Dense.MinHeight="{StaticResource HitButton}"
 							StyleClass="Tonal"
-							Text="&#x2212;15m" />
+							Text="&#x2212;15 m" />
 
 						<!--  "Now" resets the time: in the middle of the steps, so the row says everything about the moment  -->
 						<Button
 							Grid.Column="2"
 							Padding="0"
+							support:Dense.MinHeight="{StaticResource HitButton}"
 							Command="{Binding NowCommand}"
 							FontSize="{StaticResource FontCaption}"
 							IsEnabled="{Binding IsNotNow}"
 							LineBreakMode="NoWrap"
 							MinimumWidthRequest="0"
-							support:Dense.MinHeight="{StaticResource HitButton}"
 							StyleClass="Tonal"
 							Text="{localization:Tr Departures.Now}" />
 
 						<Button
 							Grid.Column="3"
 							Padding="0"
+							support:Dense.MinHeight="{StaticResource HitButton}"
 							Command="{Binding NudgeCommand}"
 							CommandParameter="15"
 							FontSize="{StaticResource FontCaption}"
 							LineBreakMode="NoWrap"
 							MinimumWidthRequest="0"
-							support:Dense.MinHeight="{StaticResource HitButton}"
 							StyleClass="Tonal"
-							Text="+15m" />
+							Text="+15 m" />
 
 						<Button
 							Grid.Column="4"
 							Padding="0"
+							support:Dense.MinHeight="{StaticResource HitButton}"
 							Command="{Binding NudgeCommand}"
 							CommandParameter="60"
 							FontSize="{StaticResource FontCaption}"
 							LineBreakMode="NoWrap"
 							MinimumWidthRequest="0"
-							support:Dense.MinHeight="{StaticResource HitButton}"
 							StyleClass="Tonal"
 							Text="+1 h" />
 					</Grid>
@@ -340,13 +349,13 @@
 
 				<Border
 					Grid.Column="1"
+					support:Dense.MinHeight="{StaticResource HitRow}"
+					support:Motion.Feedback="True"
 					BackgroundColor="{DynamicResource AccentSoft}"
 					SemanticProperties.Description="{Binding Bookmark.Description}"
 					StrokeShape="RoundRectangle 6"
 					StrokeThickness="0"
-					WidthRequest="52"
-					support:Dense.MinHeight="{StaticResource HitRow}"
-					support:Motion.Feedback="True">
+					WidthRequest="52">
 					<controls:Icon
 						Glyph="{Binding Bookmark.Glyph}"
 						HorizontalOptions="Center"
@@ -502,14 +511,14 @@
 						ColumnDefinitions="*,Auto"
 						IsVisible="{Binding HasRecentRoutes}">
 						<Button
+							Padding="14,0"
+							support:Dense.MinHeight="{StaticResource HitButton}"
 							Command="{Binding ToggleRoutesCommand}"
 							FontSize="{StaticResource FontCaption}"
 							HorizontalOptions="Start"
 							IsVisible="{Binding CanExpandRoutes}"
 							StyleClass="Tonal"
-							Text="{Binding RoutesToggleText}"
-							support:Dense.MinHeight="{StaticResource HitButton}"
-							Padding="14,0" />
+							Text="{Binding RoutesToggleText}" />
 						<controls:IconButton
 							Grid.Column="1"
 							Command="{Binding ClearRoutesCommand}"
