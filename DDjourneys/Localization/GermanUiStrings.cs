@@ -204,6 +204,8 @@ public sealed class GermanUiStrings : IUiStrings
 		MapKeyMissing = "Die Karte braucht Ihren eigenen CARTO-API-Schlüssel. Sie können ihn in den Einstellungen eintragen.",
 		MapKeyInvalid = "CARTO hat den API-Schlüssel nicht akzeptiert, deshalb ist die Karte aus. Sie können ihn in den Einstellungen prüfen.",
 		MapKeyOpenSettings = "Einstellungen öffnen",
+		MapUnsupported = "Dieses Gerät kann die Karte nicht darstellen. Es braucht OpenGL ES 3 und ein aktuelles Android System WebView (Chrome 80 oder neuer). Ein Update des WebView im Play Store kann helfen; der Rest der App ist nicht betroffen.",
+		MapCrashed = "Die Anzeige der Karte hat die App beim letzten Mal beendet, deshalb ist die Karte abgeschaltet. Den API-Schlüssel in den Einstellungen erneut zu speichern versucht es noch einmal.",
 		MapPickStart = "Start wählen",
 		MapPickEnd = "Ziel wählen",
 		MapPickStop = "Haltestelle wählen",

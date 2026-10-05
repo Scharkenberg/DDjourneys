@@ -29,6 +29,8 @@ public sealed partial class MapView : ContentView
 	private bool _pageReady;
 	private bool _subscribed;
 	private readonly Border _notice;
+	private readonly Grid _grid;
+	private readonly Button _settingsButton;
 	private readonly Label _noticeText;
 	private MapScene? _overlay;
 	private (bool Explore, bool Pick, double? Latitude, double? Longitude, int Zoom)? _mode;
@@ -103,7 +105,7 @@ public sealed partial class MapView : ContentView
 
 		_noticeText.SetDynamicResource(Label.TextColorProperty, "InkMuted");
 
-		var settings =
+		_settingsButton =
 			new Button
 			{
 				HorizontalOptions = LayoutOptions.Center,
@@ -111,7 +113,7 @@ public sealed partial class MapView : ContentView
 				StyleClass = ["Tonal"]
 			};
 
-		settings.Clicked += async (_, _) => await Shell.Current.GoToAsync(Routes.Settings);
+		_settingsButton.Clicked += async (_, _) => await Shell.Current.GoToAsync(Routes.Settings);
 
 		_notice =
 			new Border
@@ -133,14 +135,16 @@ public sealed partial class MapView : ContentView
 								HorizontalOptions = LayoutOptions.Center
 							},
 							_noticeText,
-							settings
+							_settingsButton
 						}
 					}
 			};
 
 		_notice.SetDynamicResource(Border.BackgroundColorProperty, "Bg");
 
-		Content =
+		// The web view joins the grid only when the device can draw the map and a key exists (see ApplyAvailability):
+		// a web view that is not in the tree never loads its page.
+		_grid =
 			new Grid
 			{
 				RowDefinitions =
@@ -151,11 +155,12 @@ public sealed partial class MapView : ContentView
 				RowSpacing = 0,
 				Children =
 				{
-					_web,
 					_notice,
 					strip
 				}
 			};
+
+		Content = _grid;
 
 		Grid.SetRow(strip, 1);
 
@@ -238,6 +243,9 @@ public sealed partial class MapView : ContentView
 		{
 			if (_subscribed)
 			{
+				// Left in an orderly way: not a crash.
+				MapSupport.Finish();
+
 				MapAvailability.Changed -= OnAvailabilityChanged;
 				Theme.Changed -= OnThemeChanged;
 				SystemAccessibility.Changed -= OnThemeChanged;
@@ -266,12 +274,22 @@ public sealed partial class MapView : ContentView
 			{
 				_pageReady = true;
 
+				MapSupport.Finish();
+
 				DiagnosticLog.Write($"[Map] page ready {_created.ElapsedMilliseconds} ms after the web view was created; map available: {MapAvailability.IsAvailable}");
 
 				if (MapAvailability.IsAvailable)
 				{
 					await InitializeAsync();
 				}
+			}
+			else if (message.StartsWith("unsupported:", StringComparison.Ordinal))
+			{
+				// The page's own check (WebGL 2, language features) failed before MapLibre was loaded.
+				MapSupport.ReportFromPage(message[12..]);
+				MapSupport.Finish();
+
+				await MainThread.InvokeOnMainThreadAsync(ApplyAvailability);
 			}
 			else if (message == "keyrejected")
 			{
@@ -383,17 +401,46 @@ public sealed partial class MapView : ContentView
 	/// <summary>The map when there is a usable key, else the notice that says what to do.</summary>
 	private void ApplyAvailability()
 	{
-		bool available = MapAvailability.IsAvailable;
+		MapBlock block = MapSupport.Block;
+		bool available = block == MapBlock.None && MapAvailability.IsAvailable;
+		bool attached = _grid.Children.Contains(_web);
 
-		_web.IsVisible = available;
+		if (available && !attached)
+		{
+			DiagnosticLog.Write("[Map] loading the map page");
+
+			MapSupport.Begin();
+			_grid.Children.Insert(0, _web);
+		}
+		else if (!available && attached)
+		{
+			DiagnosticLog.Write($"[Map] map not shown: {(block == MapBlock.None ? "no usable key" : MapSupport.Detail)}");
+
+			_grid.Children.Remove(_web);
+			MapSupport.Finish();
+
+			_pageReady = false;
+			_ready = false;
+		}
+		else if (!available && block != MapBlock.None)
+		{
+			DiagnosticLog.Write($"[Map] map not started: {MapSupport.Detail}");
+		}
+
 		_notice.IsVisible = !available;
 
 		ExtrasStrings strings = LocalizationService.Current.CurrentStrings.Extras;
 
 		_noticeText.Text =
-			MapAvailability.HasKey
-				? strings.MapKeyInvalid
-				: strings.MapKeyMissing;
+			block switch
+			{
+				MapBlock.Device => strings.MapUnsupported,
+				MapBlock.Crashed => strings.MapCrashed,
+				_ => MapAvailability.HasKey ? strings.MapKeyInvalid : strings.MapKeyMissing
+			};
+
+		// The device cannot be changed in Settings; the key can (and a changed key retries after a crash).
+		_settingsButton.IsVisible = block != MapBlock.Device;
 	}
 
 	private async void OnThemeChanged(object? sender, EventArgs e)

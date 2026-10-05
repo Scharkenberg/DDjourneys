@@ -106,9 +106,10 @@ public sealed class AppSettings
 
 			(string mode, string color, bool black) = ColorCatalog.FromLegacy(legacy);
 
+			// Settings are stored as text (see Write); a typed value here made every later read fail.
 			_prefs.Set("themeMode", mode);
 			_prefs.Set("themeColor", color);
-			_prefs.Set("themePureBlack", black);
+			_prefs.Set("themePureBlack", Convert.ToString(black, CultureInfo.InvariantCulture) ?? string.Empty);
 			_prefs.Remove("themeId");
 			_prefs.Remove("theme");
 		}
@@ -523,6 +524,24 @@ public sealed class AppSettings
 			};
 
 			return (T)parsed!;
+		}
+		catch (InvalidCastException) when (typeof(T) == typeof(bool))
+		{
+			// Written as a real boolean by an earlier build: read it as one and store it as text from now on.
+			try
+			{
+				bool stored = _prefs.Get(key, Convert.ToBoolean(fallback, CultureInfo.InvariantCulture));
+
+				_prefs.Remove(key);
+				_prefs.Set(key, Convert.ToString(stored, CultureInfo.InvariantCulture) ?? string.Empty);
+
+				return (T)(object)stored;
+			}
+			catch (Exception ex)
+			{
+				DiagnosticLog.Write($"Settings read '{key}' failed: {ex.Message}");
+				return fallback;
+			}
 		}
 		catch (Exception ex)
 		{

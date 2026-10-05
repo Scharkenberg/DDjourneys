@@ -92,8 +92,9 @@
 			'template literal': 'return `a`',
 			'arrow function': 'return ()=>1'
 		}, failed = [], passed = 0;
+		var required = ['optional chaining', 'nullish coalescing', 'async/await', 'object spread', 'optional catch binding'], missingRequired = [];
 		for (var name in syntax) {
-			try { new Function(syntax[name]); passed++; } catch (e) { failed.push(name + ' (' + e.message + ')'); }
+			try { new Function(syntax[name]); passed++; } catch (e) { failed.push(name + ' (' + e.message + ')'); if (required.indexOf(name) >= 0) { missingRequired.push(name); } }
 		}
 		window.ddLog('syntax: ' + passed + ' supported' + (failed.length ? ', NOT supported: ' + failed.join('; ') : ''));
 
@@ -107,13 +108,14 @@
 		for (var m in methods) { if (!methods[m]) { missing.push(m); } }
 		window.ddLog('apis: ' + (missing.length ? 'missing ' + missing.join(', ') : 'all present'));
 
-		var names = ['webgl2', 'webgl', 'experimental-webgl'];
+		var gl2 = false, names = ['webgl2', 'webgl', 'experimental-webgl'];
 		for (var n = 0; n < names.length; n++) {
 			try {
 				var canvas = document.createElement('canvas');
 				canvas.addEventListener('webglcontextcreationerror', function (e) { window.ddLog('webgl probe: creation error: ' + e.statusMessage); });
 				var gl = canvas.getContext(names[n], { failIfMajorPerformanceCaveat: false });
 				if (!gl) { window.ddLog('webgl probe: ' + names[n] + ' unavailable'); continue; }
+				if (names[n] === 'webgl2') { gl2 = true; }
 				var info = gl.getExtension('WEBGL_debug_renderer_info');
 				window.ddLog('webgl probe: ' + names[n] + ' ok, version=' + gl.getParameter(gl.VERSION) + ', glsl=' + gl.getParameter(gl.SHADING_LANGUAGE_VERSION)
 					+ ', vendor=' + gl.getParameter(info ? info.UNMASKED_VENDOR_WEBGL : gl.VENDOR) + ', renderer=' + gl.getParameter(info ? info.UNMASKED_RENDERER_WEBGL : gl.RENDERER)
@@ -123,6 +125,11 @@
 				if (lose) { lose.loseContext(); }
 			} catch (e) { window.ddLog('webgl probe: ' + names[n] + ' threw ' + e.message); }
 		}
+
+		// MapLibre GL 5 needs WebGL 2 and these language features. Without them the library is not even loaded:
+		// it would fail (or take the web view down) and the app shows its notice instead.
+		if (missingRequired.length) { window.ddUnsupported = 'JavaScript engine too old (Chromium ' + (chrome ? chrome[1] : '?') + '): ' + missingRequired.join(', '); }
+		else if (!gl2) { window.ddUnsupported = 'WebGL 2 is not available'; }
 	}
 
 	try { probe(); } catch (e) { window.ddLog('probe failed: ' + e.message); }
@@ -133,8 +140,27 @@
 </script>
 <script src="_framework/hybridwebview.js"></script>
 <script>window.ddLog && window.ddLog("hybridwebview.js: " + typeof window.HybridWebView);</script>
-<script src="maplibre/maplibre-gl.js"></script>
-<script>window.ddLog && window.ddLog("maplibre-gl.js: " + typeof window.maplibregl + (window.maplibregl ? " " + window.maplibregl.version : " (did not run: see the errors above)"));</script>
+<script>
+// maplibre-gl.js is loaded only when the engine passed the checks above, then the page script (ddMain) starts.
+(function () {
+	function fail(reason) {
+		window.ddLog('map not started: ' + reason);
+		window.ddFlush();
+		try { window.HybridWebView.SendRawMessage('unsupported:' + reason); } catch (e) { }
+	}
+
+	if (window.ddUnsupported) { fail(window.ddUnsupported); return; }
+
+	var script = document.createElement('script');
+	script.onload = function () {
+		window.ddLog('maplibre-gl.js: ' + typeof window.maplibregl + (window.maplibregl ? ' ' + window.maplibregl.version : ' (did not run: see the errors above)'));
+		if (window.maplibregl) { window.ddMain(); } else { fail('maplibre-gl.js did not start'); }
+	};
+	script.onerror = function () { fail('maplibre-gl.js could not be loaded'); };
+	script.src = 'maplibre/maplibre-gl.js';
+	document.head.appendChild(script);
+}());
+</script>
 <style>
 /* The app's own fonts (the same files the app ships), so the map reads like the rest of the UI. */
 @font-face { font-family: "DD Open Sans"; font-weight: 400; src: url("fonts/OpenSans-Regular.ttf") format("truetype"); font-display: swap; }
@@ -202,7 +228,7 @@ body.dark .maplibregl-ctrl-group button .maplibregl-ctrl-icon { filter: invert(1
 <body>
 <div id="map"></div>
 <script>
-(function () {
+window.ddMain = function () {
 	'use strict';
 
 	var map = null, key = '', theme = null, styleName = null, styleReady = false;
@@ -850,7 +876,7 @@ body.dark .maplibregl-ctrl-group button .maplibregl-ctrl-icon { filter: invert(1
 	dd('page script ready: maplibregl=' + typeof window.maplibregl + ', hybridwebview=' + typeof window.HybridWebView);
 	if (window.ddFlush) { window.ddFlush(); }
 	send('ready');
-})();
+};
 </script>
 </body>
 </html>

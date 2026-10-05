@@ -627,6 +627,8 @@ public sealed class ExtrasStrings
 	public required string MapKeyMissing { get; init; }
 	public required string MapKeyInvalid { get; init; }
 	public required string MapKeyOpenSettings { get; init; }
+	public required string MapUnsupported { get; init; }
+	public required string MapCrashed { get; init; }
 	public required string MapPickStart { get; init; }
 	public required string MapPickEnd { get; init; }
 	public required string MapPickStop { get; init; }

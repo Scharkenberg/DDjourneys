@@ -73,13 +73,13 @@ public static class InterfaceSchemas
 	/// </summary>
 	public static class Revision
 	{
-		// History: r1 = first schema of the interface list (October 2026). Map bridge r2 = the page's diagnostics (log: messages).
+		// History: r1 = first schema of the interface list (October 2026). Map bridge r2 = the page's diagnostics (log: messages), r3 = the page loads MapLibre only after its own check and reports unsupported:reason.
 		public const int VvoWebApi = 1;
 		public const int Schutzengel = 1;
 		public const int Tlms = 1;
 		public const int OpenData = 1;
 		public const int Carto = 1;
-		public const int MapBridge = 2;
+		public const int MapBridge = 3;
 		public const int WidgetData = 1;
 	}
 
@@ -117,7 +117,7 @@ public static class InterfaceSchemas
 		new(
 			"map-bridge", InterfaceKind.Internal, "Map page messages",
 			R(Revision.MapBridge), string.Empty,
-			"ddMapCall(command, json) and the raw messages ready, open, tap, view, point, error, auto, log"),
+			"ddMapCall(command, json) and the raw messages ready, open, tap, view, point, error, auto, log, unsupported"),
 		new(
 			"widget-data", InterfaceKind.Internal, "Widget settings and snapshot",
 			R(Revision.WidgetData), string.Empty,

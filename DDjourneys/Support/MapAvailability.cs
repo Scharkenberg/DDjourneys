@@ -55,6 +55,9 @@ public static class MapAvailability
 	}
 
 	/// <summary>The key was changed (a new key gets its own chance).</summary>
-	public static void KeyChanged() =>
+	public static void KeyChanged()
+	{
+		MapSupport.Retry();
 		Changed?.Invoke(null, EventArgs.Empty);
+	}
 }

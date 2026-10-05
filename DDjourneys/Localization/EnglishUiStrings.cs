@@ -200,6 +200,8 @@ public sealed class EnglishUiStrings : IUiStrings
 		MapKeyMissing = "The map needs your own CARTO API key. You can add it in Settings.",
 		MapKeyInvalid = "CARTO did not accept the API key, so the map is switched off. You can check it in Settings.",
 		MapKeyOpenSettings = "Open settings",
+		MapUnsupported = "This device cannot draw the map. It needs OpenGL ES 3 and a current Android System WebView (Chrome 80 or newer). Updating the WebView in the Play Store may help; the rest of the app is not affected.",
+		MapCrashed = "Showing the map ended the app last time, so the map is switched off. Saving the API key again in Settings tries once more.",
 		MapPickStart = "Pick the start",
 		MapPickEnd = "Pick the destination",
 		MapPickStop = "Pick a stop",
