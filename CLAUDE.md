@@ -25,6 +25,10 @@ Journey planner for DVB/VVO (Dresden), .NET 11 MAUI / C# 15. Repo: `Scharkenberg
 - A `Service` keeps its line data in `ServiceSection` (LineRef, DirectionRef, Mode/PtMode, PublishedLineName, OperatorRef); `TriasMapper.Properties` reads the first section, or the service itself for older flat responses. Destination, JourneyRef, Attribute and the status flags stay on the service.
 - Journey stops are identified by stop place (`StationId`: first three DHID parts), the platform is a detail. Changes are `InterchangeLeg` (`InterchangeMode`: walk, protectedConnection, guaranteedConnection, remainInVehicle; `WalkDuration`, `BufferTime`) or `ContinuousLeg`; only the connection modes are guaranteed.
 
+## Fares
+- `JourneyFare` (kind, price, zones, notes, valid-for, url). VVO: `VvoFareMapper` turns the route's `Price`/`PriceDayTicket` (+ zone names, `TicketNotes`) into a single and a day ticket; the API quotes nothing else. TRIAS 1.4: `TripFares/Ticket`. The result card shows the cheapest price (`JourneyCardModel.PriceText`), the journey page lists all tickets.
+- A change is "endangered" only by arithmetic once real-time times exist on either side (`TimelineBuilder.CreateBoundary`); the provider's flag counts only without real-time data.
+
 ## Logging and developer options
 - No `Debug.WriteLine`, no always-on files. Everything diagnostic goes through `DiagnosticLog.Write/Api`, which writes only while Settings > Developer options > "Log to file" is on (`AppSettings.LogToFile`, needs `DeveloperOptions`). Switching it off, or the developer options off, deletes the file; so does a start with it off. `ApiClient`, `SchutzengelApi`, TLMS and notice links log their exchanges; new external API code must too.
 - Expert view (raw provider data) is a developer option as well.

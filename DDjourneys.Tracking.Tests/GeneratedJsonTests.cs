@@ -65,6 +65,23 @@ public sealed class GeneratedJsonTests
 	}
 
 	[Fact]
+	public void Vvo_prices_become_a_single_and_a_day_fare()
+	{
+		Assert.Equal(2.70m, VvoFareMapper.ParsePrice("2,70 \u20ac"));
+		Assert.Null(VvoFareMapper.ParsePrice("0,00"));
+		Assert.Null(VvoFareMapper.ParsePrice(null));
+
+		var route = new VvoRoute { Price = "2,70", PriceDayTicket = "6.80", FareZoneNames = "TZ Dresden (1), TZ Radebeul (2)", TicketNotes = "Fahrrad extra" };
+
+		IReadOnlyList<JourneyFare> fares = VvoFareMapper.Map(route);
+
+		Assert.Equal([FareKind.Single, FareKind.Day], fares.Select(fare => fare.Kind));
+		Assert.Equal(6.80m, fares[1].Price);
+		Assert.Equal("Dresden, Radebeul", fares[0].Zones);
+		Assert.Equal("Fahrrad extra", fares[0].Notes);
+	}
+
+	[Fact]
 	public void Boarding_instructions_age_out_quickly_and_other_notices_do_not()
 	{
 		DateTimeOffset issued = new(2026, 10, 5, 8, 0, 0, TimeSpan.Zero);
