@@ -61,7 +61,7 @@ public sealed partial class PlaceSearchViewModel : DisposableViewModel, IQueryAt
 	private PlaceKinds Kinds =>
 		_target is Routes.TargetDepartures or Routes.TargetVia
 			? PlaceKinds.Stops
-			: _target == Routes.TargetStart
+			: _target is Routes.TargetStart or Routes.TargetHome
 				? PlaceKinds.Stops | PlaceKinds.Addresses | PlaceKinds.Pois
 				: _settings.SearchKinds;
 
@@ -418,7 +418,7 @@ public sealed partial class PlaceSearchViewModel : DisposableViewModel, IQueryAt
 			try
 			{
 				// A default start is a setting, not a place the passenger went to.
-				if (_target != Routes.TargetStart)
+				if (_target is not (Routes.TargetStart or Routes.TargetHome))
 				{
 					_store.AddRecent(place);
 				}

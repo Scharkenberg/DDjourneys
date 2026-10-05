@@ -338,6 +338,9 @@ public sealed partial class PlanViewModel : DisposableViewModel
 	/// <summary>Opens the place search for the stop-over.</summary>
 	public Func<Task>? OpenViaSearch { get; set; }
 
+	/// <summary>Opens the place search for the home place; the answer comes back through <see cref="SetHome"/>.</summary>
+	public Func<Task>? OpenHomeSearch { get; set; }
+
 	/// <summary>Asks for a name (title, message, suggestion); null when the passenger cancels.</summary>
 
 	public AsyncCommand PickFromCommand { get; }
@@ -1400,12 +1403,21 @@ public sealed partial class PlanViewModel : DisposableViewModel
 	}
 
 
+	/// <summary>Home is chosen like any place: searched for, or picked from the favourites, recents or the device position.</summary>
 	private async Task SetHomeAsync()
 	{
-		if (await FindStopNearMeAsync() is { } stop)
+		if (OpenHomeSearch is not null)
 		{
-			_store.SetHome(stop);
+			await OpenHomeSearch();
 		}
+	}
+
+	/// <summary>The answer of the place search for home.</summary>
+	public void SetHome(Location place)
+	{
+		ArgumentNullException.ThrowIfNull(place);
+
+		_store.SetHome(place);
 	}
 
 

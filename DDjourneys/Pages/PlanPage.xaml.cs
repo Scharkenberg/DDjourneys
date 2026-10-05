@@ -40,6 +40,15 @@ public partial class PlanPage : ContentPage, IQueryAttributable
 					[Routes.Target] = Routes.TargetVia
 				});
 
+		vm.OpenHomeSearch = () =>
+			NavigateAsync(
+				Routes.PlaceSearch,
+				new ShellNavigationQueryParameters
+				{
+					[Routes.TargetIsFrom] = false,
+					[Routes.Target] = Routes.TargetHome
+				});
+
 		vm.OpenResults = query =>
 			NavigateAsync(
 				Routes.Results,
@@ -159,6 +168,17 @@ public partial class PlanPage : ContentPage, IQueryAttributable
 			&& name == Routes.TargetVia)
 		{
 			_vm.Via = stopOver;
+
+			return;
+		}
+
+		if (query.TryGetValue(Routes.SelectedPlace, out object? homePick)
+			&& homePick is Location home
+			&& query.TryGetValue(Routes.Target, out object? homePurpose)
+			&& homePurpose is string homeName
+			&& homeName == Routes.TargetHome)
+		{
+			_vm.SetHome(home);
 
 			return;
 		}

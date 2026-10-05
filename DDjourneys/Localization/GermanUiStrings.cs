@@ -57,7 +57,7 @@ public sealed class GermanUiStrings : IUiStrings
 		UseLocationFrom = "Meinen Standort als Start verwenden",
 		UseLocationTo = "Meinen Standort als Ziel verwenden",
 		GoHome = "Nach Hause",
-		SetHome = "Zuhause hier festlegen",
+		SetHome = "Zuhause ändern",
 		SaveRoute = "Verbindung speichern",
 		RouteNamePrompt = "Name für diese Verbindung",
 		SavedRoutes = "Gespeicherte Verbindungen",
@@ -243,7 +243,7 @@ public sealed class GermanUiStrings : IUiStrings
 		MapSummary = "Haltestelle, Haltestellen in der Nähe und geöffnete Bereiche auf der Karte",
 		LiveSummary = "Wo die Fahrzeuge einer Linie gerade sind",
 		HomeTitle = "Zuhause",
-		HomeNotSet = "Nicht festgelegt: Tippen, um die nächstgelegene Haltestelle zu verwenden"
+		HomeNotSet = "Nicht festgelegt: Tippen zum Auswählen"
 	};
 	// </extras>
 

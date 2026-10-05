@@ -71,6 +71,9 @@ public static class Routes
 	/// <summary>The place search is for the default start of the input mode (any stop, address or point of interest).</summary>
 	public const string TargetStart = "start";
 
+	/// <summary>The place search is for the home place (any stop, address or point of interest; not added to the recents).</summary>
+	public const string TargetHome = "home";
+
 	/// <summary>Query key: a stop (Location) the page is opened for.</summary>
 	public const string Stop = "Stop";
 

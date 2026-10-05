@@ -50,7 +50,7 @@ When the map shows the surroundings, stops appear once you zoom in. Tap a stop t
 
 On Android you can put widgets on your home screen: a route you travel often, the departures or arrivals of one stop, the stops around you with their distance, or the next departures from the stops around you. Each widget has its own settings, such as its provider, its title and how many rows it shows. A tap on a widget refreshes it. Android allows widgets to update every thirty minutes at most, and widgets in the background use the last position the phone knows unless you allow location access all the time.
 
-Press and hold the app icon to find two quick actions. "Take me home" plans a journey from the stop nearest to you to your home stop. "Departures from here" shows the departures at the stop nearest to you. You set your home stop in the planner. On Windows the same actions are in the jump list of the app.
+Press and hold the app icon to find two quick actions. "Take me home" plans a journey from the stop nearest to you to your home stop. "Departures from here" shows the departures at the stop nearest to you. You set your home in the planner: tap the home button above the list of recent places, or the pencil next to it once a home is set, and search for a stop, an address or a place the way you do for a start. Your location is offered in that search as well. On Windows the same actions are in the jump list of the app.
 
 ## Settings
 

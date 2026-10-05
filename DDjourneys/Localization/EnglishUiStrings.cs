@@ -53,7 +53,7 @@ public sealed class EnglishUiStrings : IUiStrings
 		UseLocationFrom = "Use my location as start",
 		UseLocationTo = "Use my location as destination",
 		GoHome = "Go home",
-		SetHome = "Set home here",
+		SetHome = "Change home",
 		SaveRoute = "Save route",
 		RouteNamePrompt = "Name for this route",
 		SavedRoutes = "Saved routes",
@@ -239,7 +239,7 @@ public sealed class EnglishUiStrings : IUiStrings
 		MapSummary = "Stop, stops nearby and open sections on a map",
 		LiveSummary = "Where the vehicles of a line are right now",
 		HomeTitle = "Home",
-		HomeNotSet = "Not set: tap to use your nearest stop"
+		HomeNotSet = "Not set: tap to choose"
 	};
 	// </extras>
 
