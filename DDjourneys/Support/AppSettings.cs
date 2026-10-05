@@ -1,6 +1,7 @@
 using DDjourneys.Core.Diagnostics;
 using System.Globalization;
 using DDjourneys.Core.Models;
+using DDjourneys.Core.Providers.Vvo;
 
 namespace DDjourneys.Support;
 
@@ -303,32 +304,44 @@ public sealed class AppSettings
 	}
 
 	// ----- Routing preferences -----
+	// Kept per provider (what one provider supports or means by a mode says nothing about another). VVO keeps the
+	// original keys, every other provider gets "<key>@<provider id>".
+
+	private string Scoped(string key)
+	{
+		string provider = ProviderId;
+
+		return string.IsNullOrWhiteSpace(provider)
+			|| string.Equals(provider, VvoProviderInfo.Id, StringComparison.OrdinalIgnoreCase)
+				? key
+				: $"{key}@{provider}";
+	}
 
 	public const int MaxFootpathMinutes = 15;
 
 	public MaxTransfers MaxTransfers
 	{
-		get => Read("maxTransfers", MaxTransfers.Unlimited);
-		set => Write("maxTransfers", value);
+		get => Read(Scoped("maxTransfers"), MaxTransfers.Unlimited);
+		set => Write(Scoped("maxTransfers"), value);
 	}
 
 	public WalkingPace WalkingPace
 	{
-		get => Read("walkingPace", WalkingPace.Normal);
-		set => Write("walkingPace", value);
+		get => Read(Scoped("walkingPace"), WalkingPace.Normal);
+		set => Write(Scoped("walkingPace"), value);
 	}
 
 	/// <summary>Longest walk to an alternative stop, minutes (0..15).</summary>
 	public int FootpathMinutes
 	{
-		get => Math.Clamp(Read("footpathMinutes", 5), 0, MaxFootpathMinutes);
-		set => Write("footpathMinutes", Math.Clamp(value, 0, MaxFootpathMinutes));
+		get => Math.Clamp(Read(Scoped("footpathMinutes"), 5), 0, MaxFootpathMinutes);
+		set => Write(Scoped("footpathMinutes"), Math.Clamp(value, 0, MaxFootpathMinutes));
 	}
 
 	public bool AlternativeStops
 	{
-		get => Read("alternativeStops", true);
-		set => Write("alternativeStops", value);
+		get => Read(Scoped("alternativeStops"), true);
+		set => Write(Scoped("alternativeStops"), value);
 	}
 
 	/// <summary>Allowed modes of transport (never empty: an empty selection means all).</summary>
@@ -336,55 +349,55 @@ public sealed class AppSettings
 	{
 		get
 		{
-			var modes = (ModeFilter)Read("modes", (int)ModeFilter.All) & ModeFilter.All;
+			var modes = (ModeFilter)Read(Scoped("modes"), (int)ModeFilter.All) & ModeFilter.All;
 
 			return modes == ModeFilter.None
 				? ModeFilter.All
 				: modes;
 		}
-		set => Write("modes", (int)(value & ModeFilter.All));
+		set => Write(Scoped("modes"), (int)(value & ModeFilter.All));
 	}
 
 	public AccessibilityNeed Accessibility
 	{
-		get => Read("accessibility", AccessibilityNeed.None);
-		set => Write("accessibility", value);
+		get => Read(Scoped("accessibility"), AccessibilityNeed.None);
+		set => Write(Scoped("accessibility"), value);
 	}
 
 	public bool AvoidStairs
 	{
-		get => Read("avoidStairs", false);
-		set => Write("avoidStairs", value);
+		get => Read(Scoped("avoidStairs"), false);
+		set => Write(Scoped("avoidStairs"), value);
 	}
 
 	public bool AvoidEscalators
 	{
-		get => Read("avoidEscalators", false);
-		set => Write("avoidEscalators", value);
+		get => Read(Scoped("avoidEscalators"), false);
+		set => Write(Scoped("avoidEscalators"), value);
 	}
 
 	public bool FewestTransfers
 	{
-		get => Read("fewestTransfers", false);
-		set => Write("fewestTransfers", value);
+		get => Read(Scoped("fewestTransfers"), false);
+		set => Write(Scoped("fewestTransfers"), value);
 	}
 
 	public RouteOptimisation Optimisation
 	{
-		get => Read("optimisation", RouteOptimisation.Fastest);
-		set => Write("optimisation", value);
+		get => Read(Scoped("optimisation"), RouteOptimisation.Fastest);
+		set => Write(Scoped("optimisation"), value);
 	}
 
 	public EntranceNeed Entrance
 	{
-		get => Read("entrance", EntranceNeed.Any);
-		set => Write("entrance", value);
+		get => Read(Scoped("entrance"), EntranceNeed.Any);
+		set => Write(Scoped("entrance"), value);
 	}
 
 	public ExtraChargeFilter ExtraCharge
 	{
-		get => Read("extraCharge", ExtraChargeFilter.Any);
-		set => Write("extraCharge", value);
+		get => Read(Scoped("extraCharge"), ExtraChargeFilter.Any);
+		set => Write(Scoped("extraCharge"), value);
 	}
 
 	/// <summary>The routing options as sent with every journey search.</summary>

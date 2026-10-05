@@ -18,6 +18,9 @@ Journey planner for DVB/VVO (Dresden), .NET 11 MAUI / C# 15. Repo: `Scharkenberg
 - `DDjourneys` (MAUI): Pages (XAML + ViewModel), Controls, Support, Localization, Platforms/Android, `Resources/Raw/wwwroot`.
 - Pages: Plan, PlaceSearch, Results, Journey, Departures, Disruptions (+ Disruption detail), Map, Vehicles, Run, Settings, Providers. Routes in `Support/Routes.cs`, registered in `AppShell.xaml.cs`; DI in `MauiProgram.cs`.
 
+## Providers
+- Everything a provider's ids or meaning touch is kept per provider: `PlaceStore` (recents, favourites, searched and saved routes, home) and the routing preferences in `AppSettings`. VVO keeps the original keys, every other provider uses `<key>@<provider id>`. `PlaceStore` reloads on `ProviderRegistry.SelectionChanged`; the Departures, Disruptions, Vehicles, Plan and PlaceSearch view models drop their provider-bound state on it. Any new provider-bound cache or list must do the same.
+
 ## Logging and developer options
 - No `Debug.WriteLine`, no always-on files. Everything diagnostic goes through `DiagnosticLog.Write/Api`, which writes only while Settings > Developer options > "Log to file" is on (`AppSettings.LogToFile`, needs `DeveloperOptions`). Switching it off, or the developer options off, deletes the file; so does a start with it off. `ApiClient`, `SchutzengelApi`, TLMS and notice links log their exchanges; new external API code must too.
 - Expert view (raw provider data) is a developer option as well.

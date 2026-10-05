@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using DDjourneys.Core.Models;
 using DDjourneys.Core.Storage;
+using DDjourneys.Core.Providers;
 using DDjourneys.Core.Providers.Vvo;
 using DDjourneys.Core.Providers.Vvo.Mapping;
 using Location = DDjourneys.Core.Models.Location;
@@ -28,11 +29,13 @@ public sealed record RoutePair(
 /// </summary>
 public sealed class PlaceStore
 {
-	private const string RecentsKey = "places.recents";
-	private const string FavouritesKey = "places.favourites";
-	private const string RoutesKey = "places.routes";
-	private const string HomeKey = "places.home";
-	private const string SavedRoutesKey = "places.savedRoutes";
+	// Every provider has its own lists (stop ids of one provider mean nothing to another). The app only knew VVO
+	// at first, so VVO keeps the original keys and every other provider gets "<key>@<provider id>".
+	private string RecentsKey => Scoped("places.recents");
+	private string FavouritesKey => Scoped("places.favourites");
+	private string RoutesKey => Scoped("places.routes");
+	private string HomeKey => Scoped("places.home");
+	private string SavedRoutesKey => Scoped("places.savedRoutes");
 	private const int MaxRecents = 8;
 	private const string PreviousSuffix = ".prev";
 	private const string CorruptSuffix = ".corrupt";
@@ -78,12 +81,19 @@ public sealed class PlaceStore
 	}
 
 
+	/// <param name="store">Where the lists live.</param>
+	/// <param name="providers">
+	/// Whose lists are shown: the selected provider's, switching with the selection. Without it the store
+	/// serves the VVO lists (the original keys).
+	/// </param>
 	public PlaceStore(
-		IKeyValueStore store)
+		IKeyValueStore store,
+		ProviderRegistry? providers = null)
 	{
 		ArgumentNullException.ThrowIfNull(store);
 
 		_store = store;
+		_scope = providers?.SelectedId ?? LegacyProviderId;
 
 		_recents =
 			Load(RecentsKey);
@@ -99,6 +109,46 @@ public sealed class PlaceStore
 
 		_home =
 			Load(HomeKey).FirstOrDefault();
+
+		if (providers is not null)
+		{
+			providers.SelectionChanged += OnProviderChanged;
+		}
+	}
+
+
+	private string _scope;
+
+	private string Scoped(string key) =>
+		_scope.Length == 0
+		|| string.Equals(_scope, LegacyProviderId, StringComparison.OrdinalIgnoreCase)
+			? key
+			: $"{key}@{_scope}";
+
+
+	/// <summary>Switches to the lists of the newly selected provider; nothing of the previous one stays loaded.</summary>
+	private void OnProviderChanged(object? sender, string providerId)
+	{
+		lock (_gate)
+		{
+			_scope = providerId;
+
+			Replace(_recents, Load(RecentsKey));
+			Replace(_favourites, Load(FavouritesKey));
+			Replace(_routes, LoadRoutes());
+			Replace(_savedRoutes, LoadSavedRoutes());
+
+			_home = Load(HomeKey).FirstOrDefault();
+		}
+
+		RaiseChanged();
+	}
+
+
+	private static void Replace<T>(List<T> target, List<T> items)
+	{
+		target.Clear();
+		target.AddRange(items);
 	}
 
 

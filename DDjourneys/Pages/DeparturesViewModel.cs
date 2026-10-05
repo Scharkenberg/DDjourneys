@@ -270,8 +270,11 @@ public sealed class DeparturesViewModel : DisposableViewModel
 		LocationService locations,
 		DeviceLocator locator,
 		PlaceStore store,
-		AppSettings settings)
+		AppSettings settings,
+		ProviderRegistry providers)
 	{
+		ArgumentNullException.ThrowIfNull(providers);
+
 		ArgumentNullException.ThrowIfNull(departures);
 		ArgumentNullException.ThrowIfNull(network);
 		ArgumentNullException.ThrowIfNull(openData);
@@ -293,6 +296,10 @@ public sealed class DeparturesViewModel : DisposableViewModel
 		ListenToLocalization(
 			_localization,
 			OnLocalizationChanged);
+
+		Subscribe(
+			() => providers.SelectionChanged += OnProviderChanged,
+			() => providers.SelectionChanged -= OnProviderChanged);
 
 		PickStopCommand =
 			new AsyncCommand(
@@ -699,6 +706,44 @@ public sealed class DeparturesViewModel : DisposableViewModel
 
 	public bool HasServicePointsMessage =>
 		ServicePointsMessage.Length > 0;
+
+	/// <summary>
+	/// Stop ids, lines and boards belong to one provider: after a switch nothing of the old one is kept, and the
+	/// quick picks are those of the new provider's favourites and recents.
+	/// </summary>
+	private void OnProviderChanged(object? sender, string providerId) =>
+		MainThread.BeginInvokeOnMainThread(
+			() =>
+			{
+				if (IsDisposed)
+				{
+					return;
+				}
+
+				_refresh?.Cancel();
+				_info?.Cancel();
+
+				Stop = null;
+				_current = [];
+				Rows.Clear();
+				Nearby.Clear();
+				Lines.Clear();
+				_linesLoaded = false;
+				Accessibility.Clear();
+				AccessibilityMessage = string.Empty;
+				_accessibilityFor = null;
+				ServicePoints.Clear();
+				ServicePointsMessage = string.Empty;
+				_servicePointsLoaded = false;
+				ZoneText = null;
+				Message = string.Empty;
+
+				OnPropertyChanged(nameof(HasLines));
+				OnPropertyChanged(nameof(LinesSummary));
+				OnPropertyChanged(nameof(ServicePointsSummary));
+
+				RefreshQuickPicks();
+			});
 
 	/// <summary>Called by the page after a place search for this page.</summary>
 	public void SetStop(Location stop)

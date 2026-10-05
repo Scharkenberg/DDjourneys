@@ -2,6 +2,7 @@ using DDjourneys.Core.Diagnostics;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using DDjourneys.Core.Models;
+using DDjourneys.Core.Providers;
 using DDjourneys.Core.Services;
 using DDjourneys.Localization;
 using DDjourneys.Support;
@@ -196,12 +197,19 @@ public sealed class DisruptionsViewModel : DisposableViewModel, IQueryAttributab
 	private const int BatchSize = 10;
 
 	public DisruptionsViewModel(
-		NetworkService network)
+		NetworkService network,
+		ProviderRegistry providers)
 	{
 		ArgumentNullException.ThrowIfNull(network);
+		ArgumentNullException.ThrowIfNull(providers);
 
 		_network = network;
 		_localization = LocalizationService.Current;
+
+		// Messages and line ids belong to one provider: a switch drops them and loads the new provider's.
+		Subscribe(
+			() => providers.SelectionChanged += OnProviderChanged,
+			() => providers.SelectionChanged -= OnProviderChanged);
 
 		RefreshCommand =
 			new AsyncCommand(
@@ -305,6 +313,32 @@ public sealed class DisruptionsViewModel : DisposableViewModel, IQueryAttributab
 
 		_ = LoadAsync();
 	}
+
+	private void OnProviderChanged(object? sender, string providerId) =>
+		MainThread.BeginInvokeOnMainThread(
+			() =>
+			{
+				if (IsDisposed)
+				{
+					return;
+				}
+
+				_load?.Cancel();
+				_build?.Cancel();
+
+				_changes = [];
+				_banners = [];
+				_only = new HashSet<string>(StringComparer.Ordinal);
+
+				if (_loaded)
+				{
+					_ = LoadAsync();
+				}
+				else
+				{
+					_ = RebuildAsync();
+				}
+			});
 
 	private async Task LoadAsync()
 	{

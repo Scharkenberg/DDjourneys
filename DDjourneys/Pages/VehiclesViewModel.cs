@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.Globalization;
 using DDjourneys.Core.Mapping;
 using DDjourneys.Core.Models;
+using DDjourneys.Core.Providers;
 using DDjourneys.Core.Services;
 using DDjourneys.Localization;
 using DDjourneys.Support;
@@ -166,12 +167,19 @@ public sealed class VehiclesViewModel : DisposableViewModel, IQueryAttributable
 	private readonly Dictionary<string, LiveVehicle> _previous = [];
 
 	public VehiclesViewModel(
-		VehicleService vehicles)
+		VehicleService vehicles,
+		ProviderRegistry providers)
 	{
 		ArgumentNullException.ThrowIfNull(vehicles);
+		ArgumentNullException.ThrowIfNull(providers);
 
 		_vehicles = vehicles;
 		_localization = LocalizationService.Current;
+
+		// Positions, lines and the followed run belong to one provider: a switch stops the stream and drops them.
+		Subscribe(
+			() => providers.SelectionChanged += OnProviderChanged,
+			() => providers.SelectionChanged -= OnProviderChanged);
 
 		Chips = (TramLines.Select(line => new LineChip(line))).ToList();
 
@@ -691,6 +699,24 @@ public sealed class VehiclesViewModel : DisposableViewModel, IQueryAttributable
 
 		Rows.Insert(index, row);
 	}
+
+	private void OnProviderChanged(object? sender, string providerId) =>
+		MainThread.BeginInvokeOnMainThread(
+			() =>
+			{
+				if (IsDisposed)
+				{
+					return;
+				}
+
+				Stop();
+
+				_byKey.Clear();
+				_previous.Clear();
+				_matched = null;
+				_target = null;
+				Rows.Clear();
+			});
 
 	private void Stop()
 	{

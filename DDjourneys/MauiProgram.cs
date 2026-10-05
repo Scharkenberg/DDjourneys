@@ -169,7 +169,10 @@ public static class MauiProgram
 					Platforms.Windows.WindowsContractActivation.Handle)));
 #endif
 
-		builder.Services.AddSingleton<PlaceStore>();
+		builder.Services.AddSingleton(
+			services => new PlaceStore(
+				new PreferencesKeyValueStore(),
+				services.GetRequiredService<ProviderRegistry>()));
 
 		// Pages are transient; view models are added with their pages.
 		builder.Services.AddTransient<PlanPage>();
