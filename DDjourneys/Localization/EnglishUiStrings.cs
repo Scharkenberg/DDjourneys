@@ -238,7 +238,7 @@ public sealed class EnglishUiStrings : IUiStrings
 		MapSummary = "Stop, stops nearby and open sections on a map",
 		LiveSummary = "Where the vehicles of a line are right now",
 		HomeTitle = "Home",
-		HomeNotSet = "Not set: tap to use the stop nearest to you"
+		HomeNotSet = "Not set: tap to use your nearest stop"
 	};
 	// </extras>
 

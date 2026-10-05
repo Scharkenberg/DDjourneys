@@ -242,7 +242,7 @@ public sealed class GermanUiStrings : IUiStrings
 		MapSummary = "Haltestelle, Haltestellen in der Nähe und geöffnete Bereiche auf der Karte",
 		LiveSummary = "Wo die Fahrzeuge einer Linie gerade sind",
 		HomeTitle = "Zuhause",
-		HomeNotSet = "Nicht festgelegt: Tippen, um die nächste Haltestelle zu verwenden"
+		HomeNotSet = "Nicht festgelegt: Tippen, um die nächstgelegene Haltestelle zu verwenden"
 	};
 	// </extras>
 
