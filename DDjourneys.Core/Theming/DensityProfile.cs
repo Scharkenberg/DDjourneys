@@ -115,7 +115,8 @@ public sealed record DensityProfile
 	{
 		double scaled = Round(authored * HeightFactor);
 
-		if (HeightFactor < 1)
+		// Only Compact is held up by the floor; Normal is allowed to be a little tighter than authored (28 becomes 27).
+		if (Id == CompactId)
 		{
 			scaled = Math.Max(scaled, Math.Min(authored, CompactHitFloor));
 		}
