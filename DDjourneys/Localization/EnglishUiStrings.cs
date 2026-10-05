@@ -384,7 +384,7 @@ public sealed class EnglishUiStrings : IUiStrings
 		MapEngineCarto = "CARTO (vector map)",
 		MapEngineCartoDescription = "Sharp vector map in the colours of the app. Needs your own CARTO key and a device with WebGL 2.",
 		MapEngineLeaflet = "Leaflet (simple map)",
-		MapEngineLeafletDescription = "Ready-made picture tiles from CARTO. No key, and it runs on old devices and web views. Only light and dark follow the app theme.",
+		MapEngineLeafletDescription = "Ready-made picture tiles from OpenStreetMap. No key, and it runs on old devices and web views. Only light and dark follow the app theme.",
 		About = "About DDjourneys",
 		ThemeSystem = "System",
 		ThemeLight = "Light",

@@ -844,8 +844,65 @@ window.ddMain = function (engineName) {
 	}
 
 	// ---- Leaflet: raster tiles, no WebGL; the same markers, lines, controls and messages ----
-	function tileUrl(dark) {
-		return 'https://{s}.basemaps.cartocdn.com/' + (dark ? 'dark_all' : 'rastertiles/voyager') + '/{z}/{x}/{y}{r}.png';
+	// Raster tile sources in the order they are tried. OpenStreetMap's own server first (no key, the usual choice of
+	// Leaflet apps; its tiles are light only, so dark mode inverts them by CSS); CARTO's raster tiles second (they need
+	// the CARTO key now, if one is set). A source that delivers no tile at all is dropped for the next one.
+	var tileSources = [
+		{ id: 'osm', maxZoom: 19, retina: false, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+			url: function () { return 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'; } },
+		{ id: 'carto', maxZoom: 19, retina: true, subdomains: 'abcd', native: true, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+			url: function (dark) { return 'https://{s}.basemaps.cartocdn.com/' + (dark ? 'dark_all' : 'rastertiles/voyager') + '/{z}/{x}/{y}{r}.png' + (key ? '?key=' + encodeURIComponent(key) : ''); } }
+	];
+	var tileIndex = 0, tilesOk = 0, tilesFailed = 0, attrDiv = null;
+
+	function applyTileLook() {
+		// Dark mode with a light-only source: invert the picture (and turn the hues back) instead of showing a white map.
+		var invert = !!(theme && theme.dark) && !tileSources[tileIndex].native;
+
+		map.getPanes().tilePane.style.filter = invert ? 'invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9)' : '';
+
+		if (attrDiv) { attrDiv.innerHTML = tileSources[tileIndex].attribution + ' &middot; <a href="https://leafletjs.com">Leaflet</a>'; }
+	}
+
+	function makeTiles() {
+		var src = tileSources[tileIndex];
+
+		if (tiles) { map.removeLayer(tiles); }
+
+		tilesOk = 0;
+		tilesFailed = 0;
+
+		var layer = L.tileLayer(src.url(!!(theme && theme.dark)), { subdomains: src.subdomains || 'abc', maxZoom: src.maxZoom, detectRetina: src.retina });
+
+		tiles = layer;
+		dd('tiles: source ' + src.id + ' ' + src.url(!!(theme && theme.dark)).replace(/key=[^&]*/, 'key=***'));
+
+		layer.on('tileload', function () {
+			if (tiles !== layer) { return; }
+
+			if (tilesOk++ === 0) { dd('tiles: first tile of ' + src.id + ' loaded'); }
+		});
+
+		layer.on('tileerror', function (e) {
+			if (tiles !== layer) { return; }
+
+			tilesFailed++;
+
+			if (tilesFailed <= 3) { dd('tiles: ' + src.id + ' failed: ' + (e && e.tile ? e.tile.src.replace(/key=[^&]*/, 'key=***') : '?')); }
+
+			if (tilesOk === 0 && tilesFailed >= 4) {
+				if (tileIndex < tileSources.length - 1) {
+					tileIndex++;
+					dd('tiles: ' + src.id + ' delivers nothing, switching to ' + tileSources[tileIndex].id);
+					makeTiles();
+				} else if (tilesFailed === 4) {
+					send('error:no tile source answered');
+				}
+			}
+		});
+
+		tiles.addTo(map);
+		applyTileLook();
 	}
 
 	function lfControl(position, className, build) {
@@ -868,10 +925,7 @@ window.ddMain = function (engineName) {
 
 		map = L.map('map', { center: [51.0504, 13.7373], zoom: 12, maxZoom: 19, zoomControl: false, attributionControl: false, zoomAnimation: true, fadeAnimation: true });
 
-		tiles = L.tileLayer(tileUrl(!!theme.dark), { subdomains: 'abcd', maxZoom: 19, detectRetina: true });
-		tiles.on('tileerror', function () { if (errors++ < 15) { send('error:tile could not be loaded'); } });
-		tiles.on('load', function () { if (!firstIdle) { firstIdle = true; dd('map: tiles loaded'); } });
-		tiles.addTo(map);
+		makeTiles();
 
 		lineGroup = L.layerGroup().addTo(map);
 		styleName = theme.dark ? 'dark' : 'light';
@@ -880,7 +934,7 @@ window.ddMain = function (engineName) {
 		L.control.zoom({ position: 'topright' }).addTo(map);
 		lfControl('topright', 'leaflet-bar dd-fitnow', buildFitNow);
 		lfControl('bottomleft', 'dd-fit', buildAuto);
-		lfControl('bottomright', 'dd-attr', function (box) { buildAttribution(box, ATTRIBUTION + '<a href="https://leafletjs.com">Leaflet</a>'); });
+		lfControl('bottomright', 'dd-attr', function (box) { buildAttribution(box, ''); attrDiv = box.firstChild; applyTileLook(); });
 
 		// Our own moves (fit, jump, ease) must not switch Auto-fit off; a drag or a zoom by the person does.
 		map.on('dragstart', function () { if (autoFit) { setAuto(false); } });
@@ -899,6 +953,10 @@ window.ddMain = function (engineName) {
 		drawLines();
 
 		if (wantFit) { wantFit = false; fit(); }
+
+		// The container may not have had its final size yet: measure again once the page has settled.
+		[0, 300, 1200].forEach(function (ms) { setTimeout(function () { if (map) { map.invalidateSize(); } }, ms); });
+		window.addEventListener('orientationchange', function () { setTimeout(function () { map.invalidateSize(); }, 300); });
 
 		reportView();
 	}
@@ -979,9 +1037,10 @@ window.ddMain = function (engineName) {
 
 				if (name !== styleName) {
 					styleName = name;
-					tiles.setUrl(tileUrl(!!t.dark));
+					tiles.setUrl(tileSources[tileIndex].url(!!t.dark));
 				}
 
+				applyTileLook();
 				drawLines();
 			}
 		}
@@ -1079,6 +1138,7 @@ window.ddMain = function (engineName) {
 				key = arg.key || '';
 				errors = 0;
 				if (map && gl) { styleReady = false; map.setStyle(styleUrl(styleName)); }
+				if (map && !gl && tileSources[tileIndex].id === 'carto') { tiles.setUrl(tileSources[tileIndex].url(!!(theme && theme.dark))); }
 				break;
 
 			case 'set':

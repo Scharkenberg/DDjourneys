@@ -393,7 +393,7 @@ public sealed class GermanUiStrings : IUiStrings
 		MapEngineCarto = "CARTO (Vektorkarte)",
 		MapEngineCartoDescription = "Scharfe Vektorkarte in den Farben der App. Braucht Ihren eigenen CARTO-Schlüssel und ein Gerät mit WebGL 2.",
 		MapEngineLeaflet = "Leaflet (einfache Karte)",
-		MapEngineLeafletDescription = "Fertige Bildkacheln von CARTO. Ohne Schlüssel, und sie läuft auch auf alten Geräten und WebViews. Nur Hell und Dunkel folgen dem Design der App.",
+		MapEngineLeafletDescription = "Fertige Bildkacheln von OpenStreetMap. Ohne Schlüssel, und sie läuft auch auf alten Geräten und WebViews. Nur Hell und Dunkel folgen dem Design der App.",
 		About = "Über DDjourneys",
 		ThemeSystem = "System",
 		ThemeLight = "Hell",

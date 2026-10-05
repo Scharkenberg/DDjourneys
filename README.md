@@ -42,7 +42,7 @@ Following works with the VVO provider only. The app hands the journey to a servi
 
 ## Map
 
-Under Settings, Map you choose which engine draws the map. CARTO is the sharp vector map in the colours of the app. It needs a key from CARTO, the company that makes the map background, and a phone whose web view can run WebGL 2. The app does not come with a key of its own. You get one on the CARTO website and paste it under Settings, Map. Leaflet is the simple map. It shows ready-made picture tiles from CARTO, needs no key and runs on old phones too, but only light and dark follow the theme of the app. Both engines show the same journeys, stops and vehicles.
+Under Settings, Map you choose which engine draws the map. CARTO is the sharp vector map in the colours of the app. It needs a key from CARTO, the company that makes the map background, and a phone whose web view can run WebGL 2. The app does not come with a key of its own. You get one on the CARTO website and paste it under Settings, Map. Leaflet is the simple map. It shows ready-made picture tiles from OpenStreetMap, needs no key and runs on old phones too, but only light and dark follow the theme of the app. Both engines show the same journeys, stops and vehicles.
 
 If the phone cannot draw the CARTO map, the app says so instead of showing an empty square, and offers to use Leaflet instead or to try anyway. Trying anyway can end the app. If that happens the app remembers it and keeps the CARTO map off until you try again or save the key again. Everything else in the app works without a map.
 

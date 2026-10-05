@@ -67,19 +67,23 @@ public static class InterfaceSchemas
 	/// <summary>CARTO basemap styles, loaded by the map page (wwwroot/index.html).</summary>
 	public const string CartoUrl = "https://basemaps.cartocdn.com/gl/";
 
+	/// <summary>Raster tiles of the Leaflet engine (first choice; CARTO's raster tiles are the fallback).</summary>
+	public const string OsmTileUrl = "https://tile.openstreetmap.org/";
+
 	/// <summary>
 	/// Revisions the app keeps itself. Changing how the app reads or writes the interface means raising it here and
 	/// adding a line to the history below.
 	/// </summary>
 	public static class Revision
 	{
-		// History: r1 = first schema of the interface list (October 2026). Map bridge r2 = the page's diagnostics (log: messages), r3 = the page loads MapLibre only after its own check and reports unsupported:reason, r4 = the page waits for the app (boot, ddBoot start with engine carto|leaflet and force). Carto r2 = raster tiles for the Leaflet engine.
+		// History: r1 = first schema of the interface list (October 2026). Map bridge r2 = the page's diagnostics (log: messages), r3 = the page loads MapLibre only after its own check and reports unsupported:reason, r4 = the page waits for the app (boot, ddBoot start with engine carto|leaflet and force). Carto r2 = raster tiles for the Leaflet engine (OpenStreetMap tiles first, CARTO raster as fallback).
 		public const int VvoWebApi = 1;
 		public const int Schutzengel = 1;
 		public const int Tlms = 1;
 		public const int OpenData = 1;
 		public const int Carto = 2;
 		public const int MapBridge = 4;
+		public const int OsmTiles = 1;
 		public const int WidgetData = 1;
 	}
 
@@ -109,7 +113,11 @@ public static class InterfaceSchemas
 		new(
 			"carto", InterfaceKind.External, "CARTO basemap styles",
 			R(Revision.Carto), CartoUrl,
-			"vector styles (MapLibre, recoloured by layer role in wwwroot/index.html) and raster tiles (Leaflet engine, no key)"),
+			"vector styles (MapLibre, recoloured by layer role in wwwroot/index.html) and raster tiles (Leaflet fallback source, key if set)"),
+		new(
+			"osm-tiles", InterfaceKind.External, "OpenStreetMap raster tiles",
+			R(Revision.OsmTiles), OsmTileUrl,
+			"Leaflet engine, first source; dark mode inverts the picture by CSS; replaced by CARTO raster when it delivers no tile"),
 		new(
 			"storage-lists", InterfaceKind.Internal, "Stored lists (places, routes)",
 			Number(StoredJson.CurrentVersion), string.Empty,
