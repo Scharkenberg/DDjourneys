@@ -447,6 +447,89 @@ public static class JourneyShareImage
 			return y + Math.Max(height, LineHeight(SzBody)) + 14;
 		}
 
+		// ----- Primitives -----
+
+		/// <summary>The time column fits the widest time shown, so the rail sits close to the times.</summary>
+		private float TimeColumn(JourneyShareModel model)
+		{
+			float widest = Measure("00:00", fonts.Semibold, SzBody);
+
+			foreach (ShareStep step in model.Steps)
+			{
+				foreach (DateTimeOffset? time in new[] { step.Time, step.EndTime })
+				{
+					widest = Math.Max(widest, Measure(Format.TimeOrDash(time), fonts.Semibold, SzBody));
+				}
+
+				foreach (DateTimeOffset? time in new[] { step.LiveTime, step.EndLiveTime })
+				{
+					if (time is not null)
+					{
+						widest = Math.Max(widest, Measure(Format.TimeOrDash(time), fonts.Semibold, SzLive));
+					}
+				}
+			}
+
+			return widest + 4;
+		}
+
+		/// <summary>The time on the same line as its stop; a real-time deviation sits right under it.</summary>
+		private void TimeCell(DateTimeOffset? planned, DateTimeOffset? live, float left, float width, float y)
+		{
+			Text(Format.TimeOrDash(planned), left, y, width, SzBody, fonts.Semibold, p.Ink, 1, align: SKTextAlign.Right);
+
+			if (live is { } actual && planned is { } plan)
+			{
+				SKColor color = actual > plan ? p.Delay : p.OnTime;
+
+				Text(Format.TimeOrDash(actual), left, y + LineHeight(SzBody), width, SzLive, fonts.Semibold, color, 1, align: SKTextAlign.Right);
+			}
+		}
+
+		private static float TimeCellHeight(bool withLive) =>
+			LineHeight(SzBody) + (withLive ? LineHeight(SzLive) : 0);
+
+		private void Node(float x, float y, SKColor color)
+		{
+			using var fill = new SKPaint { Color = p.Card, IsAntialias = true };
+			using var ring = new SKPaint { Color = color, IsAntialias = true, Style = SKPaintStyle.Stroke, StrokeWidth = 5 };
+
+			canvas!.DrawCircle(x, y, 12, fill);
+			canvas.DrawCircle(x, y, 10.5f, ring);
+		}
+
+		private void ChangeIcon(float x, float y, float size, SKColor color)
+		{
+			using var paint =
+				new SKPaint
+				{
+					Color = color,
+					IsAntialias = true,
+					Style = SKPaintStyle.Stroke,
+					StrokeWidth = size * 0.11f,
+					StrokeCap = SKStrokeCap.Round,
+					StrokeJoin = SKStrokeJoin.Round
+				};
+
+			float s = size;
+			using var path = new SKPath();
+
+			// Upper arrow to the right, lower arrow to the left.
+			path.MoveTo(x + (s * 0.12f), y + (s * 0.32f));
+			path.LineTo(x + (s * 0.86f), y + (s * 0.32f));
+			path.MoveTo(x + (s * 0.66f), y + (s * 0.12f));
+			path.LineTo(x + (s * 0.88f), y + (s * 0.32f));
+			path.LineTo(x + (s * 0.66f), y + (s * 0.52f));
+
+			path.MoveTo(x + (s * 0.88f), y + (s * 0.70f));
+			path.LineTo(x + (s * 0.14f), y + (s * 0.70f));
+			path.MoveTo(x + (s * 0.34f), y + (s * 0.50f));
+			path.LineTo(x + (s * 0.12f), y + (s * 0.70f));
+			path.LineTo(x + (s * 0.34f), y + (s * 0.90f));
+
+			canvas!.DrawPath(path, paint);
+		}
+
 		/// <summary>
 		/// A label on a filled shape; returns its width. Without <paramref name="corners"/> it is a full pill,
 		/// otherwise it takes the mode's shape from the app (pill, rounded square, leaf, ...).

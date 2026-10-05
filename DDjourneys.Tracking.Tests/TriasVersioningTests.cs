@@ -76,7 +76,7 @@ public sealed class TriasVersioningTests
 				CancellationToken.None);
 
 		Assert.Equal(["1.4", "1.3", "1.2"], seen);
-		Assert.NotEmpty(response.Descendants().Where(element => element.Name.LocalName == "TripResult"));
+		Assert.Contains(response.Descendants(), element => element.Name.LocalName == "TripResult");
 	}
 
 	[Fact]
