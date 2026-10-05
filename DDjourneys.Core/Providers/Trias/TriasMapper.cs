@@ -367,6 +367,23 @@ internal static class TriasMapper
 			_ => OccupancyLevel.Unknown
 		};
 
+	/// <summary>The vehicle of a service: its operator and, when the server says so, how full it is.</summary>
+	private static Vehicle? MapVehicle(XElement? service, TransitLine line)
+	{
+		OccupancyLevel occupancy = MapOccupancy(service.ChildText("Occupancy"));
+		string? vehicleRef = service.ChildText("VehicleRef");
+
+		return occupancy == OccupancyLevel.Unknown && vehicleRef is null
+			? null
+			: new Vehicle
+			{
+				Id = vehicleRef,
+				Name = line.Name,
+				Operator = line.Operator,
+				Occupancy = occupancy
+			};
+	}
+
 	private static bool IsCancelled(XElement? service) =>
 		service.Child("Cancelled").Flag();
 
@@ -570,7 +587,7 @@ internal static class TriasMapper
 			ArrivalPlatform = toBay,
 			ArrivalPlatformKind = toBay is null ? PlatformKind.Unknown : toKind,
 			IsCancelled = IsCancelled(service),
-			Occupancy = MapOccupancy(service.ChildText("Occupancy")),
+			Vehicle = MapVehicle(service, line),
 			Notices = Attributes(service, line.Name),
 			Id = tripLeg.ChildText("LegId"),
 			ProviderData = tripLeg

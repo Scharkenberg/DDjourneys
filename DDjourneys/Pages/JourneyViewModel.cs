@@ -682,14 +682,14 @@ public sealed class JourneyViewModel :
 						Mode = leg.Mode,
 						Direction = leg.Line?.Destination,
 						Course =
-							[.. leg.Stops
+							(leg.Stops
 								.Where(stop => stop.Station.Latitude is not null && stop.Station.Longitude is not null)
 								.Select(
 									stop => new CoursePoint(
 										stop.Station.Latitude!.Value,
 										stop.Station.Longitude!.Value,
 										stop.EffectiveDeparture ?? stop.EffectiveArrival,
-										stop.Station.Name))]
+										stop.Station.Name))).ToList()
 					};
 
 				if (target.IsUsable)
@@ -910,7 +910,7 @@ public sealed class JourneyViewModel :
 
 
 		Fares =
-			[.. journey.Fares
+			(journey.Fares
 				.Select(
 					fare => new FareRow
 					{
@@ -935,7 +935,7 @@ public sealed class JourneyViewModel :
 							fare.ValidFor is { Length: > 0 } who
 								? $"{_localization.CurrentStrings.Extras.FareValidFor}: {who}"
 								: null
-					})];
+					})).ToList();
 
 		Notices =
 			journey.Notices
