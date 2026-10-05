@@ -390,7 +390,7 @@ public static class MapScenes
 		TrackTarget target,
 		LiveVehicle? vehicle,
 		bool fit) =>
-		FromTracks([target], [vehicle], fit);
+		FromTracks(new List<TrackTarget> { target }, new List<LiveVehicle?> { vehicle }, fit);
 
 	/// <summary>The runs of a followed journey together: every course faintly, its stops, and each matched vehicle.</summary>
 	public static MapScene FromTracks(

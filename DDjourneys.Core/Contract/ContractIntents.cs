@@ -7,10 +7,10 @@ namespace DDjourneys.Core.Contract;
 /// The things apps already know how to send, read as the short form <c>go</c> (to a destination, from where the user
 /// starts): a <c>geo:</c> link (maps, browsers, messengers) and shared text (the share sheet). Pure, like the parser.
 /// </summary>
-public static partial class ContractIntents
+public static class ContractIntents
 {
-	[GeneratedRegex(@"^\s*(?<lat>-?\d{1,2}(?:\.\d+)?)\s*,\s*(?<lon>-?\d{1,3}(?:\.\d+)?)\s*(?:\((?<label>.*)\))?\s*$")]
-	private static partial Regex CoordinateQuery();
+	private static readonly Regex CoordinateQuery =
+		new(@"^\s*(?<lat>-?\d{1,2}(?:\.\d+)?)\s*,\s*(?<lon>-?\d{1,3}(?:\.\d+)?)\s*(?:\((?<label>.*)\))?\s*$", RegexOptions.Compiled);
 
 	/// <summary>
 	/// A <c>geo:</c> link by its scheme-specific part: <c>51.05,13.73</c>, <c>0,0?q=Hellerau</c>,
@@ -59,7 +59,7 @@ public static partial class ContractIntents
 
 			string value = Uri.UnescapeDataString(pair[(equals + 1)..].Replace('+', ' ')).Trim();
 
-			if (CoordinateQuery().Match(value) is { Success: true } match)
+			if (CoordinateQuery.Match(value) is { Success: true } match)
 			{
 				point ??= Coordinates($"{match.Groups["lat"].Value},{match.Groups["lon"].Value}");
 

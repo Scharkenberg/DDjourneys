@@ -670,7 +670,7 @@ public sealed class TrackedJourneysViewModel : DisposableViewModel, IQueryAttrib
 		DateTimeOffset limit = DateTimeOffset.UtcNow - TimeSpan.FromMinutes(3);
 
 		// Rides that are over have no vehicle to look for; when all are, show them anyway.
-		IReadOnlyList<FollowedRide> pending =
+		List<FollowedRide> pending =
 			[.. rides.Where(ride => ride.Arrival is null || ride.Arrival > limit)];
 
 		var targets = new List<TrackTarget>();

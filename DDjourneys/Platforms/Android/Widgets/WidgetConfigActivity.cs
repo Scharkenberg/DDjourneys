@@ -11,7 +11,7 @@ using Android.Views;
 using Android.Widget;
 using DDjourneys.Core.Models;
 using DDjourneys.Core.Providers;
-using DDjourneys.Core.Providers.Abstractions;
+using ProviderInfo = DDjourneys.Core.Providers.Abstractions.ProviderInfo;
 using DDjourneys.Core.Widgets;
 using DDjourneys.Localization;
 using Uri = Android.Net.Uri;
