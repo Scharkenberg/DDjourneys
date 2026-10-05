@@ -16,8 +16,10 @@ namespace DDjourneys.Platforms.Android.LiveJourney.Schutzengel;
 [Service(
 	Enabled = true,
 	Exported = false,
-	ForegroundServiceType = global::Android.Content.PM.ForegroundService.TypeDataSync)]
-internal sealed class JourneyTrackingForegroundService : Service
+	ForegroundServiceType =
+		global::Android.Content.PM.ForegroundService.TypeDataSync |
+		global::Android.Content.PM.ForegroundService.TypeLocation)]
+public sealed class JourneyTrackingForegroundService : Service
 {
 	/// <summary>False if the system refuses (for example a start from the background).</summary>
 	public static bool TryStart()

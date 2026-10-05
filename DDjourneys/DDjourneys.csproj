@@ -46,15 +46,11 @@
 		<AssemblyTitle>DDjourneys</AssemblyTitle>
 	</PropertyGroup>
 
-	<PropertyGroup Condition="'$(UseMonoRuntime)' == 'true'">
-	  <RunAOTCompilation>True</RunAOTCompilation>
-    </PropertyGroup>
-  
+ 
 	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net11.0-android|AnyCPU'">
 	  <EmbedAssembliesIntoApk>True</EmbedAssembliesIntoApk>
 	  <AndroidUseAapt2>True</AndroidUseAapt2>
 	  <AndroidEnableMultiDex>True</AndroidEnableMultiDex>
-	  <TrimMode>partial</TrimMode>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net11.0-windows10.0.26100.0|AnyCPU'">
@@ -64,7 +60,6 @@
 	  <AndroidUseAapt2>True</AndroidUseAapt2>
 	  <AndroidEnableMultiDex>True</AndroidEnableMultiDex>
 	  <AndroidLinkTool>r8</AndroidLinkTool>
-	  <TrimMode>partial</TrimMode>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net11.0-windows10.0.26100.0|AnyCPU'">
@@ -110,10 +105,6 @@
 		<!-- The map page (HybridWebView) uses the app's own fonts: the same files, served from wwwroot/fonts -->
 		<MauiAsset Include="Resources\Fonts\*.ttf" Link="Resources\Raw\wwwroot\fonts\%(Filename)%(Extension)" LogicalName="wwwroot\fonts\%(Filename)%(Extension)" />
 	</ItemGroup>
-
-  <ItemGroup>
-    <None Include="Resources\Splash\splash.svg" />
-  </ItemGroup>
 
   <ItemGroup>
     <MauiSplashScreen Include="Resources\Splash\splash.svg" Color="#121016" BaseSize="160,160" />
