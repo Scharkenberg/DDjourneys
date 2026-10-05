@@ -11,6 +11,7 @@ public partial class App : Application
 	{
 		InitializeComponent();
 		SystemAccessibility.Refresh();
+		SystemAccessibility.Changed += (_, _) => Dense.Refresh();
 		Motion.Bind(settings);
 		Theme.Initialize(this, settings);
 		Density.Initialize(this, settings);

@@ -28,6 +28,7 @@
 		<Setter Property="FontSize" Value="{StaticResource FontHeadline}" />
 	</Style>
 	<Style Class="Title" TargetType="Label">
+		<Setter Property="SemanticProperties.HeadingLevel" Value="Level2" />
 		<Setter Property="FontFamily" Value="{DynamicResource FontSemibold}" />
 		<Setter Property="FontSize" Value="{StaticResource FontTitle}" />
 	</Style>
@@ -167,6 +168,7 @@
 		<Setter Property="support:Motion.Enter" Value="Grow" />
 	</Style>
 	<Style Class="Section" TargetType="Label">
+		<Setter Property="SemanticProperties.HeadingLevel" Value="Level2" />
 		<Setter Property="FontFamily" Value="{DynamicResource FontSemibold}" />
 		<Setter Property="FontSize" Value="{StaticResource FontCaption}" />
 		<Setter Property="TextColor" Value="{DynamicResource Accent}" />

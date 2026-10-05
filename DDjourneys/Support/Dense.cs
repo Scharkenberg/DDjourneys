@@ -71,20 +71,23 @@ public static class Dense
 	{
 		var profile = Density.Profile;
 
+		// Rows and touch targets grow with the OS text size, so bigger text never gets clipped or cramped.
+		double textScale = Math.Max(1, SystemAccessibility.TextScale);
+
 		if (bindable is VisualElement element)
 		{
 			double height = GetMinHeight(bindable);
 
 			if (!double.IsNaN(height))
 			{
-				element.MinimumHeightRequest = profile.Hit(height);
+				element.MinimumHeightRequest = profile.Hit(height) * textScale;
 			}
 
 			double width = GetMinWidth(bindable);
 
 			if (!double.IsNaN(width))
 			{
-				element.MinimumWidthRequest = profile.Hit(width);
+				element.MinimumWidthRequest = profile.Hit(width) * textScale;
 			}
 		}
 
