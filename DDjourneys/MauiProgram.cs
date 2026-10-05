@@ -45,6 +45,10 @@ public static class MauiProgram
 		Platforms.Android.NativeStyling.Install();
 #endif
 
+#if WINDOWS
+		Platforms.Windows.NativeStyling.Install();
+#endif
+
 		// Versioned on-device storage: bring it up to date before anything reads it.
 		AppStorage.Upgrade();
 
