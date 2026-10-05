@@ -39,6 +39,9 @@ public partial class MapPage : ContentPage, IQueryAttributable
 	private bool _pick;
 	private bool _busy;
 	private bool _centered;
+	private bool _wantsExplore;
+	private Location? _at;
+	private bool _exploring;
 	private MapViewport? _viewport;
 
 	public MapPage(
@@ -77,6 +80,12 @@ public partial class MapPage : ContentPage, IQueryAttributable
 			Title = text;
 		}
 
+		if (query.TryGetValue(Routes.MapAt, out object? at)
+			&& at is Location centre)
+		{
+			_at = centre;
+		}
+
 		if (query.TryGetValue(Routes.MapMode, out object? mode)
 			&& mode is Routes.MapModePick)
 		{
@@ -100,20 +109,43 @@ public partial class MapPage : ContentPage, IQueryAttributable
 		}
 		else
 		{
-			_ = StartExploringAsync();
+			// Without a usable CARTO key there is no map (the map view says so): nothing is located or loaded for it.
+			_wantsExplore = true;
+			TryStartExploring();
 		}
 
 		UpdateHint(null);
 	}
 
+	private void TryStartExploring()
+	{
+		if (!_wantsExplore
+			|| _exploring
+			|| !MapAvailability.IsAvailable)
+		{
+			return;
+		}
+
+		_exploring = true;
+
+		_ = StartExploringAsync();
+	}
+
+	private void OnAvailabilityChanged(object? sender, EventArgs e) =>
+		Dispatcher.Dispatch(TryStartExploring);
+
 	protected override void OnAppearing()
 	{
 		base.OnAppearing();
 		Motion.EnterPage(this);
+
+		MapAvailability.Changed += OnAvailabilityChanged;
+		TryStartExploring();
 	}
 
 	protected override void OnDisappearing()
 	{
+		MapAvailability.Changed -= OnAvailabilityChanged;
 		_load?.Cancel();
 		base.OnDisappearing();
 	}
@@ -139,6 +171,12 @@ public partial class MapPage : ContentPage, IQueryAttributable
 
 	private async Task<(double Latitude, double Longitude, int Zoom, bool Me)> FindCentreAsync()
 	{
+		// Asked for a place (by another app, or a place the user is looking at): there first.
+		if (_at is { Latitude: { } atLat, Longitude: { } atLon })
+		{
+			return (atLat, atLon, 16, false);
+		}
+
 		try
 		{
 			using var cancel = new CancellationTokenSource(LocateWait);

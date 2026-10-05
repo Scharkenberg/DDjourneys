@@ -131,6 +131,18 @@ public partial class PlanPage : ContentPage, IQueryAttributable
 		{
 			_vm.SearchCommand.Execute(null);
 		}
+		else if (plan.AskMissing)
+		{
+			// The short form could not fill an end (no position, no home): the planner asks for it.
+			if (plan.From is null)
+			{
+				PickStart();
+			}
+			else if (plan.To is null)
+			{
+				PickDestination();
+			}
+		}
 	}
 
 	public void ApplyQueryAttributes(
@@ -248,7 +260,7 @@ public partial class PlanPage : ContentPage, IQueryAttributable
 		TappedEventArgs e)
 	{
 		if ((sender as BindableObject)?.BindingContext
-			is Location place)
+			is PlaceChip { Place: var place })
 		{
 			if (sender is VisualElement chip)
 			{

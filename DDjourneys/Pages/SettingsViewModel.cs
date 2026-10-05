@@ -33,7 +33,69 @@ public sealed class SettingsViewModel : DisposableViewModel
 		OpenProvidersCommand = new AsyncCommand(OpenProvidersAsync);
 		ShareLogCommand = new AsyncCommand(ShareLogAsync);
 		ClearLogCommand = new Command(ClearLog);
+		SaveMapKeyCommand = new Command(SaveMapKey, () => MapKeyChanged);
+
+		_mapKeyDraft = _settings.MapApiKey;
+
+		Subscribe(
+			() => MapAvailability.Changed += OnMapAvailabilityChanged,
+			() => MapAvailability.Changed -= OnMapAvailabilityChanged);
 	}
+
+	private string _mapKeyDraft;
+
+	/// <summary>What is typed in the key field; it is used when "Use key" is pressed (not on every keystroke).</summary>
+	public string MapKeyDraft
+	{
+		get => _mapKeyDraft;
+		set
+		{
+			if (SetProperty(ref _mapKeyDraft, value ?? string.Empty))
+			{
+				OnPropertyChanged(nameof(MapKeyChanged));
+				SaveMapKeyCommand.ChangeCanExecute();
+			}
+		}
+	}
+
+	public bool MapKeyChanged =>
+		!string.Equals(_mapKeyDraft.Trim(), _settings.MapApiKey, StringComparison.Ordinal);
+
+	public Command SaveMapKeyCommand { get; }
+
+	public string MapKeyStatus
+	{
+		get
+		{
+			SettingsStrings strings = _localization.CurrentStrings.Settings;
+
+			return !MapAvailability.HasKey
+				? strings.MapKeyStatusMissing
+				: MapAvailability.IsRejected
+					? strings.MapKeyStatusInvalid
+					: strings.MapKeyStatusSet;
+		}
+	}
+
+	private void SaveMapKey()
+	{
+		_settings.MapApiKey = _mapKeyDraft.Trim();
+
+		OnPropertyChanged(nameof(MapKeyChanged));
+		OnPropertyChanged(nameof(MapKeyStatus));
+		SaveMapKeyCommand.ChangeCanExecute();
+	}
+
+	private void OnMapAvailabilityChanged(object? sender, EventArgs e) =>
+		MainThread.BeginInvokeOnMainThread(
+			() =>
+			{
+				if (!IsDisposed)
+				{
+					OnPropertyChanged(nameof(MapKeyStatus));
+					OnPropertyChanged(nameof(MapKeyChanged));
+				}
+			});
 
 	public AsyncCommand OpenAppearanceCommand { get; }
 	public Command<string> SelectLanguageCommand { get; }

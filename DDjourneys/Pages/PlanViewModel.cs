@@ -14,6 +14,51 @@ using Location = DDjourneys.Core.Models.Location;
 
 namespace DDjourneys.Pages;
 
+/// <summary>A favourite or recent place as one chip of the quick-pick strip.</summary>
+public sealed record PlaceChip(Location Place, bool IsFavourite)
+{
+	public string Name =>
+		StopLabel.NameFor(Place.Name, Place.Place);
+
+	public string City =>
+		StopLabel.PlaceFor(Place.Name, Place.Place) ?? string.Empty;
+
+	public bool HasCity =>
+		City.Length > 0;
+
+	public IconGlyph Glyph =>
+		IsFavourite
+			? IconGlyph.StarFilled
+			: IconGlyph.History;
+
+	public string Description =>
+		StopLabel.Compose(Place);
+}
+
+/// <summary>One line of the routes card: a saved route (bookmark) or a recent search (clock), "From \u2192 To".</summary>
+public sealed record RouteLine(
+	Location From,
+	Location To,
+	SavedRoute? Saved,
+	RouteRow? Recent)
+{
+	public bool IsSaved =>
+		Saved is not null;
+
+	public IconGlyph Glyph =>
+		IsSaved
+			? IconGlyph.BookmarkFilled
+			: IconGlyph.History;
+
+	public string Text =>
+		Saved is { Name: { Length: > 0 } name } && name != Saved.Description
+			? name
+			: $"{StopLabel.NameFor(From.Name, From.Place)} \u2192 {StopLabel.NameFor(To.Name, To.Place)}";
+
+	public string Description =>
+		$"{StopLabel.Compose(From)} \u2192 {StopLabel.Compose(To)}";
+}
+
 /// <summary>A connection the passenger searched before, as the planner lists it.</summary>
 public sealed record RouteRow(
 	RoutePair Route)
@@ -42,7 +87,7 @@ public sealed record RouteRow(
 public sealed partial class PlanViewModel : DisposableViewModel
 {
 	/// <summary>How many searched connections the planner shows before "show all".</summary>
-	private const int CollapsedRoutes = 5;
+	private const int CollapsedRoutes = 3;
 
 	private static readonly TimeSpan RolloverGrace =
 		TimeSpan.FromMinutes(30);
@@ -235,6 +280,28 @@ public sealed partial class PlanViewModel : DisposableViewModel
 						: null,
 				TellAsync);
 
+		UseLineCommand =
+			new AsyncCommand<RouteLine>(
+				line => SafeAsync(
+					() => line?.Saved is { } saved
+						? UseSavedRouteAsync(saved)
+						: UseRouteAsync(line?.Recent)));
+
+		ForgetLineCommand =
+			new Command<RouteLine>(
+				line => Safe(
+					() =>
+					{
+						if (line?.Saved is { } saved)
+						{
+							_store.RemoveSavedRoute(saved);
+						}
+						else if (line?.Recent is { } recent)
+						{
+							_store.RemoveRecentRoute(recent.Route);
+						}
+					}));
+
 		UseSavedRouteCommand =
 			new AsyncCommand<SavedRoute>(
 				route => SafeAsync(
@@ -314,6 +381,22 @@ public sealed partial class PlanViewModel : DisposableViewModel
 
 	/// <summary>Saves (and removes) the connection shown; the icon reflects whether it is saved.</summary>
 	public RouteBookmark Bookmark { get; }
+
+	public AsyncCommand<RouteLine> UseLineCommand { get; }
+
+	public Command<RouteLine> ForgetLineCommand { get; }
+
+	/// <summary>Home, favourites and recent places, one strip of chips.</summary>
+	public ObservableCollection<PlaceChip> PlaceChips { get; } = [];
+
+	/// <summary>Saved routes, then the latest searches (all of them when expanded).</summary>
+	public ObservableCollection<RouteLine> RouteLines { get; } = [];
+
+	public bool HasRouteLines =>
+		RouteLines.Count > 0;
+
+	public bool HasPlaceChips =>
+		PlaceChips.Count > 0;
 
 	public AsyncCommand<SavedRoute> UseSavedRouteCommand { get; }
 
@@ -864,6 +947,11 @@ public sealed partial class PlanViewModel : DisposableViewModel
 					To = to;
 				}
 
+				if (plan.Via is { } via)
+				{
+					Via = via;
+				}
+
 				if (plan.Mode is { } mode)
 				{
 					IsArrival = mode == JourneySearchMode.Arrival;
@@ -1174,11 +1262,19 @@ public sealed partial class PlanViewModel : DisposableViewModel
 				: all.Take(CollapsedRoutes);
 
 		RecentRoutes.Clear();
+		RouteLines.Clear();
+
+		foreach (SavedRoute saved in _store.SavedRoutes)
+		{
+			RouteLines.Add(new RouteLine(saved.From, saved.To, saved, null));
+		}
 
 		foreach (RoutePair route in shown)
 		{
-			RecentRoutes.Add(
-				new RouteRow(route));
+			var row = new RouteRow(route);
+
+			RecentRoutes.Add(row);
+			RouteLines.Add(new RouteLine(route.From, route.To, null, row));
 		}
 
 		CanExpandRoutes =
@@ -1193,6 +1289,9 @@ public sealed partial class PlanViewModel : DisposableViewModel
 
 		OnPropertyChanged(
 			nameof(HasRecentRoutes));
+
+		OnPropertyChanged(
+			nameof(HasRouteLines));
 
 		OnPropertyChanged(
 			nameof(RoutesToggleText));
@@ -1437,6 +1536,22 @@ public sealed partial class PlanViewModel : DisposableViewModel
 				{
 					SavedRoutes.Add(route);
 				}
+
+				PlaceChips.Clear();
+
+				foreach (Location favourite in _store.Favourites)
+				{
+					PlaceChips.Add(new PlaceChip(favourite, true));
+				}
+
+				foreach (Location recent in _store.Recents.Where(
+					recent => !_store.Favourites.Any(favourite => SamePlace(favourite, recent))))
+				{
+					PlaceChips.Add(new PlaceChip(recent, false));
+				}
+
+				OnPropertyChanged(
+					nameof(HasPlaceChips));
 
 				OnPropertyChanged(
 					nameof(HasFavourites));

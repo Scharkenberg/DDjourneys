@@ -191,7 +191,8 @@ public sealed class StopNameView : ContentView
 
 	private void Refresh()
 	{
-		string name = Stop ?? string.Empty;
+		// One presentation everywhere: the name without its city, the city below it.
+		(string name, string? city) = StopLabel.Split(Stop, Place);
 
 		if (string.IsNullOrEmpty(Prefix))
 		{
@@ -224,8 +225,6 @@ public sealed class StopNameView : ContentView
 
 			_name.FormattedText = text;
 		}
-
-		string? city = StopLabel.PlaceFor(name, Place);
 
 		_place.Text = city;
 		_place.IsVisible = city is not null;

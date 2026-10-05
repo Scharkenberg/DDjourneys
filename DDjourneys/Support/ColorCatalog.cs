@@ -65,7 +65,7 @@ public static class ColorCatalog
 
 		if (def is null)
 		{
-			return ToMap(PaletteBuilder.Build(ToRgb(option.Seed), dark, option.Solarized, pureBlack));
+			return ToMap(PaletteBuilder.Build(ToRgb(option.Seed), dark, option.Solarized, pureBlack, tint: true));
 		}
 
 		var palette = new Dictionary<string, Color>(def.Palette);

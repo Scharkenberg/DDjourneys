@@ -135,11 +135,18 @@ public sealed class VehiclesViewModel : DisposableViewModel, IQueryAttributable
 	private bool _dirty;
 	private bool _fitNext;
 
-	// Following one run: the target, the vehicle matched to it and what the match is based on.
+	// Following runs: one slot per run (the rides of a followed journey, or the one run of a leg or departure), each with
+	// the vehicle matched to it and what the match is based on. _target is the first of them.
 	private TrackTarget? _target;
-	private LiveVehicle? _matched;
-	private double _matchedScore;
-	private DateTimeOffset _matchedSeen;
+	private readonly List<Slot> _slots = [];
+
+	private sealed class Slot(TrackTarget target)
+	{
+		public TrackTarget Target { get; } = target;
+		public LiveVehicle? Matched { get; set; }
+		public double Score { get; set; } = double.MaxValue;
+		public DateTimeOffset Seen { get; set; }
+	}
 	private readonly Dictionary<string, LiveVehicle> _previous = [];
 
 	public VehiclesViewModel(
@@ -180,6 +187,7 @@ public sealed class VehiclesViewModel : DisposableViewModel, IQueryAttributable
 				async () =>
 				{
 					_target = null;
+					_slots.Clear();
 					OnPropertyChanged(nameof(IsTracking));
 					OnPropertyChanged(nameof(IsNotTracking));
 					OnPropertyChanged(nameof(IsIdle));
@@ -221,8 +229,12 @@ public sealed class VehiclesViewModel : DisposableViewModel, IQueryAttributable
 			? string.Format(
 				CultureInfo.CurrentCulture,
 				_localization.CurrentStrings.Extras.TrackFollowing,
-				target.Line,
-				target.Direction ?? string.Empty).Trim()
+				_slots.Count > 1
+					? string.Join(" \u00B7 ", _slots.Select(slot => slot.Target.Line))
+					: target.Line,
+				_slots.Count > 1
+					? string.Empty
+					: target.Direction ?? string.Empty).Trim()
 			: string.Empty;
 
 	public ObservableCollection<VehicleRow> Rows { get; } = [];
@@ -298,12 +310,17 @@ public sealed class VehiclesViewModel : DisposableViewModel, IQueryAttributable
 	public void ApplyQueryAttributes(
 		IDictionary<string, object> query)
 	{
-		if (query.TryGetValue(Routes.Track, out object? tracked)
-			&& tracked is TrackTarget target
-			&& target.IsUsable)
+		if ((query.TryGetValue(Routes.TrackSet, out object? set) && set is IReadOnlyList<TrackTarget> many
+				? many.Where(item => item.IsUsable).ToList()
+				: query.TryGetValue(Routes.Track, out object? tracked) && tracked is TrackTarget { IsUsable: true } one
+					? [one]
+					: []) is { Count: > 0 } targets)
 		{
-			_target = target;
-			LineFilter = target.Line;
+			_slots.Clear();
+			_slots.AddRange(targets.Select(item => new Slot(item)));
+
+			_target = targets[0];
+			LineFilter = string.Join(", ", targets.Select(item => item.Line).Distinct());
 
 			OnPropertyChanged(nameof(LineFilter));
 			OnPropertyChanged(nameof(IsTracking));
@@ -365,8 +382,8 @@ public sealed class VehiclesViewModel : DisposableViewModel, IQueryAttributable
 
 		SceneChanged?.Invoke(
 			this,
-			_target is { } target
-				? MapScenes.FromTrack(target, _matched, false)
+			_slots.Count > 0
+				? MapScenes.FromTracks(_slots.Select(slot => slot.Target).ToList(), _slots.Select(slot => slot.Matched).ToList(), false)
 				: MapScenes.FromVehicles(
 					Rows.Select(row => row.Vehicle),
 					fit));
@@ -413,8 +430,12 @@ public sealed class VehiclesViewModel : DisposableViewModel, IQueryAttributable
 		Rows.Clear();
 		_byKey.Clear();
 		_previous.Clear();
-		_matched = null;
-		_matchedScore = double.MaxValue;
+
+		foreach (Slot slot in _slots)
+		{
+			slot.Matched = null;
+			slot.Score = double.MaxValue;
+		}
 
 		(IReadOnlyList<int> lines, IReadOnlyList<string> ignored) = ParseLines(LineFilter);
 
@@ -432,8 +453,8 @@ public sealed class VehiclesViewModel : DisposableViewModel, IQueryAttributable
 		// Following a run: its course is on the map from the start, before any position arrives.
 		SceneChanged?.Invoke(
 			this,
-			_target is { } followed
-				? MapScenes.FromTrack(followed, null, true)
+			_slots.Count > 0
+				? MapScenes.FromTracks(_slots.Select(slot => slot.Target).ToList(), _slots.Select(_ => (LiveVehicle?)null).ToList(), true)
 				: new MapScene { Fit = false });
 
 		IsStreaming = true;
@@ -451,9 +472,9 @@ public sealed class VehiclesViewModel : DisposableViewModel, IQueryAttributable
 					return;
 				}
 
-				if (_target is { } trackedTarget)
+				if (_slots.Count > 0)
 				{
-					ApplyTracked(trackedTarget, vehicle);
+					ApplyTracked(vehicle);
 
 					continue;
 				}
@@ -490,14 +511,12 @@ public sealed class VehiclesViewModel : DisposableViewModel, IQueryAttributable
 	}
 
 	/// <summary>
-	/// Following one run: every position of the line is scored against the course; the best fit is shown and kept
-	/// until another vehicle fits clearly better or the shown one stops reporting.
+	/// Following runs: every position of a line is scored against the course of each run on that line; the best fit
+	/// is shown and kept until another vehicle fits clearly better or the shown one stops reporting.
 	/// </summary>
-	private void ApplyTracked(
-		TrackTarget target,
-		LiveVehicle vehicle)
+	private void ApplyTracked(LiveVehicle vehicle)
 	{
-		if (_matched is null
+		if (_slots.All(slot => slot.Matched is null)
 			&& Status == _localization.CurrentStrings.Extras.LiveConnecting)
 		{
 			Status = _localization.CurrentStrings.Extras.LiveWaiting;
@@ -512,22 +531,29 @@ public sealed class VehiclesViewModel : DisposableViewModel, IQueryAttributable
 			_previous[vehicle.Key] = vehicle;
 		}
 
-		double? score = RunMatcher.Score(target, vehicle, before);
+		foreach (Slot slot in _slots.Where(slot => slot.Target.LineNumber == vehicle.Line))
+		{
+			ApplyToSlot(slot, vehicle, before);
+		}
+	}
 
-		bool isMatched = _matched is not null && _matched.Key == vehicle.Key;
+	private void ApplyToSlot(Slot slot, LiveVehicle vehicle, LiveVehicle? before)
+	{
+		double? score = RunMatcher.Score(slot.Target, vehicle, before);
 
-		if (isMatched)
+		if (slot.Matched is not null
+			&& slot.Matched.Key == vehicle.Key)
 		{
 			if (score is null)
 			{
 				// The shown vehicle no longer fits (its run ended, or noise): let another one take over.
-				_matchedScore = double.MaxValue;
+				slot.Score = double.MaxValue;
 			}
 			else
 			{
-				_matchedScore = score.Value;
-				_matched = vehicle;
-				_matchedSeen = DateTimeOffset.UtcNow;
+				slot.Score = score.Value;
+				slot.Matched = vehicle;
+				slot.Seen = DateTimeOffset.UtcNow;
 				ShowMatched(vehicle);
 			}
 
@@ -540,19 +566,24 @@ public sealed class VehiclesViewModel : DisposableViewModel, IQueryAttributable
 		}
 
 		bool stale =
-			_matched is null
-			|| DateTimeOffset.UtcNow - _matchedSeen > TimeSpan.FromSeconds(150)
-			|| _matchedScore == double.MaxValue;
+			slot.Matched is null
+			|| DateTimeOffset.UtcNow - slot.Seen > TimeSpan.FromSeconds(150)
+			|| slot.Score == double.MaxValue;
 
 		if (stale
-			|| value + 45 < _matchedScore)
+			|| value + 45 < slot.Score)
 		{
-			_matched = vehicle;
-			_matchedScore = value;
-			_matchedSeen = DateTimeOffset.UtcNow;
+			// Only this slot's earlier vehicle leaves the list; other followed runs keep theirs.
+			if (slot.Matched is { } old
+				&& !_slots.Any(other => other != slot && other.Matched?.Key == old.Key)
+				&& _byKey.Remove(old.Key, out VehicleRow? oldRow))
+			{
+				Rows.Remove(oldRow);
+			}
 
-			Rows.Clear();
-			_byKey.Clear();
+			slot.Matched = vehicle;
+			slot.Score = value;
+			slot.Seen = DateTimeOffset.UtcNow;
 
 			ShowMatched(vehicle);
 		}
@@ -629,7 +660,7 @@ public sealed class VehiclesViewModel : DisposableViewModel, IQueryAttributable
 
 				_byKey.Clear();
 				_previous.Clear();
-				_matched = null;
+				_slots.Clear();
 				_target = null;
 				Rows.Clear();
 			});

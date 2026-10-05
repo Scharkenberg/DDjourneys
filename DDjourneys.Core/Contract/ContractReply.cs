@@ -186,6 +186,8 @@ public static class ContractCapabilities
 			new("scheme", ContractVersion.Scheme),
 			new("oldest", ContractVersion.Oldest.ToString(System.Globalization.CultureInfo.InvariantCulture)),
 			new("commands", string.Join(',', Enum.GetValues<ContractCommand>().Select(command => command.Name()))),
-			new("android.action", ContractVersion.AndroidAction)
+			new("android.action", ContractVersion.AndroidAction),
+			new("keywords", string.Join(',', ContractKeywords.Here, ContractKeywords.Home, ContractKeywords.Start)),
+			new("android.intents", "view:ddjourneys,view:geo,send:text/plain")
 		];
 }

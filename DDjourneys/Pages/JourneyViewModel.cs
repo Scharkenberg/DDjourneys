@@ -470,7 +470,10 @@ public sealed class JourneyViewModel :
 				? _tracker.Find(original)?.PlanId
 				: null;
 
-		await _tracker.FollowAsync(_journey, default, replaces);
+		WatchedJourney watched = await _tracker.FollowAsync(_journey, default, replaces);
+
+		// The followed journey's map (and its vehicles) needs the rides with their boarding stops.
+		FollowedRides.Save(watched.PlanId, _journey);
 
 		UpdateFollowState();
 

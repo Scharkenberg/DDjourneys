@@ -39,7 +39,8 @@ public static class PaletteBuilder
 	/// <param name="dark">Dark neutrals instead of light ones.</param>
 	/// <param name="solarized">Warm solarized neutrals instead of plain ones.</param>
 	/// <param name="pureBlack">Dark only: Bg and Surface become #000000 (the former Surface becomes Raised).</param>
-	public static PaletteColors Build(Rgb seed, bool dark, bool solarized, bool pureBlack = false)
+	/// <param name="tint">Mixes a little of the seed into the neutrals so colour sets differ in their surfaces too, not only in the accent (skipped where it would cost legibility).</param>
+	public static PaletteColors Build(Rgb seed, bool dark, bool solarized, bool pureBlack = false, bool tint = false)
 	{
 		Neutrals n =
 			dark
@@ -57,11 +58,38 @@ public static class PaletteBuilder
 			surface = Rgb.Black;
 		}
 
+		Rgb outline = n.Outline;
+
+		if (tint)
+		{
+			double amount = dark ? 0.07 : 0.05;
+
+			Rgb tintedBg = pureBlack && dark ? bg : bg.Mix(seed, amount);
+			Rgb tintedSurface = pureBlack && dark ? surface : surface.Mix(seed, amount * 0.5);
+			Rgb tintedRaised = raised.Mix(seed, amount * 1.6);
+
+			bool legible =
+				new[] { tintedBg, tintedSurface, tintedRaised }.All(
+					bgColor => Rgb.Contrast(n.Ink, bgColor) >= 7.0
+						&& Rgb.Contrast(n.InkMuted, bgColor) >= 4.5
+						&& Rgb.Contrast(n.OnTime, bgColor) >= 4.5
+						&& Rgb.Contrast(n.Delay, bgColor) >= 4.5
+						&& Rgb.Contrast(n.Cancelled, bgColor) >= 4.5);
+
+			if (legible)
+			{
+				bg = tintedBg;
+				surface = tintedSurface;
+				raised = tintedRaised;
+				outline = outline.Mix(seed, amount * 1.4);
+			}
+		}
+
 		Rgb accent = EnsureLegible(seed, bg, surface, dark);
 		Rgb onAccent = Rgb.Contrast(accent, Rgb.White) >= Rgb.Contrast(accent, Rgb.Black) ? Rgb.White : Rgb.Black;
 
 		return new PaletteColors(
-			bg, surface, raised, n.Outline, n.Ink, n.InkMuted,
+			bg, surface, raised, outline, n.Ink, n.InkMuted,
 			accent, onAccent, SoftTint(raised, accent, n.Ink, dark),
 			n.OnTime, n.Delay, n.Cancelled);
 	}

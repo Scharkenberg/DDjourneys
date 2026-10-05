@@ -69,12 +69,34 @@ public static class WidgetSnapshots
 				? real - plan
 				: null;
 
+		// A journey that starts on foot: the stop to walk to (where the vehicle is boarded) is what matters most, so it
+		// leads the row; the walk, the arrival and the rest follow in the second line.
+		JourneyLeg? firstLeg = journey.Legs.FirstOrDefault();
+
+		bool walksFirst =
+			first is not null
+			&& firstLeg is { IsRide: false }
+			&& !ReferenceEquals(firstLeg, first);
+
+		string arrival = $"→ {Format.TimeOrDash(journey.Arrival)}";
+
+		string walk =
+			walksFirst
+			&& firstLeg!.ScheduledDeparture is { } walkStart
+			&& firstLeg.ScheduledArrival is { } walkEnd
+				? $"{Format.TransportMode(TransitMode.Walk)} {Format.Duration(walkEnd - walkStart)}"
+				: string.Empty;
+
 		return new WidgetRow
 		{
 			Chip = first?.Line is { } line ? LineText(line) : Format.TransportMode(TransitMode.Walk),
 			Mode = first?.Mode ?? TransitMode.Walk,
-			Main = $"→ {Format.TimeOrDash(journey.Arrival)}",
-			Sub = string.Join(" · ", new[] { Format.Duration(journey.Duration), transfersText, lines }.Where(part => part.Length > 0)),
+			Main = walksFirst
+				? StopLabel.NameFor(first!.From.Name, first.From.Place)
+				: arrival,
+			Sub = walksFirst
+				? string.Join(" · ", new[] { walk, arrival, transfersText, lines }.Where(part => part.Length > 0))
+				: string.Join(" · ", new[] { Format.Duration(journey.Duration), transfersText, lines }.Where(part => part.Length > 0)),
 			Time = Format.TimeOrDash(journey.Departure),
 			Delay = journey.IsImpossible ? text.Cancelled : Format.Delay(delay) ?? string.Empty,
 			DelayLevel =

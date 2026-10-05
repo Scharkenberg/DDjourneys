@@ -22,9 +22,10 @@ public sealed class PaletteBuilderTests
 			foreach (bool solarized in new[] { false, true })
 			{
 				foreach (bool black in dark ? new[] { false, true } : new[] { false })
+				foreach (bool tint in new[] { false, true })
 				{
-					PaletteColors p = PaletteBuilder.Build(seed, dark, solarized, black);
-					string label = $"{hex} dark={dark} sol={solarized} black={black}";
+					PaletteColors p = PaletteBuilder.Build(seed, dark, solarized, black, tint);
+					string label = $"{hex} dark={dark} sol={solarized} black={black} tint={tint}";
 
 					foreach (Rgb bg in new[] { p.Bg, p.Surface })
 					{

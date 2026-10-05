@@ -15,14 +15,24 @@ public sealed record ResolvedPlan(
 	DateTime? When,
 	bool IsNow,
 	JourneySearchMode? Mode,
-	bool Search);
+	bool Search,
+	Location? Via = null,
+	bool AskMissing = false);
 
 /// <summary>
 /// Turns the caller's words into places the selected provider understands:
 /// a stop key of the selected provider is taken as is, coordinates become a free place, and a name is
-/// looked up (an exact station name wins, then the first station, then the first hit).
+/// looked up (an exact station name wins, then the first station, then the first hit). The keywords
+/// (<see cref="ContractKeywords"/>) are whatever is current in the app: the stop nearest to the device, the home place,
+/// the start the user has set. A keyword that cannot be resolved (no position, no home) leaves the place open, and the
+/// planner asks for it instead of the request failing.
 /// </summary>
-public sealed class ContractPlaceResolver(LocationService locations, ProviderRegistry providers)
+public sealed class ContractPlaceResolver(
+	LocationService locations,
+	ProviderRegistry providers,
+	PlannerLauncher near,
+	PlaceStore store,
+	AppSettings settings)
 {
 	private static readonly TimeSpan LookupTimeout = TimeSpan.FromSeconds(8);
 
@@ -32,6 +42,16 @@ public sealed class ContractPlaceResolver(LocationService locations, ProviderReg
 
 		Location? from = await ResolveAsync(request.From, "from", cancellationToken).ConfigureAwait(false);
 		Location? to = await ResolveAsync(request.To, "to", cancellationToken).ConfigureAwait(false);
+		Location? via = await ResolveAsync(request.Via, "via", cancellationToken).ConfigureAwait(false);
+
+		if (request.Command == ContractCommand.Pick
+			&& (from is null || to is null))
+		{
+			throw new ContractRefusal(
+				ContractErrorCode.PlaceNotFound,
+				"A place could not be resolved (no device position or no home place set).",
+				from is null ? "from" : "to");
+		}
 
 		DateTime? when = null;
 		bool isNow = false;
@@ -62,7 +82,40 @@ public sealed class ContractPlaceResolver(LocationService locations, ProviderReg
 			}
 		}
 
-		return new ResolvedPlan(from, to, when, isNow, request.Mode, request.Search);
+		bool complete = from is not null && to is not null;
+
+		// A search that lacks an end opens the planner and asks for it, the way the quick actions do.
+		return new ResolvedPlan(
+			from,
+			to,
+			when,
+			isNow,
+			request.Mode,
+			request.Search && complete,
+			via,
+			AskMissing: request.Search && !complete);
+	}
+
+	/// <summary>The place a departures or map request is about; null when it is the device's and no position is known.</summary>
+	internal Task<Location?> ResolveAtAsync(ContractRequest request, CancellationToken cancellationToken) =>
+		ResolveAsync(request.At, "at", cancellationToken);
+
+	private async Task<Location?> KeywordAsync(string keyword)
+	{
+		if (string.Equals(keyword, ContractKeywords.Home, StringComparison.OrdinalIgnoreCase))
+		{
+			return store.Home;
+		}
+
+		if (string.Equals(keyword, ContractKeywords.Start, StringComparison.OrdinalIgnoreCase)
+			&& settings.StartFrom == StartFromKind.Place
+			&& settings.StartFromPlace is { } chosen)
+		{
+			return chosen;
+		}
+
+		// @here, and @start when the user starts where they are.
+		return await near.NearMeAsync().ConfigureAwait(false);
 	}
 
 	private async Task<Location?> ResolveAsync(ContractPlace? place, string key, CancellationToken cancellationToken)
@@ -70,6 +123,13 @@ public sealed class ContractPlaceResolver(LocationService locations, ProviderReg
 		if (place is null)
 		{
 			return null;
+		}
+
+		if (ContractKeywords.IsKnown(place.Name)
+			&& place.StopKey is null
+			&& !place.HasCoordinates)
+		{
+			return await KeywordAsync(place.Name!).ConfigureAwait(false);
 		}
 
 		if (place.StopKey is { } stopKey)

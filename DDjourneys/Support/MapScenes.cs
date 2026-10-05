@@ -389,10 +389,41 @@ public static class MapScenes
 	public static MapScene FromTrack(
 		TrackTarget target,
 		LiveVehicle? vehicle,
+		bool fit) =>
+		FromTracks([target], [vehicle], fit);
+
+	/// <summary>The runs of a followed journey together: every course faintly, its stops, and each matched vehicle.</summary>
+	public static MapScene FromTracks(
+		IReadOnlyList<TrackTarget> targets,
+		IReadOnlyList<LiveVehicle?> vehicles,
 		bool fit)
 	{
-		ArgumentNullException.ThrowIfNull(target);
+		ArgumentNullException.ThrowIfNull(targets);
+		ArgumentNullException.ThrowIfNull(vehicles);
 
+		var markers = new List<MapMarker>();
+		var lines = new List<MapLine>();
+
+		for (int t = 0; t < targets.Count; t++)
+		{
+			AddTrack(targets[t], t < vehicles.Count ? vehicles[t] : null, t, markers, lines);
+		}
+
+		return new MapScene
+		{
+			Lines = lines,
+			Markers = markers,
+			Fit = fit
+		};
+	}
+
+	private static void AddTrack(
+		TrackTarget target,
+		LiveVehicle? vehicle,
+		int number,
+		List<MapMarker> markers,
+		List<MapLine> lines)
+	{
 		string color = ModeColor(target.Mode);
 		ExtrasStrings strings = Strings;
 
@@ -400,9 +431,6 @@ public static class MapScenes
 			target.Course
 				.Where(point => Position(point.Latitude, point.Longitude) is not null)
 				.ToArray();
-
-		var markers = new List<MapMarker>();
-		var lines = new List<MapLine>();
 
 		if (points.Length >= 2)
 		{
@@ -421,7 +449,7 @@ public static class MapScenes
 
 			markers.Add(
 				new MapMarker(
-					$"trk{index}",
+					$"trk{number}_{index}",
 					point.Latitude,
 					point.Longitude,
 					string.Empty,
@@ -457,13 +485,6 @@ public static class MapScenes
 							delay
 						}.Where(part => part.Length > 0))));
 		}
-
-		return new MapScene
-		{
-			Lines = lines,
-			Markers = markers,
-			Fit = fit
-		};
 	}
 
 	// ----- Stops and places -----

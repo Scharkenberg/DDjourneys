@@ -11,6 +11,7 @@ using Android.Views;
 using Android.Widget;
 using DDjourneys.Core.Models;
 using DDjourneys.Core.Providers;
+using DDjourneys.Core.Providers.Abstractions;
 using DDjourneys.Core.Widgets;
 using DDjourneys.Localization;
 using Uri = Android.Net.Uri;
@@ -42,6 +43,8 @@ public sealed class WidgetConfigActivity : Activity
 	private WidgetStrings _strings = LocalizationService.Current.CurrentStrings.Widgets;
 	private LinearLayout _form = null!;
 	private EditText? _lines;
+	private EditText? _title;
+	private bool _built;
 
 	protected override void OnCreate(Bundle? savedInstanceState)
 	{
@@ -90,24 +93,33 @@ public sealed class WidgetConfigActivity : Activity
 		WidgetStrings s = _strings;
 		IUiStrings all = LocalizationService.Current.CurrentStrings;
 
-		var scroll = new ScrollView(this);
+		if (!_built)
+		{
+			var scroll = new ScrollView(this);
 
-		scroll.SetFitsSystemWindows(true);
+			scroll.SetFitsSystemWindows(true);
 
-		_form = new LinearLayout(this) { Orientation = WidgetOrientation.Vertical };
-		_form.SetPadding(Dp(20), Dp(16), Dp(20), Dp(24));
+			_form = new LinearLayout(this) { Orientation = WidgetOrientation.Vertical };
+			_form.SetPadding(Dp(20), Dp(16), Dp(20), Dp(24));
 
-		scroll.AddView(_form);
-		SetContentView(scroll);
+			scroll.AddView(_form);
+			SetContentView(scroll);
+
+			_built = true;
+		}
+		else
+		{
+			_form.RemoveAllViews();
+		}
+
+		_lines = null;
 
 		AddTitle(KindName(_config.Kind));
 
-		string providerName = registry?.Find(_config.ProviderId)?.Name ?? _config.ProviderId;
+		AddProvider(registry);
 
-		if (providerName.Length > 0)
-		{
-			AddHint($"{s.ConfigProvider}: {providerName}");
-		}
+		_title = AddEdit(s.ConfigLabelTitle, KindName(_config.Kind), _config.Title);
+		AddHint(s.ConfigTitleHint);
 
 		switch (_config.Kind)
 		{
@@ -171,6 +183,79 @@ public sealed class WidgetConfigActivity : Activity
 		}
 
 		AddButtons(all);
+	}
+
+	/// <summary>
+	/// Any provider the app has, whichever it shows itself. Places belong to one provider (their ids mean nothing to
+	/// another), so changing it clears them and the form is built again.
+	/// </summary>
+	private void AddProvider(ProviderRegistry? registry)
+	{
+		IReadOnlyList<ProviderInfo> providers = registry?.Providers ?? [];
+
+		if (providers.Count < 2)
+		{
+			string name = registry?.Find(_config.ProviderId)?.Name ?? _config.ProviderId;
+
+			if (name.Length > 0)
+			{
+				AddHint($"{_strings.ConfigProvider}: {name}");
+			}
+
+			return;
+		}
+
+		AddLabel(_strings.ConfigProvider);
+
+		var spinner = new Spinner(this);
+
+		var adapter =
+			new ArrayAdapter<string>(
+				this,
+				global::Android.Resource.Layout.SimpleSpinnerItem,
+				new List<string>(providers.Select(provider => provider.Name)));
+
+		adapter.SetDropDownViewResource(global::Android.Resource.Layout.SimpleSpinnerDropDownItem);
+
+		spinner.Adapter = adapter;
+
+		int index = providers.ToList().FindIndex(provider => string.Equals(provider.Id, _config.ProviderId, StringComparison.OrdinalIgnoreCase));
+
+		spinner.SetSelection(Math.Max(index, 0));
+
+		spinner.ItemSelected +=
+			(_, e) =>
+			{
+				if (e.Position < 0 || e.Position >= providers.Count)
+				{
+					return;
+				}
+
+				string id = providers[e.Position].Id;
+
+				if (string.Equals(id, _config.ProviderId, StringComparison.OrdinalIgnoreCase))
+				{
+					return;
+				}
+
+				// Keep what was typed, drop what belongs to the old provider, and ask again.
+				_config =
+					_config with
+					{
+						ProviderId = id,
+						From = null,
+						To = null,
+						Stop = null,
+						Lines = _lines?.Text?.Trim() ?? _config.Lines,
+						Title = _title?.Text?.Trim() ?? _config.Title
+					};
+
+				BuildForm(registry);
+
+				Toast.MakeText(this, _strings.ConfigProviderChanged, ToastLength.Short)?.Show();
+			};
+
+		_form.AddView(spinner);
 	}
 
 	private string KindName(WidgetKind kind) =>
@@ -342,7 +427,7 @@ public sealed class WidgetConfigActivity : Activity
 
 	private void Save()
 	{
-		_config = _config with { Lines = _lines?.Text?.Trim() ?? _config.Lines };
+		_config = _config with { Lines = _lines?.Text?.Trim() ?? _config.Lines, Title = _title?.Text?.Trim() ?? _config.Title };
 
 		if (!_config.IsComplete)
 		{

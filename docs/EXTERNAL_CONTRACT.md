@@ -9,7 +9,7 @@ tests: `DDjourneys.Tracking.Tests/ContractTests.cs`.
 | Platform | Inbound | Registered in |
 |---|---|---|
 | all | link `ddjourneys://<command>?...` or `ddjourneys://v1/<command>?...` | |
-| Android | `ACTION_VIEW` of such a link, or action `dev.Scharkenberg.DDjourneys.action.CONTRACT` with **string** extras | `MainActivity` intent filters |
+| Android | `ACTION_VIEW` of such a link, or action `dev.Scharkenberg.DDjourneys.action.CONTRACT` with **string** extras; also a `geo:` link and shared plain text (section 8) | `MainActivity` intent filters |
 | Windows | protocol activation (`Start-Process "ddjourneys://..."`); the app is single-instance, a second launch is redirected to the running window | `Package.appxmanifest` |
 
 Extras use the link's keys, plus `command` (and optionally `v`). Keys are case-insensitive, values are trimmed.
@@ -26,8 +26,14 @@ The caller registers a scheme or an https App Link for it.
 | `pick` | Like `plan` with search; the user chooses a journey, and *Use this journey* hands it back | to `x-success` after the user's tap; errors to `x-error` |
 | `tracked` | Opens the followed journeys, optionally focused on one plan | only on error |
 | `capabilities` | Asks what this build supports; needs no interaction | at once, to `x-success` |
+| `go` | The short form of `plan`: only `to` is needed. Starts where the user starts, now, and searches at once | only on error |
+| `departures` | The departures (or arrivals) at a place; without one, at the stop nearest to the device | only on error |
+| `home` | "Take me home": from where the device is to the user's home, now, searched | only on error |
+| `map` | Opens the map, centred on a place when one is given | only on error |
+| `disruptions` | Opens the disruptions, limited to a line when one is given | only on error |
+| `live` | Opens the live vehicles of line number(s) | only on error |
 
-`plan`, `pick` and `tracked` bring the app to the front; the user is meant to see them. Nothing is ever sent
+All commands except `capabilities` bring the app to the front; the user is meant to see them. Nothing is ever sent
 back without either an error or the user's explicit tap, so a caller is not thrown back out of DDjourneys.
 
 ## 3. Parameters
@@ -35,21 +41,38 @@ back without either an error or the user's explicit tap, so a caller is not thro
 | Key | Used by | Meaning |
 |---|---|---|
 | `v` | all | Contract version, default current (1). Newer than the app speaks: `unsupported_version` |
-| `from`, `to` | plan, pick | Place name. Looked up with the selected provider: exact station name, else first station, else first hit |
-| `from.stop`, `to.stop` | plan, pick | Provider-qualified stop, `vvo:33000028`. Takes precedence over the name. A stop of another provider than the selected one is refused (`provider_mismatch`) unless a name or coordinates are given to fall back on |
-| `from.lat`, `from.lon`, `to.lat`, `to.lon` | plan, pick | WGS84, both or neither. Used as a free place; beats the name |
-| `time` | plan, pick | `now`, `2026-10-05T08:30` (provider time, Europe/Berlin) or `2026-10-05T08:30+02:00` / `...Z` (absolute). Must lie between today and a year ahead |
-| `mode` | plan, pick | `dep` or `arr`; default: the app's setting |
-| `search` | plan | `1` to search at once; default `0` (fill only). Needs both `from` and `to`. Always on for `pick` |
+| `from`, `to`, `via`, `at` | plan, pick, go (`via`), departures and map (`at`) | Place name. Looked up with the selected provider: exact station name, else first station, else first hit. Or a keyword (below) |
+| `from.stop`, `to.stop`, `via.stop`, `at.stop` | the same | Provider-qualified stop, `vvo:33000028`. Takes precedence over the name. A stop of another provider than the selected one is refused (`provider_mismatch`) unless a name or coordinates are given to fall back on |
+| `from.lat`, `from.lon`, `to.lat`, `to.lon`, `via.*`, `at.*` | the same | WGS84, both or neither. Used as a free place; beats the name |
+| `line` | disruptions, live | Line name(s), `S1` or `3,11`; `live` knows only numbers (the live positions are by number) |
+| `time` | plan, pick, go, departures | `now`, `2026-10-05T08:30` (provider time, Europe/Berlin) or `2026-10-05T08:30+02:00` / `...Z` (absolute). Must lie between today and a year ahead |
+| `mode` | plan, pick, go, departures | `dep` or `arr`; default: the app's setting (departures: departures). With `departures`, `arr` is the arrivals board |
+| `search` | plan | `1` to search at once; default `0` (fill only). Needs `to`; a missing `from` is the keyword `@start`. Always on for `pick` and `go` |
 | `plan` | tracked | Plan id of a followed journey to scroll to |
 | `ref` | all | Opaque token, 1–64 printable ASCII characters without spaces; echoed in every reply |
 | `x-success` | pick, capabilities | Where the result goes |
 | `x-error` | all | Where errors go. With only `x-success`, errors are not reported |
 
+### Keywords and the user's defaults
+
+A place may be a keyword instead of a name (a real name never starts with `@`; any other `@…` is `invalid_parameter`):
+
+| Keyword | Is |
+|---|---|
+| `@here` | the stop nearest to the device |
+| `@home` | the user's home place |
+| `@start` | where the user starts: the app's start setting (a chosen place, else the device) |
+
+Everything not given is what the user has set up in the app: the search mode (departure or arrival), the routing
+preferences (accessibility, transfers, pace, ticket category), the start. `go` and a searching `plan` without `from` start at `@start`;
+`departures` and `map` without `at` mean where the device is. A keyword that cannot be resolved (no device position, no home
+set) is not an error: the planner opens with what is known and asks for the rest, as the quick actions do.
+
 `plan` and `pick` need at least one of `from`/`to`. A single `to` fills only the destination and keeps the user's start.
 `pick` additionally needs both places and `x-success`.
 
 Limits: 40 keys, 200 characters per value, 2000 per callback, 8000 per link.
+A `pick` always names both ends (keywords included), since the caller asks for exactly that journey.
 Unknown keys are ignored (that is how version 1 stays additive); duplicate keys keep the first.
 
 ## 4. Replies
@@ -85,7 +108,7 @@ A pick that nobody answers just lapses after 15 minutes; version 1 has no cancel
 
 ### `capabilities` result
 
-`app`, `app.version`, `scheme`, `oldest` (oldest contract version still answered), `commands`, `android.action`.
+`app`, `app.version`, `scheme`, `oldest` (oldest contract version still answered), `commands`, `android.action`, `keywords`, `android.intents`.
 
 ### Error codes
 
@@ -95,7 +118,7 @@ A pick that nobody answers just lapses after 15 minutes; version 1 has no cancel
 
 Any app can send these requests, so every command is harmless by construction:
 
-- Nothing destructive: no command changes settings, deletes or edits followed journeys, or starts tracking.
+- Nothing destructive: no command changes settings, deletes or edits followed journeys, or starts tracking. The new commands only open a page or search; `home` and the keywords use places the user already stored, and nothing about them leaves the app.
 - Everything is validated before use (sizes, control characters, ranges, shapes); malformed input becomes an error reply, never an exception.
 - Callbacks are links the caller controls, so the target is restricted: `https`, or a custom scheme. Refused: `http`, `file`, `content`, `javascript`, `intent`, `data`, calls and messages (`tel`, `sms`, `mailto`, …), `ms-*`, user info in the URL, and this app's own scheme (no reply loops).
 - A journey leaves the app only after the user taps *Use this journey* in the app.
@@ -158,3 +181,35 @@ await Launcher.Default.OpenAsync(link);
 ```
 
 Windows: `Start-Process "ddjourneys://tracked"`.
+
+## 8. Easy ways in
+
+For callers that do not want to learn the contract:
+
+| You have | Do |
+|---|---|
+| a destination name | `ddjourneys://go?to=Hellerau`: starts where the user starts, now, and searches |
+| a place on a map | send a `geo:51.05,13.73?q=Hellerau` link (any maps app, browser or messenger already does): DDjourneys offers itself and runs `go` to it |
+| some text | the share sheet: the first line is the destination (a URL is ignored) |
+| a stop | `ddjourneys://departures?at.stop=vvo:33000028`, or `?at=Postplatz&mode=arr` for arrivals |
+| nothing | `ddjourneys://departures` (the stop nearest to the user), `ddjourneys://home`, `ddjourneys://map` |
+| a line | `ddjourneys://disruptions?line=S1`, `ddjourneys://live?line=3,11` |
+
+.NET callers (`DDjourneys.Core`):
+
+```csharp
+await Launcher.Default.OpenAsync(ContractLinks.Go(new ContractPlace("Hellerau", null, null, null)));
+await Launcher.Default.OpenAsync(ContractLinks.Departures(new ContractPlace(null, "vvo:33000028", null, null), arrivals: true));
+await Launcher.Default.OpenAsync(ContractLinks.Home());
+await Launcher.Default.OpenAsync(ContractLinks.Live("3,11"));
+```
+
+Android (Kotlin), without any library:
+
+```kotlin
+fun open(link: String) = startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(link)).setPackage("dev.Scharkenberg.DDjourneys"))
+
+open("ddjourneys://go?to=" + Uri.encode("Hellerau"))
+open("ddjourneys://departures?at=" + Uri.encode("Postplatz"))
+open("geo:51.05,13.73?q=" + Uri.encode("Hellerau"))
+```

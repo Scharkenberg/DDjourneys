@@ -15,14 +15,18 @@ public enum WidgetDetail
 
 /// <summary>
 /// The number of rows and the level of detail for a widget of a given size (in dp). The smallest widget the
-/// launcher allows is 120 x 120 dp; every size above shows more rows and more of each row.
+/// launcher allows is 2 cells wide and 1 high (120 x 54 dp, one row under the header); every size above shows more rows
+/// and more of each row.
 /// </summary>
 public sealed record WidgetLayout(int Rows, WidgetDetail Detail, bool ShowUpdated)
 {
 	/// <summary>Row slots in the widget layout.</summary>
 	public const int MaxRows = 10;
 
-	public const double MinSize = 120;
+	public const double MinWidth = 120;
+
+	/// <summary>One launcher cell (the smallest height a widget can be given).</summary>
+	public const double MinHeight = 54;
 
 	// As dense as the layout is: the header is one 12 sp line, a row one 12 sp line (two at Full), with 1 dp between.
 	private const double HeaderHeight = 20;
@@ -45,8 +49,8 @@ public sealed record WidgetLayout(int Rows, WidgetDetail Detail, bool ShowUpdate
 	/// <param name="fontScale">The system's text scale: sp text grows with it, so fewer rows fit.</param>
 	public static WidgetLayout For(double widthDp, double heightDp, int maxRows = 0, double fontScale = 1)
 	{
-		double width = Math.Max(widthDp, MinSize);
-		double height = Math.Max(heightDp, MinSize);
+		double width = Math.Max(widthDp, MinWidth);
+		double height = Math.Max(heightDp, MinHeight);
 
 		WidgetDetail detail =
 			width < CompactWidth

@@ -1215,6 +1215,18 @@ public sealed class DeparturesViewModel : DisposableViewModel
 		}
 	}
 
+	/// <summary>Arrivals instead of departures and/or a time other than now, before a stop is set (which then loads).</summary>
+	public void ApplyBoard(bool arrivals, DateTime? when)
+	{
+		IsArrival = arrivals;
+
+		if (when is { } time)
+		{
+			IsNow = false;
+			SetWhen(time);
+		}
+	}
+
 	private void SetMode(bool arrival)
 	{
 		if (IsArrival == arrival)

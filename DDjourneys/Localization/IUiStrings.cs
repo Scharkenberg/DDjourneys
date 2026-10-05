@@ -244,6 +244,14 @@ public sealed class SettingsStrings
 	public required string Theme { get; init; }
 	public required string Language { get; init; }
 	public required string JourneyOptions { get; init; }
+	public required string MapSection { get; init; }
+	public required string MapKeyTitle { get; init; }
+	public required string MapKeyDescription { get; init; }
+	public required string MapKeyPlaceholder { get; init; }
+	public required string MapKeySave { get; init; }
+	public required string MapKeyStatusMissing { get; init; }
+	public required string MapKeyStatusInvalid { get; init; }
+	public required string MapKeyStatusSet { get; init; }
 	public required string About { get; init; }
 	public required string ThemeSystem { get; init; }
 	public required string ThemeLight { get; init; }
@@ -469,6 +477,8 @@ public sealed class TrackingStrings
 	public required string CourseWalk { get; init; }
 	public required string CoursePlatform { get; init; }
 	public required string CourseTrack { get; init; }
+	public required string ShowOnMap { get; init; }
+	public required string ToggleDetails { get; init; }
 	public required string CourseWalkMinutes { get; init; }
 	public required string CourseIn { get; init; }
 	public required string CourseNow { get; init; }
@@ -604,6 +614,9 @@ public sealed class ExtrasStrings
 	public required string LiveCount { get; init; }
 	public required string MapTitle { get; init; }
 	public required string MapShow { get; init; }
+	public required string MapKeyMissing { get; init; }
+	public required string MapKeyInvalid { get; init; }
+	public required string MapKeyOpenSettings { get; init; }
 	public required string MapPickStart { get; init; }
 	public required string MapPickEnd { get; init; }
 	public required string MapPickStop { get; init; }
@@ -690,6 +703,9 @@ public sealed class WidgetStrings
 	public required string IntervalHours { get; init; }
 	public required string ConfigAutoHint { get; init; }
 	public required string ConfigProvider { get; init; }
+	public required string ConfigLabelTitle { get; init; }
+	public required string ConfigTitleHint { get; init; }
+	public required string ConfigProviderChanged { get; init; }
 	public required string Done { get; init; }
 	public required string LocationHint { get; init; }
 	public required string OpenSettings { get; init; }

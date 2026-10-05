@@ -91,6 +91,13 @@ public partial class DeparturesPage : ContentPage, IQueryAttributable
 		if (query.TryGetValue(Routes.Stop, out object? stop)
 			&& stop is Location opened)
 		{
+			// From a request of another app: arrivals and a time, set before the stop loads the board.
+			if (query.TryGetValue(Routes.BoardArrivals, out object? arrivals)
+				&& arrivals is bool showArrivals)
+			{
+				_vm.ApplyBoard(showArrivals, query.TryGetValue(Routes.BoardTime, out object? boardTime) ? boardTime as DateTime? : null);
+			}
+
 			_vm.SetStop(opened);
 		}
 	}

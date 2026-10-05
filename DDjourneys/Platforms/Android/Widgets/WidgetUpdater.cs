@@ -70,7 +70,9 @@ internal static class WidgetUpdater
 			return;
 		}
 
-		if (!ShouldFetch(config, id, snapshot, reason))
+		int fitting = WidgetLayout.For(width, height, config.MaxRows, context.Resources?.Configuration?.FontScale ?? 1).Rows;
+
+		if (!ShouldFetch(config, id, snapshot, reason, fitting))
 		{
 			manager.UpdateAppWidget(id, WidgetRenderer.Render(context, id, known, config, snapshot, needsSetup: false, refreshing: false, width, height));
 
@@ -89,7 +91,7 @@ internal static class WidgetUpdater
 		{
 			manager.UpdateAppWidget(id, WidgetRenderer.Render(context, id, known, config, snapshot, needsSetup: false, refreshing: true, width, height));
 
-			snapshot = await FetchAsync(context, id, config, snapshot).ConfigureAwait(false);
+			snapshot = await FetchAsync(context, id, config, snapshot, fitting).ConfigureAwait(false);
 
 			manager.UpdateAppWidget(id, WidgetRenderer.Render(context, id, known, config, snapshot, needsSetup: false, refreshing: false, width, height));
 		}
@@ -99,9 +101,17 @@ internal static class WidgetUpdater
 		}
 	}
 
-	private static bool ShouldFetch(WidgetConfig config, int id, WidgetSnapshot? snapshot, WidgetUpdateReason reason) =>
+	private static bool ShouldFetch(WidgetConfig config, int id, WidgetSnapshot? snapshot, WidgetUpdateReason reason, int fitting) =>
 		reason switch
 		{
+			// Made taller than the last refresh asked for ("as many as fit"): the rows that now fit are fetched, but not
+			// again and again while the launcher reports sizes.
+			WidgetUpdateReason.Options =>
+				config.MaxRows == 0
+				&& snapshot is { IsStale: false, Message.Length: 0 }
+				&& fitting > snapshot.Requested
+				&& snapshot.Rows.Count >= snapshot.Requested
+				&& (WidgetStore.LastFetched(id) is not { } last || DateTimeOffset.UtcNow - last > TimeSpan.FromSeconds(45)),
 			WidgetUpdateReason.Manual or WidgetUpdateReason.Configured => true,
 			WidgetUpdateReason.System =>
 				config.AutoRefresh
@@ -111,7 +121,7 @@ internal static class WidgetUpdater
 			_ => false
 		};
 
-	private static async Task<WidgetSnapshot> FetchAsync(Context context, int id, WidgetConfig config, WidgetSnapshot? previous)
+	private static async Task<WidgetSnapshot> FetchAsync(Context context, int id, WidgetConfig config, WidgetSnapshot? previous, int fitting)
 	{
 		WidgetStrings strings = LocalizationService.Current.CurrentStrings.Widgets;
 
@@ -128,7 +138,7 @@ internal static class WidgetUpdater
 
 			WidgetSnapshot fresh =
 				await loader
-					.LoadAsync(config, () => AndroidWidgetLocation.Get(context), limit.Token)
+					.LoadAsync(config, fitting, () => AndroidWidgetLocation.Get(context), limit.Token)
 					.ConfigureAwait(false);
 
 			WidgetStore.SaveSnapshot(id, fresh);

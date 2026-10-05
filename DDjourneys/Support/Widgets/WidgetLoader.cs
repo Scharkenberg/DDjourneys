@@ -23,13 +23,22 @@ public sealed class WidgetLoader(
 {
 	private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(10);
 
-	/// <summary>Rows fetched per list; the widget shows as many as fit.</summary>
-	private const int Fetch = WidgetLayout.MaxRows + 4;
+	/// <summary>Rows kept beyond what is shown: departures that have left by the time the widget is drawn again.</summary>
+	private const int Spare = 2;
+
+	/// <summary>
+	/// How many rows to ask the providers for: the number the user chose, or (as many as fit) what the widget's size
+	/// shows right now.
+	/// </summary>
+	public static int Wanted(WidgetConfig config, int fitting) =>
+		Math.Clamp(config.MaxRows > 0 ? config.MaxRows : fitting, 1, WidgetLayout.MaxRows);
 
 	/// <param name="config">The widget's settings.</param>
+	/// <param name="fitting">The rows the widget's size shows (used when the settings say "as many as fit").</param>
 	/// <param name="locate">The device position when one is known (nearby widgets and "my location").</param>
 	public async Task<WidgetSnapshot> LoadAsync(
 		WidgetConfig config,
+		int fitting,
 		Func<(double Latitude, double Longitude, DateTimeOffset At)?> locate,
 		CancellationToken cancellationToken)
 	{
@@ -40,20 +49,26 @@ public sealed class WidgetLoader(
 
 		using IDisposable scope = providers.Override(config.ProviderId);
 
-		return config.Kind switch
-		{
-			WidgetKind.Route => await RouteAsync(config, locate, strings, cancellationToken).ConfigureAwait(false),
-			WidgetKind.Departures => await BoardAsync(config, arrival: false, strings, cancellationToken).ConfigureAwait(false),
-			WidgetKind.Arrivals => await BoardAsync(config, arrival: true, strings, cancellationToken).ConfigureAwait(false),
-			WidgetKind.NearbyStops => await NearbyAsync(config, locate, strings, withDepartures: false, cancellationToken).ConfigureAwait(false),
-			_ => await NearbyAsync(config, locate, strings, withDepartures: true, cancellationToken).ConfigureAwait(false)
-		};
+		int wanted = Wanted(config, fitting);
+
+		WidgetSnapshot snapshot =
+			config.Kind switch
+			{
+				WidgetKind.Route => await RouteAsync(config, wanted, locate, strings, cancellationToken).ConfigureAwait(false),
+				WidgetKind.Departures => await BoardAsync(config, wanted, arrival: false, strings, cancellationToken).ConfigureAwait(false),
+				WidgetKind.Arrivals => await BoardAsync(config, wanted, arrival: true, strings, cancellationToken).ConfigureAwait(false),
+				WidgetKind.NearbyStops => await NearbyAsync(config, wanted, locate, strings, withDepartures: false, cancellationToken).ConfigureAwait(false),
+				_ => await NearbyAsync(config, wanted, locate, strings, withDepartures: true, cancellationToken).ConfigureAwait(false)
+			};
+
+		return snapshot with { Requested = wanted };
 	}
 
 	// ---------- Route ----------
 
 	private async Task<WidgetSnapshot> RouteAsync(
 		WidgetConfig config,
+		int wanted,
 		Func<(double Latitude, double Longitude, DateTimeOffset At)?> locate,
 		WidgetStrings strings,
 		CancellationToken cancellationToken)
@@ -84,7 +99,7 @@ public sealed class WidgetLoader(
 						To = to,
 						DateTime = DateTimeOffset.UtcNow,
 						SearchMode = JourneySearchMode.Departure,
-						MaxResults = Math.Min(Fetch, 6),
+						MaxResults = Math.Clamp(wanted + Spare, 1, 10),
 						Routing = RoutingPreferences.Default,
 						TimeoutSeconds = (int)Timeout.TotalSeconds
 					},
@@ -152,6 +167,7 @@ public sealed class WidgetLoader(
 
 	private async Task<WidgetSnapshot> BoardAsync(
 		WidgetConfig config,
+		int wanted,
 		bool arrival,
 		WidgetStrings strings,
 		CancellationToken cancellationToken)
@@ -167,7 +183,7 @@ public sealed class WidgetLoader(
 		}
 
 		IReadOnlyList<Departure> list =
-			await DeparturesOfAsync(stop, arrival, config, Fetch, cancellationToken).ConfigureAwait(false);
+			await DeparturesOfAsync(stop, arrival, config, wanted + Spare, cancellationToken).ConfigureAwait(false);
 
 		return new WidgetSnapshot
 		{
@@ -214,6 +230,7 @@ public sealed class WidgetLoader(
 
 	private async Task<WidgetSnapshot> NearbyAsync(
 		WidgetConfig config,
+		int wanted,
 		Func<(double Latitude, double Longitude, DateTimeOffset At)?> locate,
 		WidgetStrings strings,
 		bool withDepartures,
@@ -251,7 +268,7 @@ public sealed class WidgetLoader(
 			{
 				Title = title,
 				UpdatedAt = DateTimeOffset.UtcNow,
-				Rows = stops.Take(Fetch).Select(stop => WidgetSnapshots.ForStop(stop, strings)).ToList()
+				Rows = stops.Take(wanted).Select(stop => WidgetSnapshots.ForStop(stop, strings)).ToList()
 			};
 		}
 

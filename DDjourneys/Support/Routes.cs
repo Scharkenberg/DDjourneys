@@ -43,8 +43,18 @@ public static class Routes
 	public const string MapMode = "MapMode";
 	public const string MapModePick = "pick";
 
+	/// <summary>Query key: a <c>Location</c> the map opens centred on (instead of the device, the last stop, the provider's city).</summary>
+	public const string MapAt = "MapAt";
+
+	/// <summary>Query keys of the departures page: show arrivals (bool) and the time (DateTime, provider time).</summary>
+	public const string BoardArrivals = "BoardArrivals";
+	public const string BoardTime = "BoardTime";
+
 	/// <summary>Query key: a <c>TrackTarget</c>, the one run the live vehicles page follows.</summary>
 	public const string Track = "Track";
+
+	/// <summary>Query key: a list of <c>TrackTarget</c>, the runs of a followed journey the live vehicles page follows together.</summary>
+	public const string TrackSet = "TrackSet";
 
 	/// <summary>Query key: line number(s) the live vehicles page opens with.</summary>
 	public const string Line = "Line";

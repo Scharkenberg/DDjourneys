@@ -258,7 +258,7 @@ body.dark .maplibregl-ctrl-group button .maplibregl-ctrl-icon { filter: invert(1
 
 	function styleUrl(name) {
 		return 'https://basemaps.cartocdn.com/gl/' + name + '-gl-style/style.json' +
-			(key ? '?key=' + encodeURIComponent(key) : '');
+			'?key=' + encodeURIComponent(key);
 	}
 
 	// ---- route lines (GeoJSON layers, re-added whenever the style is replaced) ----
@@ -560,6 +560,11 @@ body.dark .maplibregl-ctrl-group button .maplibregl-ctrl-icon { filter: invert(1
 		});
 
 		map.on('error', function (e) {
+			var status = e && e.error && e.error.status;
+
+			// CARTO does not accept the key: the page cannot draw a basemap, C# says so.
+			if (status === 401 || status === 403) { send('keyrejected'); }
+
 			if (errors++ < 15) { send('error:' + ((e && e.error && e.error.message) || 'map error')); }
 		});
 
@@ -633,6 +638,12 @@ body.dark .maplibregl-ctrl-group button .maplibregl-ctrl-icon { filter: invert(1
 
 			case 'theme':
 				setTheme(arg);
+				break;
+
+			case 'key':
+				key = arg.key || '';
+				errors = 0;
+				if (map) { styleReady = false; map.setStyle(styleUrl(styleName)); }
 				break;
 
 			case 'set':

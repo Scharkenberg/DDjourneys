@@ -20,6 +20,15 @@ namespace DDjourneys
 	[IntentFilter(
 		new[] { ContractVersion.AndroidAction },
 		Categories = new[] { Intent.CategoryDefault })]
+	// Map links (geo:) and the share sheet: "take me there" without knowing anything about this app.
+	[IntentFilter(
+		new[] { Intent.ActionView },
+		Categories = new[] { Intent.CategoryDefault, Intent.CategoryBrowsable },
+		DataScheme = "geo")]
+	[IntentFilter(
+		new[] { Intent.ActionSend },
+		Categories = new[] { Intent.CategoryDefault },
+		DataMimeType = "text/plain")]
 	[Activity(Theme = "@style/Maui.SplashTheme", MainLauncher = true, Exported = true, LaunchMode = LaunchMode.SingleTop, ConfigurationChanges = ConfigChanges.ScreenSize | ConfigChanges.Orientation | ConfigChanges.UiMode | ConfigChanges.ScreenLayout | ConfigChanges.SmallestScreenSize | ConfigChanges.Density)]
 	public class MainActivity : MauiAppCompatActivity
 	{

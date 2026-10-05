@@ -10,12 +10,11 @@ namespace DDjourneys.Controls;
 /// A map: MapLibre GL (vector tiles, embedded in the app under Resources/Raw/wwwroot) in a
 /// <see cref="HybridWebView"/>. C# calls the page's <c>ddMapCall</c> through InvokeJavaScriptAsync; the page
 /// reports back with raw messages ("ready", "open:url", "error:text"). The basemap is recoloured from the
-/// active app theme. Give it a <see cref="MapScene"/>; it keeps the scene and re-applies it when needed.
+/// active app theme and needs the user's CARTO key (<see cref="MapAvailability"/>): without a usable one the map is
+/// replaced by a quiet notice. Give it a <see cref="MapScene"/>; it keeps the scene and re-applies it when needed.
 /// </summary>
 public sealed class MapView : ContentView
 {
-	private static string? _cartoKey;
-
 	/// <summary>Height of the free strip below the map (see the constructor).</summary>
 	public const double StripHeight = 32;
 
@@ -26,7 +25,10 @@ public sealed class MapView : ContentView
 	private MapScene? _scene;
 	private string? _pendingFocus;
 	private bool _ready;
+	private bool _pageReady;
 	private bool _subscribed;
+	private readonly Border _notice;
+	private readonly Label _noticeText;
 	private MapScene? _overlay;
 	private (bool Explore, bool Pick, double? Latitude, double? Longitude, int Zoom)? _mode;
 
@@ -77,6 +79,52 @@ public sealed class MapView : ContentView
 
 		((BoxView)strip.Content).SetDynamicResource(BoxView.ColorProperty, "Outline");
 
+		// Shown instead of the map when there is no (usable) CARTO key: one calm card, no error styling.
+		_noticeText =
+			new Label
+			{
+				HorizontalTextAlignment = TextAlignment.Center
+			};
+
+		_noticeText.SetDynamicResource(Label.TextColorProperty, "InkMuted");
+
+		var settings =
+			new Button
+			{
+				HorizontalOptions = LayoutOptions.Center,
+				Text = LocalizationService.Current.CurrentStrings.Extras.MapKeyOpenSettings
+			};
+
+		settings.StyleClass = ["Tonal"];
+		settings.Clicked += async (_, _) => await Shell.Current.GoToAsync(Routes.Settings);
+
+		_notice =
+			new Border
+			{
+				IsVisible = false,
+				StrokeThickness = 0,
+				Padding = new Thickness(24),
+				Content =
+					new VerticalStackLayout
+					{
+						Spacing = 14,
+						VerticalOptions = LayoutOptions.Center,
+						Children =
+						{
+							new Icon
+							{
+								Glyph = IconGlyph.Map,
+								Size = 36,
+								HorizontalOptions = LayoutOptions.Center
+							},
+							_noticeText,
+							settings
+						}
+					}
+			};
+
+		_notice.SetDynamicResource(Border.BackgroundColorProperty, "Bg");
+
 		Content =
 			new Grid
 			{
@@ -89,11 +137,14 @@ public sealed class MapView : ContentView
 				Children =
 				{
 					_web,
+					_notice,
 					strip
 				}
 			};
 
 		Grid.SetRow(strip, 1);
+
+		ApplyAvailability();
 
 		SemanticProperties.SetDescription(
 			this,
@@ -172,6 +223,7 @@ public sealed class MapView : ContentView
 		{
 			if (_subscribed)
 			{
+				MapAvailability.Changed -= OnAvailabilityChanged;
 				Theme.Changed -= OnThemeChanged;
 				SystemAccessibility.Changed -= OnThemeChanged;
 				_subscribed = false;
@@ -182,6 +234,7 @@ public sealed class MapView : ContentView
 
 		if (!_subscribed)
 		{
+			MapAvailability.Changed += OnAvailabilityChanged;
 			Theme.Changed += OnThemeChanged;
 			SystemAccessibility.Changed += OnThemeChanged;
 			_subscribed = true;
@@ -196,7 +249,17 @@ public sealed class MapView : ContentView
 		{
 			if (message == "ready")
 			{
-				await InitializeAsync();
+				_pageReady = true;
+
+				if (MapAvailability.IsAvailable)
+				{
+					await InitializeAsync();
+				}
+			}
+			else if (message == "keyrejected")
+			{
+				// CARTO refused the key: said once, the map is replaced by the notice until the key changes.
+				MapAvailability.Reject();
 			}
 			else if (message.StartsWith("open:", StringComparison.Ordinal)
 				&& Uri.TryCreate(message[5..], UriKind.Absolute, out Uri? uri)
@@ -238,7 +301,7 @@ public sealed class MapView : ContentView
 
 	private async Task InitializeAsync()
 	{
-		string key = _cartoKey ??= await ReadCartoKeyAsync();
+		string key = MapAvailability.Key;
 
 		ExtrasStrings strings = LocalizationService.Current.CurrentStrings.Extras;
 
@@ -265,33 +328,46 @@ public sealed class MapView : ContentView
 		}
 	}
 
-	// The CARTO key lives in Resources/Raw/secrets.json, which is not in the repository (.gitignore) and,
-	// being outside wwwroot, is never served to the page. Without it the map still tries CARTO's keyless access.
-	private static async Task<string> ReadCartoKeyAsync()
-	{
-		try
-		{
-			using Stream stream = await FileSystem.OpenAppPackageFileAsync("secrets.json");
-			using JsonDocument document = await JsonDocument.ParseAsync(stream);
-
-			if (document.RootElement.TryGetProperty("CartoApiKey", out JsonElement value)
-				&& value.ValueKind == JsonValueKind.String
-				&& value.GetString()?.Trim() is { Length: > 0 } key
-				&& !key.StartsWith("PASTE", StringComparison.OrdinalIgnoreCase))
+	private void OnAvailabilityChanged(object? sender, EventArgs e) =>
+		MainThread.BeginInvokeOnMainThread(
+			async () =>
 			{
-				DiagnosticLog.Write("[Map] CARTO key loaded from secrets.json");
+				ApplyAvailability();
 
-				return key;
-			}
+				// A key arrived after the page was loaded: the map starts now.
+				if (!MapAvailability.IsAvailable
+					|| !_pageReady)
+				{
+					return;
+				}
 
-			DiagnosticLog.Write("[Map] secrets.json has no CartoApiKey; trying CARTO without a key");
-		}
-		catch (Exception ex)
-		{
-			DiagnosticLog.Write($"[Map] no secrets.json ({ex.GetType().Name}); trying CARTO without a key");
-		}
+				if (!_ready)
+				{
+					await InitializeAsync();
+				}
+				else
+				{
+					// A different key: the page draws the basemap again with it.
+					await CallAsync(
+						"key",
+						$"{{\"key\":{System.Text.Json.JsonSerializer.Serialize(MapAvailability.Key, WebBridge.StringInfo)}}}");
+				}
+			});
 
-		return string.Empty;
+	/// <summary>The map when there is a usable key, else the notice that says what to do.</summary>
+	private void ApplyAvailability()
+	{
+		bool available = MapAvailability.IsAvailable;
+
+		_web.IsVisible = available;
+		_notice.IsVisible = !available;
+
+		ExtrasStrings strings = LocalizationService.Current.CurrentStrings.Extras;
+
+		_noticeText.Text =
+			MapAvailability.HasKey
+				? strings.MapKeyInvalid
+				: strings.MapKeyMissing;
 	}
 
 	private async void OnThemeChanged(object? sender, EventArgs e)

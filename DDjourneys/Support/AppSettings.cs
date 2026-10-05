@@ -305,6 +305,19 @@ public sealed class AppSettings
 		}
 	}
 
+	// ----- Map -----
+
+	/// <summary>The user's CARTO API key for the basemap; empty switches the map off (see <see cref="MapAvailability"/>).</summary>
+	public string MapApiKey
+	{
+		get => Read(MapAvailability.PreferenceKey, string.Empty).Trim();
+		set
+		{
+			Write(MapAvailability.PreferenceKey, (value ?? string.Empty).Trim());
+			MapAvailability.KeyChanged();
+		}
+	}
+
 	// ----- Place search -----
 
 	public const int MinSearchDelayMs = 200;

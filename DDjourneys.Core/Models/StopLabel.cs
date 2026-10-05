@@ -5,38 +5,92 @@ namespace DDjourneys.Core.Models;
 /// </summary>
 public static class StopLabel
 {
+	private static readonly System.Text.RegularExpressions.Regex TrailingParenthesis =
+		new(@"^(?<name>.*\S)\s*\((?<place>[^\d()]{3,40})\)$", System.Text.RegularExpressions.RegexOptions.Compiled);
+
 	/// <summary>
-	/// The city to show next to <paramref name="name"/>, or null when there is none
-	/// or the name already ends with it ("Hauptbahnhof, Dresden").
+	/// The one presentation of a stop, address or place of interest: the name without the city and the city on its own
+	/// (never in parentheses). The city is removed from the start ("Dresden, Hauptbahnhof"), the end
+	/// ("Hauptbahnhof, Dresden", "Hauptbahnhof (Dresden)", "Hauptbahnhof Dresden") of the name; without a city, a trailing
+	/// "(City)" of the name becomes it.
 	/// </summary>
-	public static string? PlaceFor(string? name, string? place)
+	public static (string Name, string? Place) Split(string? name, string? place)
 	{
-		if (string.IsNullOrWhiteSpace(place))
+		string text = name?.Trim() ?? string.Empty;
+		string? city = Bare(place);
+
+		if (city is null)
 		{
-			return null;
+			System.Text.RegularExpressions.Match match = TrailingParenthesis.Match(text);
+
+			if (match.Success)
+			{
+				return (match.Groups["name"].Value.TrimEnd(',', ' '), match.Groups["place"].Value.Trim());
+			}
+
+			return (text, null);
 		}
 
-		string trimmed = place.Trim();
+		bool changed = true;
 
-		return name is not null
-			&& name.TrimEnd().EndsWith(
-				", " + trimmed,
-				StringComparison.OrdinalIgnoreCase)
-			? null
-			: trimmed;
+		while (changed)
+		{
+			changed = false;
+
+			foreach (string suffix in new[] { ", " + city, " (" + city + ")", "(" + city + ")", " - " + city, " " + city })
+			{
+				if (text.Length > suffix.Length
+					&& text.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
+				{
+					text = text[..^suffix.Length].TrimEnd(',', ' ', '-');
+					changed = true;
+				}
+			}
+
+			foreach (string prefix in new[] { city + ", ", city + " - ", city + " " })
+			{
+				if (text.Length > prefix.Length
+					&& text.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+				{
+					text = text[prefix.Length..].TrimStart(',', ' ', '-');
+					changed = true;
+				}
+			}
+		}
+
+		return (text, city);
 	}
 
+	private static string? Bare(string? place)
+	{
+		string? city = place?.Trim();
+
+		if (city is { Length: > 2 } && city[0] == '(' && city[^1] == ')')
+		{
+			city = city[1..^1].Trim();
+		}
+
+		return string.IsNullOrWhiteSpace(city) ? null : city;
+	}
+
+	/// <summary>The city to show below <paramref name="name"/>, or null when there is none.</summary>
+	public static string? PlaceFor(string? name, string? place) =>
+		Split(name, place).Place;
+
+	/// <summary>The name without the city it repeats.</summary>
+	public static string NameFor(string? name, string? place) =>
+		Split(name, place).Name;
 
 	/// <summary>"Name, Place", or just the name when no place applies.</summary>
 	public static string Compose(string? name, string? place)
 	{
-		string text = name?.Trim() ?? string.Empty;
+		(string text, string? city) = Split(name, place);
 
-		return PlaceFor(text, place) is { } city
-			? text.Length == 0
+		return city is null
+			? text
+			: text.Length == 0
 				? city
-				: $"{text}, {city}"
-			: text;
+				: $"{text}, {city}";
 	}
 
 

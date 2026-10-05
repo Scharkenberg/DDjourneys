@@ -41,7 +41,7 @@ internal static class WidgetRenderer
 
 		WidgetLayout layout = WidgetLayout.For(widthDp, heightDp, config?.MaxRows ?? 0, context.Resources?.Configuration?.FontScale ?? 1);
 
-		views.SetTextViewText(WidgetResources.Id(context, "w_title"), Title(kind, snapshot, strings));
+		views.SetTextViewText(WidgetResources.Id(context, "w_title"), config is { Title.Length: > 0 } ? config.Title : Title(kind, snapshot, strings));
 
 		Header(context, views, layout, snapshot, refreshing, strings);
 

@@ -12,11 +12,15 @@ public sealed class WidgetTests
 	[Fact]
 	public void The_smallest_widget_shows_one_minimal_row_at_least()
 	{
-		WidgetLayout layout = WidgetLayout.For(120, 120);
+		WidgetLayout layout = WidgetLayout.For(120, 54);
 
 		Assert.Equal(WidgetDetail.Minimal, layout.Detail);
-		Assert.InRange(layout.Rows, 3, 6);
+		Assert.Equal(1, layout.Rows);
 		Assert.False(layout.ShowUpdated);
+
+		// Anything smaller is drawn as the smallest.
+		Assert.Equal(layout, WidgetLayout.For(40, 20));
+		Assert.InRange(WidgetLayout.For(120, 120).Rows, 3, 6);
 	}
 
 	[Fact]

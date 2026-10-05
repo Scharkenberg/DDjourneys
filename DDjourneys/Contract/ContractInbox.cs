@@ -1,8 +1,10 @@
 using DDjourneys.Core.Diagnostics;
 using DDjourneys.Core.Contract;
+using DDjourneys.Core.Models;
 using DDjourneys.Pages;
 using DDjourneys.Support;
 using DDjourneys.Tracking;
+using Location = DDjourneys.Core.Models.Location;
 
 namespace DDjourneys.Contract;
 
@@ -157,7 +159,49 @@ public sealed class ContractInbox
 
 				case ContractCommand.Plan:
 				case ContractCommand.Pick:
+				case ContractCommand.Go:
 					await OpenPlannerAsync(request).ConfigureAwait(false);
+					break;
+
+				case ContractCommand.Home:
+					// The quick action "take me home": the same code path, the same messages.
+					_session.End();
+					AppShortcuts.Submit(AppShortcut.Home);
+					break;
+
+				case ContractCommand.Departures:
+					await OpenDeparturesAsync(request).ConfigureAwait(false);
+					break;
+
+				case ContractCommand.Map:
+					_session.End();
+
+					await ShowAsync(
+						Routes.Map,
+						await _resolver.ResolveAtAsync(request, CancellationToken.None).ConfigureAwait(false) is { } centre
+							? new ShellNavigationQueryParameters { [Routes.MapAt] = centre }
+							: null)
+						.ConfigureAwait(false);
+					break;
+
+				case ContractCommand.Disruptions:
+					_session.End();
+
+					await ShowAsync(
+						Routes.Disruptions,
+						request.Line is { } filter
+							? new ShellNavigationQueryParameters { [Routes.LineName] = filter }
+							: null)
+						.ConfigureAwait(false);
+					break;
+
+				case ContractCommand.Live:
+					_session.End();
+
+					await ShowAsync(
+						Routes.Vehicles,
+						new ShellNavigationQueryParameters { [Routes.Line] = request.Line! })
+						.ConfigureAwait(false);
 					break;
 			}
 		}
@@ -203,23 +247,81 @@ public sealed class ContractInbox
 			_session.End();
 		}
 
-		while (true)
+		await RetryUntilReadyAsync(() => TryApplyAsync(plan)).ConfigureAwait(false);
+	}
+
+	/// <summary>The departures of a place (the stop nearest to the device when none is named), arrivals and time as asked.</summary>
+	private async Task OpenDeparturesAsync(ContractRequest request)
+	{
+		_session.End();
+
+		Location? stop =
+			await _resolver.ResolveAtAsync(request, CancellationToken.None).ConfigureAwait(false);
+
+		// A place that is not a stop has no departures; the nearest stop of the device is the next best thing.
+		if (stop is null || !stop.IsStation)
+		{
+			AppShortcuts.Submit(AppShortcut.DeparturesHere);
+
+			return;
+		}
+
+		DateTime? boardTime = null;
+
+		if (request.Time is { IsNow: false } time)
+		{
+			boardTime = time.Absolute is { } absolute ? Format.ToWall(absolute) : time.Wall;
+		}
+
+		var parameters =
+			new ShellNavigationQueryParameters
+			{
+				[Routes.Stop] = stop,
+				[Routes.BoardArrivals] = request.Mode == JourneySearchMode.Arrival
+			};
+
+		if (boardTime is { } wall)
+		{
+			parameters[Routes.BoardTime] = wall;
+		}
+
+		await ShowAsync(Routes.Departures, parameters).ConfigureAwait(false);
+	}
+
+	/// <summary>Shows a page over the planner (unwinding whatever is pushed).</summary>
+	private static Task ShowAsync(string route, ShellNavigationQueryParameters? parameters) =>
+		RetryUntilReadyAsync(
+			async () =>
+			{
+				if (Shell.Current is not { CurrentPage: not null } shell)
+				{
+					return false;
+				}
+
+				await shell.GoToAsync($"//{Routes.Plan}");
+				await shell.GoToAsync(route, parameters ?? []);
+
+				return true;
+			});
+
+	/// <summary>A cold start delivers before the shell exists: tries on the UI thread until it does (or gives up).</summary>
+	private static async Task RetryUntilReadyAsync(Func<Task<bool>> attempt)
+	{
+		for (int tries = 0; tries < MaxAttempts; tries++)
 		{
 			try
 			{
-				bool applied = await MainThread.InvokeOnMainThreadAsync(() => TryApplyAsync(plan)).ConfigureAwait(false);
-
-				if (applied)
+				if (await MainThread.InvokeOnMainThreadAsync(attempt).ConfigureAwait(false))
 				{
 					return;
 				}
-
-				await Task.Delay(RetryDelay).ConfigureAwait(false);
 			}
-			catch (Exception)
+			catch (Exception ex)
 			{
-				// Ignore exceptions and continue retrying
+				DiagnosticLog.Write($"Contract navigation not ready yet: {ex.Message}");
 			}
+
+			await Task.Delay(RetryDelay).ConfigureAwait(false);
 		}
 	}
 

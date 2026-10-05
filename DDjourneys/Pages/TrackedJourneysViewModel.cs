@@ -1,6 +1,8 @@
 ﻿using DDjourneys.Core.Diagnostics;
 using System.Globalization;
 using System.Windows.Input;
+using DDjourneys.Core.Models;
+using DDjourneys.Core.Services;
 using DDjourneys.Core.Tracking;
 using DDjourneys.Controls;
 using DDjourneys.Localization;
@@ -66,12 +68,27 @@ public sealed record HistoryRow(string Time, string Text, bool IsProblem);
 public sealed record TrackedSection(string Title, IReadOnlyList<TrackedRow> Items);
 
 /// <summary>Display model of one followed journey. Immutable; the list is rebuilt on every change.</summary>
+/// <summary>One chip of the lines of a followed journey.</summary>
+public sealed record LinePart(string Text, bool IsMark, bool IsCurrent)
+{
+	public bool IsLine => !IsMark;
+	public bool IsLineIdle => !IsMark && !IsCurrent;
+}
+
 public sealed class TrackedRow
 {
 	public required string PlanId { get; init; }
 	public required string Title { get; init; }
 	public required string Subtitle { get; init; }
 	public required string LinesText { get; init; }
+
+	/// <summary>The rides as chips (a line, or the mark of a guaranteed change), in travel order.</summary>
+	public required IReadOnlyList<LinePart> LineParts { get; init; }
+
+	/// <summary>Opens the live map of the vehicles of this journey; null when its rides are not known.</summary>
+	public required ICommand MapCommand { get; init; }
+
+	public required bool HasMap { get; init; }
 	public required string StatusText { get; init; }
 	public required bool IsProblem { get; init; }
 	public required bool IsCancelled { get; init; }
@@ -101,7 +118,9 @@ public sealed class TrackedRow
 	public required IReadOnlyList<CourseRow> Course { get; init; }
 	public required string CourseHint { get; init; }
 
-	public bool HasLines => LinesText.Length > 0;
+	public bool HasLines => LineParts.Count > 0;
+	public bool HasStatus => StatusText.Length > 0;
+	public bool ShowNormalStatus => IsNormalStatus && HasStatus;
 	public bool HasNext => NextText.Length > 0;
 	public bool HasNotice => NoticeText.Length > 0;
 	public bool NoticeIsAlert => HasNotice && (IsProblem || IsCancelled);
@@ -147,6 +166,8 @@ public sealed class TrackedJourneysViewModel : DisposableViewModel, IQueryAttrib
 	private static readonly TimeSpan CourseTick = TimeSpan.FromSeconds(10);
 
 	private readonly IJourneyTracker _tracker;
+	private readonly LegRunResolver _runs;
+	private readonly AppSettings _settings;
 	private readonly LocalizationService _localization;
 	private readonly HashSet<string> _expanded = new(StringComparer.Ordinal);
 	private readonly HashSet<string> _courses = new(StringComparer.Ordinal);
@@ -155,9 +176,11 @@ public sealed class TrackedJourneysViewModel : DisposableViewModel, IQueryAttrib
 
 	private CancellationTokenSource? _observation;
 
-	public TrackedJourneysViewModel(IJourneyTracker tracker)
+	public TrackedJourneysViewModel(IJourneyTracker tracker, LegRunResolver runs, AppSettings settings)
 	{
 		_tracker = tracker ?? throw new ArgumentNullException(nameof(tracker));
+		_runs = runs ?? throw new ArgumentNullException(nameof(runs));
+		_settings = settings ?? throw new ArgumentNullException(nameof(settings));
 		_localization = LocalizationService.Current;
 
 		ListenToLocalization(_localization, OnLocalizationChanged);
@@ -573,6 +596,11 @@ public sealed class TrackedJourneysViewModel : DisposableViewModel, IQueryAttrib
 			DateTimeOffset now = DateTimeOffset.UtcNow;
 
 			IReadOnlyList<WatchedJourney> journeys = _tracker.Watched.Select(item => Reconcile(item, now)).ToList();
+
+			if (journeys.Count > 0)
+			{
+				FollowedRides.Keep(journeys.Select(item => item.PlanId));
+			}
 			TrackingStrings strings = _localization.CurrentStrings.Tracking;
 
 			var sections = new List<TrackedSection>();
@@ -602,6 +630,81 @@ public sealed class TrackedJourneysViewModel : DisposableViewModel, IQueryAttrib
 		{
 			DiagnosticLog.Write($"Followed journeys display failed:\n{ex}");
 		}
+	}
+
+	/// <summary>The same as chips: a line each, the mark of a guaranteed change between; the line under way is highlighted.</summary>
+	private static IReadOnlyList<LinePart> LinePartsOf(WatchedJourney journey, TrackingStrings strings)
+	{
+		string[] lines = [.. journey.Lines.Where(item => !string.IsNullOrWhiteSpace(item))];
+
+		bool marks =
+			journey.EnsuredChanges is { } ensured
+			&& ensured.Count == lines.Length - 1;
+
+		bool underWay = journey.Phase == TrackingPhase.InProgress;
+		bool found = false;
+		var parts = new List<LinePart>(lines.Length * 2);
+
+		for (int i = 0; i < lines.Length; i++)
+		{
+			bool current = underWay && !found && lines[i] == journey.CurrentLine;
+
+			found |= current;
+
+			parts.Add(new LinePart(lines[i], false, current));
+
+			if (marks && journey.EnsuredChanges![i])
+			{
+				parts.Add(new LinePart(strings.GuaranteedChange, true, false));
+			}
+		}
+
+		return parts;
+	}
+
+	/// <summary>Looks up the vehicles of the rides still to come and opens the live page following all of them.</summary>
+	private async Task OpenMapAsync(WatchedJourney journey)
+	{
+		IReadOnlyList<FollowedRide> rides = FollowedRides.Load(journey.PlanId);
+
+		DateTimeOffset limit = DateTimeOffset.UtcNow - TimeSpan.FromMinutes(3);
+
+		// Rides that are over have no vehicle to look for; when all are, show them anyway.
+		IReadOnlyList<FollowedRide> pending =
+			[.. rides.Where(ride => ride.Arrival is null || ride.Arrival > limit)];
+
+		var targets = new List<TrackTarget>();
+
+		foreach (FollowedRide ride in pending.Count > 0 ? pending : rides)
+		{
+			try
+			{
+				if (await _runs.ResolveAsync(ride.ToLeg(), ride.Line, _settings.TimeoutSeconds) is { } target)
+				{
+					targets.Add(target);
+				}
+			}
+			catch (Exception ex) when (ex is not OperationCanceledException)
+			{
+				DiagnosticLog.Write($"Looking up the run of line {ride.Line} failed: {ex.Message}");
+			}
+		}
+
+		if (targets.Count == 0)
+		{
+			ErrorText = _localization.CurrentStrings.Extras.TrackNoCourse;
+
+			return;
+		}
+
+		ErrorText = null;
+
+		await Shell.Current.GoToAsync(
+			Routes.Vehicles,
+			new ShellNavigationQueryParameters
+			{
+				[Routes.TrackSet] = (IReadOnlyList<TrackTarget>)targets
+			});
 	}
 
 	/// <summary>"7 · gesicherter Anschluss · 6": the lines, with a guaranteed change named where it happens.</summary>
@@ -651,8 +754,9 @@ public sealed class TrackedJourneysViewModel : DisposableViewModel, IQueryAttrib
 		string status =
 			journey.Status switch
 			{
+				// The departure time is in the subtitle already: nothing new to say about a journey that has not started.
 				WatchStatus.Planned when journey.Phase == TrackingPhase.Planned && journey.Departure is not null =>
-					string.Format(culture, strings.Departs, Format.TimeOrDash(journey.Departure)),
+					string.Empty,
 
 				WatchStatus.Recent when journey.Phase == TrackingPhase.Arrived =>
 					string.Format(culture, strings.ArrivedAt, Format.TimeOrDash(journey.Arrival)),
@@ -660,11 +764,7 @@ public sealed class TrackedJourneysViewModel : DisposableViewModel, IQueryAttrib
 				_ => PhaseText(journey.Phase, strings)
 			};
 
-		if (journey.CurrentLine is { Length: > 0 } line && journey.Phase == TrackingPhase.InProgress)
-		{
-			status = $"{status} · {line}";
-		}
-
+		// (The line under way is marked in the chips, not repeated here.)
 		string next =
 			journey.NextStop is { Length: > 0 } stop
 				? string.Format(culture, strings.NextStop, $"{stop} {Format.TimeOrDash(journey.NextStopTime)}".Trim())
@@ -685,6 +785,9 @@ public sealed class TrackedJourneysViewModel : DisposableViewModel, IQueryAttrib
 			Title = route,
 			Subtitle = subtitle,
 			LinesText = LinesOf(journey, strings),
+			LineParts = LinePartsOf(journey, strings),
+			HasMap = FollowedRides.Has(journey.PlanId),
+			MapCommand = new AsyncCommand(() => OpenMapAsync(journey), null, ShowError),
 			StatusText = status,
 			IsProblem = problem,
 			IsCancelled = cancelled,

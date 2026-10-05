@@ -49,6 +49,9 @@ public sealed record WidgetConfig
 
 	public WidgetKind Kind { get; init; }
 
+	/// <summary>The title the widget shows; empty keeps the default (the stop, the route, the kind).</summary>
+	public string Title { get; init; } = string.Empty;
+
 	/// <summary>The provider the widget was made for; it keeps using it whichever provider the app shows.</summary>
 	public string ProviderId { get; init; } = string.Empty;
 
@@ -99,6 +102,7 @@ public sealed record WidgetConfig
 		new JsonObject
 		{
 			["Kind"] = (int)Kind,
+			["Title"] = Title,
 			["ProviderId"] = ProviderId,
 			["From"] = PlaceNode(From),
 			["To"] = PlaceNode(To),
@@ -139,6 +143,7 @@ public sealed record WidgetConfig
 			return new WidgetConfig
 			{
 				Kind = Enum.IsDefined((WidgetKind)Int(root, "Kind", 0)) ? (WidgetKind)Int(root, "Kind", 0) : WidgetKind.Route,
+				Title = StoredJson.String(root, "Title")?.Trim() ?? string.Empty,
 				ProviderId = StoredJson.String(root, "ProviderId") ?? string.Empty,
 				From = ReadPlace(root, "From"),
 				To = ReadPlace(root, "To"),

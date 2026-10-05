@@ -14,9 +14,9 @@ namespace DDjourneys.Pages;
 /// <summary>Display-ready row of the place list (results and recents).</summary>
 public sealed record PlaceRow(Location Place)
 {
-	public string Name => Place.Name;
-	public string Detail => Place.Place ?? string.Empty;
-	public bool HasDetail => !string.IsNullOrWhiteSpace(Place.Place);
+	public string Name => StopLabel.NameFor(Place.Name, Place.Place);
+	public string Detail => StopLabel.PlaceFor(Place.Name, Place.Place) ?? string.Empty;
+	public bool HasDetail => Detail.Length > 0;
 
 	/// <summary>"Address" / "Point of interest"; stops carry no label.</summary>
 	public string? KindText

@@ -66,6 +66,9 @@ public sealed record WidgetSnapshot
 
 	public IReadOnlyList<WidgetRow> Rows { get; init; } = [];
 
+	/// <summary>How many rows the refresh asked the provider for; a widget made taller than that fetches again.</summary>
+	public int Requested { get; init; }
+
 	/// <summary>
 	/// The rows still worth showing at <paramref name="now"/>: a departure that left more than a minute ago is dropped,
 	/// and so is a stop header whose departures are all gone. Lets a snapshot age gracefully between refreshes.
@@ -110,6 +113,7 @@ public sealed record WidgetSnapshot
 			["UpdatedAt"] = UpdatedAt?.ToString("O", System.Globalization.CultureInfo.InvariantCulture),
 			["Message"] = Message,
 			["Stale"] = IsStale,
+			["Requested"] = Requested,
 			["Rows"] =
 				Wire.Array(
 					Rows.Select(
@@ -195,6 +199,7 @@ public sealed record WidgetSnapshot
 				IsStale =
 					StoredJson.TryGet(root, "Stale", out JsonElement stale)
 					&& stale.ValueKind == JsonValueKind.True,
+				Requested = (int)(StoredJson.Number(root, "Requested") ?? 0),
 				Rows = rows
 			};
 		}
