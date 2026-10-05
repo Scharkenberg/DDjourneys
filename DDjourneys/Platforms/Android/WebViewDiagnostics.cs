@@ -109,7 +109,7 @@ internal static class WebViewDiagnostics
 	{
 		try
 		{
-			if (OperatingSystem.IsAndroidVersionAtLeast(26)
+			if (OperatingSystem.IsAndroidVersionAtLeast(28)
 				&& AWebView.CurrentWebViewPackage is { } current)
 			{
 				DiagnosticLog.Write($"[WebView {name}] engine: {current.PackageName} {current.VersionName} (code {current.LongVersionCode})");
@@ -194,12 +194,20 @@ internal static class WebViewDiagnostics
 
 			DiagnosticLog.Write($"[WebView {name}] NOT READY after {seconds} s: {state}");
 
-			Task finished = await Task.WhenAny(answer.Task, Task.Delay(TimeSpan.FromSeconds(4))).ConfigureAwait(false);
+			using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(4));
+			Task timeoutTask = Task.Delay(Timeout.InfiniteTimeSpan, timeoutCts.Token);
 
-			DiagnosticLog.Write(
-				finished == answer.Task
-					? $"[WebView {name}] probe inside the page: {answer.Task.Result}"
-					: $"[WebView {name}] the page did not answer the probe within 4 s: its JavaScript is not running (blocked, crashed or not loaded)");
+			Task finished = await Task.WhenAny(answer.Task, timeoutTask).ConfigureAwait(false);
+
+			if (finished == answer.Task)
+			{
+				timeoutCts.Cancel(); // stop the timer immediately
+				DiagnosticLog.Write($"[WebView {name}] probe inside the page: {await answer.Task.ConfigureAwait(false)}");
+			}
+			else
+			{
+				DiagnosticLog.Write($"[WebView {name}] the page did not answer the probe within 4 s: its JavaScript is not running (blocked, crashed or not loaded)");
+			}
 		}
 		catch (Exception ex)
 		{
