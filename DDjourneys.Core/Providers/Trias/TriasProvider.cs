@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using DDjourneys.Core.Api;
 using DDjourneys.Core.Diagnostics;
 using DDjourneys.Core.Models;
@@ -19,6 +20,9 @@ public sealed class TriasProvider :
 	IProviderDescriptor
 {
 	private readonly TriasClient _client;
+
+	/// <summary>Stop positions looked up so far by stop place (null: asked, no position known).</summary>
+	private readonly ConcurrentDictionary<string, GeoPosition?> _positions = new(StringComparer.Ordinal);
 
 	public ProviderInfo Info =>
 		TriasProviderInfo.Value;
@@ -217,6 +221,126 @@ public sealed class TriasProvider :
 		Departure departure,
 		int timeoutSeconds = 15,
 		CancellationToken cancellationToken = default)
+	{
+		RunDetail detail =
+			await LoadRunDetailAsync(departure, timeoutSeconds, cancellationToken).ConfigureAwait(false);
+
+		return detail with
+		{
+			Stops = await WithPositionsAsync(detail.Stops, cancellationToken).ConfigureAwait(false)
+		};
+	}
+
+	/// <summary>
+	/// TRIAS calls name their stops without coordinates, so the map and the live matching had nothing to work with.
+	/// The positions are looked up once per stop place (a few at a time) and kept for the session.
+	/// </summary>
+	private async Task<IReadOnlyList<RunStop>> WithPositionsAsync(
+		IReadOnlyList<RunStop> stops,
+		CancellationToken cancellationToken)
+	{
+		string[] missing =
+			[.. stops
+				.Where(stop => stop.Station.Latitude is null
+					&& !string.IsNullOrWhiteSpace(stop.Station.Id)
+					&& !_positions.ContainsKey(stop.Station.Id))
+				.Select(stop => stop.Station.Id)
+				.Distinct(StringComparer.Ordinal)];
+
+		if (missing.Length > 0)
+		{
+			using var gate = new SemaphoreSlim(4);
+			using var limit = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+
+			limit.CancelAfter(TimeSpan.FromSeconds(12));
+
+			await Task.WhenAll(
+				missing.Select(
+					async id =>
+					{
+						try
+						{
+							await gate.WaitAsync(limit.Token).ConfigureAwait(false);
+
+							try
+							{
+								_positions[id] = await LookupPositionAsync(id, limit.Token).ConfigureAwait(false);
+							}
+							finally
+							{
+								gate.Release();
+							}
+						}
+						catch (OperationCanceledException)
+						{
+						}
+						catch (ApiException ex)
+						{
+							DiagnosticLog.Write($"[TRIAS] position of {id} failed: {ex.Detail}");
+						}
+						catch (InvalidOperationException ex)
+						{
+							DiagnosticLog.Write($"[TRIAS] position of {id} unreadable: {ex.Message}");
+						}
+					})).ConfigureAwait(false);
+		}
+
+		return
+			[.. stops
+				.Select(
+					stop => stop.Station.Latitude is null
+						&& _positions.TryGetValue(stop.Station.Id, out GeoPosition? position)
+						&& position is not null
+							? new RunStop
+							{
+								Station = Positioned(stop.Station, position),
+								Position = stop.Position,
+								Scheduled = stop.Scheduled,
+								Realtime = stop.Realtime,
+								State = stop.State,
+								Occupancy = stop.Occupancy
+							}
+							: stop)];
+	}
+
+	private async Task<GeoPosition?> LookupPositionAsync(string id, CancellationToken cancellationToken)
+	{
+		XDocument response =
+			await _client
+				.SendAsync(
+					TriasRequestKind.Locations,
+					dialect => TriasRequests.LocationByRef(id, dialect),
+					cancellationToken,
+					Timeout(8))
+				.ConfigureAwait(false);
+
+		Location? place =
+			TriasMapper
+				.MapLocations(response)
+				.FirstOrDefault(item => item.Latitude is not null && item.Longitude is not null);
+
+		return place is { Latitude: { } latitude, Longitude: { } longitude }
+			? new GeoPosition { Latitude = latitude, Longitude = longitude }
+			: null;
+	}
+
+	private static Station Positioned(Station station, GeoPosition position) =>
+		new()
+		{
+			Id = station.Id,
+			ProviderId = station.ProviderId,
+			Name = station.Name,
+			Place = station.Place,
+			Platform = station.Platform,
+			PlatformKind = station.PlatformKind,
+			Latitude = position.Latitude,
+			Longitude = position.Longitude
+		};
+
+	private async Task<RunDetail> LoadRunDetailAsync(
+		Departure departure,
+		int timeoutSeconds,
+		CancellationToken cancellationToken)
 	{
 		ArgumentNullException.ThrowIfNull(departure);
 

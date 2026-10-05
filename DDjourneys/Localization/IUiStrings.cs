@@ -569,6 +569,9 @@ public sealed class ExtrasStrings
 	public required string FareZones { get; init; }
 	public required string FareValidFor { get; init; }
 	public required string FareNotAll { get; init; }
+	public required string ShortcutHome { get; init; }
+	public required string ShortcutDepartures { get; init; }
+	public required string ShortcutNoHome { get; init; }
 	public required string FaresExpand { get; init; }
 	public required string FaresCollapse { get; init; }
 	public required string PassengerAdult { get; init; }
@@ -583,8 +586,6 @@ public sealed class ExtrasStrings
 	public required string LiveHowTitle { get; init; }
 	public required string LiveHowText { get; init; }
 	public required string LineFilterLabel { get; init; }
-	public required string LiveQuickLines { get; init; }
-	public required string LiveAllLines { get; init; }
 	public required string LiveInvalid { get; init; }
 	public required string LiveEmpty { get; init; }
 	public required string LiveCount { get; init; }
@@ -601,6 +602,7 @@ public sealed class ExtrasStrings
 	public required string MapInfo { get; init; }
 	public required string TrackFollowing { get; init; }
 	public required string TrackNotFound { get; init; }
+	public required string TrackNoCourse { get; init; }
 	public required string TrackShowAll { get; init; }
 	public required string TrackOnlyThisRun { get; init; }
 	public required string NoticeClose { get; init; }

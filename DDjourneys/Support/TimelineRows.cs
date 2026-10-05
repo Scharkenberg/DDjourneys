@@ -132,7 +132,43 @@ public sealed class LegRow : TimelineRow
 
 	public bool IsCancelled { get; init; }
 
-	public bool IsActive { get; init; }
+	/// <summary>When the vehicle is under way (real-time times); the ride is "in progress" only between them.</summary>
+	public DateTimeOffset? ActiveFrom { get; init; }
+
+	public DateTimeOffset? ActiveUntil { get; init; }
+
+	/// <summary>True while the ride is under way. Evaluated against the clock, so it ends when the ride does.</summary>
+	public bool IsActive
+	{
+		get
+		{
+			DateTimeOffset now =
+				Format.Now();
+
+			return !IsCancelled
+				&& ActiveFrom is { } from
+				&& ActiveUntil is { } until
+				&& now >= from
+				&& now <= until;
+		}
+	}
+
+	/// <summary>Called by the page's clock: tells the view when "in progress" starts or ends.</summary>
+	public void RefreshActive()
+	{
+		bool active =
+			IsActive;
+
+		if (active != _wasActive)
+		{
+			_wasActive = active;
+
+			OnPropertyChanged(
+				nameof(IsActive));
+		}
+	}
+
+	private bool _wasActive;
 
 	public IReadOnlyList<IntermediateRow> Intermediates { get; init; } =
 		[];
@@ -685,10 +721,6 @@ public static class TimelineRowFactory
 		}
 
 
-		DateTimeOffset now =
-			Format.Now();
-
-
 		var legRow =
 			new LegRow
 			{
@@ -736,12 +768,11 @@ public static class TimelineRowFactory
 				IsCancelled =
 					leg.IsCancelled,
 
-				IsActive =
-					!leg.IsCancelled
-					&& leg.EffectiveDeparture is { } start
-					&& leg.EffectiveArrival is { } end
-					&& now >= start
-					&& now <= end,
+				ActiveFrom =
+					leg.EffectiveDeparture,
+
+				ActiveUntil =
+					leg.EffectiveArrival,
 
 				Intermediates =
 					leg.Stops

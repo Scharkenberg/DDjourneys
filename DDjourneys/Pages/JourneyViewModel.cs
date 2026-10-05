@@ -324,6 +324,15 @@ public sealed class JourneyViewModel :
 		StopObservingTracking();
 	}
 
+	/// <summary>The page's clock: rides that have started or ended since the last tick change their state.</summary>
+	public void TickClock()
+	{
+		foreach (LegRow row in Rows.OfType<LegRow>())
+		{
+			row.RefreshActive();
+		}
+	}
+
 	public void StopObservingTracking()
 	{
 		_tracker.WatchedChanged -= OnWatchedChanged;
@@ -783,29 +792,22 @@ public sealed class JourneyViewModel :
 					[Routes.Line] = row.LineNumber
 				};
 
-			// The leg that was tapped is the run to follow: line, direction and the stops with their times.
+			// The leg that was tapped is the run to follow: line, direction and a course with times, from its stops
+			// or, when the provider gives no stop positions, from its geometry. Without one the live page would
+			// show every vehicle of the line, so a leg that cannot be followed opens nothing.
 			if (row.Source is { } leg)
 			{
-				TrackTarget target =
-					new()
-					{
-						Line = row.LineNumber,
-						Mode = leg.Mode,
-						Direction = leg.Line?.Destination,
-						Course =
-							(leg.Stops
-								.Where(stop => stop.Station.Latitude is not null && stop.Station.Longitude is not null)
-								.Select(
-									stop => new CoursePoint(
-										stop.Station.Latitude!.Value,
-										stop.Station.Longitude!.Value,
-										stop.EffectiveDeparture ?? stop.EffectiveArrival,
-										stop.Station.Name))).ToList()
-					};
-
-				if (target.IsUsable)
+				if (TrackTargets.FromLeg(leg, row.LineNumber) is { } target)
 				{
 					parameters[Routes.Track] = target;
+				}
+				else
+				{
+					DiagnosticLog.Write($"No course to follow for line {row.LineNumber}: {leg.Stops.Count} stops, {leg.Path.Count} path points");
+
+					AlternativeStatus = _localization.CurrentStrings.Extras.TrackNoCourse;
+
+					return;
 				}
 			}
 

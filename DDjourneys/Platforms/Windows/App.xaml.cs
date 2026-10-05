@@ -58,6 +58,8 @@ namespace DDjourneys.WinUI
 
 				WindowsNotificationHost.Initialize(app.Services);
 
+				_ = WindowsJumpList.UpdateAsync();
+
 				return app;
 			}
 			catch (Exception ex)

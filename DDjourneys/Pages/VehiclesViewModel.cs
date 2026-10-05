@@ -119,27 +119,6 @@ public sealed class VehicleRow : ObservableObject
 }
 
 
-/// <summary>A quick pick for a line: tapping it adds or removes the line from the entry field.</summary>
-public sealed class LineChip : ObservableObject
-{
-	public LineChip(int line)
-	{
-		Line = line;
-	}
-
-	public int Line { get; }
-
-	public string Text =>
-		Line.ToString(CultureInfo.CurrentCulture);
-
-	public bool IsSelected
-	{
-		get => field;
-		internal set => SetProperty(ref field, value);
-	}
-}
-
-
 /// <summary>Live positions of the vehicles of chosen lines (TLMS), on a map and in a list.</summary>
 public sealed class VehiclesViewModel : DisposableViewModel, IQueryAttributable
 {
@@ -147,9 +126,6 @@ public sealed class VehiclesViewModel : DisposableViewModel, IQueryAttributable
 
 	/// <summary>How long to wait for the first position before saying that none arrived.</summary>
 	private static readonly TimeSpan EmptyAfter = TimeSpan.FromSeconds(12);
-
-	/// <summary>Dresden's tram lines, offered as quick picks.</summary>
-	private static readonly int[] TramLines = [1, 2, 3, 4, 6, 7, 8, 9, 11, 12, 13];
 
 	private readonly VehicleService _vehicles;
 	private readonly LocalizationService _localization;
@@ -181,8 +157,6 @@ public sealed class VehiclesViewModel : DisposableViewModel, IQueryAttributable
 			() => providers.SelectionChanged += OnProviderChanged,
 			() => providers.SelectionChanged -= OnProviderChanged);
 
-		Chips = (TramLines.Select(line => new LineChip(line))).ToList();
-
 		StartCommand =
 			new AsyncCommand(
 				StartAsync);
@@ -201,10 +175,6 @@ public sealed class VehiclesViewModel : DisposableViewModel, IQueryAttributable
 					}
 				});
 
-		ToggleChipCommand =
-			new AsyncCommand<LineChip>(
-				ToggleChipAsync);
-
 		ShowAllCommand =
 			new AsyncCommand(
 				async () =>
@@ -213,16 +183,6 @@ public sealed class VehiclesViewModel : DisposableViewModel, IQueryAttributable
 					OnPropertyChanged(nameof(IsTracking));
 					OnPropertyChanged(nameof(IsNotTracking));
 					OnPropertyChanged(nameof(IsIdle));
-
-					await StartAsync();
-				});
-
-		AllLinesCommand =
-			new AsyncCommand(
-				async () =>
-				{
-					LineFilter = string.Empty;
-					OnPropertyChanged(nameof(LineFilter));
 
 					await StartAsync();
 				});
@@ -247,10 +207,6 @@ public sealed class VehiclesViewModel : DisposableViewModel, IQueryAttributable
 
 	public Command<VehicleRow> FocusCommand { get; }
 
-	public AsyncCommand<LineChip> ToggleChipCommand { get; }
-
-	public AsyncCommand AllLinesCommand { get; }
-
 	/// <summary>Leaves the followed run and shows every vehicle of its line.</summary>
 	public AsyncCommand ShowAllCommand { get; }
 
@@ -269,8 +225,6 @@ public sealed class VehiclesViewModel : DisposableViewModel, IQueryAttributable
 				target.Direction ?? string.Empty).Trim()
 			: string.Empty;
 
-	public IReadOnlyList<LineChip> Chips { get; }
-
 	public ObservableCollection<VehicleRow> Rows { get; } = [];
 
 	public bool HasRows =>
@@ -288,13 +242,7 @@ public sealed class VehiclesViewModel : DisposableViewModel, IQueryAttributable
 	{
 		get => field;
 
-		set
-		{
-			if (SetProperty(ref field, value ?? string.Empty))
-			{
-				SyncChips();
-			}
-		}
+		set => SetProperty(ref field, value ?? string.Empty);
 	} = string.Empty;
 
 	/// <summary>Entries that were not line numbers and were left out; empty when the input was fine.</summary>
@@ -448,38 +396,6 @@ public sealed class VehiclesViewModel : DisposableViewModel, IQueryAttributable
 		}
 
 		return (lines, ignored);
-	}
-
-	private void SyncChips()
-	{
-		IReadOnlyList<int> lines = ParseLines(LineFilter).Lines;
-
-		foreach (LineChip chip in Chips)
-		{
-			chip.IsSelected = lines.Contains(chip.Line);
-		}
-	}
-
-	private async Task ToggleChipAsync(LineChip chip)
-	{
-		if (chip is null)
-		{
-			return;
-		}
-
-		var lines = ParseLines(LineFilter).Lines.ToList();
-
-		if (!lines.Remove(chip.Line))
-		{
-			lines.Add(chip.Line);
-		}
-
-		lines.Sort();
-
-		LineFilter = string.Join(", ", lines);
-		OnPropertyChanged(nameof(LineFilter));
-
-		await StartAsync();
 	}
 
 	private async Task StartAsync()

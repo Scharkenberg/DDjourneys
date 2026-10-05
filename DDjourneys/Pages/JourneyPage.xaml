@@ -751,6 +751,7 @@
 
 						<Label
 							Grid.Column="2"
+							Grid.RowSpan="2"
 							FontFamily="{DynamicResource FontSemibold}"
 							FontSize="{StaticResource FontTitle}"
 							Text="{Binding FaresSummaryPrice}"
@@ -760,6 +761,7 @@
 
 						<controls:Icon
 							Grid.Column="3"
+							Grid.RowSpan="2"
 							Glyph="ChevronDown"
 							support:Motion.Turn="{Binding FaresChevronRotation}"
 							Size="20"
@@ -769,7 +771,6 @@
 						<Label
 							Grid.Row="1"
 							Grid.Column="1"
-							Grid.ColumnSpan="3"
 							StyleClass="Caption"
 							Text="{Binding FaresSummaryName}" />
 

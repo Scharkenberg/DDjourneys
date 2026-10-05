@@ -59,6 +59,10 @@ public partial class DeparturesPage : ContentPage, IQueryAttributable
 					});
 	}
 
+	/// <summary>The quick action "departures from here": locates the device; the nearest stop becomes the stop.</summary>
+	public void StartHere() =>
+		_vm.LocateCommand.Execute(null);
+
 	public void ApplyQueryAttributes(
 		IDictionary<string, object> query)
 	{

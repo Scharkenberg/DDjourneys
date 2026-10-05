@@ -64,6 +64,10 @@ public partial class PlanPage : ContentPage, IQueryAttributable
 	}
 
 	/// <summary>An external request (contract): fill the planner and, when asked, search.</summary>
+	/// <summary>The quick action "take me home".</summary>
+	public Task TakeMeHomeAsync() =>
+		_vm.TakeMeHomeAsync();
+
 	public void ApplyContract(ResolvedPlan plan)
 	{
 		_vm.ApplyContract(plan);

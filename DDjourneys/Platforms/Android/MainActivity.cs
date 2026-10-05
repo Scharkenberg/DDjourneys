@@ -7,6 +7,7 @@ using DDjourneys.Core.Contract;
 using DDjourneys.Core.Tracking;
 using DDjourneys.Core.Tracking.Live;
 using DDjourneys.Platforms.Android;
+using DDjourneys.Support;
 using DDjourneys.Tracking;
 
 namespace DDjourneys
@@ -62,6 +63,8 @@ namespace DDjourneys
 
 			SystemBars.Apply(this, Support.Theme.IsDark);
 
+			AndroidShortcuts.Publish(this);
+
 			// Off the UI thread and after the first frame: the tracking graph is built here on a cold start.
 			_ = Task.Run(ResumeTrackingAsync);
 
@@ -83,6 +86,17 @@ namespace DDjourneys
 			if (intent is null
 				|| (intent.Flags & ActivityFlags.LaunchedFromHistory) != 0)
 			{
+				return;
+			}
+
+			// Long press on the app icon: "take me home", "departures from here".
+			if (intent.Action == AppShortcuts.AndroidAction)
+			{
+				AppShortcuts.Submit(AppShortcuts.Parse(intent.GetStringExtra(AppShortcuts.ExtraKey)));
+
+				// Consumed: a recreated activity must not run it again.
+				intent.SetAction(Intent.ActionMain);
+
 				return;
 			}
 

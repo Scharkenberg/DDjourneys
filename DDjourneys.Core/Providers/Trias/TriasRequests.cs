@@ -133,6 +133,17 @@ internal static class TriasRequests
 				Restrictions(kinds, limit, dialect)),
 			dialect);
 
+	/// <summary>One stop by its reference: TRIAS calls carry no coordinates, this is how a stop gets its position.</summary>
+	public static XDocument LocationByRef(string id, TriasDialect dialect) =>
+		Envelope(
+			new XElement(
+				T + "LocationInformationRequest",
+				new XElement(
+					T + "LocationRef",
+					new XElement(T + (IsStopPlace(id) ? "StopPlaceRef" : "StopPointRef"), id)),
+				Restrictions(PlaceKinds.Stops, 1, dialect)),
+			dialect);
+
 	private static XElement Restrictions(PlaceKinds kinds, int limit, TriasDialect dialect)
 	{
 		var restrictions = new XElement(T + "Restrictions");

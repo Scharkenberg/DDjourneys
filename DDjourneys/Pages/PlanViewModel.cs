@@ -1310,6 +1310,46 @@ public sealed partial class PlanViewModel : DisposableViewModel
 	}
 
 
+	/// <summary>
+	/// The quick action "take me home": from the stop nearest to the device to the home stop, now, and search.
+	/// Without a home the passenger is told to set one.
+	/// </summary>
+	public async Task TakeMeHomeAsync()
+	{
+		try
+		{
+			if (_store.Home is not { } home)
+			{
+				await TellAsync(
+					_localization.CurrentStrings.Extras.ShortcutNoHome);
+
+				return;
+			}
+
+			if (await FindStopNearMeAsync() is not { } here)
+			{
+				return;
+			}
+
+			From = here;
+			To = home;
+			Via = null;
+			IsArrival = false;
+
+			SetNow();
+
+			if (CanSearch)
+			{
+				await SearchAsync();
+			}
+		}
+		catch (Exception ex)
+		{
+			DiagnosticLog.Write($"Take me home failed: {ex}");
+		}
+	}
+
+
 	private void GoHome()
 	{
 		if (_store.Home is { } home)

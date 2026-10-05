@@ -1,5 +1,6 @@
 using DDjourneys.Contract;
 using DDjourneys.Platforms.Windows.LiveJourney;
+using DDjourneys.Support;
 using Microsoft.Windows.AppLifecycle;
 using Microsoft.Windows.AppNotifications;
 using ProtocolActivatedEventArgs = global::Windows.ApplicationModel.Activation.IProtocolActivatedEventArgs;
@@ -41,6 +42,9 @@ internal static class WindowsContractActivation
 				if (args.Data is global::Windows.ApplicationModel.Activation.ILaunchActivatedEventArgs launch)
 				{
 					WindowsTrace.Write($"Launch arguments: '{launch.Arguments}'");
+
+					// A jump list entry ("take me home", "departures from here") is a launch with its own arguments.
+					AppShortcuts.Submit(AppShortcuts.ParseArguments(launch.Arguments));
 				}
 
 				AppActivationArguments own = AppInstance.GetCurrent().GetActivatedEventArgs();
