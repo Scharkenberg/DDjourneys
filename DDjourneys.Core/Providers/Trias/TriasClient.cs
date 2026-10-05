@@ -4,7 +4,6 @@ using System.Xml;
 using System.Xml.Linq;
 using DDjourneys.Core.Diagnostics;
 using DDjourneys.Core.Api;
-using DDjourneys.Core.Diagnostics;
 
 namespace DDjourneys.Core.Providers.Trias;
 
