@@ -74,8 +74,8 @@
 							<DataTemplate x:DataType="local:RunRow">
 								<Grid RowDefinitions="Auto,Auto" RowSpacing="0">
 									<Grid
-										support:Dense.Padding="14,10"
-										support:Dense.MinHeight="52"
+										support:Dense.Padding="12,8"
+										support:Dense.MinHeight="{StaticResource HitRow}"
 										ColumnDefinitions="Auto,*,Auto"
 										ColumnSpacing="10"
 										Opacity="{Binding RowOpacity}"

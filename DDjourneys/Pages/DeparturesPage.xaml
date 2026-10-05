@@ -19,8 +19,8 @@
 			<Border Padding="0" StyleClass="Card">
 				<Grid
 					support:Dense.Padding="12,4"
-					support:Dense.MinHeight="44"
-					ColumnDefinitions="*,Auto,Auto"
+					support:Dense.MinHeight="{StaticResource HitRowTight}"
+					ColumnDefinitions="*,Auto,Auto,Auto"
 					ColumnSpacing="0"
 					SemanticProperties.Description="{localization:Tr Departures.Stop}">
 
@@ -35,15 +35,22 @@
 						Command="{Binding LocateCommand}"
 						Glyph="Locate"
 						SemanticProperties.Description="{localization:Tr Departures.UseMyLocation}"
-						TargetSize="40" />
+						TargetSize="{StaticResource HitIconTight}" />
 
 					<controls:IconButton
 						Grid.Column="2"
+						Clicked="MapClicked"
+						Glyph="Map"
+						SemanticProperties.Description="{localization:Tr Extras.MapPickOnMap}"
+						TargetSize="{StaticResource HitIconTight}" />
+
+					<controls:IconButton
+						Grid.Column="3"
 						Command="{Binding RefreshCommand}"
 						Glyph="Refresh"
 						IsVisible="{Binding HasStop}"
 						SemanticProperties.Description="{localization:Tr Departures.Refresh}"
-						TargetSize="40" />
+						TargetSize="{StaticResource HitIconTight}" />
 
 					<Grid.GestureRecognizers>
 						<TapGestureRecognizer Command="{Binding PickStopCommand}" />
@@ -63,7 +70,7 @@
 				IsVisible="{Binding HasStop}">
 				<Button
 					Command="{Binding DepartCommand}"
-					support:Dense.MinHeight="34"
+					support:Dense.MinHeight="{StaticResource HitButton}"
 					StyleClass="Tonal"
 					support:Themed.IsOn="{Binding IsDeparture}"
 					support:Themed.OnBackground="Accent"
@@ -72,7 +79,7 @@
 				<Button
 					Grid.Column="1"
 					Command="{Binding ArriveCommand}"
-					support:Dense.MinHeight="34"
+					support:Dense.MinHeight="{StaticResource HitButton}"
 					StyleClass="Tonal"
 					support:Themed.IsOn="{Binding IsArrival}"
 					support:Themed.OnBackground="Accent"
@@ -83,7 +90,7 @@
 					Padding="14,0"
 					Command="{Binding NowCommand}"
 					IsEnabled="{Binding IsNotNow}"
-					support:Dense.MinHeight="34"
+					support:Dense.MinHeight="{StaticResource HitButton}"
 					StyleClass="Tonal"
 					Text="{localization:Tr Departures.Now}" />
 			</Grid>
@@ -128,8 +135,8 @@
 							<DataTemplate x:DataType="local:DepartureRow">
 								<Grid RowDefinitions="Auto,Auto" RowSpacing="0">
 									<Grid
-										support:Dense.Padding="14,10"
-										support:Dense.MinHeight="56"
+										support:Dense.Padding="12,8"
+										support:Dense.MinHeight="{StaticResource HitRow}"
 										support:Motion.Feedback="True"
 										ColumnDefinitions="68,*,Auto"
 										ColumnSpacing="10"
@@ -232,8 +239,8 @@
 								<DataTemplate x:DataType="local:NearbyRow">
 									<Grid RowDefinitions="Auto,Auto" RowSpacing="0">
 										<Grid
-											support:Dense.Padding="14,10"
-											support:Dense.MinHeight="48"
+											support:Dense.Padding="12,8"
+											support:Dense.MinHeight="{StaticResource HitRow}"
 											support:Motion.Feedback="True"
 											ColumnDefinitions="*,Auto"
 											ColumnSpacing="10">
@@ -296,7 +303,7 @@
 											<BoxView StyleClass="Divider" />
 											<Grid
 												Grid.Row="1"
-												support:Dense.Padding="14,10"
+												support:Dense.Padding="12,8"
 												ColumnDefinitions="68,*"
 												ColumnSpacing="10">
 												<Border
@@ -350,7 +357,7 @@
 												<BoxView StyleClass="Divider" />
 												<VerticalStackLayout
 													Grid.Row="1"
-													support:Dense.Padding="14,10"
+													support:Dense.Padding="12,8"
 													Spacing="2">
 													<Label FontFamily="{DynamicResource FontSemibold}" Text="{Binding Title}" />
 													<Label StyleClass="Caption" Text="{Binding Details}" />
@@ -383,7 +390,7 @@
 												<BoxView StyleClass="Divider" />
 												<Grid
 													Grid.Row="1"
-													support:Dense.Padding="14,10"
+													support:Dense.Padding="12,8"
 													support:Motion.Feedback="True"
 													ColumnDefinitions="*,Auto"
 													ColumnSpacing="10">

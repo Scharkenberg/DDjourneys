@@ -17,7 +17,7 @@
 					support:Dense.Padding="12,8"
 					ColumnDefinitions="*,Auto"
 					ColumnSpacing="12"
-					support:Dense.MinHeight="52">
+					support:Dense.MinHeight="{StaticResource HitRow}">
 
 					<VerticalStackLayout Spacing="1" VerticalOptions="Center">
 						<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.StartInputMode}" />
@@ -45,9 +45,9 @@
 
 					<!--  The device position  -->
 					<Grid
-						support:Dense.Padding="12,10"
+						support:Dense.Padding="12,8"
 						ColumnDefinitions="*,Auto"
-						support:Dense.MinHeight="56"
+						support:Dense.MinHeight="{StaticResource HitRow}"
 						support:Motion.Feedback="True">
 						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
 							<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.StartFromLocation}" />
@@ -69,9 +69,9 @@
 
 					<!--  A chosen stop, point of interest or address  -->
 					<Grid
-						support:Dense.Padding="12,10"
+						support:Dense.Padding="12,8"
 						ColumnDefinitions="*,Auto"
-						support:Dense.MinHeight="56"
+						support:Dense.MinHeight="{StaticResource HitRow}"
 						support:Motion.Feedback="True">
 						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
 							<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.StartFromPlace}" />
@@ -92,11 +92,11 @@
 					<BoxView IsVisible="{Binding UsePlace}" StyleClass="Divider" />
 
 					<Grid
-						support:Dense.Padding="12,10"
+						support:Dense.Padding="12,8"
 						ColumnDefinitions="*,Auto"
 						ColumnSpacing="10"
 						IsVisible="{Binding UsePlace}"
-						support:Dense.MinHeight="56"
+						support:Dense.MinHeight="{StaticResource HitRow}"
 						support:Motion.Feedback="True"
 						SemanticProperties.Description="{Binding PlaceName}">
 						<VerticalStackLayout Spacing="1" VerticalOptions="Center">

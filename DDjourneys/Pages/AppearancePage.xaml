@@ -24,7 +24,7 @@
 									support:Dense.Padding="12,8"
 									ColumnDefinitions="*,Auto"
 									ColumnSpacing="12"
-									support:Dense.MinHeight="52"
+									support:Dense.MinHeight="{StaticResource HitRow}"
 									SemanticProperties.Description="{Binding Title}">
 
 									<VerticalStackLayout Spacing="1" VerticalOptions="Center">
@@ -57,7 +57,7 @@
 					support:Dense.Padding="12,8"
 					ColumnDefinitions="*,Auto"
 					ColumnSpacing="12"
-					support:Dense.MinHeight="52">
+					support:Dense.MinHeight="{StaticResource HitRow}">
 
 					<VerticalStackLayout Spacing="1" VerticalOptions="Center">
 						<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.PureBlack}" />
@@ -86,7 +86,7 @@
 									support:Dense.Padding="12,8"
 									ColumnDefinitions="Auto,*,Auto"
 									ColumnSpacing="12"
-									support:Dense.MinHeight="52"
+									support:Dense.MinHeight="{StaticResource HitRow}"
 									SemanticProperties.Description="{Binding Title}">
 
 									<!--  Swatch: background, raised panel, accent and ink bars (for the mode currently in effect)  -->
@@ -159,7 +159,7 @@
 									support:Dense.Padding="12,8"
 									ColumnDefinitions="*,Auto"
 									ColumnSpacing="12"
-									support:Dense.MinHeight="52"
+									support:Dense.MinHeight="{StaticResource HitRow}"
 									SemanticProperties.Description="{Binding Title}">
 
 									<VerticalStackLayout Spacing="1" VerticalOptions="Center">
@@ -201,7 +201,7 @@
 									support:Dense.Padding="12,8"
 									ColumnDefinitions="*,Auto"
 									ColumnSpacing="12"
-									support:Dense.MinHeight="52"
+									support:Dense.MinHeight="{StaticResource HitRow}"
 									SemanticProperties.Description="{Binding Title}">
 
 									<VerticalStackLayout Spacing="1" VerticalOptions="Center">
@@ -247,7 +247,7 @@
 									support:Dense.Padding="12,8"
 									ColumnDefinitions="*,Auto"
 									ColumnSpacing="12"
-									support:Dense.MinHeight="52"
+									support:Dense.MinHeight="{StaticResource HitRow}"
 									SemanticProperties.Description="{Binding Title}">
 
 									<VerticalStackLayout Spacing="1" VerticalOptions="Center">
@@ -293,7 +293,7 @@
 									support:Dense.Padding="12,8"
 									ColumnDefinitions="*,Auto"
 									ColumnSpacing="12"
-									support:Dense.MinHeight="52"
+									support:Dense.MinHeight="{StaticResource HitRow}"
 									SemanticProperties.Description="{Binding Title}">
 
 									<VerticalStackLayout Spacing="1" VerticalOptions="Center">

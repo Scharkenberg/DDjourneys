@@ -16,6 +16,7 @@ namespace DDjourneys.Core.Providers.Vvo;
 public sealed class VvoNetworkProvider :
 	IDepartureProvider,
 	INetworkInfoProvider,
+	IStopAreaProvider,
 	IProviderDescriptor
 {
 	private static readonly TimeSpan MaxZoneAge = TimeSpan.FromHours(24);
@@ -185,6 +186,15 @@ public sealed class VvoNetworkProvider :
 			? []
 			: VvoNetworkMapper.MapStopLines(response);
 	}
+
+	/// <inheritdoc />
+	public async Task<IReadOnlyList<NearbyStop>> GetStopsAroundAsync(
+		double latitude,
+		double longitude,
+		int radiusMeters,
+		int limit,
+		CancellationToken cancellationToken = default) =>
+		[.. (await GetNearbyStopsAsync(latitude, longitude, radiusMeters, cancellationToken).ConfigureAwait(false)).Take(limit)];
 
 	/// <inheritdoc />
 	public async Task<IReadOnlyList<NearbyStop>> GetNearbyStopsAsync(

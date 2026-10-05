@@ -1203,7 +1203,6 @@ public sealed class JourneyViewModel :
 			new JourneyCardModel(
 				journey)
 			{
-				ShowEndpoints = false,
 				Passenger = _settings.Passenger,
 				MapCommand = OpenMapCommand,
 				Actions = Actions

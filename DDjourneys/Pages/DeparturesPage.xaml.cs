@@ -59,6 +59,17 @@ public partial class DeparturesPage : ContentPage, IQueryAttributable
 					});
 	}
 
+	/// <summary>The map in pick mode: a tapped stop becomes the stop of the board.</summary>
+	private void MapClicked(object? sender, EventArgs e) =>
+		_ = NavigateAsync(
+			Routes.Map,
+			new ShellNavigationQueryParameters
+			{
+				[Routes.MapMode] = Routes.MapModePick,
+				[Routes.TargetIsFrom] = false,
+				[Routes.Target] = Routes.TargetDepartures
+			});
+
 	/// <summary>The quick action "departures from here": locates the device; the nearest stop becomes the stop.</summary>
 	public void StartHere() =>
 		_vm.LocateCommand.Execute(null);

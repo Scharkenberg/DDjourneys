@@ -13,8 +13,8 @@
 		<DataTemplate x:Key="PlaceRow" x:DataType="local:PlaceRow">
 			<Grid RowDefinitions="Auto,Auto" RowSpacing="0">
 				<VerticalStackLayout
-					support:Dense.Padding="14,10"
-					support:Dense.MinHeight="48"
+					support:Dense.Padding="12,8"
+					support:Dense.MinHeight="{StaticResource HitRow}"
 					Spacing="2"
 					VerticalOptions="Center">
 					<controls:StopNameView Place="{Binding Detail}" Stop="{Binding Name}" />

@@ -100,6 +100,29 @@ public partial class PlanPage : ContentPage, IQueryAttributable
 	public Task TakeMeHomeAsync() =>
 		_vm.TakeMeHomeAsync();
 
+	private void FromMapClicked(object? sender, EventArgs e) =>
+		_ = OpenMapAsync(true);
+
+	private void ToMapClicked(object? sender, EventArgs e) =>
+		_ = OpenMapAsync(false);
+
+	/// <summary>The map in pick mode: the tapped stop or point answers like the place search.</summary>
+	private Task OpenMapAsync(bool isFrom) =>
+		NavigateAsync(
+			Routes.Map,
+			new ShellNavigationQueryParameters
+			{
+				[Routes.MapMode] = Routes.MapModePick,
+				[Routes.TargetIsFrom] = isFrom
+			});
+
+	/// <summary>After a hand-over with one end open: asks for the start / the destination.</summary>
+	public void PickStart() =>
+		_vm.PickFromCommand.Execute(null);
+
+	public void PickDestination() =>
+		_vm.PickToCommand.Execute(null);
+
 	public void ApplyContract(ResolvedPlan plan)
 	{
 		_vm.ApplyContract(plan);

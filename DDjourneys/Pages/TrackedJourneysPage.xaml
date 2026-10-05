@@ -39,10 +39,10 @@
 							<BindableLayout.ItemTemplate>
 								<DataTemplate x:DataType="local:LiveOption">
 									<Grid support:Motion.Feedback="True"
-										support:Dense.Padding="12,10"
+										support:Dense.Padding="12,8"
 										ColumnDefinitions="*,Auto"
 										ColumnSpacing="10"
-										support:Dense.MinHeight="52"
+										support:Dense.MinHeight="{StaticResource HitRow}"
 										SemanticProperties.Description="{Binding Title}">
 
 										<VerticalStackLayout Spacing="1" VerticalOptions="Center">
@@ -226,7 +226,7 @@
 														</SwipeView.RightItems>
 
 														<Border
-															support:Dense.Padding="10,8"
+															support:Dense.Padding="12,8"
 															BackgroundColor="{DynamicResource Raised}"
 															StrokeShape="RoundRectangle 10"
 															StrokeThickness="0">
@@ -281,7 +281,7 @@
 															<DataTemplate x:DataType="local:CourseRow">
 																<Grid
 																	ColumnDefinitions="52,22,*"
-																	support:Dense.MinHeight="30"
+																	support:Dense.MinHeight="{StaticResource HitButton}"
 																	Opacity="{Binding Fade}">
 
 																	<!--  Rail: accent where the journey has been, outline where it still goes  -->

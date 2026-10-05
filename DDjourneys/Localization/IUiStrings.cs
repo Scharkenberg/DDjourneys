@@ -604,6 +604,17 @@ public sealed class ExtrasStrings
 	public required string LiveCount { get; init; }
 	public required string MapTitle { get; init; }
 	public required string MapShow { get; init; }
+	public required string MapPickStart { get; init; }
+	public required string MapPickEnd { get; init; }
+	public required string MapPickStop { get; init; }
+	public required string MapPickOnMap { get; init; }
+	public required string MapZoomHint { get; init; }
+	public required string MapPickHint { get; init; }
+	public required string MapStopDepartures { get; init; }
+	public required string MapJourneyToHere { get; init; }
+	public required string MapJourneyFromHere { get; init; }
+	public required string MapUsePlace { get; init; }
+	public required string MapNothingHere { get; init; }
 	public required string MapJourneyTitle { get; init; }
 	public required string MapStopTitle { get; init; }
 	public required string MapNoData { get; init; }

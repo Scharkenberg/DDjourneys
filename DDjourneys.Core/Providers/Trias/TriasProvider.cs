@@ -17,6 +17,7 @@ public sealed class TriasProvider :
 	IJourneyProvider,
 	ILocationProvider,
 	IDepartureProvider,
+	IStopAreaProvider,
 	IProviderDescriptor
 {
 	private readonly TriasClient _client;
@@ -184,6 +185,55 @@ public sealed class TriasProvider :
 		return TriasMapper
 			.MapLocations(response)
 			.FirstOrDefault(place => place.Kind == PlaceKind.Address);
+	}
+
+	// ---------- Stops in an area ----------
+
+	public async Task<IReadOnlyList<NearbyStop>> GetStopsAroundAsync(
+		double latitude,
+		double longitude,
+		int radiusMeters,
+		int limit,
+		CancellationToken cancellationToken = default)
+	{
+		XDocument response =
+			await _client
+				.SendAsync(
+					TriasRequestKind.Locations,
+					dialect => TriasRequests.LocationByArea(latitude, longitude, radiusMeters, limit, dialect),
+					cancellationToken,
+					Timeout(10))
+				.ConfigureAwait(false);
+
+		IReadOnlyList<Location> places = TriasMapper.MapLocations(response);
+
+		// A server that does not know the area restriction answers with an error or nothing: the stops around the centre.
+		if (places.Count == 0)
+		{
+			response =
+				await _client
+					.SendAsync(
+						TriasRequestKind.Locations,
+						dialect => TriasRequests.LocationByPosition(latitude, longitude, PlaceKinds.Stops, Math.Min(limit, 40), dialect),
+						cancellationToken,
+						Timeout(10))
+					.ConfigureAwait(false);
+
+			places = TriasMapper.MapLocations(response);
+		}
+
+		return
+			[.. places
+				.Where(place => place.Kind == PlaceKind.Stop && place.Latitude is not null && place.Longitude is not null)
+				.Select(
+					place => new NearbyStop
+					{
+						Stop = place,
+						DistanceMeters = (int)Math.Round(GeoMath.DistanceMeters(latitude, longitude, place.Latitude!.Value, place.Longitude!.Value))
+					})
+				.Where(stop => stop.DistanceMeters <= radiusMeters * 1.5)
+				.OrderBy(stop => stop.DistanceMeters)
+				.Take(limit)];
 	}
 
 	// ---------- Departures ----------

@@ -96,61 +96,46 @@
 					Stop="{Binding ToName}" />
 			</Grid>
 
-			<!--  Legs and state on the left, the map button anchored bottom right  -->
+			<!--  Legs: one line, centered, and swipeable when it is too long for the card; the actions sit beside it  -->
 			<Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource SpaceS}">
 
-				<VerticalStackLayout Spacing="{DynamicResource SpaceM}">
-
-					<!--  Legs  -->
-					<FlexLayout AlignContent="Start" AlignItems="Start" BindableLayout.ItemsSource="{Binding Chips}" Wrap="Wrap">
+				<ScrollView
+					HorizontalScrollBarVisibility="Never"
+					Orientation="Horizontal"
+					VerticalOptions="Center">
+					<HorizontalStackLayout
+						BindableLayout.ItemsSource="{Binding Chips}"
+						Spacing="6"
+						VerticalOptions="Center">
 						<BindableLayout.ItemTemplate>
 							<DataTemplate x:DataType="support:LegChip">
 								<Border
-									Margin="0,0,6,6"
 									BackgroundColor="{Binding Look.Fill}"
-									FlexLayout.Shrink="0"
 									StrokeDashArray="{Binding Look.Dashes}"
 									StrokeShape="{Binding Look.Shape}"
 									StrokeThickness="{Binding Look.StrokeThickness}"
 									StyleClass="Chip"
-									Stroke="{Binding Look.Stroke}">
-									<support:PillScroll>
-										<Label
-											FontFamily="{DynamicResource FontSemibold}"
-											FontSize="{StaticResource FontCaption}"
-											StyleClass="ChipLabel"
-											Text="{Binding Text}"
-											TextColor="{Binding Look.Text}" />
-									</support:PillScroll>
+									Stroke="{Binding Look.Stroke}"
+									VerticalOptions="Center">
+									<Label
+										FontFamily="{DynamicResource FontSemibold}"
+										FontSize="{StaticResource FontCaption}"
+										LineBreakMode="NoWrap"
+										StyleClass="ChipLabel"
+										Text="{Binding Text}"
+										TextColor="{Binding Look.Text}" />
 								</Border>
 							</DataTemplate>
 						</BindableLayout.ItemTemplate>
-					</FlexLayout>
-
-					<!--  Cannot take place: own row, so a long reason can wrap  -->
-					<Label
-						IsVisible="{Binding IsCancelled}"
-						LineBreakMode="WordWrap"
-						StyleClass="Cancelled"
-						Text="{Binding BlockText}" />
-
-					<!--  State  -->
-					<HorizontalStackLayout IsVisible="{Binding HasStatusRow}" Spacing="{DynamicResource SpaceM}">
-						<Label IsVisible="{Binding IsOnTime}" StyleClass="OnTime">
-							<Label.Text>
-								<localization:Tr Key="Journey.OnTime" />
-							</Label.Text>
-						</Label>
 					</HorizontalStackLayout>
+				</ScrollView>
 
-				</VerticalStackLayout>
-
-				<!--  Actions, anchored bottom right: notices (a badge, not a line), PDF, hand-over, follow, pause, map  -->
+				<!--  Actions, vertically centered with the legs: notices (a badge, not a line), PDF, hand-over, follow, pause, map  -->
 				<HorizontalStackLayout
 					Grid.Column="1"
 					HorizontalOptions="End"
 					Spacing="0"
-					VerticalOptions="End">
+					VerticalOptions="Center">
 
 					<Border
 						Padding="6,3"
@@ -185,38 +170,54 @@
 						Glyph="Document"
 						IsVisible="{Binding Actions.HasPdf}"
 						SemanticProperties.Description="{Binding Actions.PdfDescription}"
-						TargetSize="40" />
+						TargetSize="{StaticResource HitIconTight}" />
 
 					<controls:IconButton
 						Command="{Binding Actions.HandOffCommand}"
 						Glyph="External"
 						IsVisible="{Binding Actions.HasHandOff}"
 						SemanticProperties.Description="{Binding Actions.HandOffDescription}"
-						TargetSize="40" />
+						TargetSize="{StaticResource HitIconTight}" />
 
 					<controls:IconButton
 						Command="{Binding Actions.PauseCommand}"
 						Glyph="{Binding Actions.PauseGlyph}"
 						IsVisible="{Binding Actions.ShowPause}"
 						SemanticProperties.Description="{Binding Actions.PauseDescription}"
-						TargetSize="40" />
+						TargetSize="{StaticResource HitIconTight}" />
 
 					<controls:IconButton
 						Command="{Binding Actions.FollowCommand}"
 						Glyph="{Binding Actions.FollowGlyph}"
 						IsVisible="{Binding Actions.CanFollow}"
 						SemanticProperties.Description="{Binding Actions.FollowDescription}"
-						TargetSize="40" />
+						TargetSize="{StaticResource HitIconTight}" />
 
 					<controls:IconButton
 						Command="{Binding MapCommand}"
 						Glyph="Map"
 						IsVisible="{Binding HasMap}"
 						SemanticProperties.Description="{localization:Tr Extras.MapShow}"
-						TargetSize="40" />
+						TargetSize="{StaticResource HitIconTight}" />
 				</HorizontalStackLayout>
 
 			</Grid>
+
+			<!--  Cannot take place: own row, so a long reason can wrap  -->
+			<Label
+				IsVisible="{Binding IsCancelled}"
+				LineBreakMode="WordWrap"
+				StyleClass="Cancelled"
+				Text="{Binding BlockText}" />
+
+			<!--  State  -->
+			<HorizontalStackLayout IsVisible="{Binding HasStatusRow}" Spacing="{DynamicResource SpaceM}">
+				<Label IsVisible="{Binding IsOnTime}" StyleClass="OnTime">
+					<Label.Text>
+						<localization:Tr Key="Journey.OnTime" />
+					</Label.Text>
+				</Label>
+			</HorizontalStackLayout>
 
 		</VerticalStackLayout>
 	</Border>

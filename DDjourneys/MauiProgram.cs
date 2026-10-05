@@ -118,6 +118,12 @@ public static class MauiProgram
 		builder.Services.AddSingleton<VehicleService>();
 		builder.Services.AddSingleton<IOpenDataProvider, DresdenOpenDataProvider>();
 		builder.Services.AddSingleton<OpenDataService>();
+		builder.Services.AddSingleton<IStopAreaProvider>(
+			services => services.GetRequiredService<TriasProvider>());
+		builder.Services.AddSingleton<IStopAreaProvider>(
+			services => services.GetRequiredService<VvoNetworkProvider>());
+		builder.Services.AddSingleton<StopAreaService>();
+		builder.Services.AddSingleton<Support.PlannerLauncher>();
 		builder.Services.AddSingleton<DepartureService>();
 		builder.Services.AddSingleton<LegRunResolver>();
 		builder.Services.AddSingleton<Support.Widgets.WidgetLoader>();

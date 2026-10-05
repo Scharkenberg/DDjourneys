@@ -81,7 +81,7 @@ body.dark .maplibregl-ctrl-group button .maplibregl-ctrl-icon { filter: invert(1
 	var map = null, key = '', theme = null, styleName = null, styleReady = false;
 	var autoFit = true, labels = { autoFit: 'Auto-fit', fitNow: 'Fit', info: 'Map data' }, autoButton = null;
 	var scene = { markers: [], lines: [] }, wantFit = false;
-	var markers = {};
+	var markers = {}, overlayMarkers = {}, overlay = [], explore = false, pickMode = false, pendingCenter = null, viewTimer = 0;
 	var errors = 0;
 
 	function send(text) {
@@ -356,17 +356,18 @@ body.dark .maplibregl-ctrl-group button .maplibregl-ctrl-icon { filter: invert(1
 		return '<div class="dd-pop"><b>' + esc(title) + '</b>' + (m.subtitle ? '<span>' + esc(m.subtitle) + '</span>' : '') + '</div>';
 	}
 
-	function applyMarkers() {
+	// One marker set per store (scene or overlay): add, update and remove by id.
+	function syncMarkers(store, list, interactive) {
 		if (!map) { return; }
 
 		var seen = {};
 
-		(scene.markers || []).forEach(function (m) {
+		(list || []).forEach(function (m) {
 			seen[m.id] = true;
 
-			var entry = markers[m.id];
+			var entry = store[m.id];
 			var signature = [m.kind, m.label, m.color, m.title, m.subtitle].join('|');
-			var html = popupHtml(m);
+			var html = interactive ? null : popupHtml(m);
 
 			if (entry && entry.signature === signature) {
 				entry.marker.setLngLat([m.lon, m.lat]);
@@ -376,24 +377,49 @@ body.dark .maplibregl-ctrl-group button .maplibregl-ctrl-icon { filter: invert(1
 
 			if (entry) { entry.marker.remove(); }
 
-			var marker = new maplibregl.Marker({ element: markerElement(m), anchor: 'center' }).setLngLat([m.lon, m.lat]);
+			var el = markerElement(m);
+			var marker = new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat([m.lon, m.lat]);
 
 			if (html) { marker.setPopup(new maplibregl.Popup({ offset: 16, closeButton: false, maxWidth: '260px' }).setHTML(html)); }
+
+			if (interactive) {
+				// Overlay stops are chosen, not described: C# shows the actions.
+				el.style.cursor = 'pointer';
+				el.addEventListener('click', function (e) {
+					e.stopPropagation();
+					send('tap:' + m.id);
+				});
+			}
 
 			marker.addTo(map);
 
 			var z = m.kind === 'vehicle' ? 3 : (m.kind === 'knot' ? 0 : (m.kind === 'stop' ? 1 : 2));
-			marker.getElement().style.zIndex = String(z);
+			el.style.zIndex = String(z);
 
-			markers[m.id] = { marker: marker, signature: signature };
+			store[m.id] = { marker: marker, signature: signature };
 		});
 
-		Object.keys(markers).forEach(function (id) {
+		Object.keys(store).forEach(function (id) {
 			if (!seen[id]) {
-				markers[id].marker.remove();
-				delete markers[id];
+				store[id].marker.remove();
+				delete store[id];
 			}
 		});
+	}
+
+	function applyMarkers() {
+		syncMarkers(markers, scene.markers, false);
+		syncMarkers(overlayMarkers, overlay, true);
+	}
+
+	// The visible area, reported after every move so C# can load what is in it.
+	function reportView() {
+		if (!map) { return; }
+
+		var b = map.getBounds();
+		var c = map.getCenter();
+
+		send('view:' + JSON.stringify({ s: b.getSouth(), w: b.getWest(), n: b.getNorth(), e: b.getEast(), z: map.getZoom(), lat: c.lat, lon: c.lng }));
 	}
 
 	function fit() {
@@ -512,6 +538,15 @@ body.dark .maplibregl-ctrl-group button .maplibregl-ctrl-icon { filter: invert(1
 
 		map.on('zoom', updateLabelZoom);
 
+		map.on('moveend', function () {
+			clearTimeout(viewTimer);
+			viewTimer = setTimeout(reportView, 300);
+		});
+
+		map.on('click', function (e) {
+			if (pickMode) { send('point:' + e.lngLat.lat + ',' + e.lngLat.lng); }
+		});
+
 		map.on('style.load', function () {
 			styleReady = true;
 			baseSizes = {};
@@ -520,6 +555,8 @@ body.dark .maplibregl-ctrl-group button .maplibregl-ctrl-icon { filter: invert(1
 			drawLines();
 
 			if (wantFit) { wantFit = false; fit(); }
+
+			reportView();
 		});
 
 		map.on('error', function (e) {
@@ -571,6 +608,27 @@ body.dark .maplibregl-ctrl-group button .maplibregl-ctrl-icon { filter: invert(1
 				autoFit = arg.autoFit !== false;
 				document.body.classList.toggle('dark', !!theme.dark);
 				if (!map) { createMap(); setTheme(theme); applyMarkers(); }
+				break;
+
+			case 'mode':
+				explore = !!arg.explore;
+				pickMode = !!arg.pick;
+				if (explore || pickMode) { setAuto(false); }
+				if (arg.center && map) { map.jumpTo({ center: [arg.center.lon, arg.center.lat], zoom: arg.center.zoom || 15 }); }
+				reportView();
+				break;
+
+			case 'overlay':
+				overlay = (arg && arg.markers) || [];
+				applyMarkers();
+				break;
+
+			case 'center':
+				if (map) {
+					map.easeTo({ center: [arg.lon, arg.lat], zoom: arg.zoom || Math.max(map.getZoom(), 15), duration: 400 });
+				} else {
+					pendingCenter = arg;
+				}
 				break;
 
 			case 'theme':

@@ -82,6 +82,17 @@ Journey planner for DVB/VVO (Dresden), .NET 11 MAUI / C# 15. Repo: `Scharkenberg
 - Provider notices are never part of a share. The model also carries the preferred price (figures line) and guaranteed connections (`IsGuaranteed`, "✓ guaranteed").
 - `JourneyShareModel` is the single source for `JourneyShareText` and `JourneyShareImage` (SkiaSharp, drawn in two passes: measure, paint). The start is always a row (`ShareStepKind.Depart`) unless the first ride boards exactly there. The image keeps its surroundings small and its content (times, stops, lines) large.
 
+## Sizes and density tokens
+- One scale in `Resources/Styles/Tokens.xaml`: `HitIcon` 40, `HitIconTight` 36 (icons inside rows and cards), `HitButton` 36, `HitRowTight` 44, `HitRow` 52, `HitPrimary` 48; paddings 12,8 (rows), 12,4 and 10,6 (slim rows). Pages use the tokens through `Dense.MinHeight/Padding`/`TargetSize`, never literals, so Compact/Normal/Touch scale them all (`DensityProfile.Hit()`).
+- Planner quick steps: one 5-column grid (-1 h, -15m, Now, +15m, +1 h), never wraps.
+- `JourneyCard` is the one card for results and the journey page: times, endpoints, one-line swipeable leg chips (horizontal ScrollView), actions beside them.
+
+## Map explorer
+- `ProviderInfo.Center` (`MapCenter`, Dresden for VVO and TRIAS) is the provider's central city; `IStopAreaProvider` (VVO box query, TRIAS `LocationByArea`) + `StopAreaService` list the stops of an area (max 80, radius <= 2000 m, fallback: coordinate search).
+- `MapView` reports `view:` (viewport, 300 ms debounced after moveend), `tap:` (overlay marker id) and `point:` (pick mode); calls `overlay`, `mode` (explore/pick/centre), `center`. `MapPage` loads stops from zoom 13 for every map, drops the ones a scene already draws (30 m), offers departures / journey to / journey from on a stop tap (`PlannerLauncher`: device position, else last fix, else the planner asks).
+- Pick mode (`Routes.MapMode = pick`, planner From/To and departures map buttons): a stop answers at once, a point becomes an address (journeys) or the nearest stop (departures) after one confirmation; the answer goes back like the place search (`SelectedPlace`, `TargetIsFrom`, `Target`). Explore centre: device position, else the last stop in the recents, else `ProviderInfo.Center`.
+- Not done: vehicles/POIs as live overlays on every map (only stops).
+
 ## State (end of last session, nothing compiled or run by me)
 Done: disruptions overhaul, departures time picker (`WhenPicker`), "Around this stop" rows (`SectionRow`), planner shortcut redesign, walk-only trips, marker positions, single attribution, free strip, Auto-fit, run identification, journey alternative buttons wrapping, vehicles tracking banner, walking-interchange timeline and share fixes.
 Open / ideas:

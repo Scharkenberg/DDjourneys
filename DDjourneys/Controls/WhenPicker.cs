@@ -90,8 +90,8 @@ public sealed class WhenPicker : ContentView
 
 		Grid.SetColumn(_timeCell, 1);
 
-		Dense.SetPadding(_grid, new Thickness(12, 6));
-		Dense.SetMinHeight(_grid, 64);
+		Dense.SetPadding(_grid, new Thickness(12, 3));
+		Dense.SetMinHeight(_grid, 52);
 
 		_grid.SizeChanged += OnSizeChanged;
 

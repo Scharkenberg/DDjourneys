@@ -36,6 +36,13 @@ public static class Routes
 	public const string MapScene = "MapScene";
 	public const string MapTitle = "MapTitle";
 
+	/// <summary>
+	/// Query key: how the map page is used. <see cref="MapModePick"/> answers with a place like the place search
+	/// (<see cref="SelectedPlace"/>, <see cref="TargetIsFrom"/>, <see cref="Target"/>); without a scene the map explores the stops around.
+	/// </summary>
+	public const string MapMode = "MapMode";
+	public const string MapModePick = "pick";
+
 	/// <summary>Query key: a <c>TrackTarget</c>, the one run the live vehicles page follows.</summary>
 	public const string Track = "Track";
 

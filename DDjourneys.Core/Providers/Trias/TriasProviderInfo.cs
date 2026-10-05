@@ -27,5 +27,6 @@ public static class TriasProviderInfo
 			| ProviderCapabilities.RouteOptimisation
 			| ProviderCapabilities.LiveVehicles
 			| ProviderCapabilities.OpenData,
-			IsExperimental: true);
+			IsExperimental: true,
+			Center: new MapCenter("Dresden", 51.0504, 13.7373));
 }

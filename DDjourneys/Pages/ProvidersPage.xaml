@@ -34,10 +34,10 @@
 										<DataTemplate x:DataType="local:ProviderRow">
 
 											<Grid support:Motion.Feedback="True"
-												support:Dense.Padding="14,12"
+												support:Dense.Padding="12,8"
 												ColumnDefinitions="*,Auto"
 												ColumnSpacing="12"
-												support:Dense.MinHeight="64"
+												support:Dense.MinHeight="{StaticResource HitRow}"
 												SemanticProperties.Description="{Binding Description}">
 
 												<VerticalStackLayout Spacing="3" VerticalOptions="Center">

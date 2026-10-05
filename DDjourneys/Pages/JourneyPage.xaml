@@ -283,7 +283,7 @@
 							CommandParameter="{Binding .}"
 							FontSize="{StaticResource FontCaption}"
 							IsVisible="{Binding CanShowLive}"
-							support:Dense.MinHeight="36"
+							support:Dense.MinHeight="{StaticResource HitButton}"
 							StyleClass="Tonal"
 							Text="{localization:Tr Extras.LiveShow}" />
 						<Button
@@ -293,7 +293,7 @@
 							CommandParameter="{Binding .}"
 							FontSize="{StaticResource FontCaption}"
 							IsVisible="{Binding Source={RelativeSource AncestorType={x:Type local:JourneyViewModel}}, x:DataType=local:JourneyViewModel, Path=HasLegAlternatives}"
-							support:Dense.MinHeight="36"
+							support:Dense.MinHeight="{StaticResource HitButton}"
 							StyleClass="Tonal"
 							Text="{localization:Tr Journey.LegEarlier}" />
 						<Button
@@ -303,14 +303,14 @@
 							CommandParameter="{Binding .}"
 							FontSize="{StaticResource FontCaption}"
 							IsVisible="{Binding Source={RelativeSource AncestorType={x:Type local:JourneyViewModel}}, x:DataType=local:JourneyViewModel, Path=HasLegAlternatives}"
-							support:Dense.MinHeight="36"
+							support:Dense.MinHeight="{StaticResource HitButton}"
 							StyleClass="Tonal"
 							Text="{localization:Tr Journey.LegLater}" />
 					</FlexLayout>
 
 					<HorizontalStackLayout support:Motion.Feedback="True"
 						IsVisible="{Binding HasIntermediates}"
-						support:Dense.MinHeight="36"
+						support:Dense.MinHeight="{StaticResource HitButton}"
 						SemanticProperties.Description="{localization:Tr Journey.ShowOrHideIntermediateStops}"
 						Spacing="6"
 						VerticalOptions="Center">
@@ -715,7 +715,7 @@
 
 					<Grid
 						support:Motion.Feedback="True"
-						support:Dense.MinHeight="40"
+						support:Dense.MinHeight="{StaticResource HitButton}"
 						ColumnDefinitions="Auto,*,Auto,Auto"
 						ColumnSpacing="10"
 						RowDefinitions="Auto,Auto"

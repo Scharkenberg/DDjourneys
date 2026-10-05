@@ -54,13 +54,13 @@
 			<Border StyleClass="Card">
 				<Grid
 					ColumnDefinitions="*,Auto"
-					ColumnSpacing="{DynamicResource SpaceS}"
+					ColumnSpacing="4"
 					RowDefinitions="Auto,Auto,Auto,Auto,Auto">
 
 					<Grid
 						Grid.Row="0"
-						ColumnDefinitions="*,38,38"
-						support:Dense.MinHeight="50">
+						ColumnDefinitions="*,36,36,36"
+						support:Dense.MinHeight="{StaticResource HitRow}">
 
 						<VerticalStackLayout support:Motion.Feedback="True" Spacing="0" VerticalOptions="Center">
 							<Label StyleClass="Caption" Text="{localization:Tr Plan.FromPlaceholder}" />
@@ -78,14 +78,21 @@
 						<controls:IconButton
 							Grid.Column="1"
 							Command="{Binding UseLocationFromCommand}"
-							TargetSize="38"
+							TargetSize="{StaticResource HitIconTight}"
 							Glyph="Locate"
 							SemanticProperties.Description="{localization:Tr Plan.UseLocationFrom}" />
 
 						<controls:IconButton
 							Grid.Column="2"
+							Clicked="FromMapClicked"
+							Glyph="Map"
+							SemanticProperties.Description="{localization:Tr Extras.MapPickOnMap}"
+							TargetSize="{StaticResource HitIconTight}" />
+
+						<controls:IconButton
+							Grid.Column="3"
 							Command="{Binding ToggleFromFavouriteCommand}"
-							TargetSize="38"
+							TargetSize="{StaticResource HitIconTight}"
 							Glyph="{Binding FromStar}"
 							InputTransparent="{Binding NoFrom}"
 							Opacity="{Binding StarOpacityFrom}"
@@ -99,8 +106,8 @@
 
 					<Grid
 						Grid.Row="2"
-						ColumnDefinitions="*,38,38"
-						support:Dense.MinHeight="50">
+						ColumnDefinitions="*,36,36,36"
+						support:Dense.MinHeight="{StaticResource HitRow}">
 
 						<VerticalStackLayout support:Motion.Feedback="True" Spacing="0" VerticalOptions="Center">
 							<Label StyleClass="Caption" Text="{localization:Tr Plan.ToPlaceholder}" />
@@ -118,14 +125,21 @@
 						<controls:IconButton
 							Grid.Column="1"
 							Command="{Binding UseLocationToCommand}"
-							TargetSize="38"
+							TargetSize="{StaticResource HitIconTight}"
 							Glyph="Locate"
 							SemanticProperties.Description="{localization:Tr Plan.UseLocationTo}" />
 
 						<controls:IconButton
 							Grid.Column="2"
+							Clicked="ToMapClicked"
+							Glyph="Map"
+							SemanticProperties.Description="{localization:Tr Extras.MapPickOnMap}"
+							TargetSize="{StaticResource HitIconTight}" />
+
+						<controls:IconButton
+							Grid.Column="3"
 							Command="{Binding ToggleToFavouriteCommand}"
-							TargetSize="38"
+							TargetSize="{StaticResource HitIconTight}"
 							Glyph="{Binding ToStar}"
 							InputTransparent="{Binding NoTo}"
 							Opacity="{Binding StarOpacityTo}"
@@ -146,7 +160,7 @@
 						Padding="0,2"
 						IsVisible="{Binding NoVia}"
 						Spacing="8"
-						support:Dense.MinHeight="34"
+						support:Dense.MinHeight="{StaticResource HitButton}"
 						support:Motion.Feedback="True"
 						SemanticProperties.Description="{localization:Tr Plan.AddVia}">
 						<controls:Icon
@@ -173,7 +187,7 @@
 						Glyph="SwapVertical"
 						SemanticProperties.Description="{localization:Tr Plan.SwapDescription}"
 						Size="22"
-						TargetSize="38"
+						TargetSize="{StaticResource HitIconTight}"
 						VerticalOptions="Center" />
 
 				</Grid>
@@ -185,7 +199,7 @@
 				IsVisible="{Binding HasVia}"
 				StyleClass="Card">
 				<Grid
-					support:Dense.MinHeight="46"
+					support:Dense.MinHeight="{StaticResource HitRowTight}"
 					support:Dense.Padding="12,4"
 					ColumnDefinitions="*,38">
 
@@ -202,7 +216,7 @@
 					<controls:IconButton
 						Grid.Column="1"
 						Command="{Binding ClearViaCommand}"
-							TargetSize="38"
+							TargetSize="{StaticResource HitIconTight}"
 						Glyph="Close"
 						SemanticProperties.Description="{localization:Tr Plan.ClearVia}" />
 				</Grid>
@@ -213,14 +227,14 @@
 				<VerticalStackLayout>
 
 					<Grid
-						support:Dense.Padding="12,10"
+						support:Dense.Padding="10,6"
 						ColumnDefinitions="*,*"
 						ColumnSpacing="{DynamicResource SpaceS}">
 
 						<Button
 							Grid.Column="0"
 							Command="{Binding DepartCommand}"
-							support:Dense.MinHeight="38"
+							support:Dense.MinHeight="{StaticResource HitButton}"
 							StyleClass="Tonal"
 							support:Themed.IsOn="{Binding IsDeparture}"
 							support:Themed.OnBackground="Accent"
@@ -230,7 +244,7 @@
 						<Button
 							Grid.Column="1"
 							Command="{Binding ArriveCommand}"
-							support:Dense.MinHeight="38"
+							support:Dense.MinHeight="{StaticResource HitButton}"
 							StyleClass="Tonal"
 							support:Themed.IsOn="{Binding IsArrival}"
 							support:Themed.OnBackground="Accent"
@@ -249,11 +263,11 @@
 
 					<BoxView StyleClass="Divider" />
 
-					<!--  Quick steps roll over midnight; "Now" resets  -->
+					<!--  Five steps in one row, whatever the width: the quick steps roll over midnight; Now in the middle  -->
 					<Grid
-						support:Dense.Padding="12,10"
-						ColumnDefinitions="*,*,*,*"
-						ColumnSpacing="{DynamicResource SpaceS}">
+						support:Dense.Padding="10,6"
+						ColumnDefinitions="*,*,*,*,*"
+						ColumnSpacing="4">
 
 						<Button
 							Grid.Column="0"
@@ -261,7 +275,9 @@
 							Command="{Binding NudgeCommand}"
 							CommandParameter="-60"
 							FontSize="{StaticResource FontCaption}"
-							support:Dense.MinHeight="40"
+							LineBreakMode="NoWrap"
+							MinimumWidthRequest="0"
+							support:Dense.MinHeight="{StaticResource HitButton}"
 							StyleClass="Tonal"
 							Text="&#x2212;1 h" />
 
@@ -271,62 +287,48 @@
 							Command="{Binding NudgeCommand}"
 							CommandParameter="-15"
 							FontSize="{StaticResource FontCaption}"
-							support:Dense.MinHeight="40"
+							LineBreakMode="NoWrap"
+							MinimumWidthRequest="0"
+							support:Dense.MinHeight="{StaticResource HitButton}"
 							StyleClass="Tonal"
-							Text="&#x2212;15" />
+							Text="&#x2212;15m" />
 
+						<!--  "Now" resets the time: in the middle of the steps, so the row says everything about the moment  -->
 						<Button
 							Grid.Column="2"
 							Padding="0"
-							Command="{Binding NudgeCommand}"
-							CommandParameter="15"
+							Command="{Binding NowCommand}"
 							FontSize="{StaticResource FontCaption}"
-							support:Dense.MinHeight="40"
+							IsEnabled="{Binding IsNotNow}"
+							LineBreakMode="NoWrap"
+							MinimumWidthRequest="0"
+							support:Dense.MinHeight="{StaticResource HitButton}"
 							StyleClass="Tonal"
-							Text="+15" />
+							Text="{localization:Tr Departures.Now}" />
 
 						<Button
 							Grid.Column="3"
 							Padding="0"
 							Command="{Binding NudgeCommand}"
+							CommandParameter="15"
+							FontSize="{StaticResource FontCaption}"
+							LineBreakMode="NoWrap"
+							MinimumWidthRequest="0"
+							support:Dense.MinHeight="{StaticResource HitButton}"
+							StyleClass="Tonal"
+							Text="+15m" />
+
+						<Button
+							Grid.Column="4"
+							Padding="0"
+							Command="{Binding NudgeCommand}"
 							CommandParameter="60"
 							FontSize="{StaticResource FontCaption}"
-							support:Dense.MinHeight="40"
+							LineBreakMode="NoWrap"
+							MinimumWidthRequest="0"
+							support:Dense.MinHeight="{StaticResource HitButton}"
 							StyleClass="Tonal"
 							Text="+1 h" />
-					</Grid>
-
-					<BoxView StyleClass="Divider" />
-
-					<Grid
-						support:Dense.Padding="12,8"
-						ColumnDefinitions="*,Auto"
-						ColumnSpacing="{DynamicResource SpaceS}">
-
-						<Label
-							LineBreakMode="TailTruncation"
-							StyleClass="Subtitle"
-							VerticalOptions="Center">
-
-							<Label.FormattedText>
-								<FormattedString>
-									<Span Text="{Binding ModeText}" TextColor="{DynamicResource InkMuted}" />
-									<Span Text="  " />
-									<Span Text="{Binding WhenText}" TextColor="{DynamicResource Accent}" />
-								</FormattedString>
-							</Label.FormattedText>
-						</Label>
-
-						<!--  Own slot: "Leave now" does not fit a fifth of the row  -->
-						<Button
-							Grid.Column="1"
-							Padding="14,0"
-							Command="{Binding NowCommand}"
-							FontSize="{StaticResource FontCaption}"
-							IsEnabled="{Binding IsNotNow}"
-							support:Dense.MinHeight="36"
-							StyleClass="Tonal"
-							Text="{localization:Tr Plan.LeaveNow}" />
 					</Grid>
 
 				</VerticalStackLayout>
@@ -343,7 +345,7 @@
 					StrokeShape="RoundRectangle 6"
 					StrokeThickness="0"
 					WidthRequest="52"
-					support:Dense.MinHeight="48"
+					support:Dense.MinHeight="{StaticResource HitRow}"
 					support:Motion.Feedback="True">
 					<controls:Icon
 						Glyph="{Binding Bookmark.Glyph}"
@@ -360,7 +362,7 @@
 			<!--  Home  -->
 			<Border Padding="0" StyleClass="Card">
 				<Grid
-					support:Dense.MinHeight="56"
+					support:Dense.MinHeight="{StaticResource HitRow}"
 					support:Dense.Padding="14,6,4,6"
 					ColumnDefinitions="Auto,*,Auto"
 					ColumnSpacing="12">
@@ -410,10 +412,10 @@
 
 									<Grid
 										support:Motion.Feedback="True"
-										support:Dense.Padding="14,10"
+										support:Dense.Padding="12,8"
 										ColumnDefinitions="Auto,*,Auto"
 										ColumnSpacing="10"
-										support:Dense.MinHeight="56"
+										support:Dense.MinHeight="{StaticResource HitRow}"
 										SemanticProperties.Description="{Binding Name}">
 
 										<controls:Icon
@@ -481,10 +483,10 @@
 								<Grid RowDefinitions="Auto,Auto" RowSpacing="0">
 
 									<Grid support:Motion.Feedback="True"
-										support:Dense.Padding="14,10"
+										support:Dense.Padding="12,8"
 										ColumnDefinitions="Auto,*,Auto"
 										ColumnSpacing="10"
-										support:Dense.MinHeight="56"
+										support:Dense.MinHeight="{StaticResource HitRow}"
 										SemanticProperties.Description="{Binding Description}">
 
 										<controls:Icon
@@ -537,7 +539,7 @@
 					FontSize="{StaticResource FontCaption}"
 					HorizontalOptions="Start"
 					IsVisible="{Binding CanExpandRoutes}"
-					support:Dense.MinHeight="40"
+					support:Dense.MinHeight="{StaticResource HitButton}"
 					Padding="14,0"
 					StyleClass="Tonal"
 					Text="{Binding RoutesToggleText}" />
@@ -591,8 +593,8 @@
 							<DataTemplate x:DataType="core:Location">
 
 								<VerticalStackLayout
-									support:Dense.Padding="14,10"
-									support:Dense.MinHeight="48"
+									support:Dense.Padding="12,8"
+									support:Dense.MinHeight="{StaticResource HitRow}"
 									Spacing="1"
 									VerticalOptions="Center">
 

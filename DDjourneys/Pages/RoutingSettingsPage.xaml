@@ -25,7 +25,7 @@
 									support:Dense.Padding="12,8"
 									ColumnDefinitions="*,Auto"
 									ColumnSpacing="12"
-									support:Dense.MinHeight="52">
+									support:Dense.MinHeight="{StaticResource HitRow}">
 
 									<VerticalStackLayout Spacing="1" VerticalOptions="Center">
 										<Label FontFamily="{DynamicResource FontSemibold}" Text="{Binding Title}" />
@@ -55,9 +55,9 @@
 						<BindableLayout.ItemTemplate>
 							<DataTemplate x:DataType="support:ChoiceOption">
 								<Grid support:Motion.Feedback="True"
-									support:Dense.Padding="12,10"
+									support:Dense.Padding="12,8"
 									ColumnDefinitions="*,Auto"
-									support:Dense.MinHeight="48">
+									support:Dense.MinHeight="{StaticResource HitRow}">
 
 									<Label
 										FontFamily="{DynamicResource FontSemibold}"
@@ -90,9 +90,9 @@
 						<BindableLayout.ItemTemplate>
 							<DataTemplate x:DataType="support:ChoiceOption">
 								<Grid support:Motion.Feedback="True"
-									support:Dense.Padding="12,10"
+									support:Dense.Padding="12,8"
 									ColumnDefinitions="*,Auto"
-									support:Dense.MinHeight="48">
+									support:Dense.MinHeight="{StaticResource HitRow}">
 
 									<Label
 										FontFamily="{DynamicResource FontSemibold}"
@@ -115,7 +115,7 @@
 						</BindableLayout.ItemTemplate>
 					</VerticalStackLayout>
 					<BoxView StyleClass="Divider" />
-					<VerticalStackLayout support:Dense.Padding="12,10" Spacing="4">
+					<VerticalStackLayout support:Dense.Padding="12,8" Spacing="4">
 						<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Routing.Footpath}" />
 
 						<Label StyleClass="Caption" Text="{Binding FootpathText}" />
@@ -134,7 +134,7 @@
 									support:Dense.Padding="12,8"
 									ColumnDefinitions="*,Auto"
 									ColumnSpacing="12"
-									support:Dense.MinHeight="52">
+									support:Dense.MinHeight="{StaticResource HitRow}">
 
 									<VerticalStackLayout Spacing="1" VerticalOptions="Center">
 										<Label FontFamily="{DynamicResource FontSemibold}" Text="{Binding Title}" />
@@ -164,9 +164,9 @@
 						<BindableLayout.ItemTemplate>
 							<DataTemplate x:DataType="support:ChoiceOption">
 								<Grid support:Motion.Feedback="True"
-									support:Dense.Padding="12,10"
+									support:Dense.Padding="12,8"
 									ColumnDefinitions="*,Auto"
-									support:Dense.MinHeight="48">
+									support:Dense.MinHeight="{StaticResource HitRow}">
 
 									<Label
 										FontFamily="{DynamicResource FontSemibold}"
@@ -199,9 +199,9 @@
 						<BindableLayout.ItemTemplate>
 							<DataTemplate x:DataType="support:ChoiceOption">
 								<Grid support:Motion.Feedback="True"
-									support:Dense.Padding="12,10"
+									support:Dense.Padding="12,8"
 									ColumnDefinitions="*,Auto"
-									support:Dense.MinHeight="48">
+									support:Dense.MinHeight="{StaticResource HitRow}">
 
 									<Label
 										FontFamily="{DynamicResource FontSemibold}"
@@ -234,9 +234,9 @@
 						<BindableLayout.ItemTemplate>
 							<DataTemplate x:DataType="support:ChoiceOption">
 								<Grid support:Motion.Feedback="True"
-									support:Dense.Padding="12,10"
+									support:Dense.Padding="12,8"
 									ColumnDefinitions="*,Auto"
-									support:Dense.MinHeight="48">
+									support:Dense.MinHeight="{StaticResource HitRow}">
 
 									<Label
 										FontFamily="{DynamicResource FontSemibold}"
@@ -269,9 +269,9 @@
 						<BindableLayout.ItemTemplate>
 							<DataTemplate x:DataType="support:ChoiceOption">
 								<Grid support:Motion.Feedback="True"
-									support:Dense.Padding="12,10"
+									support:Dense.Padding="12,8"
 									ColumnDefinitions="*,Auto"
-									support:Dense.MinHeight="48">
+									support:Dense.MinHeight="{StaticResource HitRow}">
 
 									<Label
 										FontFamily="{DynamicResource FontSemibold}"
@@ -305,9 +305,9 @@
 						<BindableLayout.ItemTemplate>
 							<DataTemplate x:DataType="support:ChoiceOption">
 								<Grid support:Motion.Feedback="True"
-									support:Dense.Padding="12,10"
+									support:Dense.Padding="12,8"
 									ColumnDefinitions="*,Auto"
-									support:Dense.MinHeight="48">
+									support:Dense.MinHeight="{StaticResource HitRow}">
 
 									<Label
 										FontFamily="{DynamicResource FontSemibold}"
@@ -343,7 +343,7 @@
 									support:Dense.Padding="12,8"
 									ColumnDefinitions="*,Auto"
 									ColumnSpacing="12"
-									support:Dense.MinHeight="52">
+									support:Dense.MinHeight="{StaticResource HitRow}">
 
 									<VerticalStackLayout Spacing="1" VerticalOptions="Center">
 										<Label FontFamily="{DynamicResource FontSemibold}" Text="{Binding Title}" />

@@ -54,7 +54,7 @@
 						Command="{Binding ShowAllCommand}"
 						StyleClass="Tonal"
 						Text="{localization:Tr Disruptions.ShowAll}"
-						support:Dense.MinHeight="36" />
+						support:Dense.MinHeight="{StaticResource HitButton}" />
 				</Grid>
 			</Border>
 

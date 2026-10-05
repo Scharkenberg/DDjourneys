@@ -113,8 +113,8 @@
 						<DataTemplate x:DataType="local:VehicleRow">
 							<Grid RowDefinitions="Auto,Auto" RowSpacing="0">
 								<Grid
-									support:Dense.Padding="14,10"
-									support:Dense.MinHeight="56"
+									support:Dense.Padding="12,8"
+									support:Dense.MinHeight="{StaticResource HitRow}"
 									support:Motion.Feedback="True"
 									ColumnDefinitions="*,Auto"
 									ColumnSpacing="10"

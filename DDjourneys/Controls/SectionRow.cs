@@ -74,7 +74,7 @@ public sealed class SectionRow : ContentView
 		Grid.SetColumn(_chevron, 2);
 
 		Dense.SetPadding(grid, new Thickness(14, 8));
-		Dense.SetMinHeight(grid, 56);
+		Dense.SetMinHeight(grid, 52);
 
 		var tap = new TapGestureRecognizer();
 		tap.Tapped += (_, _) =>

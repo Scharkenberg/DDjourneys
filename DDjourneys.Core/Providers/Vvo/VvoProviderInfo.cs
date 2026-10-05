@@ -27,5 +27,6 @@ public static class VvoProviderInfo
 			| ProviderCapabilities.JourneyExtras
 			| ProviderCapabilities.LiveVehicles
 			| ProviderCapabilities.Fares
-			| ProviderCapabilities.OpenData);
+			| ProviderCapabilities.OpenData,
+			Center: new MapCenter("Dresden", 51.0504, 13.7373));
 }

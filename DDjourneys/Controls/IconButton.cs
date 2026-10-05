@@ -53,13 +53,13 @@ public sealed class IconButton : ContentView
 			typeof(IconButton),
 			null);
 
-	/// <summary>Smallest touch target (44 by default); a row of several icons may use less.</summary>
+	/// <summary>Smallest touch target (40 by default; the app uses 40 and 36 for strips); a row of several icons may use less.</summary>
 	public static readonly BindableProperty TargetSizeProperty =
 		BindableProperty.Create(
 			nameof(TargetSize),
 			typeof(double),
 			typeof(IconButton),
-			44d,
+			40d,
 			propertyChanged: (bindable, _, value) =>
 				((IconButton)bindable).ApplyTarget((double)value!));
 
@@ -89,8 +89,8 @@ public sealed class IconButton : ContentView
 		tap.Tapped += OnTapped;
 		_surface.GestureRecognizers.Add(tap);
 
-		Dense.SetMinHeight(_surface, 44);
-		Dense.SetMinWidth(_surface, 44);
+		Dense.SetMinHeight(_surface, 40);
+		Dense.SetMinWidth(_surface, 40);
 
 		Content = _surface;
 	}

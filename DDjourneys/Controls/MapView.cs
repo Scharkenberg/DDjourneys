@@ -27,6 +27,8 @@ public sealed class MapView : ContentView
 	private string? _pendingFocus;
 	private bool _ready;
 	private bool _subscribed;
+	private MapScene? _overlay;
+	private (bool Explore, bool Pick, double? Latitude, double? Longitude, int Zoom)? _mode;
 
 	public MapView()
 	{
@@ -110,6 +112,47 @@ public sealed class MapView : ContentView
 		return PushSceneAsync();
 	}
 
+	/// <summary>The visible area changed (after a pan or zoom, debounced by the page).</summary>
+	public event EventHandler<MapViewport>? ViewportChanged;
+
+	/// <summary>A marker of the overlay (see <see cref="SetOverlayAsync"/>) was tapped: its id.</summary>
+	public event EventHandler<string>? MarkerTapped;
+
+	/// <summary>The map was tapped in pick mode: the point.</summary>
+	public event EventHandler<(double Latitude, double Longitude)>? PointTapped;
+
+	/// <summary>
+	/// Markers on top of the scene that the page loads itself (stops in the viewport). They are tappable: a tap raises
+	/// <see cref="MarkerTapped"/> instead of opening a popup.
+	/// </summary>
+	public Task SetOverlayAsync(MapScene overlay)
+	{
+		ArgumentNullException.ThrowIfNull(overlay);
+
+		_overlay = overlay;
+
+		return PushOverlayAsync();
+	}
+
+	/// <summary>
+	/// Explore mode follows the viewport (no auto-fit) and pick mode reports taps on the map as points.
+	/// A centre moves the view there at once.
+	/// </summary>
+	public async Task SetModeAsync(bool explore, bool pick, double? latitude = null, double? longitude = null, int zoom = 15)
+	{
+		_mode = (explore, pick, latitude, longitude, zoom);
+
+		await PushModeAsync();
+	}
+
+	/// <summary>Moves the view (animated).</summary>
+	public Task CenterAsync(double latitude, double longitude, int zoom = 16) =>
+		CallAsync(
+			"center",
+			string.Create(
+				System.Globalization.CultureInfo.InvariantCulture,
+				$"{{\"lat\":{latitude},\"lon\":{longitude},\"zoom\":{zoom}}}"));
+
 	/// <summary>Centres the marker with this id and opens its popup.</summary>
 	public async Task FocusAsync(string markerId)
 	{
@@ -161,6 +204,23 @@ public sealed class MapView : ContentView
 			{
 				await Launcher.Default.OpenAsync(uri);
 			}
+			else if (message.StartsWith("view:", StringComparison.Ordinal))
+			{
+				RaiseViewport(message[5..]);
+			}
+			else if (message.StartsWith("tap:", StringComparison.Ordinal))
+			{
+				string id = message[4..];
+
+				await MainThread.InvokeOnMainThreadAsync(() => MarkerTapped?.Invoke(this, id));
+			}
+			else if (message.StartsWith("point:", StringComparison.Ordinal)
+				&& message[6..].Split(',') is [var lat, var lon]
+				&& double.TryParse(lat, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double latitude)
+				&& double.TryParse(lon, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double longitude))
+			{
+				await MainThread.InvokeOnMainThreadAsync(() => PointTapped?.Invoke(this, (latitude, longitude)));
+			}
 			else if (message.StartsWith("auto:", StringComparison.Ordinal))
 			{
 				Preferences.Default.Set(AutoFitKey, message == "auto:true");
@@ -194,6 +254,8 @@ public sealed class MapView : ContentView
 		_ready = true;
 
 		await PushSceneAsync();
+		await PushModeAsync();
+		await PushOverlayAsync();
 
 		if (_pendingFocus is { } id)
 		{
@@ -240,6 +302,59 @@ public sealed class MapView : ContentView
 		}
 
 		await CallAsync("theme", WebBridge.CurrentTheme().ToJson());
+	}
+
+	// The page reports on a background thread; listeners touch views, so they are called on the UI thread.
+	private void RaiseViewport(string json)
+	{
+		using JsonDocument document = JsonDocument.Parse(json);
+		JsonElement root = document.RootElement;
+
+		var viewport =
+			new MapViewport(
+				root.GetProperty("s").GetDouble(),
+				root.GetProperty("w").GetDouble(),
+				root.GetProperty("n").GetDouble(),
+				root.GetProperty("e").GetDouble(),
+				root.GetProperty("z").GetDouble(),
+				root.GetProperty("lat").GetDouble(),
+				root.GetProperty("lon").GetDouble());
+
+		MainThread.BeginInvokeOnMainThread(() => ViewportChanged?.Invoke(this, viewport));
+	}
+
+	private async Task PushOverlayAsync()
+	{
+		if (!_ready
+			|| _overlay is not { } overlay)
+		{
+			return;
+		}
+
+		await CallAsync("overlay", overlay.ToJson(Theme.IsDark));
+	}
+
+	private async Task PushModeAsync()
+	{
+		if (!_ready
+			|| _mode is not { } mode)
+		{
+			return;
+		}
+
+		string center =
+			mode.Latitude is { } lat && mode.Longitude is { } lon
+				? string.Create(
+					System.Globalization.CultureInfo.InvariantCulture,
+					$",\"center\":{{\"lat\":{lat},\"lon\":{lon},\"zoom\":{mode.Zoom}}}")
+				: string.Empty;
+
+		await CallAsync(
+			"mode",
+			$"{{\"explore\":{(mode.Explore ? "true" : "false")},\"pick\":{(mode.Pick ? "true" : "false")}{center}}}");
+
+		// The mode is applied once; a later re-send must not move the view again.
+		_mode = (mode.Explore, mode.Pick, null, null, mode.Zoom);
 	}
 
 	private async Task PushSceneAsync()
