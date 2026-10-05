@@ -18,7 +18,12 @@
 		<Nullable>enable</Nullable>
 		<LangVersion>15.0</LangVersion>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+		<MauiXamlInflator>SourceGen</MauiXamlInflator>
 
+		<!-- No runtime reflection for JSON: every serializer call goes through source-generated metadata
+		     (VvoJsonContext) or hand-built JsonNode trees, so trimming and AOT cannot break the APIs. -->
+		<JsonSerializerIsReflectionEnabledByDefault>false</JsonSerializerIsReflectionEnabledByDefault>
+		<EnableTrimAnalyzer>true</EnableTrimAnalyzer>
 
 		<!-- Display name -->
 		<ApplicationTitle>DDjourneys</ApplicationTitle>
@@ -27,8 +32,8 @@
 		<ApplicationId>dev.Scharkenberg.DDjourneys</ApplicationId>
 
 		<!-- Versions -->
-		<ApplicationDisplayVersion>0.6.1</ApplicationDisplayVersion>
-		<ApplicationVersion>28</ApplicationVersion>
+		<ApplicationDisplayVersion>0.8.0</ApplicationDisplayVersion>
+		<ApplicationVersion>1</ApplicationVersion>
 
 		<!-- To develop, package, and publish an app to the Microsoft Store, see: https://aka.ms/MauiTemplateUnpackaged -->
 		<WindowsPackageType>MSIX</WindowsPackageType>
@@ -41,29 +46,40 @@
 		<AssemblyTitle>DDjourneys</AssemblyTitle>
 	</PropertyGroup>
 
+	<PropertyGroup Condition="'$(UseMonoRuntime)' == 'true'">
+	  <RunAOTCompilation>True</RunAOTCompilation>
+    </PropertyGroup>
+  
 	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net11.0-android|AnyCPU'">
 	  <ApplicationId>dev.Scharkenberg.DDjourneys</ApplicationId>
-	  <ApplicationDisplayVersion>0.6.1</ApplicationDisplayVersion>
-	  <ApplicationVersion>28</ApplicationVersion>
+	  <ApplicationDisplayVersion>0.8.0</ApplicationDisplayVersion>
+	  <ApplicationVersion>1</ApplicationVersion>
 	  <EmbedAssembliesIntoApk>True</EmbedAssembliesIntoApk>
+	  <AndroidUseAapt2>True</AndroidUseAapt2>
+	  <AndroidEnableMultiDex>True</AndroidEnableMultiDex>
+	  <TrimMode>partial</TrimMode>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net11.0-windows10.0.26100.0|AnyCPU'">
 	  <ApplicationId>dev.Scharkenberg.DDjourneys</ApplicationId>
-	  <ApplicationDisplayVersion>0.6.1</ApplicationDisplayVersion>
-	  <ApplicationVersion>28</ApplicationVersion>
+	  <ApplicationDisplayVersion>0.8.0</ApplicationDisplayVersion>
+	  <ApplicationVersion>1</ApplicationVersion>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net11.0-android|AnyCPU'">
 	  <ApplicationId>dev.Scharkenberg.DDjourneys</ApplicationId>
-	  <ApplicationDisplayVersion>0.6.1</ApplicationDisplayVersion>
-	  <ApplicationVersion>28</ApplicationVersion>
+	  <ApplicationDisplayVersion>0.8.0</ApplicationDisplayVersion>
+	  <ApplicationVersion>1</ApplicationVersion>
+	  <AndroidUseAapt2>True</AndroidUseAapt2>
+	  <AndroidEnableMultiDex>True</AndroidEnableMultiDex>
+	  <AndroidLinkTool>r8</AndroidLinkTool>
+	  <TrimMode>partial</TrimMode>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net11.0-windows10.0.26100.0|AnyCPU'">
 	  <ApplicationId>dev.Scharkenberg.DDjourneys</ApplicationId>
-	  <ApplicationDisplayVersion>0.6.1</ApplicationDisplayVersion>
-	  <ApplicationVersion>28</ApplicationVersion>
+	  <ApplicationDisplayVersion>0.8.0</ApplicationDisplayVersion>
+	  <ApplicationVersion>1</ApplicationVersion>
 	</PropertyGroup>
 
   <ItemGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net11.0-android|AnyCPU'">
@@ -102,10 +118,13 @@
 
 		<!-- Raw Assets (also remove the "Resources\Raw" prefix) -->
 		<MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
+
+		<!-- The map page (HybridWebView) uses the app's own fonts: the same files, served from wwwroot/fonts -->
+		<MauiAsset Include="Resources\Fonts\*.ttf" Link="Resources\Raw\wwwroot\fonts\%(Filename)%(Extension)" LogicalName="wwwroot\fonts\%(Filename)%(Extension)" />
 	</ItemGroup>
 
   <ItemGroup>
-    <None Remove="Resources\Splash\splash.svg" />
+    <None Include="Resources\Splash\splash.svg" />
   </ItemGroup>
 
   <ItemGroup>
@@ -117,7 +136,6 @@
 		<!-- Share image: MAUI Graphics on SkiaSharp, identical output on every platform -->
 		<PackageReference Include="Microsoft.Maui.Graphics.Skia" Version="$(MauiVersion)" />
 		<PackageReference Include="CommunityToolkit.Maui" Version="15.0.1" />
-		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="11.0.0-*" />
 	</ItemGroup>
 
 	<ItemGroup>

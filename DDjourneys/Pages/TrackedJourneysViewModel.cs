@@ -1,4 +1,5 @@
-﻿using System.Globalization;
+﻿using DDjourneys.Core.Diagnostics;
+using System.Globalization;
 using System.Windows.Input;
 using DDjourneys.Core.Tracking;
 using DDjourneys.Controls;
@@ -58,6 +59,9 @@ public sealed class CourseRow
 	public double Fade => IsPassed ? 0.55 : 1.0;
 }
 
+/// <summary>One line of the message history of a followed journey: time and text.</summary>
+public sealed record HistoryRow(string Time, string Text, bool IsProblem);
+
 /// <summary>One group of the overview: all followed journeys with the same status.</summary>
 public sealed record TrackedSection(string Title, IReadOnlyList<TrackedRow> Items);
 
@@ -113,6 +117,18 @@ public sealed class TrackedRow
 	public required ICommand ToggleChangeAlertCommand { get; init; }
 	public required ICommand ToggleProblemAlertCommand { get; init; }
 	public required ICommand ToggleCourseCommand { get; init; }
+
+	/// <summary>Hides the shown notice (swipe or the close button); a newer notice shows again.</summary>
+	public required ICommand DismissNoticeCommand { get; init; }
+
+	public required string DismissNoticeText { get; init; }
+
+	/// <summary>Every message of the service for this journey, newest first (the reference client lists all of them).</summary>
+	public required IReadOnlyList<HistoryRow> History { get; init; }
+
+	public required string HistoryTitle { get; init; }
+
+	public bool HasHistory => History.Count > 0;
 }
 
 /// <summary>The overview of all journeys the user follows.</summary>
@@ -452,7 +468,7 @@ public sealed class TrackedJourneysViewModel : DisposableViewModel, IQueryAttrib
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Followed journeys display failed:\n{ex}");
+			DiagnosticLog.Write($"Followed journeys display failed:\n{ex}");
 		}
 	}
 
@@ -566,6 +582,13 @@ public sealed class TrackedJourneysViewModel : DisposableViewModel, IQueryAttrib
 			CourseToggleText = course ? strings.CourseHide : strings.CourseShow,
 			Course = rows,
 			CourseHint = strings.CourseNotYet,
+			DismissNoticeText = strings.DismissNotice,
+			HistoryTitle = strings.NoticeHistory,
+			History =
+				(journey.Notices ?? [])
+					.Select(item => new HistoryRow(Format.TimeOrDash(item.Time), item.Text, item.IsProblem))
+					.ToList(),
+			DismissNoticeCommand = new AsyncCommand(() => _tracker.DismissNoticeAsync(journey.PlanId), null, ShowError),
 			ToggleCourseCommand = new Command(() => ToggleCourse(journey)),
 			ToggleExpandedCommand = new Command(() => ToggleExpanded(journey)),
 			PauseResumeCommand = new AsyncCommand(() => PauseResumeAsync(journey), null, ShowError),

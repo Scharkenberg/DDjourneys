@@ -42,14 +42,27 @@
 
 												<VerticalStackLayout Spacing="3" VerticalOptions="Center">
 
-													<Label FontFamily="{DynamicResource FontSemibold}" Text="{Binding Name}" />
+													<HorizontalStackLayout Spacing="8">
+														<Label
+															FontFamily="{DynamicResource FontSemibold}"
+															Text="{Binding Name}"
+															VerticalOptions="Center" />
+
+														<!--  Informative, not tappable: pill-shaped  -->
+														<Border
+															IsVisible="{Binding IsExperimental}"
+															StyleClass="Chip"
+															VerticalOptions="Center">
+															<Label StyleClass="Faint" Text="{Binding ExperimentalText}" />
+														</Border>
+													</HorizontalStackLayout>
 
 													<Label StyleClass="Caption" Text="{Binding FullName}" />
 
 													<Label StyleClass="Faint" Text="{Binding Coverage}" />
 
 													<!--  What it supports: informative, not tappable, so pill-shaped chips are fine  -->
-													<FlexLayout
+													<FlexLayout AlignContent="Start" AlignItems="Start"
 														Margin="0,4,0,0"
 														BindableLayout.ItemsSource="{Binding Capabilities}"
 														Wrap="Wrap">

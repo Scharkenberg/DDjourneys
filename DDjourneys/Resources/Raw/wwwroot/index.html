@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>DDjourneys map</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="maplibre/maplibre-gl.css">
+<script src="_framework/hybridwebview.js"></script>
+<script src="maplibre/maplibre-gl.js"></script>
+<style>
+/* The app's own fonts (the same files the app ships), so the map reads like the rest of the UI. */
+@font-face { font-family: "DD Open Sans"; font-weight: 400; src: url("fonts/OpenSans-Regular.ttf") format("truetype"); font-display: swap; }
+@font-face { font-family: "DD Open Sans"; font-weight: 600 800; src: url("fonts/OpenSans-Semibold.ttf") format("truetype"); font-display: swap; }
+@font-face { font-family: "DD Inter Tight"; font-weight: 400; src: url("fonts/InterTight-Regular.ttf") format("truetype"); font-display: swap; }
+@font-face { font-family: "DD Inter Tight"; font-weight: 600 800; src: url("fonts/InterTight-SemiBold.ttf") format("truetype"); font-display: swap; }
+:root {
+	--font: "DD Open Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+	--fs: 1;
+	--bg: #f2f4f5; --surface: #ffffff; --raised: #dfe6e9; --outline: #b4c1c7;
+	--ink: #0f1a1f; --ink-muted: #4a5960; --accent: #0b6e8a; --accent-soft: #d3e9f0;
+	--radius: 4px; --radius-card: 6px;
+}
+html { font-size: calc(15px * var(--fs)); }
+html, body, #map { height: 100%; margin: 0; padding: 0; background: var(--bg); }
+body { font: 1rem/1.4 var(--font); color: var(--ink); overflow: hidden; -webkit-text-size-adjust: 100%; }
+.maplibregl-ctrl, .maplibregl-popup, .maplibregl-ctrl button { font-family: var(--font); }
+body.dark .maplibregl-ctrl-group button .maplibregl-ctrl-icon { filter: invert(1); }
+
+/* Controls and popups follow the app theme: flat, sharp corners, outline instead of shadow. */
+.maplibregl-ctrl-group { background: var(--surface); border: 1px solid var(--outline); border-radius: var(--radius); box-shadow: none; }
+.maplibregl-ctrl-group:not(:empty) { box-shadow: none; }
+.maplibregl-ctrl-group button + button { border-top: 1px solid var(--outline); }
+.maplibregl-ctrl-group button:not(:disabled):hover { background: var(--accent-soft); }
+.dd-attr { position: relative; margin: 0 6px 6px 0; }
+.dd-attr > button { width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--outline); background: color-mix(in srgb, var(--surface) 88%, transparent); color: var(--ink-muted);
+	font: 700 13px/1 Georgia, serif; font-style: italic; cursor: pointer; padding: 0; display: block; margin-left: auto; }
+.dd-attr > div { display: none; position: absolute; right: 0; bottom: 28px; white-space: nowrap; background: var(--surface); color: var(--ink-muted); border: 1px solid var(--outline);
+	border-radius: var(--radius); padding: 4px 8px; font-size: .85rem; line-height: 1.3; }
+.dd-attr.open > div { display: block; }
+.dd-attr a { color: var(--ink); text-decoration: underline; }
+.dd-fit { margin: 10px 0 0 10px; }
+.dd-fit button { display: flex; align-items: center; gap: 6px; min-height: 32px; height: auto; padding: 0 10px 0 8px; border: 1px solid var(--outline); border-radius: var(--radius); background: var(--surface);
+	color: var(--ink); font-family: inherit; font-weight: 600; font-size: .95rem; line-height: 1; cursor: pointer; }
+.dd-fit button i { width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--ink-muted); box-sizing: border-box; display: block; }
+.dd-fit button.on { background: var(--accent-soft); border-color: var(--accent); }
+.dd-fit button.on i { background: var(--accent); border-color: var(--accent); }
+.dd-fitnow button { width: 30px; height: 30px; padding: 0; display: flex; align-items: center; justify-content: center; }
+.dd-fitnow svg { width: 18px; height: 18px; stroke: var(--ink); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.maplibregl-popup-content { background: var(--surface); color: var(--ink); border: 1px solid var(--outline); border-radius: var(--radius-card); box-shadow: 0 2px 10px rgba(0,0,0,.25); padding: 8px 12px; font: inherit; }
+.maplibregl-popup-anchor-top .maplibregl-popup-tip { border-bottom-color: var(--surface); }
+.maplibregl-popup-anchor-bottom .maplibregl-popup-tip { border-top-color: var(--surface); }
+.maplibregl-popup-anchor-left .maplibregl-popup-tip { border-right-color: var(--surface); }
+.maplibregl-popup-anchor-right .maplibregl-popup-tip { border-left-color: var(--surface); }
+.dd-pop b { display: block; font-weight: 700; font-size: 1.05rem; }
+.dd-pop span { color: var(--ink-muted); font-size: 1rem; }
+
+/* Markers: a 0x0 anchor with the symbol centred on it and an optional name to the right. */
+.dd-m { width: 0; height: 0; position: relative; cursor: pointer; }
+.dd-m > i { position: absolute; left: 0; top: 0; transform: translate(-50%, -50%); box-sizing: border-box; display: block; }
+.dd-lbl { position: absolute; left: 12px; top: 0; transform: translateY(-50%); white-space: nowrap; font-weight: 600; font-size: 1.05rem; color: var(--ink);
+	text-shadow: -1px -1px 0 var(--bg), 1px -1px 0 var(--bg), -1px 1px 0 var(--bg), 1px 1px 0 var(--bg), 0 0 4px var(--bg); pointer-events: none; display: none; }
+.dd-m.always .dd-lbl { display: block; font-weight: 700; }
+.zl .dd-m .dd-lbl { display: block; }
+.dd-m.prev .dd-lbl { color: var(--ink-muted); font-weight: 500; }
+.dd-stop { width: 12px; height: 12px; border-radius: 50%; background: var(--surface); border: 3px solid var(--accent); box-shadow: 0 0 0 1px var(--surface); }
+.dd-start, .dd-end { width: 20px; height: 20px; border-radius: 50%; border: 3px solid var(--surface); box-shadow: 0 0 0 1px var(--outline), 0 1px 4px rgba(0,0,0,.35); }
+.dd-current { width: 18px; height: 18px; border-radius: 50%; background: var(--surface); border: 5px solid var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 28%, transparent); }
+.dd-me { width: 16px; height: 16px; border-radius: 50%; background: var(--accent); border: 3px solid var(--surface); box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 28%, transparent); }
+.dd-knot { width: 8px; height: 8px; border-radius: 50%; background: var(--surface); border: 2px solid var(--outline); opacity: .9; }
+.dd-poi { width: 12px; height: 12px; background: var(--accent); border: 2px solid var(--surface); transform: translate(-50%, -50%) rotate(45deg) !important; box-shadow: 0 0 0 1px var(--outline); }
+.dd-veh { font-weight: 700; font-size: 1.05rem; line-height: 1.5rem; height: 1.8rem; min-width: 2.4rem; padding: 0 .5rem; text-align: center; white-space: nowrap; border-radius: var(--radius-card); border: 2px solid var(--surface); box-shadow: 0 0 0 1px rgba(0,0,0,.4), 0 1px 5px rgba(0,0,0,.5); transform: translate(-50%, -50%); position: absolute; left: 0; top: 0; box-sizing: border-box; }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<script>
+(function () {
+	'use strict';
+
+	var map = null, key = '', theme = null, styleName = null, styleReady = false;
+	var autoFit = true, labels = { autoFit: 'Auto-fit', fitNow: 'Fit', info: 'Map data' }, autoButton = null;
+	var scene = { markers: [], lines: [] }, wantFit = false;
+	var markers = {};
+	var errors = 0;
+
+	function send(text) {
+		try { window.HybridWebView.SendRawMessage(text); } catch (e) { }
+	}
+
+	window.addEventListener('error', function (e) { send('error:' + e.message); });
+
+	// Links (attribution, popups) open in the system browser, not in this page.
+	document.addEventListener('click', function (e) {
+		var a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
+
+		if (a && /^https?:/i.test(a.href)) {
+			e.preventDefault();
+			send('open:' + a.href);
+		}
+	}, true);
+
+	// ---- colour helpers ----
+	function rgb(hex) {
+		hex = String(hex || '#000000').replace('#', '');
+		if (hex.length === 3) { hex = hex.replace(/(.)/g, '$1$1'); }
+		var n = parseInt(hex.substring(0, 6), 16);
+		return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+	}
+	function mix(a, b, t) {
+		var x = rgb(a), y = rgb(b);
+		var c = [0, 1, 2].map(function (i) { return Math.round(x[i] + (y[i] - x[i]) * t); });
+		return '#' + c.map(function (v) { return ('0' + v.toString(16)).slice(-2); }).join('');
+	}
+
+	// WCAG contrast: text on a coloured pill is black or white, whichever reads better on that colour.
+	function luminance(hex) {
+		var c = rgb(hex).map(function (v) { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); });
+		return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+	}
+	function contrast(a, b) {
+		var la = luminance(a), lb = luminance(b);
+		return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+	}
+	function readableInk(bg) {
+		return contrast(bg, '#ffffff') >= contrast(bg, '#0b0b0b') ? '#ffffff' : '#0b0b0b';
+	}
+
+	// The basemap's colours, derived from the app theme so the map looks like part of the app.
+	function palette(t) {
+		var d = !!t.dark;
+		var water = mix(t.bg, t.accent, d ? 0.30 : 0.26);
+		return {
+			land: t.bg,
+			landAlt: mix(t.bg, t.surface, d ? 0.7 : 0.55),
+			water: water,
+			waterLabel: mix(water, t.ink, 0.6),
+			park: mix(t.bg, t.ok, d ? 0.20 : 0.24),
+			building: mix(t.bg, t.outline, d ? 0.24 : 0.20),
+			buildingEdge: mix(t.bg, t.outline, d ? 0.40 : 0.34),
+			roadMinor: d ? t.raised : t.surface,
+			roadMajor: d ? mix(t.raised, t.ink, 0.22) : mix(t.surface, t.accent, 0.10),
+			casing: mix(t.bg, t.outline, d ? 0.55 : 0.45),
+			rail: mix(t.bg, t.inkMuted, 0.65),
+			boundary: mix(t.bg, t.outline, 0.9),
+			label: t.ink,
+			labelMuted: t.inkMuted,
+			halo: t.bg
+		};
+	}
+
+	// ---- typography ----
+	var baseSizes = {};
+
+	function fontStack(id) {
+		if (id === 'intertight') { return '"DD Inter Tight", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif'; }
+		if (id === 'system') { return 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif'; }
+
+		return '"DD Open Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+	}
+
+	// Scales the outputs of a text-size value (number, legacy stops, or an interpolate/step expression on zoom).
+	function scaleSize(v, k) {
+		if (typeof v === 'number') { return v * k; }
+
+		if (Array.isArray(v)) {
+			if (/^interpolate/.test(v[0])) {
+				return v.map(function (x, i) { return (i >= 4 && i % 2 === 0) ? scaleSize(x, k) : x; });
+			}
+
+			if (v[0] === 'step') {
+				return v.map(function (x, i) { return (i === 2 || (i >= 4 && i % 2 === 0)) ? scaleSize(x, k) : x; });
+			}
+
+			return v;
+		}
+
+		if (v && Array.isArray(v.stops)) {
+			var o = JSON.parse(JSON.stringify(v));
+			o.stops = o.stops.map(function (s) { return [s[0], scaleSize(s[1], k)]; });
+
+			return o;
+		}
+
+		return v;
+	}
+
+	// Basemap labels are drawn by the map from CARTO's glyphs (their font cannot be swapped), but their size
+	// follows the OS text size, and a little more than the style's own, which reads small on a phone.
+	function scaleText(id) {
+		if (!(id in baseSizes)) {
+			var current = map.getLayoutProperty(id, 'text-size');
+			baseSizes[id] = current === undefined ? 16 : current;
+		}
+
+		var k = Math.min(1.8, 1.15 * ((theme && theme.fontScale) || 1));
+
+		try { map.setLayoutProperty(id, 'text-size', scaleSize(baseSizes[id], k)); } catch (e) { }
+	}
+
+	function paint(id, prop, value) {
+		try { map.setPaintProperty(id, prop, value); } catch (e) { }
+	}
+
+	// Recolours the loaded vector style by layer role. Roles are recognised from the layer ids of the
+	// CARTO styles (OpenMapTiles schema); a layer that matches nothing keeps its original colour.
+	function recolor() {
+		if (!map || !theme || !styleReady) { return; }
+
+		var p = palette(theme);
+		var layers = (map.getStyle() || {}).layers || [];
+
+		layers.forEach(function (layer) {
+			var id = layer.id, name = id.toLowerCase(), type = layer.type;
+
+			if (type === 'background') {
+				paint(id, 'background-color', p.land);
+			} else if (type === 'fill') {
+				if (/water/.test(name)) { paint(id, 'fill-color', p.water); }
+				else if (/building/.test(name)) { paint(id, 'fill-color', p.building); paint(id, 'fill-outline-color', p.buildingEdge); }
+				else if (/park|green|wood|forest|grass|garden|golf|cemetery|pitch|recreation|scrub|meadow|farm/.test(name)) { paint(id, 'fill-color', p.park); }
+				else if (/landcover|landuse|residential|hospital|school|university|industrial|commercial|aeroway|airport/.test(name)) { paint(id, 'fill-color', p.landAlt); }
+			} else if (type === 'fill-extrusion') {
+				paint(id, 'fill-extrusion-color', p.building);
+			} else if (type === 'line') {
+				if (/waterway|river|stream|canal|water/.test(name)) { paint(id, 'line-color', p.water); }
+				else if (/boundary|admin|border/.test(name)) { paint(id, 'line-color', p.boundary); }
+				else if (/rail|tram|subway|transit|funicular|cable/.test(name)) { paint(id, 'line-color', p.rail); }
+				else if (/building/.test(name)) { paint(id, 'line-color', p.buildingEdge); }
+				else if (/casing|outline|border/.test(name)) { paint(id, 'line-color', p.casing); }
+				else if (/motorway|trunk|primary|secondary/.test(name)) { paint(id, 'line-color', p.roadMajor); }
+				else if (/road|street|tertiary|minor|service|residential|link|path|track|pedestrian|bridge|tunnel|highway|aeroway/.test(name)) { paint(id, 'line-color', p.roadMinor); }
+			} else if (type === 'symbol') {
+				var muted = /housenumber|poi|rail|transit|station|road|street|path|waterway/.test(name);
+				var onWater = /water|ocean|sea|lake|river/.test(name);
+
+				paint(id, 'text-color', onWater ? p.waterLabel : (muted ? p.labelMuted : p.label));
+				paint(id, 'text-halo-color', p.halo);
+				paint(id, 'text-halo-width', 1.5);
+				paint(id, 'text-halo-blur', 0.5);
+
+				if (layer.layout && layer.layout['text-field']) { scaleText(id); }
+			}
+		});
+
+		var css = document.documentElement.style;
+		css.setProperty('--bg', theme.bg);
+		css.setProperty('--surface', theme.surface);
+		css.setProperty('--raised', theme.raised);
+		css.setProperty('--outline', theme.outline);
+		css.setProperty('--ink', theme.ink);
+		css.setProperty('--ink-muted', theme.inkMuted);
+		css.setProperty('--accent', theme.accent);
+		css.setProperty('--accent-soft', theme.accentSoft);
+		css.setProperty('--font', fontStack(theme.font));
+		css.setProperty('--fs', String(theme.fontScale || 1));
+	}
+
+	function styleUrl(name) {
+		return 'https://basemaps.cartocdn.com/gl/' + name + '-gl-style/style.json' +
+			(key ? '?key=' + encodeURIComponent(key) : '');
+	}
+
+	// ---- route lines (GeoJSON layers, re-added whenever the style is replaced) ----
+	function firstLabelLayer() {
+		var layers = (map.getStyle() || {}).layers || [];
+
+		for (var i = 0; i < layers.length; i++) {
+			var l = layers[i];
+
+			if (l.type === 'symbol' && l.layout && l.layout['text-field']) { return l.id; }
+		}
+
+		return undefined;
+	}
+
+	function drawLines() {
+		if (!map || !styleReady) { return; }
+
+		['dd-line-dash', 'dd-line', 'dd-casing'].forEach(function (id) {
+			if (map.getLayer(id)) { map.removeLayer(id); }
+		});
+
+		if (map.getSource('dd-lines')) { map.removeSource('dd-lines'); }
+
+		var features = (scene.lines || []).map(function (line) {
+			return {
+				type: 'Feature',
+				properties: { color: line.color, weight: line.weight || 5, dashed: !!line.dashed, opacity: line.opacity == null ? 1 : line.opacity },
+				geometry: { type: 'LineString', coordinates: line.points.map(function (pt) { return [pt[1], pt[0]]; }) }
+			};
+		});
+
+		if (!features.length) { return; }
+
+		map.addSource('dd-lines', { type: 'geojson', data: { type: 'FeatureCollection', features: features } });
+
+		var before = firstLabelLayer();
+		var caseColor = theme && theme.dark ? 'rgba(0,0,0,0.65)' : 'rgba(255,255,255,0.9)';
+		var layout = { 'line-cap': 'round', 'line-join': 'round' };
+
+		map.addLayer({ id: 'dd-casing', type: 'line', source: 'dd-lines', layout: layout,
+			filter: ['!', ['get', 'dashed']],
+			paint: { 'line-color': caseColor, 'line-width': ['+', ['get', 'weight'], 4], 'line-opacity': ['get', 'opacity'] } }, before);
+		map.addLayer({ id: 'dd-line', type: 'line', source: 'dd-lines', layout: layout,
+			filter: ['!', ['get', 'dashed']],
+			paint: { 'line-color': ['get', 'color'], 'line-width': ['get', 'weight'], 'line-opacity': ['get', 'opacity'] } }, before);
+		map.addLayer({ id: 'dd-line-dash', type: 'line', source: 'dd-lines', layout: { 'line-join': 'round' },
+			filter: ['get', 'dashed'],
+			paint: { 'line-color': ['get', 'color'], 'line-width': ['get', 'weight'], 'line-opacity': ['get', 'opacity'], 'line-dasharray': [1.2, 1.6] } }, before);
+	}
+
+	// ---- markers ----
+	function esc(value) {
+		return String(value == null ? '' : value).replace(/[&<>"]/g, function (c) {
+			return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+		});
+	}
+
+	function markerElement(m) {
+		var el = document.createElement('div');
+		var color = esc(m.color || '');
+		var style = color ? ' style="border-color:' + color + '"' : '';
+		var label = m.title ? '<span class="dd-lbl">' + esc(m.title) + '</span>' : '';
+		var inner;
+
+		el.className = 'dd-m';
+
+		switch (m.kind) {
+			case 'vehicle':
+				var fill = m.color || (theme && theme.accent) || '#0b6e8a';
+				inner = '<div class="dd-veh" style="background:' + esc(fill) + ';color:' + readableInk(fill) + '">' + esc(m.label) + '</div>';
+				break;
+			case 'knot': inner = '<i class="dd-knot"></i>'; break;
+			case 'start': inner = '<i class="dd-start" style="background:var(--accent)"></i>' + label; el.className += ' always'; break;
+			case 'end': inner = '<i class="dd-end" style="background:var(--ink)"></i>' + label; el.className += ' always'; break;
+			case 'current': inner = '<i class="dd-current"' + style + '></i>' + label; el.className += ' always'; break;
+			case 'me': inner = '<i class="dd-me"></i>'; break;
+			case 'poi': inner = '<i class="dd-poi"></i>' + label; break;
+			default:
+				inner = '<i class="dd-stop"' + style + '></i>' + label;
+
+				if (color === '#9e9e9e') { el.className += ' prev'; }
+		}
+
+		el.innerHTML = inner;
+
+		return el;
+	}
+
+	function popupHtml(m) {
+		var title = m.title || (m.kind === 'vehicle' ? m.label : '');
+
+		if (!title && !m.subtitle) { return null; }
+
+		return '<div class="dd-pop"><b>' + esc(title) + '</b>' + (m.subtitle ? '<span>' + esc(m.subtitle) + '</span>' : '') + '</div>';
+	}
+
+	function applyMarkers() {
+		if (!map) { return; }
+
+		var seen = {};
+
+		(scene.markers || []).forEach(function (m) {
+			seen[m.id] = true;
+
+			var entry = markers[m.id];
+			var signature = [m.kind, m.label, m.color, m.title, m.subtitle].join('|');
+			var html = popupHtml(m);
+
+			if (entry && entry.signature === signature) {
+				entry.marker.setLngLat([m.lon, m.lat]);
+
+				return;
+			}
+
+			if (entry) { entry.marker.remove(); }
+
+			var marker = new maplibregl.Marker({ element: markerElement(m), anchor: 'center' }).setLngLat([m.lon, m.lat]);
+
+			if (html) { marker.setPopup(new maplibregl.Popup({ offset: 16, closeButton: false, maxWidth: '260px' }).setHTML(html)); }
+
+			marker.addTo(map);
+
+			var z = m.kind === 'vehicle' ? 3 : (m.kind === 'knot' ? 0 : (m.kind === 'stop' ? 1 : 2));
+			marker.getElement().style.zIndex = String(z);
+
+			markers[m.id] = { marker: marker, signature: signature };
+		});
+
+		Object.keys(markers).forEach(function (id) {
+			if (!seen[id]) {
+				markers[id].marker.remove();
+				delete markers[id];
+			}
+		});
+	}
+
+	function fit() {
+		if (!map) { return; }
+
+		var b = new maplibregl.LngLatBounds();
+		var count = 0;
+
+		(scene.lines || []).forEach(function (line) { line.points.forEach(function (pt) { b.extend([pt[1], pt[0]]); count++; }); });
+		(scene.markers || []).forEach(function (m) { b.extend([m.lon, m.lat]); count++; });
+
+		if (!count) { return; }
+
+		if (b.getSouthWest().lat === b.getNorthEast().lat && b.getSouthWest().lng === b.getNorthEast().lng) {
+			map.jumpTo({ center: b.getCenter(), zoom: 16 });
+		} else {
+			map.fitBounds(b, { padding: 48, maxZoom: 17, duration: 0 });
+		}
+	}
+
+	function updateLabelZoom() {
+		document.body.classList.toggle('zl', map.getZoom() >= 14.2);
+	}
+
+	// A minimal MapLibre control built from a class name and a function that fills its box.
+	function control(className, build) {
+		var box = null;
+
+		return {
+			onAdd: function () { box = document.createElement('div'); box.className = className; build(box); return box; },
+			onRemove: function () { if (box && box.parentNode) { box.parentNode.removeChild(box); } box = null; }
+		};
+	}
+
+	function refreshAuto() {
+		if (!autoButton) { return; }
+
+		autoButton.className = autoFit ? 'on' : '';
+		autoButton.setAttribute('aria-pressed', autoFit ? 'true' : 'false');
+		autoButton.lastChild.textContent = labels.autoFit;
+	}
+
+	function setAuto(on) {
+		autoFit = !!on;
+		refreshAuto();
+	}
+
+	// ---- map lifecycle ----
+	function createMap() {
+		styleName = theme.dark ? 'dark-matter' : 'voyager';
+
+		map = new maplibregl.Map({
+			container: 'map',
+			style: styleUrl(styleName),
+			center: [13.7373, 51.0504],
+			zoom: 12,
+			maxZoom: 19,
+			attributionControl: false,
+			dragRotate: false,
+			pitchWithRotate: false,
+			touchPitch: false,
+			transformRequest: function (url) {
+				// The key belongs on every CARTO request (style, tiles, glyphs, sprites).
+				if (key && /(^|\.)basemaps\.cartocdn\.com\//.test(url.replace(/^https?:\/\//, '')) && url.indexOf('key=') < 0) {
+					return { url: url + (url.indexOf('?') < 0 ? '?' : '&') + 'key=' + encodeURIComponent(key) };
+				}
+
+				return { url: url };
+			}
+		});
+
+		map.touchZoomRotate.disableRotation();
+		map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
+		map.addControl(control('maplibregl-ctrl maplibregl-ctrl-group dd-fitnow', function (box) {
+			var b = document.createElement('button');
+			b.type = 'button';
+			b.title = labels.fitNow;
+			b.setAttribute('aria-label', labels.fitNow);
+			b.innerHTML = '<svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>';
+			b.addEventListener('click', function () { fit(); });
+			box.appendChild(b);
+		}), 'top-right');
+		map.addControl(control('maplibregl-ctrl dd-fit', function (box) {
+			autoButton = document.createElement('button');
+			autoButton.type = 'button';
+			autoButton.innerHTML = '<i></i><span></span>';
+			autoButton.addEventListener('click', function () {
+				setAuto(!autoFit);
+				send('auto:' + autoFit);
+				if (autoFit) { fit(); }
+			});
+			box.appendChild(autoButton);
+			refreshAuto();
+		}), 'top-left');
+		map.addControl(control('maplibregl-ctrl dd-attr', function (box) {
+			var b = document.createElement('button');
+			b.type = 'button';
+			b.textContent = 'i';
+			b.title = labels.info;
+			b.setAttribute('aria-label', labels.info);
+			var d = document.createElement('div');
+			d.innerHTML = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a> &middot; <a href="https://maplibre.org">MapLibre</a>';
+			b.addEventListener('click', function (e) { e.stopPropagation(); box.classList.toggle('open'); });
+			box.appendChild(d);
+			box.appendChild(b);
+			map.on('movestart', function () { box.classList.remove('open'); });
+			document.addEventListener('click', function () { box.classList.remove('open'); });
+		}), 'bottom-right');
+
+		// Moving the map by hand ends automatic fitting (a fixed view is what the person asked for by moving it).
+		['dragstart', 'zoomstart'].forEach(function (name) {
+			map.on(name, function (e) {
+				if (e && e.originalEvent && autoFit) { setAuto(false); }
+			});
+		});
+
+		map.on('zoom', updateLabelZoom);
+
+		map.on('style.load', function () {
+			styleReady = true;
+			baseSizes = {};
+
+			recolor();
+			drawLines();
+
+			if (wantFit) { wantFit = false; fit(); }
+		});
+
+		map.on('error', function (e) {
+			if (errors++ < 15) { send('error:' + ((e && e.error && e.error.message) || 'map error')); }
+		});
+
+		updateLabelZoom();
+	}
+
+	function setTheme(t) {
+		theme = t;
+		document.body.classList.toggle('dark', !!t.dark);
+
+		var css = document.documentElement.style;
+		css.setProperty('--bg', t.bg);
+		css.setProperty('--surface', t.surface);
+		css.setProperty('--raised', t.raised);
+		css.setProperty('--outline', t.outline);
+		css.setProperty('--ink', t.ink);
+		css.setProperty('--ink-muted', t.inkMuted);
+		css.setProperty('--accent', t.accent);
+		css.setProperty('--accent-soft', t.accentSoft);
+		css.setProperty('--font', fontStack(t.font));
+		css.setProperty('--fs', String(t.fontScale || 1));
+
+		if (!map) { return; }
+
+		var name = t.dark ? 'dark-matter' : 'voyager';
+
+		if (name !== styleName) {
+			styleName = name;
+			styleReady = false;
+			map.setStyle(styleUrl(name));
+		} else {
+			recolor();
+			drawLines();
+		}
+	}
+
+	// The one entry point C# calls (HybridWebView.InvokeJavaScriptAsync).
+	window.ddMapCall = function (command, json) {
+		var arg = json ? JSON.parse(json) : null;
+
+		switch (command) {
+			case 'init':
+				key = arg.key || '';
+				theme = arg.theme;
+				if (arg.labels) { labels = arg.labels; }
+				autoFit = arg.autoFit !== false;
+				document.body.classList.toggle('dark', !!theme.dark);
+				if (!map) { createMap(); setTheme(theme); applyMarkers(); }
+				break;
+
+			case 'theme':
+				setTheme(arg);
+				break;
+
+			case 'set':
+				scene = arg;
+				applyMarkers();
+
+				// A scene that asks for it (first showing) is fitted; with Auto-fit on, every update is.
+				var doFit = !!scene.fit || autoFit;
+
+				if (styleReady) { drawLines(); if (doFit) { fit(); } } else { wantFit = doFit; }
+				break;
+
+			case 'focus':
+				var entry = markers[arg];
+
+				if (entry && map) {
+					map.easeTo({ center: entry.marker.getLngLat(), zoom: Math.max(map.getZoom(), 16), duration: 350 });
+
+					var popup = entry.marker.getPopup();
+
+					if (popup && !popup.isOpen()) { entry.marker.togglePopup(); }
+				}
+				break;
+		}
+	};
+
+	send('ready');
+})();
+</script>
+</body>
+</html>

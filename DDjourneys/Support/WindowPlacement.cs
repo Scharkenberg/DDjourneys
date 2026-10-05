@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using System.Globalization;
 
 namespace DDjourneys.Support;
@@ -85,7 +86,7 @@ public static class WindowPlacement
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Window placement not restored: {ex.Message}");
+			DiagnosticLog.Write($"Window placement not restored: {ex.Message}");
 		}
 
 		DisplayInfo display = DeviceDisplay.Current.MainDisplayInfo;
@@ -130,7 +131,7 @@ public static class WindowPlacement
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Window placement not saved: {ex.Message}");
+			DiagnosticLog.Write($"Window placement not saved: {ex.Message}");
 		}
 	}
 

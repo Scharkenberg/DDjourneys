@@ -1,8 +1,11 @@
+using DDjourneys.Core.Diagnostics;
 using System.Diagnostics;
 using System.Globalization;
 using System.Net;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
+using DDjourneys.Core.Serialization;
 
 namespace DDjourneys.Tracking.Schutzengel;
 
@@ -157,14 +160,14 @@ internal sealed class SchutzengelApi
 		SendJsonAsync(
 			HttpMethod.Post,
 			"activatePlan",
-			JsonSerializer.Serialize(new { plan_id = planId }),
+			Wire.Single("plan_id", planId),
 			cancellationToken);
 
 	public Task<JsonDocument> DeactivateAsync(string planId, CancellationToken cancellationToken) =>
 		SendJsonAsync(
 			HttpMethod.Post,
 			"deactivatePlan",
-			JsonSerializer.Serialize(new { plan_id = planId }),
+			Wire.Single("plan_id", planId),
 			cancellationToken);
 
 	/// <summary>
@@ -181,12 +184,11 @@ internal sealed class SchutzengelApi
 		return SendJsonAsync(
 			HttpMethod.Post,
 			"planSetOptions",
-			JsonSerializer.Serialize(
-				new
-				{
-					plan_id = planId,
-					newOptions = options.ToPayload()
-				}),
+			new JsonObject
+			{
+				["plan_id"] = planId,
+				["newOptions"] = options.ToPayload()
+			}.ToJsonString(),
 			cancellationToken);
 	}
 
@@ -194,7 +196,7 @@ internal sealed class SchutzengelApi
 		SendJsonAsync(
 			HttpMethod.Delete,
 			"plan",
-			JsonSerializer.Serialize(new { plan_id = planId }),
+			Wire.Single("plan_id", planId),
 			cancellationToken);
 
 	public Task<JsonDocument> DeleteAllPlansAsync(CancellationToken cancellationToken) =>
@@ -260,18 +262,31 @@ internal sealed class SchutzengelApi
 
 	// ----- Push registration (kept for parity with the reference client) -----
 
-	public Task<JsonDocument> RegisterFirebaseAsync(string token, CancellationToken cancellationToken) =>
+	/// <summary>The reference client's application id ("APP_ID" of its config); the push endpoints take it with the token.</summary>
+	public const string ReferenceAppId = "dvb_web";
+
+	public Task<JsonDocument> RegisterFirebaseAsync(string token, CancellationToken cancellationToken, string appId = ReferenceAppId) =>
 		SendJsonAsync(
 			HttpMethod.Post,
 			"register-firebase",
-			JsonSerializer.Serialize(new { token }),
+			new JsonObject { ["token"] = token, ["app_id"] = appId }.ToJsonString(),
 			cancellationToken);
 
-	public Task<JsonDocument> UnregisterFirebaseAsync(string token, CancellationToken cancellationToken) =>
+	public Task<JsonDocument> UnregisterFirebaseAsync(string token, CancellationToken cancellationToken, string appId = ReferenceAppId) =>
 		SendJsonAsync(
 			HttpMethod.Post,
 			"unregister-firebase",
-			JsonSerializer.Serialize(new { token }),
+			new JsonObject { ["token"] = token, ["app_id"] = appId }.ToJsonString(),
+			cancellationToken);
+
+	/// <summary>
+	/// Moves the plans of this anonymous account into a logged-in user (the reference client's login hand-over).
+	/// </summary>
+	public Task<JsonDocument> MigrateIntoUserAsync(string intoUser, CancellationToken cancellationToken) =>
+		SendJsonAsync(
+			HttpMethod.Post,
+			"migrate-into-user",
+			Wire.Single("into_user", intoUser),
 			cancellationToken);
 
 	// ----- Transport -----
@@ -394,7 +409,7 @@ internal sealed class SchutzengelApi
 		}
 		catch (JsonException)
 		{
-			return JsonDocument.Parse(JsonSerializer.Serialize(trimmed));
+			return JsonDocument.Parse(JsonValue.Create(trimmed)!.ToJsonString());
 		}
 	}
 
@@ -511,12 +526,12 @@ internal sealed class SchutzengelApi
 					? body
 					: body[..Limit] + $"... (+{body.Length - Limit} chars)";
 
-		Debug.WriteLine($"[SCHUTZENGEL] {method.Method} {path} {preview}");
+		DiagnosticLog.Write($"[SCHUTZENGEL] {method.Method} {path} {preview}");
 	}
 
 	[Conditional("DEBUG")]
 	private static void Log(string message) =>
-		Debug.WriteLine($"[SCHUTZENGEL] {message}");
+		DiagnosticLog.Write($"[SCHUTZENGEL] {message}");
 
 	private static HttpRequestMessage CreateRequest(HttpMethod method, string path)
 	{

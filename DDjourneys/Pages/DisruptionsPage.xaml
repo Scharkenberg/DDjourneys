@@ -9,77 +9,102 @@
 	Title="{localization:Tr Disruptions.Title}"
 	x:DataType="local:DisruptionsViewModel">
 
-	<RefreshView Command="{Binding RefreshCommand}" IsRefreshing="{Binding IsBusy}">
-		<ScrollView>
-			<VerticalStackLayout Padding="{DynamicResource PadPage}" Spacing="{DynamicResource SpaceM}">
+	<!--  The search and filters stay where they are; only the list below them scrolls  -->
+	<Grid RowDefinitions="Auto,*" RowSpacing="0">
 
-				<!--  Limited to the changes of one departure  -->
-				<Border IsVisible="{Binding IsLimited}" StyleClass="Card">
-					<VerticalStackLayout Spacing="{DynamicResource SpaceS}">
-						<Label StyleClass="Caption" Text="{localization:Tr Disruptions.Selected}" />
-						<Button Command="{Binding ShowAllCommand}" Text="{localization:Tr Disruptions.ShowAll}" />
-					</VerticalStackLayout>
-				</Border>
+		<VerticalStackLayout Padding="16,12,16,8" Spacing="{DynamicResource SpaceS}">
 
-				<Border Padding="10,0" StyleClass="Card">
-					<Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource SpaceS}">
-						<Entry
-							ClearButtonVisibility="WhileEditing"
-							Placeholder="{localization:Tr Disruptions.FilterPlaceholder}"
-							SemanticProperties.Description="{localization:Tr Disruptions.FilterPlaceholder}"
-							Text="{Binding Filter}" />
-					</Grid>
-				</Border>
-
-				<Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource SpaceS}">
-					<Label Text="{localization:Tr Disruptions.OnlyShortTerm}" VerticalOptions="Center" />
-					<Switch Grid.Column="1" IsToggled="{Binding ShortTermOnly}" />
+			<Border Padding="12,0" StyleClass="Card">
+				<Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+					<controls:Icon
+						Glyph="Search"
+						Size="20"
+						VerticalOptions="Center"
+						Color="{DynamicResource InkMuted}" />
+					<Entry
+						Grid.Column="1"
+						ClearButtonVisibility="WhileEditing"
+						Placeholder="{localization:Tr Disruptions.FilterPlaceholder}"
+						ReturnType="Search"
+						SemanticProperties.Description="{localization:Tr Disruptions.FilterPlaceholder}"
+						Text="{Binding Filter}" />
 				</Grid>
+			</Border>
 
+			<Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource SpaceS}">
 				<Label
-					HorizontalTextAlignment="Center"
-					IsVisible="{Binding HasMessage}"
 					StyleClass="Caption"
-					Text="{Binding Message}" />
+					Text="{localization:Tr Disruptions.OnlyShortTerm}"
+					VerticalOptions="Center" />
+				<Switch Grid.Column="1" IsToggled="{Binding ShortTermOnly}" />
+			</Grid>
 
-				<!--  Network notices  -->
-				<VerticalStackLayout IsVisible="{Binding HasBanners}" Spacing="{DynamicResource SpaceS}">
-					<Label StyleClass="Title" Text="{localization:Tr Disruptions.Notices}" />
-					<VerticalStackLayout BindableLayout.ItemsSource="{Binding Banners}" Spacing="{DynamicResource SpaceS}">
-						<BindableLayout.ItemTemplate>
-							<DataTemplate x:DataType="local:BannerRow">
-								<Border StyleClass="Card">
-									<VerticalStackLayout Spacing="2">
-										<Label FontFamily="{DynamicResource FontSemibold}" Text="{Binding Title}" />
-										<Label
-											IsVisible="{Binding HasDescription}"
-											StyleClass="Caption"
-											Text="{Binding Description}" />
-									</VerticalStackLayout>
-								</Border>
-							</DataTemplate>
-						</BindableLayout.ItemTemplate>
-					</VerticalStackLayout>
-				</VerticalStackLayout>
+			<!--  Limited to the changes of one departure  -->
+			<Border
+				Padding="12,8"
+				IsVisible="{Binding IsLimited}"
+				StyleClass="Card">
+				<Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource SpaceS}">
+					<Label
+						StyleClass="Caption"
+						Text="{localization:Tr Disruptions.Selected}"
+						VerticalOptions="Center" />
+					<Button
+						Grid.Column="1"
+						Command="{Binding ShowAllCommand}"
+						StyleClass="Tonal"
+						Text="{localization:Tr Disruptions.ShowAll}"
+						support:Dense.MinHeight="36" />
+				</Grid>
+			</Border>
 
-				<!--  Route changes  -->
-				<VerticalStackLayout BindableLayout.ItemsSource="{Binding Rows}" Spacing="{DynamicResource SpaceS}">
-					<BindableLayout.ItemTemplate>
-						<DataTemplate x:DataType="local:DisruptionRow">
-							<Border support:Motion.Feedback="True" StyleClass="Card">
+			<Label
+				HorizontalTextAlignment="Center"
+				IsVisible="{Binding HasMessage}"
+				StyleClass="Caption"
+				Text="{Binding Message}" />
+
+			<BoxView Margin="-16,0" StyleClass="Divider" />
+		</VerticalStackLayout>
+
+		<RefreshView
+			Grid.Row="1"
+			Command="{Binding RefreshCommand}"
+			IsRefreshing="{Binding IsBusy}">
+			<CollectionView ItemsSource="{Binding Rows}" SelectionMode="None">
+				<CollectionView.ItemsLayout>
+					<LinearItemsLayout ItemSpacing="8" Orientation="Vertical" />
+				</CollectionView.ItemsLayout>
+
+				<CollectionView.Header>
+					<BoxView HeightRequest="2" Color="Transparent" />
+				</CollectionView.Header>
+				<CollectionView.Footer>
+					<BoxView HeightRequest="16" Color="Transparent" />
+				</CollectionView.Footer>
+
+				<CollectionView.ItemTemplate>
+					<DataTemplate x:DataType="local:DisruptionRow">
+						<Border
+							Margin="16,0"
+							support:Motion.Feedback="True"
+							SemanticProperties.Description="{Binding Summary}"
+							StyleClass="Card">
+
+							<Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
 								<VerticalStackLayout Spacing="6">
 
-									<FlexLayout BindableLayout.ItemsSource="{Binding Lines}" IsVisible="{Binding HasLines}" Wrap="Wrap">
+									<FlexLayout AlignContent="Start" AlignItems="Start" BindableLayout.ItemsSource="{Binding Lines}" IsVisible="{Binding HasLines}" Wrap="Wrap">
 										<BindableLayout.ItemTemplate>
 											<DataTemplate x:DataType="local:DisruptionLineRow">
 												<Border
 													Margin="0,0,6,6"
 													BackgroundColor="{Binding Look.Fill}"
+													Stroke="{Binding Look.Stroke}"
 													StrokeDashArray="{Binding Look.Dashes}"
 													StrokeShape="{Binding Look.Shape}"
 													StrokeThickness="{Binding Look.StrokeThickness}"
-													StyleClass="Chip"
-													Stroke="{Binding Look.Stroke}">
+													StyleClass="Chip">
 													<Label
 														FontFamily="{DynamicResource FontSemibold}"
 														FontSize="{StaticResource FontCaption}"
@@ -93,30 +118,56 @@
 
 									<Label FontFamily="{DynamicResource FontSemibold}" Text="{Binding Title}" />
 
-									<Label StyleClass="Caption" Text="{Binding KindText}" />
-
 									<Label
-										IsVisible="{Binding HasPeriod}"
+										IsVisible="{Binding HasExcerpt}"
+										LineBreakMode="TailTruncation"
+										MaxLines="3"
 										StyleClass="Caption"
-										Text="{Binding PeriodText}" />
+										Text="{Binding Excerpt}" />
 
-									<Label
-										IsVisible="{Binding AffectsRouting}"
-										StyleClass="Caption"
-										Text="{Binding AffectsRoutingText}" />
-
-									<Label IsVisible="{Binding ShowDescription}" Text="{Binding Description}" />
-
-									<VerticalStackLayout.GestureRecognizers>
-										<TapGestureRecognizer Command="{Binding ToggleCommand}" />
-									</VerticalStackLayout.GestureRecognizers>
+									<FlexLayout AlignContent="Start"
+										AlignItems="Center"
+										Wrap="Wrap">
+										<Label
+											Margin="0,0,10,0"
+											StyleClass="Faint"
+											Text="{Binding KindText}" />
+										<Label
+											Margin="0,0,10,0"
+											IsVisible="{Binding HasPeriod}"
+											StyleClass="Faint"
+											Text="{Binding PeriodText}" />
+										<HorizontalStackLayout IsVisible="{Binding AffectsRouting}" Spacing="4">
+											<controls:Icon
+												Glyph="Warning"
+												Size="14"
+												VerticalOptions="Center"
+												Color="{DynamicResource Delay}" />
+											<Label
+												StyleClass="Faint"
+												Text="{Binding AffectsRoutingText}"
+												VerticalOptions="Center" />
+										</HorizontalStackLayout>
+									</FlexLayout>
 								</VerticalStackLayout>
-							</Border>
-						</DataTemplate>
-					</BindableLayout.ItemTemplate>
-				</VerticalStackLayout>
 
-			</VerticalStackLayout>
-		</ScrollView>
-	</RefreshView>
+								<controls:Icon
+									Grid.Column="1"
+									Glyph="ChevronRight"
+									Size="18"
+									VerticalOptions="Center"
+									Color="{DynamicResource InkMuted}" />
+
+								<Grid.GestureRecognizers>
+									<TapGestureRecognizer
+										Command="{Binding Source={RelativeSource AncestorType={x:Type local:DisruptionsViewModel}}, x:DataType=local:DisruptionsViewModel, Path=OpenCommand}"
+										CommandParameter="{Binding .}" />
+								</Grid.GestureRecognizers>
+							</Grid>
+						</Border>
+					</DataTemplate>
+				</CollectionView.ItemTemplate>
+			</CollectionView>
+		</RefreshView>
+	</Grid>
 </ContentPage>

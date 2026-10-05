@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using DDjourneys.Core.Theming;
 using DDjourneys.Localization;
 using DDjourneys.Support;
@@ -255,7 +256,7 @@ public sealed class AppearanceViewModel : DisposableViewModel
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Appearance change failed: {ex}");
+			DiagnosticLog.Write($"Appearance change failed: {ex}");
 		}
 		finally
 		{

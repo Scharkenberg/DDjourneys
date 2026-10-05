@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using DDjourneys.Contract;
@@ -28,17 +29,34 @@ public sealed class JourneyViewModel :
 	private readonly JourneyService _journeys;
 	private CancellationTokenSource? _alternative;
 
+	/// <summary>The journey as searched, once a leg alternative replaced it: following the alternative replaces a followed original.</summary>
+	private Journey? _alternativeOf;
+
 
 	private readonly ProviderRegistry _providers;
 
+
+	/// <summary>Saves (and removes) the connection this journey belongs to; empty when it was opened without a search.</summary>
+	public RouteBookmark Bookmark { get; }
 
 	public JourneyViewModel(
 		AppSettings settings,
 		IJourneyTracker tracker,
 		ProviderRegistry providers,
 		ContractSession contract,
-		JourneyService journeys)
+		JourneyService journeys,
+		PlaceStore places)
 	{
+		ArgumentNullException.ThrowIfNull(places);
+
+		Bookmark =
+			new RouteBookmark(
+				places,
+				() => _query is { } asked
+					? (asked.From, asked.To)
+					: null,
+				hideWhenUnavailable: true);
+
 		_journeys = journeys ?? throw new ArgumentNullException(nameof(journeys));
 
 		_providers = providers ?? throw new ArgumentNullException(nameof(providers));
@@ -65,6 +83,11 @@ public sealed class JourneyViewModel :
 				ToggleStops);
 
 
+		ToggleFaresCommand =
+			new Command(
+				() => FaresExpanded = !FaresExpanded);
+
+
 		ShareCommand =
 			new AsyncCommand(
 				ShareAsync);
@@ -87,6 +110,14 @@ public sealed class JourneyViewModel :
 		OpenDocumentCommand =
 			new AsyncCommand(
 				OpenDocumentAsync);
+
+		ShowLiveCommand =
+			new AsyncCommand<LegRow>(
+				ShowLiveAsync);
+
+		OpenMapCommand =
+			new AsyncCommand(
+				OpenMapAsync);
 
 		Subscribe(
 			() => _contract.Changed += OnContractChanged,
@@ -142,6 +173,15 @@ public sealed class JourneyViewModel :
 	public AsyncCommand<LegRow> LegEarlierCommand { get; }
 
 	public AsyncCommand<LegRow> LegLaterCommand { get; }
+
+	/// <summary>Opens the live page for the line of a ride.</summary>
+	public AsyncCommand<LegRow> ShowLiveCommand { get; }
+
+	public bool HasLiveVehicles =>
+		_providers.Supports(ProviderCapabilities.LiveVehicles);
+
+	/// <summary>Shows the whole journey on a map.</summary>
+	public AsyncCommand OpenMapCommand { get; }
 
 	/// <summary>Opens the printable version of the journey (tr/trippdf).</summary>
 	public AsyncCommand OpenDocumentCommand { get; }
@@ -305,7 +345,7 @@ public sealed class JourneyViewModel :
 		catch (Exception ex)
 		{
 			// Offline: the cached watchlist is still shown.
-			System.Diagnostics.Debug.WriteLine($"Watchlist refresh failed: {ex.Message}");
+			DiagnosticLog.Write($"Watchlist refresh failed: {ex.Message}");
 		}
 	}
 
@@ -346,7 +386,13 @@ public sealed class JourneyViewModel :
 
 		TrackingStrings strings = _localization.CurrentStrings.Tracking;
 
-		await _tracker.FollowAsync(_journey);
+		// An alternative to a followed journey replaces it (the service links the two, the original is hidden).
+		string? replaces =
+			_alternativeOf is { } original && !ReferenceEquals(original, _journey)
+				? _tracker.Find(original)?.PlanId
+				: null;
+
+		await _tracker.FollowAsync(_journey, default, replaces);
 
 		UpdateFollowState();
 
@@ -500,6 +546,135 @@ public sealed class JourneyViewModel :
 		Notices.Count > 0;
 
 
+	/// <summary>Tickets and prices the provider quotes (empty when it quotes none).</summary>
+	public IReadOnlyList<FareRow> Fares
+	{
+		get => field;
+
+		private set
+		{
+			if (SetProperty(
+					ref field,
+					value))
+			{
+				OnPropertyChanged(
+					nameof(HasFares));
+			}
+		}
+	} =
+		[];
+
+
+	public bool HasFares =>
+		Fares.Count > 0;
+
+
+	/// <summary>The section starts collapsed: the preferred ticket is in its header, the rest on demand.</summary>
+	public bool FaresExpanded
+	{
+		get => field;
+
+		private set
+		{
+			if (SetProperty(
+					ref field,
+					value))
+			{
+				OnPropertyChanged(
+					nameof(FaresChevronRotation));
+
+				OnPropertyChanged(
+					nameof(FaresToggleDescription));
+			}
+		}
+	}
+
+
+	public double FaresChevronRotation =>
+		FaresExpanded
+			? 180
+			: 0;
+
+
+	public string FaresToggleDescription =>
+		FaresExpanded
+			? _localization.CurrentStrings.Extras.FaresCollapse
+			: _localization.CurrentStrings.Extras.FaresExpand;
+
+
+	/// <summary>The ticket for the passenger set in the options, named under the section title.</summary>
+	public string FaresSummaryName
+	{
+		get => field;
+
+		private set =>
+			SetProperty(
+				ref field,
+				value);
+	} =
+		string.Empty;
+
+
+	/// <summary>Its price, shown in the section header.</summary>
+	public string FaresSummaryPrice
+	{
+		get => field;
+
+		private set =>
+			SetProperty(
+				ref field,
+				value);
+	} =
+		string.Empty;
+
+
+	/// <summary>"Zones: Dresden, Radebeul": the zones are the same for every ticket, so they are said once.</summary>
+	public string? FaresZonesText
+	{
+		get => field;
+
+		private set
+		{
+			if (SetProperty(
+					ref field,
+					value))
+			{
+				OnPropertyChanged(
+					nameof(HasFaresZones));
+			}
+		}
+	}
+
+
+	public bool HasFaresZones =>
+		!string.IsNullOrWhiteSpace(FaresZonesText);
+
+
+	/// <summary>The conditions the provider prints with its tickets, each once.</summary>
+	public string? FaresNotesText
+	{
+		get => field;
+
+		private set
+		{
+			if (SetProperty(
+					ref field,
+					value))
+			{
+				OnPropertyChanged(
+					nameof(HasFaresNotes));
+			}
+		}
+	}
+
+
+	public bool HasFaresNotes =>
+		!string.IsNullOrWhiteSpace(FaresNotesText);
+
+
+	public Command ToggleFaresCommand { get; }
+
+
 	public void ApplyQueryAttributes(
 		IDictionary<string, object> query)
 	{
@@ -512,7 +687,10 @@ public sealed class JourneyViewModel :
 				&& asked is JourneyQuery journeyQuery)
 			{
 				_query = journeyQuery;
+				Bookmark.Refresh();
 			}
+
+			_alternativeOf = null;
 
 			Load(journey);
 		}
@@ -572,6 +750,8 @@ public sealed class JourneyViewModel :
 				return;
 			}
 
+			_alternativeOf ??= journey;
+
 			Load(next);
 			AlternativeStatus = strings.AlternativeShown;
 		}
@@ -580,7 +760,87 @@ public sealed class JourneyViewModel :
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Leg alternative failed: {ex}");
+			DiagnosticLog.Write($"Leg alternative failed: {ex}");
+
+			AlternativeStatus = ex.Message;
+		}
+	}
+
+
+	private async Task ShowLiveAsync(
+		LegRow row)
+	{
+		if (!row.CanShowLive)
+		{
+			return;
+		}
+
+		try
+		{
+			var parameters =
+				new ShellNavigationQueryParameters
+				{
+					[Routes.Line] = row.LineNumber
+				};
+
+			// The leg that was tapped is the run to follow: line, direction and the stops with their times.
+			if (row.Source is { } leg)
+			{
+				TrackTarget target =
+					new()
+					{
+						Line = row.LineNumber,
+						Mode = leg.Mode,
+						Direction = leg.Line?.Destination,
+						Course =
+							(leg.Stops
+								.Where(stop => stop.Station.Latitude is not null && stop.Station.Longitude is not null)
+								.Select(
+									stop => new CoursePoint(
+										stop.Station.Latitude!.Value,
+										stop.Station.Longitude!.Value,
+										stop.EffectiveDeparture ?? stop.EffectiveArrival,
+										stop.Station.Name))).ToList()
+					};
+
+				if (target.IsUsable)
+				{
+					parameters[Routes.Track] = target;
+				}
+			}
+
+			await Shell.Current.GoToAsync(
+				Routes.Vehicles,
+				parameters);
+		}
+		catch (Exception ex)
+		{
+			DiagnosticLog.Write($"Opening the live page failed: {ex.Message}");
+		}
+	}
+
+
+	private async Task OpenMapAsync()
+	{
+		if (_journey is not { } journey)
+		{
+			return;
+		}
+
+		try
+		{
+			ExtrasStrings strings = _localization.CurrentStrings.Extras;
+
+			if (!await MapScenes.OpenAsync(
+					MapScenes.FromJourney(journey),
+					strings.MapJourneyTitle))
+			{
+				AlternativeStatus = strings.MapNoData;
+			}
+		}
+		catch (Exception ex)
+		{
+			DiagnosticLog.Write($"Opening the map failed: {ex.Message}");
 
 			AlternativeStatus = ex.Message;
 		}
@@ -590,19 +850,40 @@ public sealed class JourneyViewModel :
 	private async Task OpenDocumentAsync()
 	{
 		if (_query is not { } query
-			|| _journey is not { } journey
-			|| _journeys.GetJourneyDocumentUri(query, journey) is not { } uri)
+			|| _journey is not { } journey)
 		{
 			return;
 		}
 
 		try
 		{
-			await Launcher.Default.OpenAsync(uri);
+			// The address itself is refused when opened in a browser (HTTP 403); the app fetches the PDF
+			// and hands the file to the system viewer.
+			JourneyDocument? document =
+				await _journeys.GetJourneyDocumentAsync(query, journey);
+
+			if (document is null)
+			{
+				AlternativeStatus = _localization.CurrentStrings.Extras.PdfFailed;
+
+				return;
+			}
+
+			string path =
+				System.IO.Path.Combine(
+					FileSystem.CacheDirectory,
+					document.FileName);
+
+			await File.WriteAllBytesAsync(path, document.Content);
+
+			await Launcher.Default.OpenAsync(
+				new OpenFileRequest(
+					document.FileName,
+					new ReadOnlyFile(path, "application/pdf")));
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Opening the journey document failed: {ex.Message}");
+			DiagnosticLog.Write($"Opening the journey document failed: {ex.Message}");
 
 			AlternativeStatus = ex.Message;
 		}
@@ -661,7 +942,7 @@ public sealed class JourneyViewModel :
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine(
+			DiagnosticLog.Write(
 				$"Journey display failed:\n{ex}");
 
 
@@ -674,6 +955,150 @@ public sealed class JourneyViewModel :
 	}
 
 
+	/// <summary>
+	/// The tickets as compact rows (the passenger's own ticket first), with what they share said once:
+	/// zones and conditions.
+	/// </summary>
+	private void BuildFares(
+		Journey journey)
+	{
+		ExtrasStrings strings =
+			_localization.CurrentStrings.Extras;
+
+		JourneyFare? preferred =
+			FareChoice.Preferred(
+				journey.Fares,
+				_settings.Passenger);
+
+		string NameOf(
+			JourneyFare fare) =>
+			fare.Kind switch
+			{
+				FareKind.Single => strings.FareSingle,
+				FareKind.Day => strings.FareDay,
+				_ => fare.Name
+			};
+
+		string? WhoOf(
+			JourneyFare fare) =>
+			fare.Passengers.Count > 0
+				? string.Join(
+					", ",
+					fare.Passengers
+						.Select(
+							who => OperatingDaysText.Passenger(
+								who,
+								strings)))
+				: fare.ValidFor;
+
+		Fares =
+			journey.Fares
+				.OrderBy(
+					fare => ReferenceEquals(fare, preferred)
+						? 0
+						: 1)
+				.ThenBy(
+					fare => fare.Kind == FareKind.Single
+						? 0
+						: fare.Kind == FareKind.Day
+							? 2
+							: 1)
+				.ThenBy(
+					fare => fare.Price)
+				.Select(
+					fare => new FareRow
+					{
+						Name =
+							NameOf(
+								fare),
+
+						PriceText =
+							fare.Price is { } price
+								? Format.Price(
+									price,
+									fare.Currency)
+								: string.Empty,
+
+						Detail =
+							string.Join(
+								" · ",
+								new[]
+								{
+									fare.Description,
+									WhoOf(
+										fare)
+								}.Where(
+									part => !string.IsNullOrWhiteSpace(
+										part))) is { Length: > 0 } detail
+								? detail
+								: null,
+
+						IsPreferred =
+							ReferenceEquals(
+								fare,
+								preferred)
+					})
+				.ToList();
+
+		FaresSummaryName =
+			preferred is null
+				? string.Empty
+				: string.Join(
+					" · ",
+					new[]
+					{
+						NameOf(
+							preferred),
+						WhoOf(
+							preferred)
+					}.Where(
+						part => !string.IsNullOrWhiteSpace(
+							part)));
+
+		FaresSummaryPrice =
+			preferred is { Price: { } best }
+				? Format.Price(
+					best,
+					preferred.Currency)
+				: string.Empty;
+
+		string zones =
+			string.Join(
+				", ",
+				journey.Fares
+					.Select(
+						fare => fare.Zones)
+					.Where(
+						text => !string.IsNullOrWhiteSpace(
+							text))
+					.Distinct());
+
+		FaresZonesText =
+			zones.Length > 0
+				? $"{strings.FareZones}: {zones}"
+				: null;
+
+		string notes =
+			string.Join(
+				" ",
+				journey.Fares
+					.Select(
+						fare => fare.Notes)
+					.Where(
+						text => !string.IsNullOrWhiteSpace(
+							text))
+					.Distinct());
+
+		FaresNotesText =
+			notes.Length > 0
+				? notes
+				: null;
+
+		OnPropertyChanged(
+			nameof(FaresToggleDescription));
+	}
+
+
 	private void BuildLocalizedDisplay(
 		Journey journey)
 	{
@@ -681,7 +1106,9 @@ public sealed class JourneyViewModel :
 			new JourneyCardModel(
 				journey)
 			{
-				ShowEndpoints = false
+				ShowEndpoints = false,
+				Passenger = _settings.Passenger,
+				MapCommand = OpenMapCommand
 			};
 
 
@@ -737,6 +1164,10 @@ public sealed class JourneyViewModel :
 		var options = CurrentOptions();
 
 		_builtOptions = options;
+
+
+		BuildFares(
+			journey);
 
 
 		Notices =
@@ -812,7 +1243,7 @@ public sealed class JourneyViewModel :
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine(
+			DiagnosticLog.Write(
 				$"Localized journey refresh failed:\n{ex}");
 
 
@@ -886,7 +1317,7 @@ public sealed class JourneyViewModel :
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine(
+			DiagnosticLog.Write(
 				$"Toggle stops failed:\n{ex}");
 		}
 	}
@@ -911,7 +1342,7 @@ public sealed class JourneyViewModel :
 
 		try
 		{
-			JourneyShareModel model = JourneyShareModel.Create(_journey, strings);
+			JourneyShareModel model = JourneyShareModel.Create(_journey, strings, _settings.Passenger);
 
 			string? choice =
 				ChooseShareFormat is null
@@ -944,7 +1375,7 @@ public sealed class JourneyViewModel :
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine(
+			DiagnosticLog.Write(
 				$"Share failed:\n{ex}");
 		}
 	}

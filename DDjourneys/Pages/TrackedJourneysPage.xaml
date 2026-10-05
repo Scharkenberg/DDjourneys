@@ -206,33 +206,59 @@
 														StyleClass="Caption"
 														Text="{Binding NextText}" />
 
-													<!--  Only the current notice; outdated or superseded ones are removed by the tracker  -->
-													<Border
-														support:Dense.Padding="10,8"
-														BackgroundColor="{DynamicResource Raised}"
-														IsVisible="{Binding HasNotice}"
-														StrokeShape="RoundRectangle 10"
-														StrokeThickness="0">
-														<Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
-															<controls:Icon
-																Glyph="Info"
-																IsVisible="{Binding NoticeIsInfo}"
-																Size="16"
-																VerticalOptions="Start"
-																Color="{DynamicResource Accent}" />
-															<controls:Icon
-																Glyph="Warning"
-																IsVisible="{Binding NoticeIsAlert}"
-																Size="16"
-																VerticalOptions="Start"
-																Color="{DynamicResource Delay}" />
-															<Label
-																Grid.Column="1"
-																LineBreakMode="WordWrap"
-																StyleClass="Caption"
-																Text="{Binding NoticeText}" />
-														</Grid>
-													</Border>
+													<!--  Only the current notice; outdated or superseded ones are removed by the tracker, the rest can be swiped away  -->
+													<SwipeView IsVisible="{Binding HasNotice}">
+														<SwipeView.LeftItems>
+															<SwipeItems Mode="Execute" SwipeBehaviorOnInvoked="Close">
+																<SwipeItem
+																	BackgroundColor="{DynamicResource Raised}"
+																	Command="{Binding DismissNoticeCommand}"
+																	Text="{Binding DismissNoticeText}" />
+															</SwipeItems>
+														</SwipeView.LeftItems>
+														<SwipeView.RightItems>
+															<SwipeItems Mode="Execute" SwipeBehaviorOnInvoked="Close">
+																<SwipeItem
+																	BackgroundColor="{DynamicResource Raised}"
+																	Command="{Binding DismissNoticeCommand}"
+																	Text="{Binding DismissNoticeText}" />
+															</SwipeItems>
+														</SwipeView.RightItems>
+
+														<Border
+															support:Dense.Padding="10,8"
+															BackgroundColor="{DynamicResource Raised}"
+															StrokeShape="RoundRectangle 10"
+															StrokeThickness="0">
+															<Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+																<controls:Icon
+																	Glyph="Info"
+																	IsVisible="{Binding NoticeIsInfo}"
+																	Size="16"
+																	VerticalOptions="Start"
+																	Color="{DynamicResource Accent}" />
+																<controls:Icon
+																	Glyph="Warning"
+																	IsVisible="{Binding NoticeIsAlert}"
+																	Size="16"
+																	VerticalOptions="Start"
+																	Color="{DynamicResource Delay}" />
+																<Label
+																	Grid.Column="1"
+																	LineBreakMode="WordWrap"
+																	StyleClass="Caption"
+																	Text="{Binding NoticeText}" />
+																<controls:IconButton
+																	Grid.Column="2"
+																	Command="{Binding DismissNoticeCommand}"
+																	Glyph="Close"
+																	SemanticProperties.Description="{Binding DismissNoticeText}"
+																	Size="14"
+																	VerticalOptions="Start"
+																	Color="{DynamicResource InkMuted}" />
+															</Grid>
+														</Border>
+													</SwipeView>
 
 													<!--  Extended view: every stop, moving with the clock  -->
 													<Label support:Motion.Feedback="True"
@@ -444,9 +470,31 @@
 
 														<BoxView StyleClass="Divider" />
 
+														<VerticalStackLayout IsVisible="{Binding HasHistory}" Spacing="4">
+															<Label StyleClass="Section" Text="{Binding HistoryTitle}" />
+															<VerticalStackLayout BindableLayout.ItemsSource="{Binding History}" Spacing="6">
+																<BindableLayout.ItemTemplate>
+																	<DataTemplate x:DataType="local:HistoryRow">
+																		<Grid ColumnDefinitions="48,*" ColumnSpacing="8">
+																			<Label
+																				FontFamily="{DynamicResource FontSemibold}"
+																				StyleClass="Caption"
+																				Text="{Binding Time}" />
+																			<Label
+																				Grid.Column="1"
+																				LineBreakMode="WordWrap"
+																				StyleClass="Caption"
+																				Text="{Binding Text}" />
+																		</Grid>
+																	</DataTemplate>
+																</BindableLayout.ItemTemplate>
+															</VerticalStackLayout>
+															<BoxView StyleClass="Divider" />
+														</VerticalStackLayout>
+
 														<Label StyleClass="Section" Text="{localization:Tr Tracking.Alerts}" />
 
-														<FlexLayout Wrap="Wrap">
+														<FlexLayout AlignContent="Start" AlignItems="Start" Wrap="Wrap">
 
 															<Border support:Motion.Feedback="True" Margin="0,0,8,8" StyleClass="ChipButton">
 																<HorizontalStackLayout Spacing="6">

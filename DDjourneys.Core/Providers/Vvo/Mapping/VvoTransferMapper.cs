@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using DDjourneys.Core.Models;
 using DDjourneys.Core.Providers.Vvo.Models;
 using DDjourneys.Core.Providers.Vvo.Parsing;
@@ -263,7 +264,7 @@ public static class VvoTransferMapper
 	StopTime? arrivalStop,
 	int pathCount)
 	{
-		System.Diagnostics.Debug.WriteLine(
+		DiagnosticLog.Write(
 			$"""
 			[VVO TRANSFER]
 			PartialRouteId: {route.PartialRouteId}

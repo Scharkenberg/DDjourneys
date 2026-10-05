@@ -4,7 +4,13 @@ public enum NoticeKind
 {
 	Information,
 	ConnectionRisk,
-	Cancellation
+	Cancellation,
+
+	/// <summary>
+	/// A boarding instruction ("Einstieg X: bitte gehen Sie zur Haltestelle X Steig 1"). Only useful until the ride
+	/// begins; the service never withdraws it, so it must age out here.
+	/// </summary>
+	Instruction
 }
 
 /// <summary>Whether a notice may still be shown, and until when (null = until the journey is over).</summary>
@@ -22,6 +28,17 @@ public static class NoticePolicy
 {
 	/// <summary>General information (diversions, works) stays relevant for a ride's length.</summary>
 	public static TimeSpan InformationAge { get; } = TimeSpan.FromMinutes(30);
+
+	/// <summary>A boarding instruction is about the next minutes, not the ride.</summary>
+	public static TimeSpan InstructionAge { get; } = TimeSpan.FromMinutes(15);
+
+	/// <summary>True for the wording of a boarding instruction (German; the service sends German only).</summary>
+	public static bool IsBoardingInstruction(string? text) =>
+		!string.IsNullOrWhiteSpace(text)
+		&& (text.Contains("Einstieg", StringComparison.OrdinalIgnoreCase)
+			|| text.Contains("gehen Sie zur Haltestelle", StringComparison.OrdinalIgnoreCase)
+			|| text.Contains("gehen Sie zum", StringComparison.OrdinalIgnoreCase)
+			|| text.Contains("go to the stop", StringComparison.OrdinalIgnoreCase));
 
 	/// <summary>A connection warning is only valid while the connection is still at risk; without a live risk it fades fast.</summary>
 	public static TimeSpan RiskAge { get; } = TimeSpan.FromMinutes(10);
@@ -53,6 +70,9 @@ public static class NoticePolicy
 				}
 
 				return WithAge(time, RiskAge, now);
+
+			case NoticeKind.Instruction:
+				return WithAge(time, InstructionAge, now);
 
 			default:
 				return WithAge(time, InformationAge, now);

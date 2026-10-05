@@ -1,5 +1,7 @@
 ﻿using System.Globalization;
 using System.Text.Json;
+using System.Text.Json.Nodes;
+using DDjourneys.Core.Serialization;
 using System.Text.RegularExpressions;
 using DDjourneys.Core.Models;
 using DDjourneys.Core.Providers.Vvo.Models;
@@ -17,7 +19,7 @@ namespace DDjourneys.Tracking.Schutzengel;
 /// </summary>
 internal static class SchutzengelRawDataTranslator
 {
-	public static object Translate(
+	public static JsonObject Translate(
 		VvoRoute route,
 		Journey journey,
 		string? sessionId,
@@ -70,7 +72,7 @@ internal static class SchutzengelRawDataTranslator
 
 
 		var partialConnections =
-			new List<object>();
+			new JsonArray();
 
 
 		DateTimeOffset serverTime =
@@ -92,7 +94,7 @@ internal static class SchutzengelRawDataTranslator
 					: null;
 
 
-			IReadOnlyList<object> transitions =
+			IReadOnlyList<JsonObject> transitions =
 				BuildTransitions(
 					route,
 					journey,
@@ -110,75 +112,39 @@ internal static class SchutzengelRawDataTranslator
 		}
 
 
-		return new
+		return new JsonObject
 		{
-			id =
-				route.RouteId.ToString(
-					CultureInfo.InvariantCulture),
-
-			price =
-				ParsePrice(
-					route.Price),
-
-			tariffInformation =
-				new
+			["id"] = route.RouteId.ToString(CultureInfo.InvariantCulture),
+			["price"] = ParsePrice(route.Price),
+			["tariffInformation"] =
+				new JsonObject
 				{
-					network =
-						route.Net
-						?? string.Empty,
-
-					priceLevel =
-						route.NumberOfFareZones
-						?? string.Empty,
-
-					fromZone =
-						route.FareZoneOrigin,
-
-					toZone =
-						route.FareZoneDestination,
-
-					zoneStrings =
-						ZoneStrings(
-							route.FareZoneNames)
+					["network"] = route.Net ?? string.Empty,
+					["priceLevel"] = route.NumberOfFareZones ?? string.Empty,
+					["fromZone"] = route.FareZoneOrigin,
+					["toZone"] = route.FareZoneDestination,
+					["zoneStrings"] =
+						Wire.Array(ZoneStrings(route.FareZoneNames).Select(zone => (JsonNode?)zone))
 				},
-
-			partialConnections,
-
-			metaData =
-				new
+			["partialConnections"] = partialConnections,
+			["metaData"] =
+				new JsonObject
 				{
-					mmType = "oev",
-
-					serverTime,
-
-					status =
-						new
+					["mmType"] = "oev",
+					["serverTime"] = serverTime,
+					["status"] =
+						new JsonObject
 						{
-							Code =
-								status?.Code,
-
-							Message =
-								status?.Message
+							["Code"] = status?.Code,
+							["Message"] = status?.Message
 						},
-
-					routeCancelled =
-						route.RouteCancelled,
-
-					ticketNotes =
-						route.TicketNotes
+					["routeCancelled"] = route.RouteCancelled,
+					["ticketNotes"] = route.TicketNotes
 				},
-
-			sessionId =
-				sessionId
-				?? string.Empty,
-
-			requestId =
-				string.Empty,
-
-			distance = 0,
-
-			ticketInformation =
-				Array.Empty<object>()
+			["sessionId"] = sessionId ?? string.Empty,
+			["requestId"] = string.Empty,
+			["distance"] = 0,
+			["ticketInformation"] = new JsonArray()
 		};
 	}
 
@@ -188,117 +154,67 @@ internal static class SchutzengelRawDataTranslator
 		Journey journey,
 		string? sessionId,
 		VvoStatus? status) =>
-		JsonSerializer.Serialize(
-			Translate(
-				route,
-				journey,
-				sessionId,
-				status));
+		Translate(
+			route,
+			journey,
+			sessionId,
+			status)
+			.ToJsonString();
 
 
-	private static object PartialConnectionObject(
+	private static JsonObject PartialConnectionObject(
 		VvoPartialRoute route,
 		JourneyLeg leg,
-		IReadOnlyList<object> transitions,
+		IReadOnlyList<JsonObject> transitions,
 		DateTimeOffset serverTime)
 	{
-		return new
+		return new JsonObject
 		{
-			id =
-				leg.Id
-				?? route.PartialRouteId.ToString(
-					CultureInfo.InvariantCulture),
-
-			mot =
-				new
+			["id"] = leg.Id ?? route.PartialRouteId.ToString(CultureInfo.InvariantCulture),
+			["mot"] =
+				new JsonObject
 				{
-					type =
-						MotType(
-							leg.Mode),
-
-					category =
-						TransportationCategoryMot,
-
-					providers =
-						Array.Empty<object>()
+					["type"] = MotType(leg.Mode),
+					["category"] = TransportationCategoryMot,
+					["providers"] = new JsonArray()
 				},
-
-			line =
-				new
+			["line"] =
+				new JsonObject
 				{
-					direction =
-						new
+					["direction"] =
+						new JsonObject
 						{
-							name =
+							["name"] =
 								route.Mot?.Direction?.Trim()
 								?? leg.Line?.Destination
 								?? string.Empty
 						},
-
-					name =
-						route.Mot?.Name
-						?? leg.Line?.Name
-						?? string.Empty
+					["name"] = route.Mot?.Name ?? leg.Line?.Name ?? string.Empty
 				},
-
-			nodes =
-				route.RegularStops
-					.Select(
+			["nodes"] =
+				Wire.Array(
+					route.RegularStops.Select(
 						(stop, index) =>
-							NodeObject(
-								stop,
-								leg,
-								index,
-								serverTime))
-					.ToArray(),
-
-			disruptions =
-				route.Mot?.Changes
-					.Select(
-						id =>
-							new
-							{
-								id
-							})
-					.ToArray()
-				?? Array.Empty<object>(),
-
-			transitions,
-
-			additionalInfo =
-				route.Infos,
-
-			serviceHotLine =
-				route.BookingLink,
-
-			connectionAtRisk = false,
-
-			pathOnMap =
-				leg.Path
-					.Select(
-						PointObject)
-					.ToArray(),
-
-			realTimeControlled =
-				IsRealtimeControlled(
-					route),
-
-			turnByTurn =
-				Array.Empty<object>(),
-
-			cancelled =
-				leg.IsCancelled,
-
-			metaData =
-				new
+							(JsonNode?)NodeObject(stop, leg, index, serverTime))),
+			["disruptions"] =
+				Wire.Array(
+					(route.Mot?.Changes ?? [])
+						.Select(id => (JsonNode?)new JsonObject { ["id"] = id })),
+			["transitions"] = Wire.Array(transitions.Select(item => (JsonNode?)item)),
+			["additionalInfo"] = Wire.Array(route.Infos.Select(info => (JsonNode?)info)),
+			["serviceHotLine"] = route.BookingLink,
+			["connectionAtRisk"] = false,
+			["pathOnMap"] =
+				Wire.Array(leg.Path.Select(point => (JsonNode?)PointObject(point))),
+			["realTimeControlled"] = IsRealtimeControlled(route),
+			["turnByTurn"] = new JsonArray(),
+			["cancelled"] = leg.IsCancelled,
+			["metaData"] =
+				new JsonObject
 				{
-					serverTime,
-
-					tripCancelled =
-						route.TripCancelled,
-
-					changeoverEndangered =
-						route.ChangeoverEndangered
+					["serverTime"] = serverTime,
+					["tripCancelled"] = route.TripCancelled,
+					["changeoverEndangered"] = route.ChangeoverEndangered
 				}
 		};
 	}

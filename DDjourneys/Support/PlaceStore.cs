@@ -1,7 +1,11 @@
-﻿using System.Text.Json;
+﻿using DDjourneys.Core.Diagnostics;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using DDjourneys.Core.Models;
 using DDjourneys.Core.Storage;
+using DDjourneys.Core.Providers;
 using DDjourneys.Core.Providers.Vvo;
+using DDjourneys.Core.Providers.Vvo.Mapping;
 using Location = DDjourneys.Core.Models.Location;
 
 namespace DDjourneys.Support;
@@ -25,11 +29,13 @@ public sealed record RoutePair(
 /// </summary>
 public sealed class PlaceStore
 {
-	private const string RecentsKey = "places.recents";
-	private const string FavouritesKey = "places.favourites";
-	private const string RoutesKey = "places.routes";
-	private const string HomeKey = "places.home";
-	private const string SavedRoutesKey = "places.savedRoutes";
+	// Every provider has its own lists (stop ids of one provider mean nothing to another). The app only knew VVO
+	// at first, so VVO keeps the original keys and every other provider gets "<key>@<provider id>".
+	private string RecentsKey => Scoped("places.recents");
+	private string FavouritesKey => Scoped("places.favourites");
+	private string RoutesKey => Scoped("places.routes");
+	private string HomeKey => Scoped("places.home");
+	private string SavedRoutesKey => Scoped("places.savedRoutes");
 	private const int MaxRecents = 8;
 	private const string PreviousSuffix = ".prev";
 	private const string CorruptSuffix = ".corrupt";
@@ -75,12 +81,19 @@ public sealed class PlaceStore
 	}
 
 
+	/// <param name="store">Where the lists live.</param>
+	/// <param name="providers">
+	/// Whose lists are shown: the selected provider's, switching with the selection. Without it the store
+	/// serves the VVO lists (the original keys).
+	/// </param>
 	public PlaceStore(
-		IKeyValueStore store)
+		IKeyValueStore store,
+		ProviderRegistry? providers = null)
 	{
 		ArgumentNullException.ThrowIfNull(store);
 
 		_store = store;
+		_scope = providers?.SelectedId ?? LegacyProviderId;
 
 		_recents =
 			Load(RecentsKey);
@@ -96,6 +109,46 @@ public sealed class PlaceStore
 
 		_home =
 			Load(HomeKey).FirstOrDefault();
+
+		if (providers is not null)
+		{
+			providers.SelectionChanged += OnProviderChanged;
+		}
+	}
+
+
+	private string _scope;
+
+	private string Scoped(string key) =>
+		_scope.Length == 0
+		|| string.Equals(_scope, LegacyProviderId, StringComparison.OrdinalIgnoreCase)
+			? key
+			: $"{key}@{_scope}";
+
+
+	/// <summary>Switches to the lists of the newly selected provider; nothing of the previous one stays loaded.</summary>
+	private void OnProviderChanged(object? sender, string providerId)
+	{
+		lock (_gate)
+		{
+			_scope = providerId;
+
+			Replace(_recents, Load(RecentsKey));
+			Replace(_favourites, Load(FavouritesKey));
+			Replace(_routes, LoadRoutes());
+			Replace(_savedRoutes, LoadSavedRoutes());
+
+			_home = Load(HomeKey).FirstOrDefault();
+		}
+
+		RaiseChanged();
+	}
+
+
+	private static void Replace<T>(List<T> target, List<T> items)
+	{
+		target.Clear();
+		target.AddRange(items);
 	}
 
 
@@ -314,6 +367,26 @@ public sealed class PlaceStore
 	}
 
 
+	/// <summary>The saved connection between exactly these two places, if there is one.</summary>
+	public SavedRoute? FindSavedRoute(
+		Location from,
+		Location to)
+	{
+		ArgumentNullException.ThrowIfNull(from);
+		ArgumentNullException.ThrowIfNull(to);
+
+		lock (_gate)
+		{
+			string fromKey = KeyOf(from);
+			string toKey = KeyOf(to);
+
+			return _savedRoutes.FirstOrDefault(
+				route => KeyOf(route.From) == fromKey
+					&& KeyOf(route.To) == toKey);
+		}
+	}
+
+
 	public bool HasSavedRoute(
 		string name)
 	{
@@ -517,7 +590,7 @@ public sealed class PlaceStore
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine(
+			DiagnosticLog.Write(
 				$"PlaceStore subscriber failed: {ex.Message}");
 		}
 	}
@@ -549,7 +622,8 @@ public sealed class PlaceStore
 		string? Place,
 		double? Latitude,
 		double? Longitude,
-		string? ProviderId = null);
+		string? ProviderId = null,
+		string? Kind = null);
 
 
 	/// <summary>Stored shape of a connection: the two endpoints, nothing else.</summary>
@@ -563,6 +637,41 @@ public sealed class PlaceStore
 		string Name,
 		Entry? From,
 		Entry? To);
+
+
+	private static JsonNode? EntryNode(
+		Entry? entry) =>
+		entry is null
+			? null
+			: new JsonObject
+			{
+				["Id"] = entry.Id,
+				["Name"] = entry.Name,
+				["Place"] = entry.Place,
+				["Latitude"] = entry.Latitude,
+				["Longitude"] = entry.Longitude,
+				["ProviderId"] = entry.ProviderId,
+				["Kind"] = entry.Kind
+			};
+
+
+	private static JsonNode? RouteNode(
+		RouteEntry entry) =>
+		new JsonObject
+		{
+			["From"] = EntryNode(entry.From),
+			["To"] = EntryNode(entry.To)
+		};
+
+
+	private static JsonNode? SavedRouteNode(
+		SavedRouteEntry entry) =>
+		new JsonObject
+		{
+			["Name"] = entry.Name,
+			["From"] = EntryNode(entry.From),
+			["To"] = EntryNode(entry.To)
+		};
 
 
 	private static Entry? ParseEntry(
@@ -582,7 +691,8 @@ public sealed class PlaceStore
 			StoredJson.String(element, "Place"),
 			StoredJson.Number(element, "Latitude"),
 			StoredJson.Number(element, "Longitude"),
-			StoredJson.String(element, "ProviderId"));
+			StoredJson.String(element, "ProviderId"),
+			StoredJson.String(element, "Kind"));
 	}
 
 
@@ -635,7 +745,8 @@ public sealed class PlaceStore
 					new SavedRouteEntry(
 						route.Name,
 						ToEntry(route.From),
-						ToEntry(route.To))));
+						ToEntry(route.To))),
+			SavedRouteNode);
 
 
 	private List<RoutePair> LoadRoutes() =>
@@ -656,7 +767,8 @@ public sealed class PlaceStore
 				route =>
 					new RouteEntry(
 						ToEntry(route.From),
-						ToEntry(route.To))));
+						ToEntry(route.To))),
+			RouteNode);
 
 
 	private static Entry ToEntry(
@@ -669,7 +781,10 @@ public sealed class PlaceStore
 			place.Longitude,
 			string.IsNullOrWhiteSpace(place.ProviderId)
 				? null
-				: place.ProviderId);
+				: place.ProviderId,
+			place.Kind == PlaceKind.Stop
+				? null
+				: place.Kind.ToString());
 
 
 	/// <summary>
@@ -677,21 +792,37 @@ public sealed class PlaceStore
 	/// belongs to VVO. Free-form places have no provider.
 	/// </summary>
 	private static Location ToLocation(
-		Entry entry) =>
-		new()
+		Entry entry)
+	{
+		string providerId =
+			!string.IsNullOrWhiteSpace(entry.ProviderId)
+				? entry.ProviderId
+				: string.IsNullOrWhiteSpace(entry.Id)
+					? string.Empty
+					: LegacyProviderId;
+
+		PlaceKind placeKind =
+			Enum.TryParse(entry.Kind, out PlaceKind kind)
+				? kind
+				: PlaceKind.Stop;
+
+		// VVO leaves out Dresden; entries stored before that was made explicit get it now.
+		string? place =
+			string.Equals(providerId, VvoProviderInfo.Id, StringComparison.OrdinalIgnoreCase)
+				? VvoPlaces.Resolve(entry.Place, placeKind)
+				: entry.Place;
+
+		return new()
 		{
 			Id = entry.Id,
-			ProviderId =
-				!string.IsNullOrWhiteSpace(entry.ProviderId)
-					? entry.ProviderId
-					: string.IsNullOrWhiteSpace(entry.Id)
-						? string.Empty
-						: LegacyProviderId,
+			ProviderId = providerId,
+			Kind = placeKind,
 			Name = entry.Name,
-			Place = entry.Place,
+			Place = place,
 			Latitude = entry.Latitude,
 			Longitude = entry.Longitude
 		};
+	}
 
 
 	private List<Location> Load(
@@ -706,7 +837,8 @@ public sealed class PlaceStore
 		List<Location> places) =>
 		SaveList(
 			key,
-			places.Select(ToEntry));
+			places.Select(ToEntry),
+			EntryNode);
 
 
 	/// <summary>
@@ -743,7 +875,7 @@ public sealed class PlaceStore
 
 				if (read.Dropped > 0)
 				{
-					System.Diagnostics.Debug.WriteLine(
+					DiagnosticLog.Write(
 						$"PlaceStore '{candidate}': {read.Dropped} unreadable entries skipped");
 				}
 
@@ -754,7 +886,7 @@ public sealed class PlaceStore
 			}
 			catch (Exception ex)
 			{
-				System.Diagnostics.Debug.WriteLine(
+				DiagnosticLog.Write(
 					$"PlaceStore load '{candidate}' failed: {ex.Message}");
 			}
 		}
@@ -765,7 +897,8 @@ public sealed class PlaceStore
 
 	private void SaveList<T>(
 		string key,
-		IEnumerable<T> entries)
+		IEnumerable<T> entries,
+		Func<T, JsonNode?> toNode)
 	{
 		try
 		{
@@ -779,11 +912,11 @@ public sealed class PlaceStore
 
 			_store.Set(
 				key,
-				StoredJson.Write(entries));
+				StoredJson.Write(entries, toNode));
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine(
+			DiagnosticLog.Write(
 				$"PlaceStore save '{key}' failed: {ex.Message}");
 		}
 	}

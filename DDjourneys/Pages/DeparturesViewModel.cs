@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using DDjourneys.Core.Models;
@@ -164,6 +165,76 @@ public sealed record StopLineRow(
 }
 
 
+/// <summary>One platform with its accessibility data (Dresden open data).</summary>
+public sealed record AccessRow(
+	StopAccessibility Data)
+{
+	private static string? Line(string format, string? value) =>
+		string.IsNullOrWhiteSpace(value)
+			? null
+			: string.Format(CultureInfo.CurrentCulture, format, value);
+
+	public string Title =>
+		Line(
+			LocalizationService.Current.CurrentStrings.Extras.AccessPlatform,
+			Data.Platform)
+		?? Data.StopName;
+
+	/// <summary>The remaining facts, one per line.</summary>
+	public string Details
+	{
+		get
+		{
+			ExtrasStrings strings =
+				LocalizationService.Current.CurrentStrings.Extras;
+
+			return string.Join(
+				"\n",
+				new[]
+				{
+					Line(strings.AccessBoarding, Data.Boarding),
+					Line(strings.AccessKerb, Data.KerbHeight),
+					Line(strings.AccessWidth, Data.Width),
+					Line(strings.AccessTactile, Data.TactileGuidance),
+					Line(strings.AccessAudio, Data.AudioAnnouncements)
+				}
+				.Where(line => line is not null));
+		}
+	}
+}
+
+
+/// <summary>A DVB service point near the stop or the passenger.</summary>
+public sealed record ServicePointRow(
+	ServicePoint Point)
+{
+	public string Name =>
+		Point.Name;
+
+	public string Details =>
+		string.Join(
+			"\n",
+			Point.Details
+				.Take(4)
+				.Select(detail => detail.Value));
+
+	public bool HasDetails =>
+		Details.Length > 0;
+
+	public string DistanceText =>
+		string.Format(
+			CultureInfo.CurrentCulture,
+			LocalizationService.Current.CurrentStrings.Departures.Metres,
+			Point.DistanceMeters);
+
+	public Uri MapUri =>
+		new(
+			string.Create(
+				CultureInfo.InvariantCulture,
+				$"https://www.openstreetmap.org/?mlat={Point.Latitude:F6}&mlon={Point.Longitude:F6}#map=17/{Point.Latitude:F6}/{Point.Longitude:F6}"));
+}
+
+
 /// <summary>
 /// Departure monitor: what leaves (or arrives at) a stop, optionally at another time, with the lines of the
 /// stop, the tariff zone and the stops near the passenger.
@@ -174,6 +245,7 @@ public sealed class DeparturesViewModel : DisposableViewModel
 
 	private readonly DepartureService _departures;
 	private readonly NetworkService _network;
+	private readonly OpenDataService _openData;
 	private readonly LocationService _locations;
 	private readonly DeviceLocator _locator;
 	private readonly PlaceStore _store;
@@ -184,6 +256,9 @@ public sealed class DeparturesViewModel : DisposableViewModel
 	private bool _syncing;
 	private bool _isNow = true;
 	private bool _linesLoaded;
+	private Location? _accessibilityFor;
+	private bool _servicePointsLoaded;
+	private (double Latitude, double Longitude)? _here;
 	private IReadOnlyList<Departure> _current = [];
 	private CancellationTokenSource? _refresh;
 	private CancellationTokenSource? _info;
@@ -191,13 +266,18 @@ public sealed class DeparturesViewModel : DisposableViewModel
 	public DeparturesViewModel(
 		DepartureService departures,
 		NetworkService network,
+		OpenDataService openData,
 		LocationService locations,
 		DeviceLocator locator,
 		PlaceStore store,
-		AppSettings settings)
+		AppSettings settings,
+		ProviderRegistry providers)
 	{
+		ArgumentNullException.ThrowIfNull(providers);
+
 		ArgumentNullException.ThrowIfNull(departures);
 		ArgumentNullException.ThrowIfNull(network);
+		ArgumentNullException.ThrowIfNull(openData);
 		ArgumentNullException.ThrowIfNull(locations);
 		ArgumentNullException.ThrowIfNull(locator);
 		ArgumentNullException.ThrowIfNull(store);
@@ -205,6 +285,7 @@ public sealed class DeparturesViewModel : DisposableViewModel
 
 		_departures = departures;
 		_network = network;
+		_openData = openData;
 		_locations = locations;
 		_locator = locator;
 		_store = store;
@@ -215,6 +296,10 @@ public sealed class DeparturesViewModel : DisposableViewModel
 		ListenToLocalization(
 			_localization,
 			OnLocalizationChanged);
+
+		Subscribe(
+			() => providers.SelectionChanged += OnProviderChanged,
+			() => providers.SelectionChanged -= OnProviderChanged);
 
 		PickStopCommand =
 			new AsyncCommand(
@@ -272,12 +357,28 @@ public sealed class DeparturesViewModel : DisposableViewModel
 		OpenChangesCommand =
 			new AsyncCommand<DepartureRow>(
 				row => row is not null && OpenChanges is { } open
-					? open(row.Departure.RouteChangeIds)
+					? open(row.Departure)
 					: Task.CompletedTask);
 
 		ToggleLinesCommand =
 			new AsyncCommand(
 				ToggleLinesAsync);
+
+		ToggleAccessibilityCommand =
+			new AsyncCommand(
+				ToggleAccessibilityAsync);
+
+		ToggleServicePointsCommand =
+			new AsyncCommand(
+				ToggleServicePointsAsync);
+
+		OpenServicePointCommand =
+			new AsyncCommand<ServicePointRow>(
+				OpenServicePointAsync);
+
+		OpenMapCommand =
+			new AsyncCommand(
+				OpenMapAsync);
 
 		RefreshQuickPicks();
 	}
@@ -286,7 +387,8 @@ public sealed class DeparturesViewModel : DisposableViewModel
 
 	public Func<Departure, Task>? OpenRun { get; set; }
 
-	public Func<IReadOnlyList<string>, Task>? OpenChanges { get; set; }
+	/// <summary>Opens the disruptions of the departure's line.</summary>
+	public Func<Departure, Task>? OpenChanges { get; set; }
 
 	public AsyncCommand PickStopCommand { get; }
 
@@ -309,6 +411,19 @@ public sealed class DeparturesViewModel : DisposableViewModel
 	public AsyncCommand<DepartureRow> OpenChangesCommand { get; }
 
 	public AsyncCommand ToggleLinesCommand { get; }
+
+	public AsyncCommand ToggleAccessibilityCommand { get; }
+
+	public AsyncCommand ToggleServicePointsCommand { get; }
+
+	public AsyncCommand<ServicePointRow> OpenServicePointCommand { get; }
+
+	/// <summary>Shows the stop, the stops near the passenger and the service points on a map.</summary>
+	public AsyncCommand OpenMapCommand { get; }
+
+	public ObservableCollection<AccessRow> Accessibility { get; } = [];
+
+	public ObservableCollection<ServicePointRow> ServicePoints { get; } = [];
 
 	public ObservableCollection<DepartureRow> Rows { get; } = [];
 
@@ -507,6 +622,129 @@ public sealed class DeparturesViewModel : DisposableViewModel
 	public bool HasLines =>
 		Lines.Count > 0;
 
+	public bool ShowAccessibility
+	{
+		get => field;
+
+		private set
+		{
+			if (SetProperty(ref field, value))
+			{
+				OnPropertyChanged(nameof(AccessibilityToggleText));
+			}
+		}
+	}
+
+	public string AccessibilityToggleText =>
+		ShowAccessibility
+			? _localization.CurrentStrings.Extras.AccessHide
+			: _localization.CurrentStrings.Extras.AccessTitle;
+
+	/// <summary>What the lines section holds: how many lines serve the stop (once known).</summary>
+	public string LinesSummary =>
+		Lines.Count == 0
+			? string.Empty
+			: string.Format(
+				CultureInfo.CurrentCulture,
+				_localization.CurrentStrings.Extras.LinesCount,
+				Lines.Count);
+
+	public string ServicePointsSummary =>
+		_servicePointsLoaded && ServicePoints.Count > 0
+			? string.Format(
+				CultureInfo.CurrentCulture,
+				_localization.CurrentStrings.Extras.ServiceCount,
+				ServicePoints.Count)
+			: _localization.CurrentStrings.Extras.ServiceHint;
+
+	public string AccessibilityMessage
+	{
+		get => field;
+
+		private set
+		{
+			if (SetProperty(ref field, value))
+			{
+				OnPropertyChanged(nameof(HasAccessibilityMessage));
+			}
+		}
+	} = string.Empty;
+
+	public bool HasAccessibilityMessage =>
+		AccessibilityMessage.Length > 0;
+
+	public bool ShowServicePoints
+	{
+		get => field;
+
+		private set
+		{
+			if (SetProperty(ref field, value))
+			{
+				OnPropertyChanged(nameof(ServicePointsToggleText));
+			}
+		}
+	}
+
+	public string ServicePointsToggleText =>
+		ShowServicePoints
+			? _localization.CurrentStrings.Extras.ServiceHide
+			: _localization.CurrentStrings.Extras.ServiceShow;
+
+	public string ServicePointsMessage
+	{
+		get => field;
+
+		private set
+		{
+			if (SetProperty(ref field, value))
+			{
+				OnPropertyChanged(nameof(HasServicePointsMessage));
+			}
+		}
+	} = string.Empty;
+
+	public bool HasServicePointsMessage =>
+		ServicePointsMessage.Length > 0;
+
+	/// <summary>
+	/// Stop ids, lines and boards belong to one provider: after a switch nothing of the old one is kept, and the
+	/// quick picks are those of the new provider's favourites and recents.
+	/// </summary>
+	private void OnProviderChanged(object? sender, string providerId) =>
+		MainThread.BeginInvokeOnMainThread(
+			() =>
+			{
+				if (IsDisposed)
+				{
+					return;
+				}
+
+				_refresh?.Cancel();
+				_info?.Cancel();
+
+				Stop = null;
+				_current = [];
+				Rows.Clear();
+				Nearby.Clear();
+				Lines.Clear();
+				_linesLoaded = false;
+				Accessibility.Clear();
+				AccessibilityMessage = string.Empty;
+				_accessibilityFor = null;
+				ServicePoints.Clear();
+				ServicePointsMessage = string.Empty;
+				_servicePointsLoaded = false;
+				ZoneText = null;
+				Message = string.Empty;
+
+				OnPropertyChanged(nameof(HasLines));
+				OnPropertyChanged(nameof(LinesSummary));
+				OnPropertyChanged(nameof(ServicePointsSummary));
+
+				RefreshQuickPicks();
+			});
+
 	/// <summary>Called by the page after a place search for this page.</summary>
 	public void SetStop(Location stop)
 	{
@@ -523,7 +761,7 @@ public sealed class DeparturesViewModel : DisposableViewModel
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Remembering the place failed: {ex.Message}");
+			DiagnosticLog.Write($"Remembering the place failed: {ex.Message}");
 		}
 
 		Stop = stop;
@@ -531,12 +769,31 @@ public sealed class DeparturesViewModel : DisposableViewModel
 		Rows.Clear();
 		Lines.Clear();
 		_linesLoaded = false;
+		Accessibility.Clear();
+		AccessibilityMessage = string.Empty;
+		_accessibilityFor = null;
+		ServicePoints.Clear();
+		ServicePointsMessage = string.Empty;
+		_servicePointsLoaded = false;
 		ZoneText = null;
 		Message = string.Empty;
 		OnPropertyChanged(nameof(HasLines));
+		OnPropertyChanged(nameof(LinesSummary));
+		OnPropertyChanged(nameof(ServicePointsSummary));
 
 		_ = RefreshAsync();
 		_ = LoadStopInfoAsync(stop);
+
+		// Sections the passenger left open follow the new stop.
+		if (ShowAccessibility)
+		{
+			_ = LoadAccessibilityAsync(stop);
+		}
+
+		if (ShowServicePoints)
+		{
+			_ = LoadServicePointsAsync();
+		}
 	}
 
 	/// <summary>Reloads the departures. <paramref name="silent"/>: no busy indicator, and an error keeps what is shown.</summary>
@@ -600,7 +857,7 @@ public sealed class DeparturesViewModel : DisposableViewModel
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Departures failed: {ex}");
+			DiagnosticLog.Write($"Departures failed: {ex}");
 
 			if (!silent || Rows.Count == 0)
 			{
@@ -644,6 +901,8 @@ public sealed class DeparturesViewModel : DisposableViewModel
 				return;
 			}
 
+			_here = here;
+
 			IReadOnlyList<NearbyStop> found =
 				await _network.GetNearbyStopsAsync(
 					here.Latitude,
@@ -660,7 +919,7 @@ public sealed class DeparturesViewModel : DisposableViewModel
 						timeout: TimeSpan.FromSeconds(_settings.TimeoutSeconds));
 
 				found =
-					[.. stops
+					(stops
 						.Take(10)
 						.Select(
 							stop =>
@@ -672,7 +931,7 @@ public sealed class DeparturesViewModel : DisposableViewModel
 											? (int)Math.Round(
 												GeoMath.DistanceMeters(here.Latitude, here.Longitude, latitude, longitude))
 											: 0
-								})];
+								})).ToList();
 			}
 
 			Nearby.Clear();
@@ -699,7 +958,7 @@ public sealed class DeparturesViewModel : DisposableViewModel
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Locating failed: {ex}");
+			DiagnosticLog.Write($"Locating failed: {ex}");
 
 			Message =
 				string.IsNullOrWhiteSpace(ex.Message)
@@ -709,6 +968,163 @@ public sealed class DeparturesViewModel : DisposableViewModel
 		finally
 		{
 			IsLocating = false;
+		}
+	}
+
+	private async Task ToggleAccessibilityAsync()
+	{
+		ShowAccessibility = !ShowAccessibility;
+
+		if (ShowAccessibility
+			&& Stop is { } stop
+			&& !ReferenceEquals(_accessibilityFor, stop))
+		{
+			await LoadAccessibilityAsync(stop);
+		}
+	}
+
+	private async Task LoadAccessibilityAsync(Location stop)
+	{
+		AccessibilityMessage = _localization.CurrentStrings.Common.Loading;
+
+		try
+		{
+			IReadOnlyList<StopAccessibility> entries =
+				await _openData.GetStopAccessibilityAsync(
+					stop,
+					timeout: TimeSpan.FromSeconds(_settings.TimeoutSeconds));
+
+			if (!ReferenceEquals(Stop, stop) || IsDisposed)
+			{
+				return;
+			}
+
+			_accessibilityFor = stop;
+			Accessibility.Clear();
+
+			foreach (StopAccessibility entry in entries)
+			{
+				Accessibility.Add(new AccessRow(entry));
+			}
+
+			AccessibilityMessage =
+				entries.Count == 0
+					? _localization.CurrentStrings.Extras.AccessNone
+					: string.Empty;
+		}
+		catch (Exception ex)
+		{
+			DiagnosticLog.Write($"Accessibility failed: {ex.Message}");
+
+			AccessibilityMessage = _localization.CurrentStrings.Common.SomethingWentWrong;
+		}
+	}
+
+	private async Task ToggleServicePointsAsync()
+	{
+		ShowServicePoints = !ShowServicePoints;
+
+		if (ShowServicePoints
+			&& !_servicePointsLoaded)
+		{
+			await LoadServicePointsAsync();
+		}
+	}
+
+	private async Task LoadServicePointsAsync()
+	{
+		(double Latitude, double Longitude)? around =
+			Stop is { Latitude: { } latitude, Longitude: { } longitude }
+				? (latitude, longitude)
+				: _here;
+
+		if (around is not { } center)
+		{
+			ServicePointsMessage = _localization.CurrentStrings.Extras.ServiceNeedsPosition;
+
+			return;
+		}
+
+		ServicePointsMessage = _localization.CurrentStrings.Common.Loading;
+
+		Location? forStop = Stop;
+
+		try
+		{
+			IReadOnlyList<ServicePoint> points =
+				await _openData.GetServicePointsAsync(
+					center.Latitude,
+					center.Longitude,
+					timeout: TimeSpan.FromSeconds(_settings.TimeoutSeconds));
+
+			if (IsDisposed
+				|| !ReferenceEquals(Stop, forStop))
+			{
+				return;
+			}
+
+			ServicePoints.Clear();
+
+			foreach (ServicePoint point in points)
+			{
+				ServicePoints.Add(new ServicePointRow(point));
+			}
+
+			_servicePointsLoaded = true;
+
+			ServicePointsMessage =
+				points.Count == 0
+					? _localization.CurrentStrings.Extras.ServiceNone
+					: string.Empty;
+
+			OnPropertyChanged(nameof(ServicePointsSummary));
+		}
+		catch (Exception ex)
+		{
+			DiagnosticLog.Write($"Service points failed: {ex.Message}");
+
+			ServicePointsMessage = _localization.CurrentStrings.Common.SomethingWentWrong;
+		}
+	}
+
+	private async Task OpenServicePointAsync(ServicePointRow row)
+	{
+		try
+		{
+			await MapScenes.OpenAsync(
+				MapScenes.FromStops(null, Array.Empty<DDjourneys.Core.Models.Location>(), new[] { row.Point }),
+				row.Name);
+		}
+		catch (Exception ex)
+		{
+			DiagnosticLog.Write($"Opening the map failed: {ex.Message}");
+		}
+	}
+
+	private async Task OpenMapAsync()
+	{
+		try
+		{
+			ExtrasStrings strings = _localization.CurrentStrings.Extras;
+
+			bool shown =
+				await MapScenes.OpenAsync(
+					MapScenes.FromStops(
+						Stop,
+						Nearby.Select(row => row.Stop),
+						ShowServicePoints
+							? ServicePoints.Select(row => row.Point)
+							: []),
+					Stop?.Name ?? strings.MapStopTitle);
+
+			if (!shown)
+			{
+				Message = strings.MapNoData;
+			}
+		}
+		catch (Exception ex)
+		{
+			DiagnosticLog.Write($"Opening the map failed: {ex.Message}");
 		}
 	}
 
@@ -763,7 +1179,7 @@ public sealed class DeparturesViewModel : DisposableViewModel
 		catch (Exception ex)
 		{
 			// The zone is a nicety: the departures do not depend on it.
-			System.Diagnostics.Debug.WriteLine($"Tariff zone failed: {ex.Message}");
+			DiagnosticLog.Write($"Tariff zone failed: {ex.Message}");
 		}
 	}
 
@@ -788,13 +1204,14 @@ public sealed class DeparturesViewModel : DisposableViewModel
 
 			_linesLoaded = true;
 			OnPropertyChanged(nameof(HasLines));
+			OnPropertyChanged(nameof(LinesSummary));
 		}
 		catch (OperationCanceledException)
 		{
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Stop lines failed: {ex.Message}");
+			DiagnosticLog.Write($"Stop lines failed: {ex.Message}");
 		}
 	}
 
@@ -889,6 +1306,10 @@ public sealed class DeparturesViewModel : DisposableViewModel
 
 				OnPropertyChanged(nameof(StopName));
 				OnPropertyChanged(nameof(LinesToggleText));
+				OnPropertyChanged(nameof(AccessibilityToggleText));
+				OnPropertyChanged(nameof(ServicePointsToggleText));
+				OnPropertyChanged(nameof(LinesSummary));
+				OnPropertyChanged(nameof(ServicePointsSummary));
 				RebuildRows();
 			});
 

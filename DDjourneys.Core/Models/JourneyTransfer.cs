@@ -1,4 +1,6 @@
-﻿namespace DDjourneys.Core.Models;
+﻿using DDjourneys.Core.Diagnostics;
+
+namespace DDjourneys.Core.Models;
 
 public sealed class JourneyTransfer
 {
@@ -34,7 +36,7 @@ public sealed class JourneyTransfer
 		{
 			if (value.TotalDays > 1)
 			{
-				System.Diagnostics.Debug.WriteLine(
+				DiagnosticLog.Write(
 					$"!!! INVALID TRANSFER DURATION {value}");
 			}
 

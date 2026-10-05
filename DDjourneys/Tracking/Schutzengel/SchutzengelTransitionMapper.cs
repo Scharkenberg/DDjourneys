@@ -1,5 +1,6 @@
 ﻿using System.Globalization;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using DDjourneys.Core.Models;
 using DDjourneys.Core.Providers.Vvo.Models;
@@ -13,7 +14,7 @@ namespace DDjourneys.Tracking.Schutzengel;
 /// </summary>
 internal static class SchutzengelTransitionMapper
 {
-	internal static IReadOnlyList<object> BuildTransitions(
+	internal static IReadOnlyList<JsonObject> BuildTransitions(
 		VvoRoute route,
 		Journey journey,
 		int movementIndex,
@@ -58,7 +59,7 @@ internal static class SchutzengelTransitionMapper
 
 
 		var result =
-			new List<object>();
+			new List<JsonObject>();
 
 
 		for (int index = 0;
@@ -75,39 +76,26 @@ internal static class SchutzengelTransitionMapper
 					: null;
 
 
-			object[] path =
+			JsonArray path =
 				journeyTransfer is not null
 				&& journeyTransfer.Path.Count > 0
-					? journeyTransfer.Path
-						.Select(PointObject)
-						.ToArray()
-					: Array.Empty<object>();
+					? DDjourneys.Core.Serialization.Wire.Array(
+						journeyTransfer.Path.Select(point => (JsonNode?)PointObject(point)))
+					: new JsonArray();
 
 
 			result.Add(
-				new
+				new JsonObject
 				{
-					duration =
-						Math.Max(
-							0,
-							transferPart.Duration),
-
-					sections =
-						new[]
-						{
-							new
+					["duration"] = Math.Max(0, transferPart.Duration),
+					["sections"] =
+						new JsonArray(
+							new JsonObject
 							{
-								type =
-									TransitionType(
-										transferPart.Mot?.Type),
-
-								category =
-									TransportationCategoryTransition,
-
-								pathOnMap =
-									path
-							}
-						}
+								["type"] = TransitionType(transferPart.Mot?.Type),
+								["category"] = TransportationCategoryTransition,
+								["pathOnMap"] = path
+							})
 				});
 		}
 
@@ -135,26 +123,17 @@ internal static class SchutzengelTransitionMapper
 
 
 				result.Add(
-					new
+					new JsonObject
 					{
-						duration =
-							syntheticDuration,
-
-						sections =
-							new[]
-							{
-								new
+						["duration"] = syntheticDuration,
+						["sections"] =
+							new JsonArray(
+								new JsonObject
 								{
-									type =
-										TransitionTypeChangeVehicles,
-
-									category =
-										TransportationCategoryTransition,
-
-									pathOnMap =
-										Array.Empty<object>()
-								}
-							}
+									["type"] = TransitionTypeChangeVehicles,
+									["category"] = TransportationCategoryTransition,
+									["pathOnMap"] = new JsonArray()
+								})
 					});
 			}
 		}

@@ -217,13 +217,23 @@
 							</support:PillScroll>
 						</Border>
 
-						<Label
+						<!--  Direction: the same soft pill as a ride heading on the followed-journeys page  -->
+						<Border
 							Grid.Column="1"
+							Padding="10,3"
+							BackgroundColor="{DynamicResource AccentSoft}"
+							HorizontalOptions="Start"
 							IsVisible="{Binding HasDirection}"
-							LineBreakMode="TailTruncation"
-							StyleClass="Caption"
-							Text="{Binding Direction}"
-							VerticalOptions="Center" />
+							StrokeShape="RoundRectangle 100"
+							StrokeThickness="0"
+							VerticalOptions="Center">
+							<Label
+								FontFamily="{DynamicResource FontSemibold}"
+								FontSize="{StaticResource FontCaption}"
+								LineBreakMode="TailTruncation"
+								Text="{Binding Direction}"
+								TextColor="{DynamicResource Accent}" />
+						</Border>
 
 						<Label
 							Grid.Column="2"
@@ -236,6 +246,11 @@
 						IsVisible="{Binding HasFeatures}"
 						StyleClass="Caption"
 						Text="{Binding FeaturesText}" />
+
+					<Label
+						IsVisible="{Binding HasOperating}"
+						StyleClass="Caption"
+						Text="{Binding OperatingText}" />
 
 					<HorizontalStackLayout IsVisible="{Binding HasOccupancy}" Spacing="8">
 
@@ -260,24 +275,38 @@
 						support:Motion.Breathe="True"
 						TextColor="{DynamicResource Accent}" />
 
-					<HorizontalStackLayout IsVisible="{Binding Source={RelativeSource AncestorType={x:Type local:JourneyViewModel}}, x:DataType=local:JourneyViewModel, Path=HasLegAlternatives}" Spacing="8">
+					<FlexLayout AlignContent="Start" AlignItems="Start" Wrap="Wrap">
 						<Button
+							Margin="0,0,8,8"
+							Padding="12,0"
+							Command="{Binding Source={RelativeSource AncestorType={x:Type local:JourneyViewModel}}, x:DataType=local:JourneyViewModel, Path=ShowLiveCommand}"
+							CommandParameter="{Binding .}"
+							FontSize="{StaticResource FontCaption}"
+							IsVisible="{Binding CanShowLive}"
+							support:Dense.MinHeight="36"
+							StyleClass="Tonal"
+							Text="{localization:Tr Extras.LiveShow}" />
+						<Button
+							Margin="0,0,8,8"
 							Padding="12,0"
 							Command="{Binding Source={RelativeSource AncestorType={x:Type local:JourneyViewModel}}, x:DataType=local:JourneyViewModel, Path=LegEarlierCommand}"
 							CommandParameter="{Binding .}"
 							FontSize="{StaticResource FontCaption}"
+							IsVisible="{Binding Source={RelativeSource AncestorType={x:Type local:JourneyViewModel}}, x:DataType=local:JourneyViewModel, Path=HasLegAlternatives}"
 							support:Dense.MinHeight="36"
 							StyleClass="Tonal"
 							Text="{localization:Tr Journey.LegEarlier}" />
 						<Button
+							Margin="0,0,8,8"
 							Padding="12,0"
 							Command="{Binding Source={RelativeSource AncestorType={x:Type local:JourneyViewModel}}, x:DataType=local:JourneyViewModel, Path=LegLaterCommand}"
 							CommandParameter="{Binding .}"
 							FontSize="{StaticResource FontCaption}"
+							IsVisible="{Binding Source={RelativeSource AncestorType={x:Type local:JourneyViewModel}}, x:DataType=local:JourneyViewModel, Path=HasLegAlternatives}"
 							support:Dense.MinHeight="36"
 							StyleClass="Tonal"
 							Text="{localization:Tr Journey.LegLater}" />
-					</HorizontalStackLayout>
+					</FlexLayout>
 
 					<HorizontalStackLayout support:Motion.Feedback="True"
 						IsVisible="{Binding HasIntermediates}"
@@ -332,7 +361,28 @@
 					Padding="0,4,0,10"
 					Spacing="2">
 
-					<Label FontFamily="{DynamicResource FontSemibold}" Text="{Binding Text}" />
+					<!--  Walk: dashed outline with the walking icon, like the walk heading on the followed-journeys page  -->
+					<Border
+						Padding="10,3"
+						HorizontalOptions="Start"
+						Stroke="{DynamicResource InkMuted}"
+						StrokeDashArray="3,2"
+						StrokeShape="RoundRectangle 100"
+						StrokeThickness="1.5">
+						<HorizontalStackLayout Spacing="6">
+							<controls:Icon
+								Glyph="Walk"
+								Size="14"
+								VerticalOptions="Center"
+								Color="{DynamicResource InkMuted}" />
+							<Label
+								FontSize="{StaticResource FontCaption}"
+								LineBreakMode="WordWrap"
+								Text="{Binding Text}"
+								TextColor="{DynamicResource InkMuted}"
+								VerticalOptions="Center" />
+						</HorizontalStackLayout>
+					</Border>
 
 					<controls:StopNameView
 						Compact="True"
@@ -444,15 +494,44 @@
 
 					<controls:StopNameView Place="{Binding Place}" Stop="{Binding Name}" />
 
-					<Label
+					<!--  Change instructions as pills (not tappable): connection soft, walk dashed  -->
+					<Border
+						Padding="10,3"
+						BackgroundColor="{DynamicResource AccentSoft}"
+						HorizontalOptions="Start"
 						IsVisible="{Binding HasConnection}"
-						StyleClass="Caption"
-						Text="{Binding ConnectionText}" />
+						StrokeShape="RoundRectangle 100"
+						StrokeThickness="0">
+						<Label
+							FontFamily="{DynamicResource FontSemibold}"
+							FontSize="{StaticResource FontCaption}"
+							LineBreakMode="WordWrap"
+							Text="{Binding ConnectionText}"
+							TextColor="{DynamicResource Accent}" />
+					</Border>
 
-					<Label
+					<Border
+						Padding="10,3"
+						HorizontalOptions="Start"
 						IsVisible="{Binding HasWalk}"
-						StyleClass="Caption"
-						Text="{Binding WalkText}" />
+						Stroke="{DynamicResource InkMuted}"
+						StrokeDashArray="3,2"
+						StrokeShape="RoundRectangle 100"
+						StrokeThickness="1.5">
+						<HorizontalStackLayout Spacing="6">
+							<controls:Icon
+								Glyph="Walk"
+								Size="14"
+								VerticalOptions="Center"
+								Color="{DynamicResource InkMuted}" />
+							<Label
+								FontSize="{StaticResource FontCaption}"
+								LineBreakMode="WordWrap"
+								Text="{Binding WalkText}"
+								TextColor="{DynamicResource InkMuted}"
+								VerticalOptions="Center" />
+						</HorizontalStackLayout>
+					</Border>
 
 					<Border
 						Margin="0,2,0,0"
@@ -470,10 +549,20 @@
 						StyleClass="Delay"
 						Text="{Binding RiskText}" />
 
-					<Label
+					<Border
+						Padding="10,3"
+						BackgroundColor="{DynamicResource AccentSoft}"
+						HorizontalOptions="Start"
 						IsVisible="{Binding HasAssurance}"
-						StyleClass="Caption"
-						Text="{Binding AssuranceText}" />
+						StrokeShape="RoundRectangle 100"
+						StrokeThickness="0">
+						<Label
+							FontFamily="{DynamicResource FontSemibold}"
+							FontSize="{StaticResource FontCaption}"
+							LineBreakMode="WordWrap"
+							Text="{Binding AssuranceText}"
+							TextColor="{DynamicResource Accent}" />
+					</Border>
 
 					<!--  The change cannot be made (stop skipped, or the next vehicle leaves first)  -->
 					<Label
@@ -537,6 +626,9 @@
 					ActionGlyph="Share"
 					From="{Binding FromName}"
 					FromPlace="{Binding FromPlace}"
+					SecondaryCommand="{Binding Bookmark.ToggleCommand}"
+					SecondaryDescription="{Binding Bookmark.Description}"
+					SecondaryGlyph="{Binding Bookmark.Glyph}"
 					Subtitle="{Binding DayText}"
 					To="{Binding ToName}"
 					ToPlace="{Binding ToPlace}" />
@@ -548,11 +640,16 @@
 					StyleClass="Caption"
 					Text="{Binding AlternativeStatus}" />
 
-				<Button
-					Command="{Binding OpenDocumentCommand}"
-					IsVisible="{Binding HasDocument}"
-					StyleClass="Tonal"
-					Text="{localization:Tr Journey.OpenPdf}" />
+				<FlexLayout AlignContent="Start" AlignItems="Start" Wrap="Wrap">
+					<Button
+						Margin="0,0,8,8"
+						Command="{Binding OpenDocumentCommand}"
+						FlexLayout.Grow="1"
+						FlexLayout.Basis="140"
+						IsVisible="{Binding HasDocument}"
+						StyleClass="Tonal"
+						Text="{localization:Tr Journey.OpenPdf}" />
+				</FlexLayout>
 
 				<VerticalStackLayout IsVisible="{Binding IsHandOffAvailable}" Spacing="8">
 					<Button Command="{Binding HandOffCommand}" Text="{localization:Tr Journey.HandOff}" />
@@ -620,6 +717,122 @@
 				</VerticalStackLayout>
 
 			</VerticalStackLayout>
+
+			<!--  Tickets: collapsed to the passenger's own ticket, every ticket on demand  -->
+			<Border
+				Padding="12"
+				IsVisible="{Binding HasFares}"
+				StyleClass="Card">
+
+				<VerticalStackLayout Spacing="{DynamicResource SpaceS}">
+
+					<Grid
+						support:Motion.Feedback="True"
+						support:Dense.MinHeight="40"
+						ColumnDefinitions="Auto,*,Auto,Auto"
+						ColumnSpacing="10"
+						RowDefinitions="Auto,Auto"
+						RowSpacing="0"
+						SemanticProperties.Description="{Binding FaresToggleDescription}">
+
+						<controls:Icon
+							Glyph="Ticket"
+							Size="20"
+							VerticalOptions="Center"
+							Color="{DynamicResource Accent}" />
+
+						<Label
+							Grid.Column="1"
+							Margin="0"
+							StyleClass="Section"
+							Text="{localization:Tr Extras.FaresTitle}"
+							VerticalOptions="Center"
+							VerticalTextAlignment="Center" />
+
+						<Label
+							Grid.Column="2"
+							FontFamily="{DynamicResource FontSemibold}"
+							FontSize="{StaticResource FontTitle}"
+							Text="{Binding FaresSummaryPrice}"
+							TextColor="{DynamicResource Accent}"
+							VerticalOptions="Center"
+							VerticalTextAlignment="Center" />
+
+						<controls:Icon
+							Grid.Column="3"
+							Glyph="ChevronDown"
+							support:Motion.Turn="{Binding FaresChevronRotation}"
+							Size="20"
+							VerticalOptions="Center"
+							Color="{DynamicResource Accent}" />
+
+						<Label
+							Grid.Row="1"
+							Grid.Column="1"
+							Grid.ColumnSpan="3"
+							StyleClass="Caption"
+							Text="{Binding FaresSummaryName}" />
+
+						<Grid.GestureRecognizers>
+							<TapGestureRecognizer Command="{Binding ToggleFaresCommand}" />
+						</Grid.GestureRecognizers>
+					</Grid>
+
+					<VerticalStackLayout IsVisible="{Binding FaresExpanded}" Spacing="{DynamicResource SpaceS}">
+
+						<BoxView StyleClass="Divider" />
+
+						<VerticalStackLayout BindableLayout.ItemsSource="{Binding Fares}" Spacing="2">
+							<BindableLayout.ItemTemplate>
+								<DataTemplate x:DataType="support:FareRow">
+									<Border
+										Padding="8,6"
+										SemanticProperties.Description="{Binding AccessibilityText}"
+										StrokeShape="RoundRectangle 8"
+										StrokeThickness="0">
+										<Border.Triggers>
+											<DataTrigger
+												Binding="{Binding IsPreferred}"
+												TargetType="Border"
+												Value="True">
+												<Setter Property="BackgroundColor" Value="{DynamicResource AccentSoft}" />
+											</DataTrigger>
+										</Border.Triggers>
+										<Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+											<VerticalStackLayout Spacing="0" VerticalOptions="Center">
+												<Label LineBreakMode="WordWrap" Text="{Binding Name}" />
+												<Label
+													IsVisible="{Binding HasDetail}"
+													LineBreakMode="WordWrap"
+													StyleClass="Caption"
+													Text="{Binding Detail}" />
+											</VerticalStackLayout>
+											<Label
+												Grid.Column="1"
+												FontFamily="{DynamicResource FontSemibold}"
+												Text="{Binding PriceText}"
+												VerticalOptions="Center" />
+										</Grid>
+									</Border>
+								</DataTemplate>
+							</BindableLayout.ItemTemplate>
+						</VerticalStackLayout>
+
+						<Label
+							IsVisible="{Binding HasFaresZones}"
+							StyleClass="Caption"
+							Text="{Binding FaresZonesText}" />
+
+						<Label
+							IsVisible="{Binding HasFaresNotes}"
+							LineBreakMode="WordWrap"
+							StyleClass="Faint"
+							Text="{Binding FaresNotesText}" />
+
+						<Label StyleClass="Faint" Text="{localization:Tr Extras.FareNotAll}" />
+					</VerticalStackLayout>
+				</VerticalStackLayout>
+			</Border>
 
 			<Label
 				IsVisible="{Binding HasError}"

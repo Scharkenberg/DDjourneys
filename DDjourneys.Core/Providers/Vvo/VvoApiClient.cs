@@ -1,5 +1,7 @@
 ﻿using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
 using DDjourneys.Core.Api;
+using DDjourneys.Core.Diagnostics;
 using DDjourneys.Core.Providers.Vvo.Extensions;
 using DDjourneys.Core.Providers.Vvo.Models;
 using DDjourneys.Core.Providers.Vvo.Requests;
@@ -16,7 +18,6 @@ public sealed class VvoApiClient
 		"https://webapi.vvo-online.de";
 
 	private readonly ApiClient _apiClient;
-	private readonly JsonSerializerOptions _jsonOptions;
 
 
 	public VvoApiClient(
@@ -26,20 +27,6 @@ public sealed class VvoApiClient
 			apiClient);
 
 		_apiClient = apiClient;
-
-		_jsonOptions =
-			new JsonSerializerOptions
-			{
-				PropertyNameCaseInsensitive = true,
-
-				DefaultIgnoreCondition =
-					System.Text.Json.Serialization
-						.JsonIgnoreCondition
-						.WhenWritingNull
-			};
-
-		_jsonOptions.Converters.Add(
-			new VvoDateTimeOffsetConverter());
 	}
 
 
@@ -122,9 +109,9 @@ public sealed class VvoApiClient
 				.ConfigureAwait(false);
 
 		VvoPointResponse? response =
-			JsonSerializer.Deserialize<VvoPointResponse>(
+			JsonSerializer.Deserialize(
 				json,
-				_jsonOptions);
+				VvoJsonContext.Default.VvoPointResponse);
 
 		EnsureProviderSuccess(
 			response?.Status);
@@ -155,7 +142,7 @@ public sealed class VvoApiClient
 		string jsonRequest =
 			JsonSerializer.Serialize(
 				request,
-				_jsonOptions);
+				VvoJsonContext.Default.VvoTripRequest);
 
 		string jsonResponse =
 			await _apiClient.PostJsonAsync(
@@ -166,11 +153,9 @@ public sealed class VvoApiClient
 				.ConfigureAwait(false);
 
 		VvoTripResponse? response =
-			JsonSerializer.Deserialize<VvoTripResponse>(
+			JsonSerializer.Deserialize(
 				jsonResponse,
-				_jsonOptions);
-
-		System.Diagnostics.Debug.WriteLine(jsonResponse);
+				VvoJsonContext.Default.VvoTripResponse);
 
 		EnsureProviderSuccess(
 			response?.Status);
@@ -196,7 +181,7 @@ public sealed class VvoApiClient
 		string jsonRequest =
 			JsonSerializer.Serialize(
 				request,
-				_jsonOptions);
+				VvoJsonContext.Default.VvoPrevNextRequest);
 
 		string jsonResponse =
 			await _apiClient.PostJsonAsync(
@@ -207,9 +192,9 @@ public sealed class VvoApiClient
 				.ConfigureAwait(false);
 
 		VvoTripResponse? response =
-			JsonSerializer.Deserialize<VvoTripResponse>(
+			JsonSerializer.Deserialize(
 				jsonResponse,
-				_jsonOptions);
+				VvoJsonContext.Default.VvoTripResponse);
 
 		EnsureProviderSuccess(
 			response?.Status);
@@ -223,9 +208,11 @@ public sealed class VvoApiClient
 		VvoDepartureRequest request,
 		CancellationToken cancellationToken = default,
 		TimeSpan? timeout = null) =>
-		PostAsync<VvoDepartureRequest, VvoDepartureResponse>(
+		PostAsync(
 			"dm",
 			request,
+			VvoJsonContext.Default.VvoDepartureRequest,
+			VvoJsonContext.Default.VvoDepartureResponse,
 			cancellationToken,
 			timeout);
 
@@ -235,11 +222,173 @@ public sealed class VvoApiClient
 		VvoDepartureRunRequest request,
 		CancellationToken cancellationToken = default,
 		TimeSpan? timeout = null) =>
-		PostAsync<VvoDepartureRunRequest, VvoRunResponse>(
+		PostAsync(
 			"dm/trip",
 			request,
+			VvoJsonContext.Default.VvoDepartureRunRequest,
+			VvoJsonContext.Default.VvoRunResponse,
 			cancellationToken,
 			timeout);
+
+
+	/// <summary>One way of asking dm/trip; the wire format of "time" is what differs.</summary>
+	public sealed record VvoRunAttempt(string Label, HttpMethod Method, string Uri, string? Body);
+
+	// The attempt that worked last time goes first next time.
+	private string? _runLabel;
+
+	private static readonly Lazy<TimeZoneInfo> VvoZone =
+		new(
+			() =>
+			{
+				foreach (string id in new[] { "Europe/Berlin", "W. Europe Standard Time" })
+				{
+					try
+					{
+						return TimeZoneInfo.FindSystemTimeZoneById(id);
+					}
+					catch (Exception ex) when (ex is TimeZoneNotFoundException or InvalidTimeZoneException)
+					{
+					}
+				}
+
+				return TimeZoneInfo.Local;
+			});
+
+	/// <summary>"/Date(ms+0200)/" with the offset of the provider zone.</summary>
+	public static string ToVvoDate(
+		DateTimeOffset value,
+		bool providerOffset = true)
+	{
+		TimeSpan offset =
+			providerOffset
+				? VvoZone.Value.GetUtcOffset(value)
+				: TimeSpan.Zero;
+
+		return string.Create(
+			System.Globalization.CultureInfo.InvariantCulture,
+			$"/Date({value.ToUnixTimeMilliseconds()}{(offset < TimeSpan.Zero ? '-' : '+')}{Math.Abs(offset.Hours):00}{Math.Abs(offset.Minutes):00})/");
+	}
+
+	/// <summary>
+	/// The ways to ask for the course of a run, most promising first:
+	/// the GET form the dvb-fahrplan app uses (UTC milliseconds, "-0000"), then the documented POST with the
+	/// date as the server itself writes it (escaped slashes), as ISO 8601, and as plain "/Date()/".
+	/// </summary>
+	public IReadOnlyList<VvoRunAttempt> BuildRunAttempts(
+		string tripId,
+		string stopId,
+		bool isArrival,
+		DateTimeOffset time)
+	{
+		long ms = time.ToUnixTimeMilliseconds();
+
+		string Json(string timeJson) =>
+			"{\"tripid\":" + JsonSerializer.Serialize(tripId, VvoJsonContext.Default.String)
+			+ ",\"time\":" + timeJson
+			+ ",\"stopid\":" + JsonSerializer.Serialize(stopId, VvoJsonContext.Default.String)
+			+ ",\"isarrival\":" + (isArrival ? "true" : "false")
+			+ ",\"mapdata\":false,\"format\":\"json\"}";
+
+		string get =
+			$"{BaseUrl}/dm/trip?format=json"
+			+ $"&time={Uri.EscapeDataString($"/Date({ms}-0000)/")}"
+			+ $"&tripId={Uri.EscapeDataString(tripId)}"
+			+ $"&stopId={Uri.EscapeDataString(stopId)}"
+			+ $"&isarrival={(isArrival ? "true" : "false")}";
+
+		string post = $"{BaseUrl}/dm/trip";
+
+		VvoRunAttempt[] attempts =
+		[
+			new("get-utc", HttpMethod.Get, get, null),
+			new("post-escaped", HttpMethod.Post, post, Json($"\"\\/Date({ms}+0000)\\/\"")),
+			new("post-iso", HttpMethod.Post, post, Json(JsonSerializer.Serialize(time.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'", System.Globalization.CultureInfo.InvariantCulture), VvoJsonContext.Default.String))),
+			new("post-plain", HttpMethod.Post, post, Json(JsonSerializer.Serialize(ToVvoDate(time), VvoJsonContext.Default.String)))
+		];
+
+		return
+			[.. attempts
+				.OrderBy(attempt => attempt.Label == _runLabel ? 0 : 1)];
+	}
+
+	/// <summary>
+	/// Tries the attempts until one returns a run that <paramref name="accept"/> takes, logging every
+	/// request and what came back.
+	/// </summary>
+	public async Task<VvoRunResponse?> GetDepartureRunAsync(
+		IReadOnlyList<VvoRunAttempt> attempts,
+		Func<VvoRunResponse, bool> accept,
+		CancellationToken cancellationToken = default,
+		TimeSpan? timeout = null)
+	{
+		ArgumentNullException.ThrowIfNull(attempts);
+		ArgumentNullException.ThrowIfNull(accept);
+
+		foreach (VvoRunAttempt attempt in attempts)
+		{
+			cancellationToken.ThrowIfCancellationRequested();
+
+			DiagnosticLog.Write(
+				$"[VVO run] try '{attempt.Label}': {attempt.Method} {attempt.Uri} {attempt.Body}");
+
+			try
+			{
+				string json =
+					attempt.Method == HttpMethod.Get
+						? await _apiClient.GetAsync(attempt.Uri, cancellationToken, timeout).ConfigureAwait(false)
+						: await _apiClient.PostJsonAsync(attempt.Uri, attempt.Body ?? "{}", cancellationToken, timeout).ConfigureAwait(false);
+
+				VvoRunResponse? response =
+					JsonSerializer.Deserialize(json, VvoJsonContext.Default.VvoRunResponse);
+
+				if (response is null)
+				{
+					DiagnosticLog.Write($"[VVO run] '{attempt.Label}': empty answer: {Head(json)}");
+
+					continue;
+				}
+
+				EnsureProviderSuccess(response.Status);
+
+				DiagnosticLog.Write(
+					$"[VVO run] '{attempt.Label}': OK, {response.Stops.Count} stops, status {response.Status?.Code}");
+
+				if (accept(response))
+				{
+					_runLabel = attempt.Label;
+
+					return response;
+				}
+
+				DiagnosticLog.Write($"[VVO run] '{attempt.Label}': answered, but not the run we asked for");
+			}
+			catch (OperationCanceledException)
+			{
+				throw;
+			}
+			catch (Exception ex) when (ex is ApiException or InvalidOperationException)
+			{
+				string body =
+					ex is ApiException api
+						? api.ResponseBody ?? string.Empty
+						: ex.Message;
+
+				DiagnosticLog.Write(
+					$"[VVO run] '{attempt.Label}': failed, status {(ex as ApiException)?.StatusCode?.ToString() ?? "none"}: {Head(body)}");
+			}
+		}
+
+		return null;
+	}
+
+	private static string Head(
+		string text)
+	{
+		string flat = text.ReplaceLineEndings(" ");
+
+		return flat[..Math.Min(flat.Length, 400)];
+	}
 
 
 	/// <summary>The connection with one leg replaced by an earlier or later alternative.</summary>
@@ -247,9 +396,11 @@ public sealed class VvoApiClient
 		VvoPrevNextMoveRequest request,
 		CancellationToken cancellationToken = default,
 		TimeSpan? timeout = null) =>
-		PostAsync<VvoPrevNextMoveRequest, VvoTripResponse>(
+		PostAsync(
 			"tr/prevnextmove",
 			request,
+			VvoJsonContext.Default.VvoPrevNextMoveRequest,
+			VvoJsonContext.Default.VvoTripResponse,
 			cancellationToken,
 			timeout);
 
@@ -259,9 +410,11 @@ public sealed class VvoApiClient
 		VvoRouteChangesRequest request,
 		CancellationToken cancellationToken = default,
 		TimeSpan? timeout = null) =>
-		PostAsync<VvoRouteChangesRequest, VvoRouteChangesResponse>(
+		PostAsync(
 			"rc",
 			request,
+			VvoJsonContext.Default.VvoRouteChangesRequest,
+			VvoJsonContext.Default.VvoRouteChangesResponse,
 			cancellationToken,
 			timeout);
 
@@ -270,9 +423,11 @@ public sealed class VvoApiClient
 	public Task<VvoChangedLinesResponse?> GetChangedLinesAsync(
 		CancellationToken cancellationToken = default,
 		TimeSpan? timeout = null) =>
-		PostAsync<VvoChangedLinesRequest, VvoChangedLinesResponse>(
+		PostAsync(
 			"rc/lines",
 			new VvoChangedLinesRequest(),
+			VvoJsonContext.Default.VvoChangedLinesRequest,
+			VvoJsonContext.Default.VvoChangedLinesResponse,
 			cancellationToken,
 			timeout);
 
@@ -286,9 +441,11 @@ public sealed class VvoApiClient
 		ArgumentException.ThrowIfNullOrWhiteSpace(
 			stopId);
 
-		return PostAsync<VvoStopLinesRequest, VvoStopLinesResponse>(
+		return PostAsync(
 			"stt/lines",
 			new VvoStopLinesRequest { StopId = stopId },
+			VvoJsonContext.Default.VvoStopLinesRequest,
+			VvoJsonContext.Default.VvoStopLinesResponse,
 			cancellationToken,
 			timeout);
 	}
@@ -299,9 +456,11 @@ public sealed class VvoApiClient
 		VvoMapPinsRequest request,
 		CancellationToken cancellationToken = default,
 		TimeSpan? timeout = null) =>
-		PostAsync<VvoMapPinsRequest, VvoMapPinsResponse>(
+		PostAsync(
 			"map/pins",
 			request,
+			VvoJsonContext.Default.VvoMapPinsRequest,
+			VvoJsonContext.Default.VvoMapPinsResponse,
 			cancellationToken,
 			timeout);
 
@@ -310,17 +469,49 @@ public sealed class VvoApiClient
 	public Task<VvoMapPolygonsResponse?> GetTariffPolygonsAsync(
 		CancellationToken cancellationToken = default,
 		TimeSpan? timeout = null) =>
-		PostAsync<VvoMapPolygonsRequest, VvoMapPolygonsResponse>(
+		PostAsync(
 			"map/polygons",
 			new VvoMapPolygonsRequest(),
+			VvoJsonContext.Default.VvoMapPolygonsRequest,
+			VvoJsonContext.Default.VvoMapPolygonsResponse,
 			cancellationToken,
 			timeout);
 
 
-	/// <summary>
-	/// Address of the PDF of a planned trip (GET tr/trippdf). The caller opens it; nothing is downloaded here.
-	/// </summary>
+	/// <summary>One way of asking for the PDF: a label for the log and the address.</summary>
+	public sealed record VvoPdfAttempt(string Label, Uri Uri);
+
+
+	/// <summary>Address of the PDF of a planned trip (the first, most complete attempt).</summary>
 	public Uri BuildTripPdfUri(
+		string routeId,
+		string sessionId,
+		string origin,
+		string destination,
+		DateTimeOffset time,
+		bool isArrivalTime,
+		string? via,
+		VvoStandardSettings standardSettings,
+		VvoMobilitySettings mobilitySettings) =>
+		BuildTripPdfAttempts(
+			routeId,
+			sessionId,
+			origin,
+			destination,
+			time,
+			isArrivalTime,
+			via,
+			standardSettings,
+			mobilitySettings)[0].Uri;
+
+
+	/// <summary>
+	/// The ways to ask for the PDF (GET tr/trippdf), from the full request down to the exact shape of the
+	/// documented example: first everything, then without the standard settings, without the mobility
+	/// settings, without via, and finally with the session id's colon unescaped. Identical addresses are
+	/// listed once.
+	/// </summary>
+	public IReadOnlyList<VvoPdfAttempt> BuildTripPdfAttempts(
 		string routeId,
 		string sessionId,
 		string origin,
@@ -338,28 +529,131 @@ public sealed class VvoApiClient
 		ArgumentNullException.ThrowIfNull(standardSettings);
 		ArgumentNullException.ThrowIfNull(mobilitySettings);
 
-		static string Escape(string value) =>
-			Uri.EscapeDataString(value);
+		var parameters =
+			new List<(string Key, string Value)>
+			{
+				("id", routeId),
+				("origin", origin),
+				("destination", destination),
+				("sessionid", sessionId),
+				("time", time.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'", System.Globalization.CultureInfo.InvariantCulture)),
+				("isarrivaltime", Flag(isArrivalTime))
+			};
 
-		string query =
-			$"id={Escape(routeId)}" +
-			$"&origin={Escape(origin)}" +
-			$"&destination={Escape(destination)}" +
-			$"&sessionid={Escape(sessionId)}" +
-			$"&time={Escape(time.ToString("O", System.Globalization.CultureInfo.InvariantCulture))}" +
-			$"&isarrivaltime={Flag(isArrivalTime)}" +
-			(string.IsNullOrWhiteSpace(via) ? string.Empty : $"&via={Escape(via)}") +
-			$"&mobilitysettings={Escape(JsonSerializer.Serialize(mobilitySettings, _jsonOptions))}" +
-			$"&standardSettings={Escape(JsonSerializer.Serialize(standardSettings, _jsonOptions))}" +
-			"&numberprev=0&numbernext=0";
+		if (!string.IsNullOrWhiteSpace(via))
+		{
+			parameters.Add(("via", via));
+		}
 
-		return new Uri($"{BaseUrl}/tr/trippdf?{query}");
+		parameters.Add(("mobilitysettings", JsonSerializer.Serialize(mobilitySettings, VvoJsonContext.Default.VvoMobilitySettings)));
+		parameters.Add(("standardSettings", JsonSerializer.Serialize(standardSettings, VvoJsonContext.Default.VvoStandardSettings)));
+		parameters.Add(("numberprev", "0"));
+		parameters.Add(("numbernext", "0"));
+		parameters.Add(("format", "json"));
+
+		static string Query(IEnumerable<(string Key, string Value)> items, bool rawColon) =>
+			string.Join(
+				"&",
+				items.Select(
+					item =>
+					{
+						string escaped = Uri.EscapeDataString(item.Value);
+
+						return $"{item.Key}={(rawColon && item.Key == "sessionid" ? escaped.Replace("%3A", ":") : escaped)}";
+					}));
+
+		var steps = new List<(string Label, string Query)>();
+
+		IEnumerable<(string Key, string Value)> Without(params string[] keys) =>
+			parameters.Where(
+				item => !keys.Contains(item.Key, StringComparer.OrdinalIgnoreCase));
+
+		steps.Add(("full", Query(parameters, false)));
+		steps.Add(("without standardSettings", Query(Without("standardSettings"), false)));
+		steps.Add(("without standardSettings, mobilitysettings", Query(Without("standardSettings", "mobilitysettings"), false)));
+		steps.Add(("documented shape (also without via)", Query(Without("standardSettings", "mobilitysettings", "via"), false)));
+		steps.Add(("documented shape, raw colon in sessionid", Query(Without("standardSettings", "mobilitysettings", "via"), true)));
+
+		return
+			[.. steps
+				.DistinctBy(step => step.Query)
+				.Select(step => new VvoPdfAttempt(step.Label, new Uri($"{BaseUrl}/tr/trippdf?{step.Query}")))];
+	}
+
+
+	/// <summary>
+	/// Tries the attempts in order and returns the first answer that is a PDF; null when none is.
+	/// Every attempt (parameters, status, media type, size, start of a non-PDF body) goes to the diagnostic log.
+	/// </summary>
+	public async Task<byte[]?> DownloadTripPdfAsync(
+		IReadOnlyList<VvoPdfAttempt> attempts,
+		CancellationToken cancellationToken = default,
+		TimeSpan? timeout = null)
+	{
+		ArgumentNullException.ThrowIfNull(attempts);
+
+		foreach (VvoPdfAttempt attempt in attempts)
+		{
+			cancellationToken.ThrowIfCancellationRequested();
+
+			DiagnosticLog.Write($"[VVO PDF] try '{attempt.Label}': {attempt.Uri}");
+
+			try
+			{
+				(byte[] content, string? mediaType) =
+					await _apiClient
+						.GetBytesAsync(
+							attempt.Uri.AbsoluteUri,
+							"application/pdf, */*",
+							cancellationToken,
+							timeout)
+						.ConfigureAwait(false);
+
+				bool isPdf =
+					content.Length >= 4
+					&& content[0] == 0x25
+					&& content[1] == 0x50
+					&& content[2] == 0x44
+					&& content[3] == 0x46;
+
+				if (isPdf)
+				{
+					DiagnosticLog.Write($"[VVO PDF] '{attempt.Label}': OK, {content.Length} bytes, {mediaType}");
+
+					return content;
+				}
+
+				string start =
+					System.Text.Encoding.UTF8
+						.GetString(content, 0, Math.Min(content.Length, 300))
+						.ReplaceLineEndings(" ");
+
+				DiagnosticLog.Write($"[VVO PDF] '{attempt.Label}': 200 but not a PDF ({mediaType}, {content.Length} bytes): {start}");
+			}
+			catch (OperationCanceledException)
+			{
+				throw;
+			}
+			catch (ApiException ex)
+			{
+				string body =
+					(ex.ResponseBody ?? string.Empty)
+						.ReplaceLineEndings(" ");
+
+				DiagnosticLog.Write(
+					$"[VVO PDF] '{attempt.Label}': failed, status {ex.StatusCode?.ToString() ?? "none"}: {body[..Math.Min(body.Length, 300)]} {ex.Detail}");
+			}
+		}
+
+		return null;
 	}
 
 
 	private async Task<TResponse?> PostAsync<TRequest, TResponse>(
 		string path,
 		TRequest request,
+		JsonTypeInfo<TRequest> requestInfo,
+		JsonTypeInfo<TResponse> responseInfo,
 		CancellationToken cancellationToken,
 		TimeSpan? timeout)
 		where TResponse : class
@@ -372,15 +666,15 @@ public sealed class VvoApiClient
 				$"{BaseUrl}/{path}",
 				JsonSerializer.Serialize(
 					request,
-					_jsonOptions),
+					requestInfo),
 				cancellationToken,
 				timeout)
 				.ConfigureAwait(false);
 
 		TResponse? response =
-			JsonSerializer.Deserialize<TResponse>(
+			JsonSerializer.Deserialize(
 				jsonResponse,
-				_jsonOptions);
+				responseInfo);
 
 		EnsureProviderSuccess(
 			StatusOf(response));

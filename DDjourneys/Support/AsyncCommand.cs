@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using System.Windows.Input;
 
 namespace DDjourneys.Support;
@@ -49,7 +50,7 @@ public sealed class AsyncCommand : ICommand
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Command failed:\n{ex}");
+			DiagnosticLog.Write($"Command failed:\n{ex}");
 
 			try
 			{
@@ -57,7 +58,7 @@ public sealed class AsyncCommand : ICommand
 			}
 			catch (Exception inner)
 			{
-				System.Diagnostics.Debug.WriteLine($"Command error handler failed: {inner.Message}");
+				DiagnosticLog.Write($"Command error handler failed: {inner.Message}");
 			}
 		}
 		finally

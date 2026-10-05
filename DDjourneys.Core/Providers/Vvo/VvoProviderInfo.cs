@@ -24,5 +24,8 @@ public static class VvoProviderInfo
 			| ProviderCapabilities.Departures
 			| ProviderCapabilities.Disruptions
 			| ProviderCapabilities.NetworkInfo
-			| ProviderCapabilities.JourneyExtras);
+			| ProviderCapabilities.JourneyExtras
+			| ProviderCapabilities.LiveVehicles
+			| ProviderCapabilities.Fares
+			| ProviderCapabilities.OpenData);
 }

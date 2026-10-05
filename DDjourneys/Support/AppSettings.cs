@@ -1,5 +1,7 @@
+using DDjourneys.Core.Diagnostics;
 using System.Globalization;
 using DDjourneys.Core.Models;
+using DDjourneys.Core.Providers.Vvo;
 
 namespace DDjourneys.Support;
 
@@ -109,7 +111,7 @@ public sealed class AppSettings
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Appearance migration skipped: {ex.Message}");
+			DiagnosticLog.Write($"Appearance migration skipped: {ex.Message}");
 		}
 	}
 
@@ -185,6 +187,35 @@ public sealed class AppSettings
 		set => Write("timeout", Math.Clamp(value, 5, 60));
 	}
 
+	// ----- Places -----
+
+	/// <summary>The place search also finds addresses (the router adds the walk to the stop).</summary>
+	public bool SearchAddresses
+	{
+		get => Read("searchAddresses", true);
+		set => Write("searchAddresses", value);
+	}
+
+	/// <summary>The place search also finds points of interest.</summary>
+	public bool SearchPois
+	{
+		get => Read("searchPois", true);
+		set => Write("searchPois", value);
+	}
+
+	/// <summary>"Use my location" starts at the address the device is at, not at the nearest stop.</summary>
+	public bool ExactPosition
+	{
+		get => Read("exactPosition", false);
+		set => Write("exactPosition", value);
+	}
+
+	/// <summary>The kinds of places a search for a journey endpoint may return.</summary>
+	public PlaceKinds SearchKinds =>
+		PlaceKinds.Stops
+		| (SearchAddresses ? PlaceKinds.Addresses : PlaceKinds.None)
+		| (SearchPois ? PlaceKinds.Pois : PlaceKinds.None);
+
 	// ----- Journey display -----
 
 	/// <summary>Occupancy dots on stops and rides.</summary>
@@ -208,11 +239,45 @@ public sealed class AppSettings
 		set => Write("expandStops", value);
 	}
 
-	/// <summary>Offer the expert view (raw provider data) in the journey menu.</summary>
+	/// <summary>
+	/// Shows the developer options (expert view, log file). Everything diagnostic is hidden and inactive
+	/// while this is off.
+	/// </summary>
+	public bool DeveloperOptions
+	{
+		get => Read("developerOptions", false);
+		set
+		{
+			Write("developerOptions", value);
+
+			if (!value)
+			{
+				LogToFile = false;
+			}
+		}
+	}
+
+	/// <summary>Offer the expert view (raw provider data) in the journey menu; only with developer options.</summary>
 	public bool ExpertView
 	{
-		get => Read("expertView", true);
+		get => DeveloperOptions && Read("expertView", true);
 		set => Write("expertView", value);
+	}
+
+	/// <summary>Write provider traffic and diagnostics to the log file; only with developer options.</summary>
+	public bool LogToFile
+	{
+		get => DeveloperOptions && Read("logToFile", false);
+		set
+		{
+			Write("logToFile", value);
+			DiagnosticLog.Enabled = value && DeveloperOptions;
+
+			if (!DiagnosticLog.Enabled)
+			{
+				DiagnosticLog.Delete();
+			}
+		}
 	}
 
 	// ----- Place search -----
@@ -239,32 +304,44 @@ public sealed class AppSettings
 	}
 
 	// ----- Routing preferences -----
+	// Kept per provider (what one provider supports or means by a mode says nothing about another). VVO keeps the
+	// original keys, every other provider gets "<key>@<provider id>".
+
+	private string Scoped(string key)
+	{
+		string provider = ProviderId;
+
+		return string.IsNullOrWhiteSpace(provider)
+			|| string.Equals(provider, VvoProviderInfo.Id, StringComparison.OrdinalIgnoreCase)
+				? key
+				: $"{key}@{provider}";
+	}
 
 	public const int MaxFootpathMinutes = 15;
 
 	public MaxTransfers MaxTransfers
 	{
-		get => Read("maxTransfers", MaxTransfers.Unlimited);
-		set => Write("maxTransfers", value);
+		get => Read(Scoped("maxTransfers"), MaxTransfers.Unlimited);
+		set => Write(Scoped("maxTransfers"), value);
 	}
 
 	public WalkingPace WalkingPace
 	{
-		get => Read("walkingPace", WalkingPace.Normal);
-		set => Write("walkingPace", value);
+		get => Read(Scoped("walkingPace"), WalkingPace.Normal);
+		set => Write(Scoped("walkingPace"), value);
 	}
 
 	/// <summary>Longest walk to an alternative stop, minutes (0..15).</summary>
 	public int FootpathMinutes
 	{
-		get => Math.Clamp(Read("footpathMinutes", 5), 0, MaxFootpathMinutes);
-		set => Write("footpathMinutes", Math.Clamp(value, 0, MaxFootpathMinutes));
+		get => Math.Clamp(Read(Scoped("footpathMinutes"), 5), 0, MaxFootpathMinutes);
+		set => Write(Scoped("footpathMinutes"), Math.Clamp(value, 0, MaxFootpathMinutes));
 	}
 
 	public bool AlternativeStops
 	{
-		get => Read("alternativeStops", true);
-		set => Write("alternativeStops", value);
+		get => Read(Scoped("alternativeStops"), true);
+		set => Write(Scoped("alternativeStops"), value);
 	}
 
 	/// <summary>Allowed modes of transport (never empty: an empty selection means all).</summary>
@@ -272,49 +349,62 @@ public sealed class AppSettings
 	{
 		get
 		{
-			var modes = (ModeFilter)Read("modes", (int)ModeFilter.All) & ModeFilter.All;
+			var modes = (ModeFilter)Read(Scoped("modes"), (int)ModeFilter.All) & ModeFilter.All;
 
 			return modes == ModeFilter.None
 				? ModeFilter.All
 				: modes;
 		}
-		set => Write("modes", (int)(value & ModeFilter.All));
+		set => Write(Scoped("modes"), (int)(value & ModeFilter.All));
 	}
 
 	public AccessibilityNeed Accessibility
 	{
-		get => Read("accessibility", AccessibilityNeed.None);
-		set => Write("accessibility", value);
+		get => Read(Scoped("accessibility"), AccessibilityNeed.None);
+		set => Write(Scoped("accessibility"), value);
 	}
 
 	public bool AvoidStairs
 	{
-		get => Read("avoidStairs", false);
-		set => Write("avoidStairs", value);
+		get => Read(Scoped("avoidStairs"), false);
+		set => Write(Scoped("avoidStairs"), value);
 	}
 
 	public bool AvoidEscalators
 	{
-		get => Read("avoidEscalators", false);
-		set => Write("avoidEscalators", value);
+		get => Read(Scoped("avoidEscalators"), false);
+		set => Write(Scoped("avoidEscalators"), value);
 	}
 
 	public bool FewestTransfers
 	{
-		get => Read("fewestTransfers", false);
-		set => Write("fewestTransfers", value);
+		get => Read(Scoped("fewestTransfers"), false);
+		set => Write(Scoped("fewestTransfers"), value);
+	}
+
+	public RouteOptimisation Optimisation
+	{
+		get => Read(Scoped("optimisation"), RouteOptimisation.Fastest);
+		set => Write(Scoped("optimisation"), value);
 	}
 
 	public EntranceNeed Entrance
 	{
-		get => Read("entrance", EntranceNeed.Any);
-		set => Write("entrance", value);
+		get => Read(Scoped("entrance"), EntranceNeed.Any);
+		set => Write(Scoped("entrance"), value);
+	}
+
+	/// <summary>Who the tickets are for (the price on cards and shares; asked of providers that quote by passenger).</summary>
+	public PassengerCategory Passenger
+	{
+		get => Read(Scoped("passenger"), PassengerCategory.Adult);
+		set => Write(Scoped("passenger"), value);
 	}
 
 	public ExtraChargeFilter ExtraCharge
 	{
-		get => Read("extraCharge", ExtraChargeFilter.Any);
-		set => Write("extraCharge", value);
+		get => Read(Scoped("extraCharge"), ExtraChargeFilter.Any);
+		set => Write(Scoped("extraCharge"), value);
 	}
 
 	/// <summary>The routing options as sent with every journey search.</summary>
@@ -330,8 +420,10 @@ public sealed class AppSettings
 			AvoidStairs = AvoidStairs,
 			AvoidEscalators = AvoidEscalators,
 			FewestTransfers = FewestTransfers,
+			Optimisation = Optimisation,
 			Entrance = Entrance,
-			ExtraCharge = ExtraCharge
+			ExtraCharge = ExtraCharge,
+			Passenger = Passenger
 		};
 
 	public void ResetRoutingDefaults()
@@ -345,8 +437,10 @@ public sealed class AppSettings
 		AvoidStairs = false;
 		AvoidEscalators = false;
 		FewestTransfers = false;
+		Optimisation = RouteOptimisation.Fastest;
 		Entrance = EntranceNeed.Any;
 		ExtraCharge = ExtraChargeFilter.Any;
+		Passenger = PassengerCategory.Adult;
 	}
 
 	public void ResetJourneyDefaults()
@@ -357,6 +451,9 @@ public sealed class AppSettings
 		ExpandNotices = false;
 		TimeoutSeconds = 15;
 		ShowOccupancy = true;
+		SearchAddresses = true;
+		SearchPois = true;
+		ExactPosition = false;
 		ShowPlatforms = true;
 		ExpandStops = false;
 		ExpertView = true;
@@ -386,7 +483,7 @@ public sealed class AppSettings
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Settings read '{key}' failed: {ex.Message}");
+			DiagnosticLog.Write($"Settings read '{key}' failed: {ex.Message}");
 			return fallback;
 		}
 	}
@@ -400,7 +497,7 @@ public sealed class AppSettings
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Settings write '{key}' failed: {ex.Message}");
+			DiagnosticLog.Write($"Settings write '{key}' failed: {ex.Message}");
 		}
 	}
 

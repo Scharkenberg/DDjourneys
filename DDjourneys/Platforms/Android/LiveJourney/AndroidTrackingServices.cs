@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using Android.App;
 using Android.Content;
 using DDjourneys.Core.Tracking.Live;
@@ -51,7 +52,7 @@ internal sealed class AndroidNotificationAccess : INotificationAccess
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"[TRACKING] Notification state unreadable: {ex.Message}");
+			DiagnosticLog.Write($"[TRACKING] Notification state unreadable: {ex.Message}");
 
 			return Task.FromResult(false);
 		}
@@ -78,7 +79,7 @@ internal sealed class AndroidNotificationAccess : INotificationAccess
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"[TRACKING] Notification permission request failed: {ex.Message}");
+			DiagnosticLog.Write($"[TRACKING] Notification permission request failed: {ex.Message}");
 		}
 	}
 }

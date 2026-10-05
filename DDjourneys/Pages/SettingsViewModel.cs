@@ -1,6 +1,8 @@
+using DDjourneys.Core.Diagnostics;
 using DDjourneys.Core.Providers;
 using DDjourneys.Localization;
 using DDjourneys.Support;
+using Microsoft.Maui.ApplicationModel.DataTransfer;
 
 namespace DDjourneys.Pages;
 
@@ -28,6 +30,8 @@ public sealed class SettingsViewModel : DisposableViewModel
 		ResetCommand = new Command(Reset);
 		OpenRoutingCommand = new AsyncCommand(OpenRoutingAsync);
 		OpenProvidersCommand = new AsyncCommand(OpenProvidersAsync);
+		ShareLogCommand = new AsyncCommand(ShareLogAsync);
+		ClearLogCommand = new Command(ClearLog);
 	}
 
 	public AsyncCommand OpenAppearanceCommand { get; }
@@ -35,11 +39,15 @@ public sealed class SettingsViewModel : DisposableViewModel
 	public Command ResetCommand { get; }
 	public AsyncCommand OpenRoutingCommand { get; }
 	public AsyncCommand OpenProvidersCommand { get; }
+	public AsyncCommand ShareLogCommand { get; }
+	public Command ClearLogCommand { get; }
 
 	/// <summary>Name of the selected provider, shown on the entry row.</summary>
 	public string ProviderText =>
 		_providers.Selected is { } provider
-			? $"{provider.Name} \u00b7 {provider.FullName}"
+			? provider.IsExperimental
+				? $"{provider.Name} \u00b7 {provider.FullName} \u00b7 {_localization.CurrentStrings.Provider.Experimental}"
+				: $"{provider.Name} \u00b7 {provider.FullName}"
 			: string.Empty;
 
 	public void RefreshProvider() =>
@@ -179,6 +187,38 @@ public sealed class SettingsViewModel : DisposableViewModel
 		}
 	}
 
+	// ----- Places -----
+
+	public bool SearchAddresses
+	{
+		get => _settings.SearchAddresses;
+		set
+		{
+			_settings.SearchAddresses = value;
+			OnPropertyChanged();
+		}
+	}
+
+	public bool SearchPois
+	{
+		get => _settings.SearchPois;
+		set
+		{
+			_settings.SearchPois = value;
+			OnPropertyChanged();
+		}
+	}
+
+	public bool ExactPosition
+	{
+		get => _settings.ExactPosition;
+		set
+		{
+			_settings.ExactPosition = value;
+			OnPropertyChanged();
+		}
+	}
+
 	// ----- Journey display -----
 
 	public bool ShowOccupancy
@@ -219,6 +259,81 @@ public sealed class SettingsViewModel : DisposableViewModel
 			_settings.ExpertView = value;
 			OnPropertyChanged();
 		}
+	}
+
+	// ----- Developer options -----
+
+	public bool DeveloperOptions
+	{
+		get => _settings.DeveloperOptions;
+		set
+		{
+			_settings.DeveloperOptions = value;
+			OnPropertyChanged();
+			OnPropertyChanged(nameof(ExpertView));
+			OnPropertyChanged(nameof(LogToFile));
+			OnPropertyChanged(nameof(HasLog));
+		}
+	}
+
+	public bool LogToFile
+	{
+		get => _settings.LogToFile;
+		set
+		{
+			_settings.LogToFile = value;
+			OnPropertyChanged();
+			RefreshLog();
+		}
+	}
+
+	/// <summary>There is a log (or one is being written) to share or delete.</summary>
+	public bool HasLog => LogToFile || DiagnosticLog.Exists;
+
+	/// <summary>Where the log file is, how big it is, and why writing failed if it did.</summary>
+	public string LogInfo
+	{
+		get
+		{
+			string path = DiagnosticLog.FilePath ?? "-";
+
+			string size =
+				DiagnosticLog.Exists && DiagnosticLog.FilePath is { } file
+					? $" ({new FileInfo(file).Length / 1024.0:0.#} KB)"
+					: string.Empty;
+
+			return DiagnosticLog.LastError is { } error
+				? $"{path}{size}\n{error}"
+				: $"{path}{size}";
+		}
+	}
+
+	/// <summary>Called when the page appears: the file may have grown or appeared since.</summary>
+	public void RefreshLog()
+	{
+		OnPropertyChanged(nameof(HasLog));
+		OnPropertyChanged(nameof(LogInfo));
+	}
+
+	private async Task ShareLogAsync()
+	{
+		if (!DiagnosticLog.Exists || DiagnosticLog.FilePath is not { } path)
+		{
+			RefreshLog();
+
+			return;
+		}
+
+		await Share.Default.RequestAsync(
+			new ShareFileRequest(
+				_localization.CurrentStrings.Settings.LogToFile,
+				new ReadOnlyFile(path)));
+	}
+
+	private void ClearLog()
+	{
+		DiagnosticLog.Delete();
+		RefreshLog();
 	}
 
 	// ----- Place search -----
@@ -315,7 +430,7 @@ public sealed class SettingsViewModel : DisposableViewModel
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Opening appearance failed: {ex}");
+			DiagnosticLog.Write($"Opening appearance failed: {ex}");
 		}
 	}
 
@@ -334,7 +449,7 @@ public sealed class SettingsViewModel : DisposableViewModel
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine(
+			DiagnosticLog.Write(
 				$"Language change failed: {ex}");
 		}
 	}
@@ -379,9 +494,13 @@ public sealed class SettingsViewModel : DisposableViewModel
 		OnPropertyChanged(nameof(LeadMinutes));
 		OnPropertyChanged(nameof(LeadText));
 		OnPropertyChanged(nameof(ShowOccupancy));
+		OnPropertyChanged(nameof(SearchAddresses));
+		OnPropertyChanged(nameof(SearchPois));
+		OnPropertyChanged(nameof(ExactPosition));
 		OnPropertyChanged(nameof(ShowPlatforms));
 		OnPropertyChanged(nameof(ExpandStops));
 		OnPropertyChanged(nameof(ExpertView));
+		OnPropertyChanged(nameof(HasLog));
 		OnPropertyChanged(nameof(SearchDelayMs));
 		OnPropertyChanged(nameof(SearchDelayText));
 		OnPropertyChanged(nameof(MinQueryLength));

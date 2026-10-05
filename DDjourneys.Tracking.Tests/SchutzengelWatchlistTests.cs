@@ -133,7 +133,7 @@ public sealed class SchutzengelWatchlistTests
 		SchutzengelOptions updated =
 			SchutzengelOptions.Default.With(new WatchOptions(true, 10, false, true));
 
-		string json = JsonSerializer.Serialize(updated.ToPayload());
+		string json = updated.ToPayload().ToJsonString();
 
 		using JsonDocument document = JsonDocument.Parse(json);
 

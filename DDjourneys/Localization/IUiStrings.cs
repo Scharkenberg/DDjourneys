@@ -7,6 +7,7 @@ public interface IUiStrings
 	PlaceSearchStrings PlaceSearch { get; }
 	DeparturesStrings Departures { get; }
 	DisruptionsStrings Disruptions { get; }
+	ExtrasStrings Extras { get; }
 	ResultsStrings Results { get; }
 	JourneyStrings Journey { get; }
 	TrackingStrings Tracking { get; }
@@ -77,6 +78,8 @@ public sealed class PlanStrings
 	public required string RouteNamePrompt { get; init; }
 	public required string SavedRoutes { get; init; }
 	public required string ForgetSavedRoute { get; init; }
+	public required string RouteSaved { get; init; }
+	public required string RouteRemoved { get; init; }
 	public required string LocationPermissionDenied { get; init; }
 	public required string LocationUnavailable { get; init; }
 	public required string NoStopNearby { get; init; }
@@ -314,6 +317,12 @@ public sealed class SettingsStrings
 	public required string ExpandStopsDescription { get; init; }
 	public required string ExpertView { get; init; }
 	public required string ExpertViewDescription { get; init; }
+	public required string DeveloperOptions { get; init; }
+	public required string DeveloperOptionsDescription { get; init; }
+	public required string LogToFile { get; init; }
+	public required string LogToFileDescription { get; init; }
+	public required string ShareLog { get; init; }
+	public required string ClearLog { get; init; }
 	public required string PlaceSearch { get; init; }
 	public required string SearchDelay { get; init; }
 	public required string SearchDelayDescription { get; init; }
@@ -380,6 +389,7 @@ public sealed class RoutingStrings
 	public required string FewestTransfers { get; init; }
 	public required string FewestTransfersDescription { get; init; }
 	public required string SectionEntrance { get; init; }
+	public required string SectionTickets { get; init; }
 	public required string EntranceAny { get; init; }
 	public required string EntranceSmallStep { get; init; }
 	public required string EntranceNoStep { get; init; }
@@ -391,6 +401,7 @@ public sealed class RoutingStrings
 
 public sealed class ProviderStrings
 {
+	public required string Experimental { get; init; }
 	public required string Title { get; init; }
 	public required string Intro { get; init; }
 	public required string InUse { get; init; }
@@ -433,6 +444,8 @@ public sealed class TrackingStrings
 	public required string Pause { get; init; }
 	public required string Resume { get; init; }
 	public required string StopFollowing { get; init; }
+	public required string DismissNotice { get; init; }
+	public required string NoticeHistory { get; init; }
 	public required string LiveTitle { get; init; }
 	public required string LiveAutomatic { get; init; }
 	public required string LiveAutomaticHint { get; init; }
@@ -497,3 +510,113 @@ public sealed class TrackingStrings
 	public required string NotifMinutes { get; init; }
 	public required string NotifNow { get; init; }
 }
+
+// <extras>
+public sealed class ExtrasStrings
+{
+	public required string KindStop { get; init; }
+	public required string KindAddress { get; init; }
+	public required string KindPoi { get; init; }
+	public required string SearchAddresses { get; init; }
+	public required string SearchAddressesDescription { get; init; }
+	public required string SearchPois { get; init; }
+	public required string SearchPoisDescription { get; init; }
+	public required string ExactPosition { get; init; }
+	public required string ExactPositionDescription { get; init; }
+	public required string LiveTitle { get; init; }
+	public required string LiveShow { get; init; }
+	public required string LineFilterPlaceholder { get; init; }
+	public required string LiveStart { get; init; }
+	public required string LiveStop { get; init; }
+	public required string LiveConnecting { get; init; }
+	public required string LiveWaiting { get; init; }
+	public required string LiveError { get; init; }
+	public required string LiveLine { get; init; }
+	public required string LiveRun { get; init; }
+	public required string LiveSecondsAgo { get; init; }
+	public required string LiveMinutesAgo { get; init; }
+	public required string LiveOnTime { get; init; }
+	public required string LiveSourceGps { get; init; }
+	public required string LiveSourceTelegram { get; init; }
+	public required string LiveHint { get; init; }
+	public required string LiveOpenMap { get; init; }
+	public required string AccessTitle { get; init; }
+	public required string AccessHide { get; init; }
+	public required string AccessNone { get; init; }
+	public required string AccessPlatform { get; init; }
+	public required string AccessBoarding { get; init; }
+	public required string AccessKerb { get; init; }
+	public required string AccessWidth { get; init; }
+	public required string AccessTactile { get; init; }
+	public required string AccessAudio { get; init; }
+	public required string ServiceShow { get; init; }
+	public required string ServiceHide { get; init; }
+	public required string ServiceNone { get; init; }
+	public required string ServiceNeedsPosition { get; init; }
+	public required string CapLive { get; init; }
+	public required string CapOpenData { get; init; }
+	public required string CapFares { get; init; }
+	public required string CapOptimisation { get; init; }
+	public required string OptSection { get; init; }
+	public required string OptFastest { get; init; }
+	public required string OptFewestChanges { get; init; }
+	public required string OptLeastWalking { get; init; }
+	public required string OptLowestFare { get; init; }
+	public required string OptNote { get; init; }
+	public required string FaresTitle { get; init; }
+	public required string FareSingle { get; init; }
+	public required string FareDay { get; init; }
+	public required string FareZones { get; init; }
+	public required string FareValidFor { get; init; }
+	public required string FareNotAll { get; init; }
+	public required string FaresExpand { get; init; }
+	public required string FaresCollapse { get; init; }
+	public required string PassengerAdult { get; init; }
+	public required string PassengerYouth { get; init; }
+	public required string PassengerChild { get; init; }
+	public required string PassengerSenior { get; init; }
+	public required string PassengerDisabled { get; init; }
+	public required string RunsOn { get; init; }
+	public required string RunsDaily { get; init; }
+	public required string VehicleReported { get; init; }
+	public required string PdfFailed { get; init; }
+	public required string LiveHowTitle { get; init; }
+	public required string LiveHowText { get; init; }
+	public required string LineFilterLabel { get; init; }
+	public required string LiveQuickLines { get; init; }
+	public required string LiveAllLines { get; init; }
+	public required string LiveInvalid { get; init; }
+	public required string LiveEmpty { get; init; }
+	public required string LiveCount { get; init; }
+	public required string MapTitle { get; init; }
+	public required string MapShow { get; init; }
+	public required string MapJourneyTitle { get; init; }
+	public required string MapStopTitle { get; init; }
+	public required string MapNoData { get; init; }
+	public required string MapStart { get; init; }
+	public required string MapEnd { get; init; }
+	public required string RunDeparted { get; init; }
+	public required string MapAutoFit { get; init; }
+	public required string MapFitNow { get; init; }
+	public required string MapInfo { get; init; }
+	public required string TrackFollowing { get; init; }
+	public required string TrackNotFound { get; init; }
+	public required string TrackShowAll { get; init; }
+	public required string TrackOnlyThisRun { get; init; }
+	public required string NoticeClose { get; init; }
+	public required string NoticeImageFailed { get; init; }
+	public required string NoticeEmpty { get; init; }
+	public required string NoticeLinkFailed { get; init; }
+	public required string AroundTitle { get; init; }
+	public required string LinesTitle { get; init; }
+	public required string LinesCount { get; init; }
+	public required string ServiceTitle { get; init; }
+	public required string ServiceHint { get; init; }
+	public required string ServiceCount { get; init; }
+	public required string AccessHint { get; init; }
+	public required string MapSummary { get; init; }
+	public required string LiveSummary { get; init; }
+	public required string HomeTitle { get; init; }
+	public required string HomeNotSet { get; init; }
+}
+// </extras>

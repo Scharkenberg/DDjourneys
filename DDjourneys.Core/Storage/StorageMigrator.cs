@@ -1,3 +1,5 @@
+using DDjourneys.Core.Diagnostics;
+
 namespace DDjourneys.Core.Storage;
 
 /// <summary>The few operations stored data needs; MAUI Preferences on a device, a dictionary in tests.</summary>
@@ -56,7 +58,7 @@ public sealed class StorageMigrator(IKeyValueStore store, IReadOnlyList<StorageM
 			catch (Exception ex)
 			{
 				failed = true;
-				System.Diagnostics.Debug.WriteLine($"Storage migration '{step.Name}' failed: {ex.Message}");
+				DiagnosticLog.Write($"Storage migration '{step.Name}' failed: {ex.Message}");
 			}
 		}
 
@@ -68,7 +70,7 @@ public sealed class StorageMigrator(IKeyValueStore store, IReadOnlyList<StorageM
 			}
 			catch (Exception ex)
 			{
-				System.Diagnostics.Debug.WriteLine($"Storage version not saved: {ex.Message}");
+				DiagnosticLog.Write($"Storage version not saved: {ex.Message}");
 			}
 		}
 

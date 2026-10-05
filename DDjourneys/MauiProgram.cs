@@ -4,6 +4,9 @@ using DDjourneys.Core.Api;
 using DDjourneys.Core.Diagnostics;
 using DDjourneys.Core.Providers;
 using DDjourneys.Core.Providers.Abstractions;
+using DDjourneys.Core.Providers.OpenData;
+using DDjourneys.Core.Providers.Tlms;
+using DDjourneys.Core.Providers.Trias;
 using DDjourneys.Core.Providers.Vvo;
 using DDjourneys.Core.Services;
 using DDjourneys.Core.Tracking;
@@ -34,10 +37,6 @@ public static class MauiProgram
 				fonts.AddFont("InterTight-SemiBold.ttf", "InterTightSemiBold");
 			});
 
-#if DEBUG
-		builder.Logging.AddDebug();
-#endif
-
 #if WINDOWS && DEBUG
 		InstallLabelContainerDiagnostics();
 #endif
@@ -46,10 +45,40 @@ public static class MauiProgram
 		Platforms.Android.NativeStyling.Install();
 #endif
 
+#if WINDOWS
+		Platforms.Windows.NativeStyling.Install();
+#endif
+
 		// Versioned on-device storage: bring it up to date before anything reads it.
 		AppStorage.Upgrade();
 
 		var settings = new AppSettings();
+
+		try
+		{
+			DiagnosticLog.FilePath =
+				System.IO.Path.Combine(
+					FileSystem.AppDataDirectory,
+					"diagnostics.log");
+		}
+		catch (Exception)
+		{
+			DiagnosticLog.FilePath = null;
+		}
+
+		// Opt-in only: without the developer option nothing is logged and a leftover file is removed.
+		DiagnosticLog.Enabled = settings.LogToFile;
+
+		if (DiagnosticLog.Enabled)
+		{
+			DiagnosticLog.Write(
+				$"[App] {AppInfo.Current.Name} {AppInfo.Current.VersionString} on {DeviceInfo.Current.Platform} {DeviceInfo.Current.VersionString}, provider '{settings.ProviderId}'");
+		}
+
+		if (!DiagnosticLog.Enabled)
+		{
+			DiagnosticLog.Delete();
+		}
 
 		LocalizationInitializer.Initialize(settings);
 
@@ -61,6 +90,15 @@ public static class MauiProgram
 
 		// Providers: every provider registers its description; the registry holds the user's choice.
 		builder.Services.AddSingleton(VvoProviderInfo.Value);
+		builder.Services.AddSingleton(TriasProviderInfo.Value);
+		builder.Services.AddSingleton<TriasClient>();
+		builder.Services.AddSingleton<TriasProvider>();
+		builder.Services.AddSingleton<IJourneyProvider>(
+			services => services.GetRequiredService<TriasProvider>());
+		builder.Services.AddSingleton<IDepartureProvider>(
+			services => services.GetRequiredService<TriasProvider>());
+		builder.Services.AddSingleton<ILocationProvider>(
+			services => services.GetRequiredService<TriasProvider>());
 		builder.Services.AddSingleton(
 			services => new ProviderRegistry(
 				services.GetServices<ProviderInfo>(),
@@ -76,6 +114,10 @@ public static class MauiProgram
 			services => services.GetRequiredService<VvoNetworkProvider>());
 		builder.Services.AddSingleton<INetworkInfoProvider>(
 			services => services.GetRequiredService<VvoNetworkProvider>());
+		builder.Services.AddSingleton<ILiveVehicleProvider, TlmsVehicleProvider>();
+		builder.Services.AddSingleton<VehicleService>();
+		builder.Services.AddSingleton<IOpenDataProvider, DresdenOpenDataProvider>();
+		builder.Services.AddSingleton<OpenDataService>();
 		builder.Services.AddSingleton<DepartureService>();
 		builder.Services.AddSingleton<NetworkService>();
 
@@ -133,7 +175,10 @@ public static class MauiProgram
 					Platforms.Windows.WindowsContractActivation.Handle)));
 #endif
 
-		builder.Services.AddSingleton<PlaceStore>();
+		builder.Services.AddSingleton(
+			services => new PlaceStore(
+				new PreferencesKeyValueStore(),
+				services.GetRequiredService<ProviderRegistry>()));
 
 		// Pages are transient; view models are added with their pages.
 		builder.Services.AddTransient<PlanPage>();
@@ -164,9 +209,13 @@ public static class MauiProgram
 
 		builder.Services.AddTransient<DeparturesPage>();
 		builder.Services.AddTransient<DeparturesViewModel>();
+		builder.Services.AddTransient<VehiclesPage>();
+		builder.Services.AddTransient<MapPage>();
+		builder.Services.AddTransient<VehiclesViewModel>();
 		builder.Services.AddTransient<RunPage>();
 		builder.Services.AddTransient<RunViewModel>();
 		builder.Services.AddTransient<DisruptionsPage>();
+		builder.Services.AddTransient<DisruptionPage>();
 		builder.Services.AddTransient<DisruptionsViewModel>();
 
 		builder.Services.AddTransient<RoutingSettingsPage>();
@@ -195,7 +244,7 @@ public static class MauiProgram
 						}
 						&& parent is not Microsoft.UI.Xaml.Controls.Panel)
 					{
-						System.Diagnostics.Debug.WriteLine(
+						DiagnosticLog.Write(
 							$"[DIAG] Label '{(view as Label)?.Text}': " +
 							$"{key} mapped while its TextBlock is parented by " +
 							$"{parent.GetType().Name}");

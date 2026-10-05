@@ -130,6 +130,34 @@ public sealed class JourneyCardModel : ObservableObject
 
 	public string TransfersText => _transfersText;
 
+	/// <summary>Who the price is for (the option "Tickets for"); the normal adult price by default.</summary>
+	public PassengerCategory Passenger { get; init; } = PassengerCategory.Adult;
+
+	/// <summary>Opens the journey on the map; null on cards that have no map button (the results list).</summary>
+	public System.Windows.Input.ICommand? MapCommand { get; init; }
+
+	public bool HasMap =>
+		MapCommand is not null;
+
+	/// <summary>The single ticket for <see cref="Passenger"/> ("2,70 €"), or null when the provider quotes none.</summary>
+	public string? PriceText
+	{
+		get
+		{
+			JourneyFare? fare =
+				FareChoice.Preferred(
+					Journey.Fares,
+					Passenger);
+
+			return fare is { Price: { } price }
+				? Format.Price(price, fare.Currency)
+				: null;
+		}
+	}
+
+	public bool HasPrice =>
+		PriceText is not null;
+
 	public string? DepartureDelay { get; }
 	public string? ArrivalDelay { get; }
 
@@ -215,7 +243,9 @@ public sealed class JourneyCardModel : ObservableObject
 
 		_chips = chips;
 
-		_transfersText = Journey.TransferCount switch
+		_transfersText = !Journey.Rides.Any()
+			? strings.Walk
+			: Journey.TransferCount switch
 		{
 			0 => strings.Direct,
 			1 => strings.OneTransfer,

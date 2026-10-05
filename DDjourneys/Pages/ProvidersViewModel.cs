@@ -22,6 +22,11 @@ public sealed class ProviderRow : ObservableObject
 
 	public string Name => Info.Name;
 
+	public bool IsExperimental => Info.IsExperimental;
+
+	public string ExperimentalText =>
+		LocalizationService.Current.CurrentStrings.Provider.Experimental;
+
 	public string FullName => Info.FullName;
 
 	public string Coverage => Info.Coverage;
@@ -41,7 +46,9 @@ public sealed class ProviderRow : ObservableObject
 	public Command SelectCommand { get; }
 
 	public string Description =>
-		$"{Info.Name}, {Info.FullName}, {Info.Coverage}";
+		Info.IsExperimental
+			? $"{Info.Name}, {ExperimentalText}, {Info.FullName}, {Info.Coverage}"
+			: $"{Info.Name}, {Info.FullName}, {Info.Coverage}";
 }
 
 
@@ -54,19 +61,23 @@ public sealed record ProviderGroup(
 /// <summary>Provider picker. Lists whatever the registry holds, grouped by region, so new providers need no UI work.</summary>
 public sealed class ProvidersViewModel : DisposableViewModel
 {
-	private static readonly (ProviderCapabilities Flag, Func<ProviderStrings, string> Label)[] Labels =
+	private static readonly (ProviderCapabilities Flag, Func<IUiStrings, string> Label)[] Labels =
 	[
-		(ProviderCapabilities.Journeys, s => s.CapJourneys),
-		(ProviderCapabilities.Places, s => s.CapPlaces),
-		(ProviderCapabilities.Continuation, s => s.CapContinuation),
-		(ProviderCapabilities.RoutingPreferences, s => s.CapRouting),
-		(ProviderCapabilities.Platforms, s => s.CapPlatforms),
-		(ProviderCapabilities.Occupancy, s => s.CapOccupancy),
-		(ProviderCapabilities.Tracking, s => s.CapTracking),
-		(ProviderCapabilities.Departures, s => s.CapDepartures),
-		(ProviderCapabilities.Disruptions, s => s.CapDisruptions),
-		(ProviderCapabilities.NetworkInfo, s => s.CapNetwork),
-		(ProviderCapabilities.JourneyExtras, s => s.CapExtras)
+		(ProviderCapabilities.Journeys, s => s.Provider.CapJourneys),
+		(ProviderCapabilities.Places, s => s.Provider.CapPlaces),
+		(ProviderCapabilities.Continuation, s => s.Provider.CapContinuation),
+		(ProviderCapabilities.RoutingPreferences, s => s.Provider.CapRouting),
+		(ProviderCapabilities.Platforms, s => s.Provider.CapPlatforms),
+		(ProviderCapabilities.Occupancy, s => s.Provider.CapOccupancy),
+		(ProviderCapabilities.Tracking, s => s.Provider.CapTracking),
+		(ProviderCapabilities.Departures, s => s.Provider.CapDepartures),
+		(ProviderCapabilities.Disruptions, s => s.Provider.CapDisruptions),
+		(ProviderCapabilities.NetworkInfo, s => s.Provider.CapNetwork),
+		(ProviderCapabilities.JourneyExtras, s => s.Provider.CapExtras),
+		(ProviderCapabilities.LiveVehicles, s => s.Extras.CapLive),
+		(ProviderCapabilities.OpenData, s => s.Extras.CapOpenData),
+		(ProviderCapabilities.Fares, s => s.Extras.CapFares),
+		(ProviderCapabilities.RouteOptimisation, s => s.Extras.CapOptimisation)
 	];
 
 	private readonly ProviderRegistry _registry;
@@ -101,16 +112,16 @@ public sealed class ProvidersViewModel : DisposableViewModel
 
 	private void Build()
 	{
-		ProviderStrings strings =
-			_localization.CurrentStrings.Provider;
+		IUiStrings strings =
+			_localization.CurrentStrings;
 
 		Groups =
-			[.. _registry.Providers
+			(_registry.Providers
 				.GroupBy(provider => provider.Region)
 				.Select(
 					group => new ProviderGroup(
 						group.Key,
-						[.. group.Select(
+						(group.Select(
 							provider =>
 							{
 								ProviderRow? row = null;
@@ -118,13 +129,13 @@ public sealed class ProvidersViewModel : DisposableViewModel
 								row =
 									new ProviderRow(
 										provider,
-										[.. Labels
+										(Labels
 											.Where(label => provider.Supports(label.Flag))
-											.Select(label => label.Label(strings))],
+											.Select(label => label.Label(strings))).ToList(),
 										new Command(() => Select(row!)));
 
 								return row;
-							})]))];
+							})).ToList()))).ToList();
 
 		RefreshSelection();
 	}

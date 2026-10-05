@@ -118,6 +118,12 @@ public sealed class LegRow : TimelineRow
 
 	public string? FeaturesText { get; init; }
 
+	/// <summary>"Runs Mon–Fri" (or the provider's wording); null when the service runs every day or the provider does not say.</summary>
+	public string? OperatingText { get; init; }
+
+	public bool HasOperating =>
+		OperatingText is not null;
+
 	/// <summary>Occupancy of the vehicle on this ride.</summary>
 	public OccupancyLevel Occupancy { get; init; } =
 		OccupancyLevel.Unknown;
@@ -134,6 +140,17 @@ public sealed class LegRow : TimelineRow
 
 	public bool HasDirection =>
 		Direction is not null;
+
+	/// <summary>The line is a plain number, so its vehicles can be looked up on the live page.</summary>
+	public bool CanShowLive =>
+		int.TryParse(
+			LineText.Trim(),
+			System.Globalization.NumberStyles.None,
+			System.Globalization.CultureInfo.InvariantCulture,
+			out _);
+
+	public string LineNumber =>
+		LineText.Trim();
 
 	public bool HasFeatures =>
 		FeaturesText is not null;
@@ -299,6 +316,29 @@ public sealed class NoticeRow : TimelineRow
 	public bool Expanded { get; init; }
 
 	public bool Technical { get; init; }
+}
+
+
+/// <summary>One ticket the provider quotes for a journey: one compact line, the price on the right.</summary>
+public sealed class FareRow
+{
+	public required string Name { get; init; }
+
+	public required string PriceText { get; init; }
+
+	/// <summary>Tariff level, validity and the passengers it is for, in one line.</summary>
+	public string? Detail { get; init; }
+
+	public bool HasDetail =>
+		!string.IsNullOrWhiteSpace(Detail);
+
+	/// <summary>The ticket for the passenger set in the options (the one cards and shares name).</summary>
+	public bool IsPreferred { get; init; }
+
+	public string AccessibilityText =>
+		HasDetail
+			? $"{Name}, {Detail}, {PriceText}"
+			: $"{Name}, {PriceText}";
 }
 
 
@@ -540,13 +580,14 @@ public static class TimelineRowFactory
 		bool departureMerged =
 			i >= 2
 			&& items[i - 1] is BoundaryItem
-			&& items[i - 2] is RideItem;
-
+			&& items[i - 2] is RideItem before
+			&& SameStation(before.Leg.To, leg.From);
 
 		bool arrivalMerged =
 			i + 2 < items.Count
 			&& items[i + 1] is BoundaryItem
-			&& items[i + 2] is RideItem;
+			&& items[i + 2] is RideItem after
+			&& SameStation(leg.To, after.Leg.From);
 
 
 		OccupancyLevel legOccupancy =
@@ -623,10 +664,11 @@ public static class TimelineRowFactory
 						&& ShowsWalk(accessWalk, options)
 						&& !WalkStaysInStop(items, 0, accessWalk)
 							? WalkColor()
-							: RailAt(
-								items,
-								i - 1,
-								-1),
+							: i >= 2
+								&& items[i - 1] is BoundaryItem stopChange
+								&& ShowsWalk(stopChange, options)
+								? WalkColor()
+								: RailAt(items, i - 1, -1),
 
 					RailBottom =
 						color,
@@ -679,6 +721,11 @@ public static class TimelineRowFactory
 				FeaturesText =
 					Features(
 						leg.Vehicle?.Accessibility),
+
+				OperatingText =
+					OperatingDaysText.Describe(
+						leg.OperatingDays,
+						LocalizationService.Current.CurrentStrings.Extras),
 
 				Occupancy =
 					legOccupancy,
@@ -870,10 +917,11 @@ public static class TimelineRowFactory
 						&& ShowsWalk(egressWalk, options)
 						&& !WalkStaysInStop(items, i + 1, egressWalk)
 							? WalkColor()
-							: RailAt(
-								items,
-								i + 1,
-								+1),
+							: i + 2 < items.Count
+								&& items[i + 1] is BoundaryItem stopChange
+								&& ShowsWalk(stopChange, options)
+								? WalkColor()
+								: RailAt(items, i + 1, +1),
 
 					Description =
 						$"{Format.TimeOrDash(leg.EffectiveArrival)}, " +
@@ -895,12 +943,16 @@ public static class TimelineRowFactory
 		BoundaryItem boundary,
 		TimelineOptions options)
 	{
-		bool between =
-			i > 0
-			&& i + 1 < items.Count
+		bool ridesAround =
+			i > 0 && i + 1 < items.Count
 			&& items[i - 1] is RideItem
 			&& items[i + 1] is RideItem;
 
+		bool between =
+			ridesAround
+			&& SameStation(
+				((RideItem)items[i - 1]).Leg.To,
+				((RideItem)items[i + 1]).Leg.From);
 
 		Color next =
 			RailAt(
@@ -1053,6 +1105,35 @@ public static class TimelineRowFactory
 							departureOccupancy,
 							null)
 				});
+		}
+		else if (ridesAround)
+		{
+			JourneyLeg to = ((RideItem)items[i + 1]).Leg;
+
+			if (ShowsWalk(boundary, options)
+				&& boundary.WalkTime is { } stopWalk)
+			{
+				rows.Add(new WalkRow
+				{
+					Text = JoinText(
+						$"{strings.Walk} {Format.Duration(stopWalk)}",
+						boundary.ShowWait && boundary.Wait >= TimeSpan.FromMinutes(1)
+							? $"{Format.Duration(boundary.Wait)} {strings.ToChange}"
+							: null,
+						boundary.Endangered
+						&& ChangeBlock(((RideItem)items[i - 1]).Leg, to, strings, boundary.Ensured) is null
+							? strings.ConnectionMayBeMissed
+							: null)!,
+					CaptionPrefix = strings.To,
+					CaptionName = to.From.Name,
+					CaptionPlace = PlaceOf(to.From),
+					RailTop = WalkColor(),
+					RailBottom = WalkColor(),
+					Description =
+						$"{strings.Walk} {Format.Duration(stopWalk)} " +
+						$"{strings.To} {StopLabel.Compose(to.From)}"
+				});
+			}
 		}
 		else if (ShowsWalk(boundary, options)
 			&& boundary.WalkTime is { } walkTime)

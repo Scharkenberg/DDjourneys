@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using System.Runtime.CompilerServices;
 
 namespace DDjourneys.Support;
@@ -38,7 +39,7 @@ public static class Theme
 
 	/// <summary>The page background of the palette in effect; the system bars wear it.</summary>
 	public static Color BarColor =>
-		Solid.TryGetValue("Bg", out Color color)
+		Solid.TryGetValue("Bg", out Color? color) && color is not null
 			? color
 			: IsDark
 				? Colors.Black
@@ -164,7 +165,7 @@ public static class Theme
 
 	/// <summary>A colour of the palette currently in effect (for code that draws outside the view tree).</summary>
 	public static Color ColorOf(string key, Color fallback) =>
-		Solid.TryGetValue(key, out Color color)
+		Solid.TryGetValue(key, out Color? color) && color is not null
 			? color
 			: Current.TryGetValue(key, out object? value) && value is Color current ? current : fallback;
 
@@ -211,7 +212,7 @@ public static class Theme
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Theme revalidate failed: {ex.Message}");
+			DiagnosticLog.Write($"Theme revalidate failed: {ex.Message}");
 		}
 	}
 
@@ -247,7 +248,7 @@ public static class Theme
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Theme fade-out skipped: {ex.Message}");
+			DiagnosticLog.Write($"Theme fade-out skipped: {ex.Message}");
 		}
 
 		try
@@ -266,7 +267,7 @@ public static class Theme
 			}
 			catch (Exception ex)
 			{
-				System.Diagnostics.Debug.WriteLine($"Theme fade-in skipped: {ex.Message}");
+				DiagnosticLog.Write($"Theme fade-in skipped: {ex.Message}");
 
 				if (page is not null)
 				{
@@ -384,7 +385,7 @@ public static class Theme
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Theme apply failed: {ex}");
+			DiagnosticLog.Write($"Theme apply failed: {ex}");
 		}
 		finally
 		{

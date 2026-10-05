@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using DDjourneys.Contract;
@@ -5,10 +6,10 @@ using DDjourneys.Controls;
 using DDjourneys.Core.Models;
 using DDjourneys.Core.Providers;
 using DDjourneys.Core.Providers.Abstractions;
+using DDjourneys.Core.Services;
 using DDjourneys.Core.Tracking;
 using DDjourneys.Localization;
 using DDjourneys.Support;
-using DDjourneys.Core.Services;
 using Location = DDjourneys.Core.Models.Location;
 
 namespace DDjourneys.Pages;
@@ -208,9 +209,31 @@ public sealed partial class PlanViewModel : DisposableViewModel
 			new Command(
 				() => Safe(GoHome));
 
-		SaveRouteCommand =
+		HomeCommand =
 			new AsyncCommand(
-				() => SafeAsync(SaveRouteAsync));
+				() => SafeAsync(
+					() =>
+					{
+						if (HasHome)
+						{
+							GoHome();
+
+							return Task.CompletedTask;
+						}
+
+						return SetHomeAsync();
+					}),
+				() => !IsLocating);
+
+		Bookmark =
+			new RouteBookmark(
+				_store,
+				() => From is { } start
+					&& To is { } end
+					&& !SamePlace(start, end)
+						? (start, end)
+						: null,
+				TellAsync);
 
 		UseSavedRouteCommand =
 			new AsyncCommand<SavedRoute>(
@@ -249,8 +272,6 @@ public sealed partial class PlanViewModel : DisposableViewModel
 	public Func<Task>? OpenViaSearch { get; set; }
 
 	/// <summary>Asks for a name (title, message, suggestion); null when the passenger cancels.</summary>
-	public Func<string, string, string, Task<string?>>? AskName { get; set; }
-
 
 	public AsyncCommand PickFromCommand { get; }
 
@@ -286,9 +307,13 @@ public sealed partial class PlanViewModel : DisposableViewModel
 
 	public AsyncCommand SetHomeCommand { get; }
 
+	/// <summary>The home row: goes home when home is set, otherwise sets it to the stop nearest to the passenger.</summary>
+	public AsyncCommand HomeCommand { get; }
+
 	public Command GoHomeCommand { get; }
 
-	public AsyncCommand SaveRouteCommand { get; }
+	/// <summary>Saves (and removes) the connection shown; the icon reflects whether it is saved.</summary>
+	public RouteBookmark Bookmark { get; }
 
 	public AsyncCommand<SavedRoute> UseSavedRouteCommand { get; }
 
@@ -719,6 +744,15 @@ public sealed partial class PlanViewModel : DisposableViewModel
 		!HasHome;
 
 
+	public string HomeName =>
+		_store.Home?.Name
+		?? _localization.CurrentStrings.Extras.HomeNotSet;
+
+
+	public string? HomePlace =>
+		_store.Home?.Place;
+
+
 	/// <summary>True while the device position is being looked up.</summary>
 	public bool IsLocating
 	{
@@ -731,6 +765,7 @@ public sealed partial class PlanViewModel : DisposableViewModel
 				UseLocationFromCommand.RaiseCanExecuteChanged();
 				UseLocationToCommand.RaiseCanExecuteChanged();
 				SetHomeCommand.RaiseCanExecuteChanged();
+				HomeCommand.RaiseCanExecuteChanged();
 			}
 		}
 	}
@@ -1093,6 +1128,11 @@ public sealed partial class PlanViewModel : DisposableViewModel
 	{
 		SearchCommand
 			.RaiseCanExecuteChanged();
+
+		OnPropertyChanged(
+			nameof(CanSearch));
+
+		Bookmark.Refresh();
 	}
 
 
@@ -1206,11 +1246,24 @@ public sealed partial class PlanViewModel : DisposableViewModel
 				return null;
 			}
 
+			TimeSpan timeout =
+				TimeSpan.FromSeconds(_settings.TimeoutSeconds);
+
+			// "Start at my exact position": the address at the position, not the nearest stop.
+			if (_settings.ExactPosition
+				&& await _locations.ResolveAddressAsync(
+					here.Latitude,
+					here.Longitude,
+					timeout: timeout) is { } address)
+			{
+				return address;
+			}
+
 			IReadOnlyList<Location> stops =
 				await _locations.SearchByCoordinatesAsync(
 					here.Latitude,
 					here.Longitude,
-					timeout: TimeSpan.FromSeconds(_settings.TimeoutSeconds));
+					timeout: timeout);
 
 			if (stops.Count == 0)
 			{
@@ -1263,45 +1316,6 @@ public sealed partial class PlanViewModel : DisposableViewModel
 		{
 			To = home;
 		}
-	}
-
-
-	private async Task SaveRouteAsync()
-	{
-		if (From is not { } origin
-			|| To is not { } destination)
-		{
-			await TellAsync(
-				_localization.CurrentStrings.Plan.StartAndDestinationRequired);
-
-			return;
-		}
-
-		if (AskName is null)
-		{
-			return;
-		}
-
-		PlanStrings strings =
-			_localization.CurrentStrings.Plan;
-
-		string? name =
-			(await AskName(
-				strings.SaveRoute,
-				strings.RouteNamePrompt,
-				$"{origin.Name} \u2192 {destination.Name}"))?.Trim();
-
-		if (string.IsNullOrEmpty(name))
-		{
-			return;
-		}
-
-		// Same name: replaced (see PlaceStore.AddSavedRoute).
-		_store.AddSavedRoute(
-			new SavedRoute(
-				name,
-				origin,
-				destination));
 	}
 
 
@@ -1364,6 +1378,12 @@ public sealed partial class PlanViewModel : DisposableViewModel
 
 				OnPropertyChanged(
 					nameof(NoHome));
+
+				OnPropertyChanged(
+					nameof(HomeName));
+
+				OnPropertyChanged(
+					nameof(HomePlace));
 
 				OnPropertyChanged(
 					nameof(HasRecents));
@@ -1465,7 +1485,7 @@ public sealed partial class PlanViewModel : DisposableViewModel
 	private void Report(
 		Exception ex)
 	{
-		System.Diagnostics.Debug.WriteLine(
+		DiagnosticLog.Write(
 			$"Plan error:\n{ex}");
 
 		try
@@ -1475,7 +1495,7 @@ public sealed partial class PlanViewModel : DisposableViewModel
 		}
 		catch (Exception inner)
 		{
-			System.Diagnostics.Debug.WriteLine(
+			DiagnosticLog.Write(
 				$"Plan error reporting failed: " +
 				$"{inner.Message}");
 		}

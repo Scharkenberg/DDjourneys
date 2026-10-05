@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using System.Globalization;
 using DDjourneys.Core.Models;
 using DDjourneys.Core.Providers.Abstractions;
@@ -80,19 +81,47 @@ public sealed class VvoNetworkProvider :
 			return [];
 		}
 
-		// The run is the one that is next at this stop at this time: stop and time stay as the monitor gave them.
+		// tripid names the line's course, not one run (kiliankoe's webapi.md, "Run identity"): the run is the
+		// next real-time departure at stopid at or after time. So the time is the run's own real-time
+		// departure here, a minute early, and the answer is checked against its scheduled time.
+		DateTimeOffset token =
+			departure.Effective.AddSeconds(-60);
+
+		DiagnosticLog.Write(
+			$"[VVO run] departure trip '{departure.Id}' stop {departure.StopId} line {departure.Line.Name} "
+			+ $"scheduled {departure.Scheduled:O} realtime {departure.Realtime:O} arrival {departure.IsArrival} "
+			+ $"now {DateTimeOffset.UtcNow:O} token {token:O} ({(token < DateTimeOffset.UtcNow ? "past" : "future")})");
+
+		bool Matches(VvoRunResponse candidate)
+		{
+			VvoRunStop? current =
+				candidate.Stops.FirstOrDefault(
+					stop => string.Equals(stop.Position, "Current", StringComparison.OrdinalIgnoreCase));
+
+			if (current?.Time is not { } scheduled)
+			{
+				DiagnosticLog.Write($"[VVO run] no 'Current' stop with a time in the answer ({candidate.Stops.Count} stops); taken as is");
+
+				return candidate.Stops.Count > 0;
+			}
+
+			bool same =
+				Math.Abs((scheduled - departure.Scheduled).TotalSeconds) < 90;
+
+			DiagnosticLog.Write(
+				$"[VVO run] Current '{current.Name}' scheduled {scheduled:O}, wanted {departure.Scheduled:O}: {(same ? "same run" : "DIFFERENT run")}");
+
+			return same;
+		}
+
 		VvoRunResponse? response =
 			await _apiClient.GetDepartureRunAsync(
-				new VvoDepartureRunRequest
-				{
-					TripId = departure.Id,
-					StopId = departure.StopId,
-					IsArrival = departure.IsArrival,
-					Time =
-						string.Create(
-							CultureInfo.InvariantCulture,
-							$"/Date({departure.Scheduled.ToUnixTimeMilliseconds()}+0000)/")
-				},
+				_apiClient.BuildRunAttempts(
+					departure.Id,
+					departure.StopId,
+					departure.IsArrival,
+					token),
+				Matches,
 				cancellationToken,
 				Timeout(timeoutSeconds))
 				.ConfigureAwait(false);

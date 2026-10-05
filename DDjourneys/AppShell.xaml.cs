@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using DDjourneys.Pages;
 using DDjourneys.Support;
 
@@ -22,6 +23,9 @@ public partial class AppShell : Shell
 		Routing.RegisterRoute(Routes.Departures, typeof(DeparturesPage));
 		Routing.RegisterRoute(Routes.Run, typeof(RunPage));
 		Routing.RegisterRoute(Routes.Disruptions, typeof(DisruptionsPage));
+		Routing.RegisterRoute(Routes.Disruption, typeof(DisruptionPage));
+		Routing.RegisterRoute(Routes.Vehicles, typeof(VehiclesPage));
+		Routing.RegisterRoute(Routes.Map, typeof(MapPage));
 
 		Navigating += OnNavigating;
 	}
@@ -65,7 +69,7 @@ public partial class AppShell : Shell
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Page transition skipped: {ex.Message}");
+			DiagnosticLog.Write($"Page transition skipped: {ex.Message}");
 		}
 	}
 }

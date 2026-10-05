@@ -168,6 +168,22 @@ public static class Format
 				"HH:mm",
 				CultureInfo.CurrentCulture);
 
+	/// <summary>"2,70 €": amount in the current culture, the currency as its symbol when it is a known one.</summary>
+	public static string Price(decimal amount, string? currency = "EUR")
+	{
+		string symbol =
+			currency?.ToUpperInvariant() switch
+			{
+				null or "" or "EUR" => "\u20ac",
+				"USD" => "$",
+				"GBP" => "\u00a3",
+				"CHF" => "CHF",
+				var other => other
+			};
+
+		return string.Format(CultureInfo.CurrentCulture, "{0:N2} {1}", amount, symbol);
+	}
+
 	public static string Duration(TimeSpan value)
 	{
 		int minutes =

@@ -25,6 +25,19 @@ public static class Routes
 	public const string Departures = "departures";
 	public const string Run = "run";
 	public const string Disruptions = "disruptions";
+	public const string Vehicles = "vehicles";
+	public const string StopInfo = "stopinfo";
+
+	/// <summary>The map page, and its query keys: a <c>MapScene</c> and the page title.</summary>
+	public const string Map = "map";
+	public const string MapScene = "MapScene";
+	public const string MapTitle = "MapTitle";
+
+	/// <summary>Query key: a <c>TrackTarget</c>, the one run the live vehicles page follows.</summary>
+	public const string Track = "Track";
+
+	/// <summary>Query key: line number(s) the live vehicles page opens with.</summary>
+	public const string Line = "Line";
 
 	/// <summary>
 	/// Query key: what a place search is for when it is not the start or the destination
@@ -42,4 +55,11 @@ public static class Routes
 
 	/// <summary>Query key: ids of route changes the disruptions page is limited to (comma separated).</summary>
 	public const string ChangeIds = "ChangeIds";
+
+	/// <summary>Query key: line name the disruptions page is filtered to.</summary>
+	public const string LineName = "LineName";
+
+	/// <summary>The detail page of one disruption or network notice, and its query key.</summary>
+	public const string Disruption = "disruption";
+	public const string DisruptionData = "DisruptionData";
 }

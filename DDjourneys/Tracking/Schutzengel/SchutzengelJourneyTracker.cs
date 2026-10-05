@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using System.Diagnostics;
 using System.Globalization;
 using System.Net;
@@ -58,6 +59,9 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 	private readonly SemaphoreSlim _gate = new(1, 1);
 	private readonly Dictionary<string, WatchEntry> _entries = new(StringComparer.Ordinal);
 	private readonly Dictionary<string, string> _dismissed = new(StringComparer.Ordinal);
+
+	/// <summary>Per plan: the notice (time and text) the user swiped away.</summary>
+	private readonly Dictionary<string, string> _dismissedNotices = new(StringComparer.Ordinal);
 	private readonly TrackingEventBroadcaster<JourneyTrackingEvent> _events = new();
 
 	private readonly List<string> _pendingForgotten = [];
@@ -196,7 +200,10 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 
 	// ----- Commands -----
 
-	public async Task<WatchedJourney> FollowAsync(Journey journey, CancellationToken cancellationToken = default)
+	public async Task<WatchedJourney> FollowAsync(
+		Journey journey,
+		CancellationToken cancellationToken = default,
+		string? replacesPlanId = null)
 	{
 		ArgumentNullException.ThrowIfNull(journey);
 
@@ -233,7 +240,14 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 			}
 			else
 			{
-				planId = await CreatePlanAsync(journey, cancellationToken).ConfigureAwait(false);
+				// An alternative to a followed plan links to that plan's trip (the original is then no longer listed).
+				string? tripReference =
+					replacesPlanId is not null
+					&& _entries.TryGetValue(replacesPlanId, out WatchEntry? replaced)
+						? replaced.Info.ActiveTripId
+						: null;
+
+				planId = await CreatePlanAsync(journey, tripReference, cancellationToken).ConfigureAwait(false);
 			}
 
 			effects.Add(await SyncAsync(force: true, cancellationToken).ConfigureAwait(false));
@@ -410,7 +424,7 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 
 	// ----- Plan creation -----
 
-	private async Task<string> CreatePlanAsync(Journey journey, CancellationToken cancellationToken)
+	private async Task<string> CreatePlanAsync(Journey journey, string? tripReference, CancellationToken cancellationToken)
 	{
 		if (_provider is not VvoJourneyProvider vvo)
 		{
@@ -426,7 +440,7 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 				"The selected connection is no longer offered by the timetable service.");
 		}
 
-		object rawData =
+		System.Text.Json.Nodes.JsonObject rawData =
 			SchutzengelRawDataTranslator.Translate(
 				connection.Value.Route,
 				journey,
@@ -440,7 +454,8 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 				SchutzengelOptions.Default with
 				{
 					StartLeadSeconds = Math.Clamp(_defaultLeadMinutes?.Invoke() ?? 5, 1, 60) * 60
-				});
+				},
+				tripReference);
 
 		using JsonDocument created =
 			await _api.CreatePlanAsync(plan, cancellationToken).ConfigureAwait(false);
@@ -678,7 +693,7 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 			if (notices.StatusCode != HttpStatusCode.NoContent
 				&& notices.Root.ValueKind == JsonValueKind.Array)
 			{
-				entry.Notices = [.. SchutzengelNotices.Parse(notices.Root)];
+				entry.Notices = (SchutzengelNotices.Parse(notices.Root)).ToList();
 				entry.NoticeCount = notices.Root.GetArrayLength();
 				entry.NoticesLoaded = true;
 			}
@@ -698,6 +713,16 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 	{
 		_entries.Remove(planId);
 		_dismissed.Remove(planId);
+		_dismissedNotices.Remove(planId);
+
+		try
+		{
+			Preferences.Default.Remove(DismissedNoticePrefix + planId);
+		}
+		catch (Exception ex)
+		{
+			Log($"Dismissed notice not cleared: {ex.Message}");
+		}
 
 		if (_preferredLive == planId)
 		{
@@ -726,8 +751,23 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 		var upcoming = new List<WatchedJourney>();
 		bool run = false;
 
+		// The reference client lists a plan only while no other plan replaces it (trip_reference); finished
+		// plans always stay in the history.
+		var replaced =
+			_entries.Values
+				.Select(item => item.Info.TripReference)
+				.OfType<string>()
+				.ToHashSet(StringComparer.Ordinal);
+
 		foreach (WatchEntry entry in _entries.Values)
 		{
+			if (entry.Status != WatchStatus.Recent
+				&& entry.Info.ActiveTripId is { } tripId
+				&& replaced.Contains(tripId))
+			{
+				continue;
+			}
+
 			WatchedJourney view = Evaluate(entry, now, strings, effects);
 
 			views.Add(view);
@@ -752,7 +792,7 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 		string? chosen =
 			LivePlanSelector.Choose(
 				_preferredLive,
-				[.. underway.Select(item => item.View.PlanId), .. upcoming.Select(item => item.PlanId)]);
+				underway.Select(item => item.View.PlanId).Concat(upcoming.Select(item => item.PlanId)).ToList());
 
 		WatchEntry? focus = null;
 		WatchedJourney? focusView = null;
@@ -780,7 +820,7 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 				.ToDictionary(item => item.Key, item => item.Value.Timeline!, StringComparer.Ordinal);
 
 		effects.ShouldRun = run;
-		effects.Forgotten = [.. _pendingForgotten];
+		effects.Forgotten = (_pendingForgotten).ToList();
 		_pendingForgotten.Clear();
 
 		if (!SameWatchlist(_watched, views))
@@ -823,6 +863,88 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 		return entry.Summary?.EnsuredChanges is { Count: > 0 } changes && changes.All(flag => flag);
 	}
 
+	/// <summary>
+	/// A boarding instruction is obsolete once the ride it is about is under way: it was issued before that ride's
+	/// planned departure and the passenger has since boarded (the current ride started after the notice).
+	/// </summary>
+	private static bool IsBoardingDone(WatchEntry entry, SchutzengelNotice notice, TripSnapshot snapshot)
+	{
+		if (!notice.IsBoardingInstruction
+			|| snapshot.Stage != TripStage.Riding
+			|| notice.Time is not { } issued
+			|| entry.Timeline is not { } timeline
+			|| snapshot.EpisodeIndex < 0
+			|| snapshot.EpisodeIndex >= timeline.Episodes.Count)
+		{
+			return false;
+		}
+
+		return timeline.Episodes[snapshot.EpisodeIndex].From.Scheduled is { } rideStart
+			&& issued <= rideStart;
+	}
+
+	private static string NoticeKey(SchutzengelNotice notice) =>
+		string.Create(
+			CultureInfo.InvariantCulture,
+			$"{notice.Time?.ToUnixTimeMilliseconds()}|{notice.Text}");
+
+	private const string DismissedNoticePrefix = "tracking.dismissed_notice.";
+
+	private string? DismissedNoticeKey(string planId)
+	{
+		if (_dismissedNotices.TryGetValue(planId, out string? key))
+		{
+			return key;
+		}
+
+		try
+		{
+			string stored = Preferences.Default.Get(DismissedNoticePrefix + planId, string.Empty);
+
+			if (stored.Length > 0)
+			{
+				_dismissedNotices[planId] = stored;
+
+				return stored;
+			}
+		}
+		catch (Exception ex)
+		{
+			Log($"Dismissed notice unreadable: {ex.Message}");
+		}
+
+		return null;
+	}
+
+	public Task DismissNoticeAsync(string planId, CancellationToken cancellationToken = default)
+	{
+		ArgumentException.ThrowIfNullOrWhiteSpace(planId);
+
+		return RunAsync(
+			() =>
+			{
+				if (_entries.TryGetValue(planId, out WatchEntry? entry)
+					&& entry.Notices.Count > 0)
+				{
+					string key = NoticeKey(entry.Notices[^1]);
+
+					_dismissedNotices[planId] = key;
+
+					try
+					{
+						Preferences.Default.Set(DismissedNoticePrefix + planId, key);
+					}
+					catch (Exception ex)
+					{
+						Log($"Dismissed notice not saved: {ex.Message}");
+					}
+				}
+
+				return Task.FromResult(Recompute());
+			},
+			cancellationToken);
+	}
+
 	private WatchedJourney Evaluate(
 		WatchEntry entry,
 		DateTimeOffset now,
@@ -835,6 +957,12 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 
 		// An ensured change cannot be at risk: the provider's guarantee outranks the service's clock-based notice.
 		if (newest is not null && IsOutrankedByGuarantee(entry, newest))
+		{
+			newest = null;
+		}
+
+		// Swiped away by the user: gone until a newer notice arrives.
+		if (newest is not null && DismissedNoticeKey(info.PlanId) == NoticeKey(newest))
 		{
 			newest = null;
 		}
@@ -881,12 +1009,13 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 				{
 					SchutzengelNoticeSeverity.Cancellation => NoticeKind.Cancellation,
 					SchutzengelNoticeSeverity.ConnectionRisk => NoticeKind.ConnectionRisk,
-					_ => NoticeKind.Information
+					_ => newest.IsBoardingInstruction ? NoticeKind.Instruction : NoticeKind.Information
 				},
 				newest.Time,
 				journeyOver,
 				snapshot.Risk is not null,
 				now).IsVisible
+				&& !IsBoardingDone(entry, newest, snapshot)
 				? newest
 				: null;
 
@@ -945,7 +1074,11 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 			latest?.Text,
 			info.Options.ToWatchOptions(),
 			periodic,
-			entry.Summary?.EnsuredChanges);
+			entry.Summary?.EnsuredChanges,
+			entry.Notices
+				.OrderByDescending(item => item.Time ?? DateTimeOffset.MinValue)
+				.Select(item => new WatchedNotice(item.Time, item.Text, item.Severity != SchutzengelNoticeSeverity.Information))
+				.ToList());
 	}
 
 	private void RaiseTransitions(
@@ -1295,6 +1428,7 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 				&& a.NextStop == b.NextStop
 				&& a.NextStopTime == b.NextStopTime
 				&& a.LatestNotice == b.LatestNotice
+				&& (a.Notices?.Count ?? 0) == (b.Notices?.Count ?? 0)
 				&& a.Options == b.Options
 				&& a.IsPeriodic == b.IsPeriodic
 				&& a.Lines.SequenceEqual(b.Lines)
@@ -1508,7 +1642,7 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 
 	[Conditional("DEBUG")]
 	private static void Log(string message) =>
-		Debug.WriteLine($"[SCHUTZENGEL] {message}");
+		DiagnosticLog.Write($"[SCHUTZENGEL] {message}");
 
 	// ----- Types -----
 

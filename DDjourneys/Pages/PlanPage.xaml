@@ -55,7 +55,7 @@
 				<Grid
 					ColumnDefinitions="*,Auto"
 					ColumnSpacing="{DynamicResource SpaceS}"
-					RowDefinitions="Auto,Auto,Auto">
+					RowDefinitions="Auto,Auto,Auto,Auto,Auto">
 
 					<Grid
 						Grid.Row="0"
@@ -127,6 +127,39 @@
 							Opacity="{Binding StarOpacityTo}"
 							SemanticProperties.Description="{localization:Tr Plan.ToggleFavouriteTo}" />
 					</Grid>
+
+					<!--  A stop over is added where it happens: between start and destination  -->
+					<BoxView
+						Grid.Row="3"
+						Grid.ColumnSpan="2"
+						HeightRequest="1"
+						IsVisible="{Binding NoVia}"
+						Color="{DynamicResource Outline}" />
+
+					<HorizontalStackLayout
+						Grid.Row="4"
+						Grid.ColumnSpan="2"
+						Padding="0,6"
+						IsVisible="{Binding NoVia}"
+						Spacing="8"
+						support:Dense.MinHeight="44"
+						support:Motion.Feedback="True"
+						SemanticProperties.Description="{localization:Tr Plan.AddVia}">
+						<controls:Icon
+							Glyph="Plus"
+							Size="18"
+							VerticalOptions="Center"
+							Color="{DynamicResource Accent}" />
+						<Label
+							FontFamily="{DynamicResource FontSemibold}"
+							FontSize="{StaticResource FontCaption}"
+							Text="{localization:Tr Plan.AddVia}"
+							TextColor="{DynamicResource Accent}"
+							VerticalOptions="Center" />
+						<HorizontalStackLayout.GestureRecognizers>
+							<TapGestureRecognizer Command="{Binding PickViaCommand}" />
+						</HorizontalStackLayout.GestureRecognizers>
+					</HorizontalStackLayout>
 
 					<controls:IconButton
 						Grid.RowSpan="3"
@@ -201,41 +234,12 @@
 
 					<BoxView StyleClass="Divider" />
 
-					<!--  Date and time share one row  -->
-					<Grid
-						x:Name="DateTimeGrid"
-						support:Dense.Padding="12,6"
-						ColumnDefinitions="*,*"
-						ColumnSpacing="12"
-						SizeChanged="OnDateTimeGridSizeChanged"
-						support:Dense.MinHeight="64">
-
-						<VerticalStackLayout x:Name="DateCell" Spacing="0" VerticalOptions="Center">
-							<Label StyleClass="Caption" Text="{localization:Tr Plan.Date}" />
-
-							<DatePicker
-								x:Name="DatePickerControl"
-								Date="{Binding Date}"
-								Format="ddd, d MMM"
-								HorizontalOptions="Start"
-								MaximumDate="{Binding MaxDate}"
-								MinimumDate="{Binding MinDate}" />
-						</VerticalStackLayout>
-
-						<VerticalStackLayout
-							x:Name="TimeCell"
-							Grid.Column="1"
-							Spacing="0"
-							VerticalOptions="Center">
-							<Label StyleClass="Caption" Text="{localization:Tr Plan.Time}" />
-
-							<TimePicker
-								x:Name="TimePickerControl"
-								Format="HH:mm"
-								HorizontalOptions="Start"
-								Time="{Binding Time}" />
-						</VerticalStackLayout>
-					</Grid>
+					<!--  Date and time share one row while they fit; otherwise the time takes its own row  -->
+					<controls:WhenPicker
+						Date="{Binding Date}"
+						MaximumDate="{Binding MaxDate}"
+						MinimumDate="{Binding MinDate}"
+						Time="{Binding Time}" />
 
 					<BoxView StyleClass="Divider" />
 
@@ -322,50 +326,68 @@
 				</VerticalStackLayout>
 			</Border>
 
-			<Button Command="{Binding SearchCommand}" Text="{localization:Tr Plan.SearchJourneys}" />
+			<!--  Search; the bookmark of the connection sits next to it: filled when saved, one tap toggles  -->
+			<Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource SpaceS}">
+				<Button Command="{Binding SearchCommand}" Text="{localization:Tr Plan.SearchJourneys}" />
 
-			<!--  Shortcuts: home, and keeping the connection on screen under a name  -->
-			<FlexLayout Wrap="Wrap">
+				<Border
+					Grid.Column="1"
+					BackgroundColor="{DynamicResource AccentSoft}"
+					SemanticProperties.Description="{Binding Bookmark.Description}"
+					StrokeShape="RoundRectangle 6"
+					StrokeThickness="0"
+					WidthRequest="52"
+					support:Dense.MinHeight="48"
+					support:Motion.Feedback="True">
+					<controls:Icon
+						Glyph="{Binding Bookmark.Glyph}"
+						HorizontalOptions="Center"
+						Size="22"
+						VerticalOptions="Center"
+						Color="{DynamicResource Accent}" />
+					<Border.GestureRecognizers>
+						<TapGestureRecognizer Command="{Binding Bookmark.ToggleCommand}" />
+					</Border.GestureRecognizers>
+				</Border>
+			</Grid>
 
-				<Button
-					Margin="0,0,8,8"
-					Padding="14,0"
-					Command="{Binding GoHomeCommand}"
-					FontSize="{StaticResource FontCaption}"
-					IsVisible="{Binding HasHome}"
-					support:Dense.MinHeight="40"
-					StyleClass="Tonal"
-					Text="{localization:Tr Plan.GoHome}" />
+			<!--  Home  -->
+			<Border Padding="0" StyleClass="Card">
+				<Grid
+					support:Dense.MinHeight="56"
+					support:Dense.Padding="14,6,4,6"
+					ColumnDefinitions="Auto,*,Auto"
+					ColumnSpacing="12">
 
-				<Button
-					Margin="0,0,8,8"
-					Padding="14,0"
-					Command="{Binding SetHomeCommand}"
-					FontSize="{StaticResource FontCaption}"
-					support:Dense.MinHeight="40"
-					StyleClass="Tonal"
-					Text="{localization:Tr Plan.SetHome}" />
+					<controls:Icon
+						Glyph="Home"
+						Size="22"
+						VerticalOptions="Center"
+						Color="{DynamicResource Accent}" />
 
-				<Button
-					Margin="0,0,8,8"
-					Padding="14,0"
-					Command="{Binding PickViaCommand}"
-					FontSize="{StaticResource FontCaption}"
-					IsVisible="{Binding NoVia}"
-					support:Dense.MinHeight="40"
-					StyleClass="Tonal"
-					Text="{localization:Tr Plan.AddVia}" />
+					<VerticalStackLayout
+						Grid.Column="1"
+						Spacing="1"
+						VerticalOptions="Center"
+						support:Motion.Feedback="True">
+						<Label StyleClass="Caption" Text="{localization:Tr Extras.HomeTitle}" />
+						<controls:StopNameView
+							Muted="{Binding NoHome}"
+							Place="{Binding HomePlace}"
+							Stop="{Binding HomeName}" />
+						<VerticalStackLayout.GestureRecognizers>
+							<TapGestureRecognizer Command="{Binding HomeCommand}" />
+						</VerticalStackLayout.GestureRecognizers>
+					</VerticalStackLayout>
 
-				<Button
-					Margin="0,0,8,8"
-					Padding="14,0"
-					Command="{Binding SaveRouteCommand}"
-					FontSize="{StaticResource FontCaption}"
-					IsEnabled="{Binding CanSearch}"
-					support:Dense.MinHeight="40"
-					StyleClass="Tonal"
-					Text="{localization:Tr Plan.SaveRoute}" />
-			</FlexLayout>
+					<controls:IconButton
+						Grid.Column="2"
+						Command="{Binding SetHomeCommand}"
+						Glyph="Edit"
+						IsVisible="{Binding HasHome}"
+						SemanticProperties.Description="{localization:Tr Plan.SetHome}" />
+				</Grid>
+			</Border>
 
 			<!--  Saved routes  -->
 			<VerticalStackLayout IsVisible="{Binding HasSavedRoutes}" Spacing="{DynamicResource SpaceS}">
@@ -520,7 +542,7 @@
 
 				<Label StyleClass="Title" Text="{localization:Tr Plan.Favourites}" />
 
-				<FlexLayout BindableLayout.ItemsSource="{Binding Favourites}" Wrap="Wrap">
+				<FlexLayout AlignContent="Start" AlignItems="Start" BindableLayout.ItemsSource="{Binding Favourites}" Wrap="Wrap">
 
 					<BindableLayout.ItemTemplate>
 						<DataTemplate x:DataType="core:Location">

@@ -76,7 +76,37 @@ public sealed class SearchHeader : ContentView
 			null,
 			propertyChanged: OnChanged);
 
+	public static readonly BindableProperty SecondaryGlyphProperty =
+		BindableProperty.Create(
+			nameof(SecondaryGlyph),
+			typeof(IconGlyph),
+			typeof(SearchHeader),
+			IconGlyph.None,
+			propertyChanged: OnChanged);
+
+	public static readonly BindableProperty SecondaryCommandProperty =
+		BindableProperty.Create(
+			nameof(SecondaryCommand),
+			typeof(ICommand),
+			typeof(SearchHeader),
+			null,
+			propertyChanged: OnChanged);
+
+	public static readonly BindableProperty SecondaryDescriptionProperty =
+		BindableProperty.Create(
+			nameof(SecondaryDescription),
+			typeof(string),
+			typeof(SearchHeader),
+			null,
+			propertyChanged: OnChanged);
+
 	private readonly RouteView _route = new();
+
+	private readonly IconButton _secondary =
+		new()
+		{
+			VerticalOptions = LayoutOptions.Start
+		};
 
 	private readonly Label _subtitle =
 		new()
@@ -112,7 +142,15 @@ public sealed class SearchHeader : ContentView
 			};
 
 		grid.Add(texts, 0, 0);
-		grid.Add(_action, 1, 0);
+		grid.Add(
+			new HorizontalStackLayout
+			{
+				Spacing = 0,
+				VerticalOptions = LayoutOptions.Start,
+				Children = { _secondary, _action }
+			},
+			1,
+			0);
 
 		Content = grid;
 
@@ -172,6 +210,25 @@ public sealed class SearchHeader : ContentView
 		set => SetValue(ActionDescriptionProperty, value);
 	}
 
+	/// <summary>An optional second button left of the action (the bookmark of the connection).</summary>
+	public IconGlyph SecondaryGlyph
+	{
+		get => (IconGlyph)GetValue(SecondaryGlyphProperty);
+		set => SetValue(SecondaryGlyphProperty, value);
+	}
+
+	public ICommand? SecondaryCommand
+	{
+		get => (ICommand?)GetValue(SecondaryCommandProperty);
+		set => SetValue(SecondaryCommandProperty, value);
+	}
+
+	public string? SecondaryDescription
+	{
+		get => (string?)GetValue(SecondaryDescriptionProperty);
+		set => SetValue(SecondaryDescriptionProperty, value);
+	}
+
 	private static void OnChanged(BindableObject bindable, object? oldValue, object? newValue) =>
 		((SearchHeader)bindable).Apply();
 
@@ -190,5 +247,11 @@ public sealed class SearchHeader : ContentView
 		_action.IsVisible = ActionGlyph != IconGlyph.None;
 
 		SemanticProperties.SetDescription(_action, ActionDescription);
+
+		_secondary.Glyph = SecondaryGlyph;
+		_secondary.Command = SecondaryCommand;
+		_secondary.IsVisible = SecondaryGlyph != IconGlyph.None;
+
+		SemanticProperties.SetDescription(_secondary, SecondaryDescription);
 	}
 }

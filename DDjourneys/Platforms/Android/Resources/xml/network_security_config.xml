@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+	<!-- The VVO TRIAS interface is only offered over plain HTTP. -->
+	<domain-config cleartextTrafficPermitted="true">
+		<domain includeSubdomains="false">efa.vvo-online.de</domain>
+	</domain-config>
+</network-security-config>

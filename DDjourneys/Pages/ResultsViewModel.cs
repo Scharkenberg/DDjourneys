@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Globalization;
@@ -45,10 +46,14 @@ public sealed class ResultsViewModel :
 
 	public ResultsViewModel(
 		JourneyService journeys,
-		AppSettings settings)
+		AppSettings settings,
+		PlaceStore places)
 	{
 		ArgumentNullException.ThrowIfNull(
 			journeys);
+
+		ArgumentNullException.ThrowIfNull(
+			places);
 
 		ArgumentNullException.ThrowIfNull(
 			settings);
@@ -56,6 +61,15 @@ public sealed class ResultsViewModel :
 		_journeys = journeys;
 		_settings = settings;
 		_localization = LocalizationService.Current;
+
+		Bookmark =
+			new RouteBookmark(
+				places,
+				() => _query is { } asked
+					? (asked.From, asked.To)
+					: null,
+				message => ShowError?.Invoke(message) ?? Task.CompletedTask,
+				hideWhenUnavailable: true);
 
 		ListenToLocalization(
 			_localization,
@@ -103,6 +117,9 @@ public sealed class ResultsViewModel :
 		_query;
 
 	public Func<string, Task>? ShowError { get; set; }
+
+	/// <summary>Saves (and removes) the searched connection; the icon shows whether it is saved.</summary>
+	public RouteBookmark Bookmark { get; }
 
 	public Command RefreshCommand { get; }
 
@@ -275,6 +292,8 @@ public sealed class ResultsViewModel :
 		{
 			_query = journeyQuery;
 
+			Bookmark.Refresh();
+
 			RouteText =
 				$"{StopLabel.Compose(journeyQuery.From)} \u2192 " +
 				$"{StopLabel.Compose(journeyQuery.To)}";
@@ -393,7 +412,7 @@ public sealed class ResultsViewModel :
 			{
 				HasError = true;
 
-				Debug.WriteLine(
+				DiagnosticLog.Write(
 					$"Journey search not answered: {result.Outcome} " +
 					$"{result.ErrorMessage} {result.ErrorDetail}");
 
@@ -438,13 +457,16 @@ public sealed class ResultsViewModel :
 				{
 					Items.Add(
 						new JourneyCardModel(
-							journey));
+							journey)
+						{
+							Passenger = _settings.Passenger
+						});
 				}
 				catch (Exception ex)
 				{
 					skipped++;
 
-					Debug.WriteLine(
+					DiagnosticLog.Write(
 						$"Journey card failed:\n{ex}");
 				}
 			}
@@ -465,7 +487,7 @@ public sealed class ResultsViewModel :
 		}
 		catch (Exception ex)
 		{
-			Debug.WriteLine(
+			DiagnosticLog.Write(
 				$"Journey search failed:\n{ex}");
 
 			if (!cts.IsCancellationRequested)
@@ -574,13 +596,16 @@ public sealed class ResultsViewModel :
 				{
 					replacement.Add(
 						new JourneyCardModel(
-							journey));
+							journey)
+						{
+							Passenger = _settings.Passenger
+						});
 				}
 				catch (Exception ex)
 				{
 					skipped++;
 
-					Debug.WriteLine(
+					DiagnosticLog.Write(
 						$"Adjacent journey card failed:\n{ex}");
 				}
 			}
@@ -683,7 +708,7 @@ public sealed class ResultsViewModel :
 		}
 		catch (Exception inner)
 		{
-			Debug.WriteLine(
+			DiagnosticLog.Write(
 				$"Reporting failed: {inner.Message}");
 		}
 	}
@@ -692,7 +717,7 @@ public sealed class ResultsViewModel :
 	private void ReportContinuationFailure(
 		Exception ex)
 	{
-		Debug.WriteLine(
+		DiagnosticLog.Write(
 			$"Journey continuation failed:\n{ex}");
 
 		try
@@ -717,7 +742,7 @@ public sealed class ResultsViewModel :
 		}
 		catch (Exception inner)
 		{
-			Debug.WriteLine(
+			DiagnosticLog.Write(
 				$"Reporting continuation failure failed: {inner.Message}");
 		}
 	}

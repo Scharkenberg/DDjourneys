@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using System.Globalization;
 using Android.App;
 using Android.Content;
@@ -472,7 +473,7 @@ internal static class LiveJourneyNotification
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"[SCHUTZENGEL] Notification summary not updated: {ex.Message}");
+			DiagnosticLog.Write($"[SCHUTZENGEL] Notification summary not updated: {ex.Message}");
 		}
 	}
 

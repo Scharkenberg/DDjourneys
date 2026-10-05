@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using Android.App;
 using Android.Content;
 using Android.OS;
@@ -39,7 +40,7 @@ internal sealed class JourneyTrackingForegroundService : Service
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"[SCHUTZENGEL] Foreground service not started: {ex.Message}");
+			DiagnosticLog.Write($"[SCHUTZENGEL] Foreground service not started: {ex.Message}");
 
 			return false;
 		}
@@ -55,7 +56,7 @@ internal sealed class JourneyTrackingForegroundService : Service
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"[SCHUTZENGEL] Foreground service not stopped: {ex.Message}");
+			DiagnosticLog.Write($"[SCHUTZENGEL] Foreground service not stopped: {ex.Message}");
 		}
 	}
 

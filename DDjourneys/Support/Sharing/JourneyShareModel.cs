@@ -6,6 +6,9 @@ namespace DDjourneys.Support.Sharing;
 
 public enum ShareStepKind
 {
+	/// <summary>The starting point (always present unless the first ride boards exactly there).</summary>
+	Depart,
+
 	/// <summary>A walk (before, between or after rides).</summary>
 	Walk,
 
@@ -59,13 +62,19 @@ public sealed record ShareStep
 	/// <summary>Walk: walking time. Change: time left to change.</summary>
 	public TimeSpan? Duration { get; init; }
 
+	/// <summary>Walk between two stops of a change: time left after the walk.</summary>
+	public TimeSpan? WaitTime { get; init; }
+
 	/// <summary>Change: walking time within the change.</summary>
 	public TimeSpan? WalkTime { get; init; }
 
 	public bool IsCancelled { get; init; }
 
-	/// <summary>Change: the connection may be missed.</summary>
+	/// <summary>Change (or walk between stops of a change): the connection may be missed.</summary>
 	public bool IsEndangered { get; init; }
+
+	/// <summary>Change (or walk between stops of a change): the operators guarantee the connection (it is held).</summary>
+	public bool IsGuaranteed { get; init; }
 }
 
 /// <summary>
@@ -91,8 +100,8 @@ public sealed record JourneyShareModel
 
 	public required IReadOnlyList<ShareStep> Steps { get; init; }
 
-	/// <summary>Plain-text notices, each at most once.</summary>
-	public required IReadOnlyList<string> Notices { get; init; }
+	/// <summary>The ticket price for the passenger set in the options ("2,70 €"); null when the provider quotes none.</summary>
+	public string? PriceText { get; init; }
 
 	/// <summary>The journey cannot take place (a ride cancelled, a stop skipped, a connection unreachable).</summary>
 	public bool IsCancelled { get; init; }
@@ -106,7 +115,10 @@ public sealed record JourneyShareModel
 	/// <summary>Lines in riding order, for chips ("11", "62").</summary>
 	public IEnumerable<ShareStep> Rides => Steps.Where(step => step.Kind == ShareStepKind.Ride);
 
-	public static JourneyShareModel Create(Journey journey, IUiStrings strings)
+	public static JourneyShareModel Create(
+		Journey journey,
+		IUiStrings strings,
+		PassengerCategory passenger = PassengerCategory.Adult)
 	{
 		ArgumentNullException.ThrowIfNull(journey);
 		ArgumentNullException.ThrowIfNull(strings);
@@ -117,10 +129,11 @@ public sealed record JourneyShareModel
 		Station end = journey.Destination ?? journey.To;
 
 		var steps = new List<ShareStep>();
+		IReadOnlyList<TimelineItem> items = TimelineBuilder.Build(journey);
 
-		foreach (TimelineItem item in TimelineBuilder.Build(journey))
+		for (int i = 0; i < items.Count; i++)
 		{
-			switch (item)
+			switch (items[i])
 			{
 				case RideItem { Leg: var leg }:
 					steps.Add(Ride(leg, text));
@@ -139,6 +152,26 @@ public sealed record JourneyShareModel
 						});
 					break;
 
+				case BoundaryItem { ShowWait: true } change
+					when i > 0
+						&& i + 1 < items.Count
+						&& items[i - 1] is RideItem before
+						&& items[i + 1] is RideItem after
+						&& !SameStation(before.Leg.To, after.Leg.From):
+					// A change that walks to another stop: alight, walk to the boarding stop, board.
+					steps.Add(
+						new ShareStep
+						{
+							Kind = ShareStepKind.Walk,
+							Time = before.Leg.EffectiveArrival,
+							Duration = change.WalkTime,
+							WaitTime = change.Wait,
+							To = StopLabel.Compose(after.Leg.From),
+							IsEndangered = change.Endangered,
+							IsGuaranteed = change.Ensured
+						});
+					break;
+
 				case BoundaryItem { ShowWait: true } change:
 					steps.Add(
 						new ShareStep
@@ -147,7 +180,8 @@ public sealed record JourneyShareModel
 							From = StopLabel.Compose(change.At),
 							Duration = change.Wait,
 							WalkTime = change.WalkTime,
-							IsEndangered = change.Endangered
+							IsEndangered = change.Endangered,
+							IsGuaranteed = change.Ensured
 						});
 					break;
 
@@ -168,6 +202,24 @@ public sealed record JourneyShareModel
 			}
 		}
 
+		// The starting point is always part of the picture, whatever it is (stop, address, POI, coordinates);
+		// only a first ride that boards exactly there already shows it.
+		string startLabel = StopLabel.Compose(start);
+
+		if (!(steps.Count > 0
+			&& steps[0] is { Kind: ShareStepKind.Ride } first
+			&& string.Equals(first.From, startLabel, StringComparison.CurrentCultureIgnoreCase)))
+		{
+			steps.Insert(
+				0,
+				new ShareStep
+				{
+					Kind = ShareStepKind.Depart,
+					Time = journey.Departure,
+					To = startLabel
+				});
+		}
+
 		steps.Add(
 			new ShareStep
 			{
@@ -180,7 +232,7 @@ public sealed record JourneyShareModel
 
 		return new JourneyShareModel
 		{
-			Origin = StopLabel.Compose(start),
+			Origin = startLabel,
 			Destination = StopLabel.Compose(end),
 			Day =
 				journey.Departure is { } departure
@@ -197,12 +249,21 @@ public sealed record JourneyShareModel
 					_ => string.Format(CultureInfo.CurrentCulture, text.MultipleTransfers, transfers)
 				},
 			Steps = steps,
-			Notices = CollectNotices(journey),
+			PriceText =
+				FareChoice.Preferred(journey.Fares, passenger) is { Price: { } price } fare
+					? Format.Price(price, fare.Currency)
+					: null,
 			IsCancelled = journey.IsImpossible,
 			BlockText = JourneyBlockText.Describe(journey.Block, text),
 			BlockReason = JourneyBlockText.Reason(journey.Block, text)
 		};
 	}
+
+	private static bool SameStation(Station a, Station b) =>
+		!string.IsNullOrWhiteSpace(a.Id) && !string.IsNullOrWhiteSpace(b.Id)
+			? string.Equals(a.Id, b.Id, StringComparison.OrdinalIgnoreCase)
+			: string.Equals(a.Name, b.Name, StringComparison.CurrentCultureIgnoreCase)
+				&& string.Equals(a.Place, b.Place, StringComparison.CurrentCultureIgnoreCase);
 
 	private static ShareStep Ride(JourneyLeg leg, JourneyStrings text) =>
 		new()
@@ -235,14 +296,4 @@ public sealed record JourneyShareModel
 		string.IsNullOrWhiteSpace(platform)
 			? null
 			: $"{(kind == PlatformKind.Railtrack ? text.Track : text.Platform)} {platform.Trim()}";
-
-	private static IReadOnlyList<string> CollectNotices(Journey journey) =>
-		journey.Notices
-			.Concat(journey.Legs.SelectMany(leg => leg.Notices))
-			.Concat(journey.Transfers.SelectMany(transfer => transfer.Notices))
-			.Where(notice => !string.IsNullOrWhiteSpace(notice))
-			.Select(notice => NoticeText.Plain(NoticeText.Parse(notice)).Trim())
-			.Where(notice => notice.Length > 0)
-			.Distinct(StringComparer.Ordinal)
-			.ToList();
 }

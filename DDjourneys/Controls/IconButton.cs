@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using DDjourneys.Support;
 using System.Windows.Input;
 
@@ -172,7 +173,7 @@ public sealed class IconButton : ContentView
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Icon button feedback skipped: {ex.Message}");
+			DiagnosticLog.Write($"Icon button feedback skipped: {ex.Message}");
 		}
 
 		Clicked?.Invoke(this, EventArgs.Empty);

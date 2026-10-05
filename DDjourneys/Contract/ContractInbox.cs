@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using DDjourneys.Core.Contract;
 using DDjourneys.Pages;
 using DDjourneys.Support;
@@ -95,7 +96,7 @@ public sealed class ContractInbox
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Contract delivery failed: {ex}");
+			DiagnosticLog.Write($"Contract delivery failed: {ex}");
 		}
 		finally
 		{
@@ -164,7 +165,7 @@ public sealed class ContractInbox
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Contract request failed: {ex}");
+			DiagnosticLog.Write($"Contract request failed: {ex}");
 
 			await _responder
 				.SendAsync(
@@ -323,7 +324,7 @@ public static class ContractEntry
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Contract inbox unavailable: {ex.Message}");
+			DiagnosticLog.Write($"Contract inbox unavailable: {ex.Message}");
 		}
 	}
 
