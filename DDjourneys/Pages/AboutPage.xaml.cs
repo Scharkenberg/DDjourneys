@@ -18,6 +18,7 @@ public partial class AboutPage : ContentPage
 	public AboutPage()
 	{
 		InitializeComponent();
+		Document.LinkTapped += OnLinkTapped;
 		Motion.Prepare(this);
 	}
 
@@ -58,7 +59,7 @@ public partial class AboutPage : ContentPage
 		}
 	}
 
-	private async void OnLinkTapped(object? sender, string address)
+	private static async void OnLinkTapped(object? sender, string address)
 	{
 		try
 		{

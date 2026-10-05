@@ -18,7 +18,7 @@ public static class AppInterfaces
 			string.Join(", ", AppStorage.Migrations.OrderBy(step => step.Version).Select(step => $"{step.Version} {step.Name}")));
 
 	public static IReadOnlyList<InterfaceSchema> All { get; } =
-		[.. InterfaceSchemas.Core, Storage];
+		(List<InterfaceSchema>)[.. InterfaceSchemas.Core, Storage];
 
 	/// <summary>The build, the system and the interface list as plain text.</summary>
 	public static string Report() =>

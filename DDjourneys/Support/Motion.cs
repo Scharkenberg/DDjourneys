@@ -78,7 +78,7 @@ public static class Motion
 	/// Waits until a looping animation has a reason to run again: animations are switched on, or a long pause has
 	/// passed (so a view that was removed meanwhile is not held alive for ever).
 	/// </summary>
-	internal static async Task WaitUntilWorthAnimatingAsync(VisualElement view)
+	internal static async Task WaitUntilWorthAnimatingAsync()
 	{
 		if (!Enabled)
 		{
@@ -86,7 +86,14 @@ public static class Motion
 
 			if (!Enabled)
 			{
-				await Task.WhenAny(signal.Task, Task.Delay(TimeSpan.FromSeconds(30)));
+				try
+				{
+					await signal.Task.WaitAsync(TimeSpan.FromSeconds(30));
+				}
+				catch (TimeoutException)
+				{
+					// The pause is over: the caller looks again.
+				}
 			}
 
 			return;
@@ -593,7 +600,7 @@ public static class Motion
 			{
 				if (!Enabled || !IsShowing(view))
 				{
-					await WaitUntilWorthAnimatingAsync(view);
+					await WaitUntilWorthAnimatingAsync();
 					continue;
 				}
 

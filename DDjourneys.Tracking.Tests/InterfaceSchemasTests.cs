@@ -10,6 +10,8 @@ namespace DDjourneys.Tracking.Tests;
 /// <summary>The versioned list of interfaces that a bug report quotes.</summary>
 public sealed class InterfaceSchemasTests
 {
+	private static readonly string[] Schemes = ["http", "https", "wss"];
+
 	[Fact]
 	public void Every_interface_has_an_unique_id_a_name_and_a_version()
 	{
@@ -33,7 +35,7 @@ public sealed class InterfaceSchemasTests
 			if (item.Kind == InterfaceKind.External)
 			{
 				Assert.True(Uri.TryCreate(item.Endpoint, UriKind.Absolute, out Uri? uri), item.Id);
-				Assert.Contains(uri!.Scheme, new[] { "http", "https", "wss" });
+				Assert.Contains(uri!.Scheme, Schemes);
 			}
 			else if (item.Kind == InterfaceKind.Internal)
 			{

@@ -160,7 +160,7 @@ public sealed partial class MarkdownView : ContentView
 			? "monospace"
 			: "Consolas";
 
-	private Border Code(MarkdownCode code)
+	private static Border Code(MarkdownCode code)
 	{
 		var label =
 			new Label

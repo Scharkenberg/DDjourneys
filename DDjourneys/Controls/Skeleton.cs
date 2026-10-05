@@ -150,7 +150,7 @@ public sealed partial class Skeleton : ContentView
 				if (!Motion.Enabled || !Motion.IsShowing(this))
 				{
 					Opacity = 1;
-					await Motion.WaitUntilWorthAnimatingAsync(this);
+					await Motion.WaitUntilWorthAnimatingAsync();
 					continue;
 				}
 

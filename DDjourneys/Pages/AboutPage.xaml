@@ -9,7 +9,7 @@
 	<ScrollView>
 		<VerticalStackLayout Padding="{DynamicResource PadPage}" Spacing="{DynamicResource SpaceM}">
 
-			<controls:MarkdownView x:Name="Document" LinkTapped="OnLinkTapped" />
+			<controls:MarkdownView x:Name="Document" />
 
 			<Label
 				x:Name="Message"
