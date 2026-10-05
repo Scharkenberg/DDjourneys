@@ -1075,9 +1075,10 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 			info.Options.ToWatchOptions(),
 			periodic,
 			entry.Summary?.EnsuredChanges,
-			[.. entry.Notices
+			entry.Notices
 				.OrderByDescending(item => item.Time ?? DateTimeOffset.MinValue)
-				.Select(item => new WatchedNotice(item.Time, item.Text, item.Severity != SchutzengelNoticeSeverity.Information))]);
+				.Select(item => new WatchedNotice(item.Time, item.Text, item.Severity != SchutzengelNoticeSeverity.Information))
+				.ToList());
 	}
 
 	private void RaiseTransitions(

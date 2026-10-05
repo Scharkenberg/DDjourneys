@@ -474,7 +474,7 @@
 															<Label StyleClass="Section" Text="{Binding HistoryTitle}" />
 															<VerticalStackLayout BindableLayout.ItemsSource="{Binding History}" Spacing="6">
 																<BindableLayout.ItemTemplate>
-																	<DataTemplate x:DataType="local:NoticeRow">
+																	<DataTemplate x:DataType="local:HistoryRow">
 																		<Grid ColumnDefinitions="48,*" ColumnSpacing="8">
 																			<Label
 																				FontFamily="{DynamicResource FontSemibold}"

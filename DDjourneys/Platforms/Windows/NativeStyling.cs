@@ -1,6 +1,5 @@
 using Microsoft.Maui.Handlers;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Media;
 
 namespace DDjourneys.Platforms.Windows;
 
@@ -43,7 +42,7 @@ internal static class NativeStyling
 
 		foreach (string key in BrushKeys)
 		{
-			box.Resources[key] = new SolidColorBrush(global::Microsoft.UI.Colors.Transparent);
+			box.Resources[key] = new global::Microsoft.UI.Xaml.Media.SolidColorBrush(global::Microsoft.UI.Colors.Transparent);
 		}
 
 		foreach (string key in ThicknessKeys)
@@ -52,7 +51,7 @@ internal static class NativeStyling
 		}
 
 		box.BorderThickness = new global::Microsoft.UI.Xaml.Thickness(0);
-		box.Background = new SolidColorBrush(global::Microsoft.UI.Colors.Transparent);
+		box.Background = new global::Microsoft.UI.Xaml.Media.SolidColorBrush(global::Microsoft.UI.Colors.Transparent);
 
 		// The template reads the resources when it is applied; re-apply if it already was.
 		box.ApplyTemplate();
