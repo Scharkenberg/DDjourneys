@@ -30,13 +30,48 @@ public sealed partial class ProviderRow(
 	public bool IsSelected
 	{
 		get;
-		internal set =>
-			SetProperty(
-				ref field,
-				value);
+		internal set
+		{
+			if (SetProperty(ref field, value))
+			{
+				OnPropertyChanged(nameof(IsNotSelected));
+			}
+		}
 	}
 
+	public bool IsNotSelected =>
+		!IsSelected;
+
 	public Command SelectCommand { get; } = select;
+
+	/// <summary>A hairline above every row but the first of its card.</summary>
+	public bool HasDivider { get; init; }
+
+	/// <summary>The details (coverage, what the provider supports, the button to use it) are shown.</summary>
+	public bool IsExpanded
+	{
+		get;
+		set
+		{
+			if (SetProperty(ref field, value))
+			{
+				OnPropertyChanged(nameof(ChevronRotation));
+			}
+		}
+	}
+
+	public double ChevronRotation =>
+		IsExpanded
+			? 180
+			: 0;
+
+	public Command ToggleCommand => field ??= new Command(() => IsExpanded = !IsExpanded);
+
+	public string UseText =>
+		LocalizationService.Current.CurrentStrings.Provider.Use;
+
+	public string InUseText =>
+		LocalizationService.Current.CurrentStrings.Provider.InUse;
 
 	public string Description =>
 		Info.IsExperimental
@@ -117,7 +152,7 @@ public sealed partial class ProvidersViewModel : DisposableViewModel
 						group.Key,
 						(List<ProviderRow>)
 						[.. group.Select(
-							provider =>
+							(provider, index) =>
 							{
 								ProviderRow? row = null;
 
@@ -128,7 +163,10 @@ public sealed partial class ProvidersViewModel : DisposableViewModel
 										[.. Labels
 											.Where(label => provider.Supports(label.Flag))
 											.Select(label => label.Label(strings))],
-										new Command(() => Select(row!)));
+										new Command(() => Select(row!)))
+									{
+										HasDivider = index > 0
+									};
 
 								return row;
 							})]))];

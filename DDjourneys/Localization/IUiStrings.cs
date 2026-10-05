@@ -433,6 +433,7 @@ public sealed class ProviderStrings
 	public required string Title { get; init; }
 	public required string Intro { get; init; }
 	public required string InUse { get; init; }
+	public required string Use { get; init; }
 	public required string CapJourneys { get; init; }
 	public required string CapPlaces { get; init; }
 	public required string CapContinuation { get; init; }
@@ -522,6 +523,7 @@ public sealed class TrackingStrings
 	public required string NotifGetOff { get; init; }
 	public required string NotifBoard { get; init; }
 	public required string NotifChangeTitle { get; init; }
+	public required string NotifWalkFromUntil { get; init; }
 	public required string NotifChangeText { get; init; }
 	public required string NotifRiskTitle { get; init; }
 	public required string GuaranteedChange { get; init; }

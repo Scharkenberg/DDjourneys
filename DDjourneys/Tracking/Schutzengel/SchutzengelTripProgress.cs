@@ -67,6 +67,26 @@ internal sealed record ConnectionRisk(
 	string Station,
 	string? NextLine);
 
+/// <summary>
+/// The walks the tracking service does not know: from where the traveller starts to the first stop, and from the last
+/// stop to the destination. They come from the journey the traveller followed and are added to the timeline as
+/// footpaths, so the journey starts when the walking starts and ends when the destination is reached.
+/// </summary>
+internal sealed record TripWalks(
+	int LeadSeconds,
+	string? From,
+	double? FromLatitude,
+	double? FromLongitude,
+	int TrailSeconds,
+	string? To,
+	double? ToLatitude,
+	double? ToLongitude)
+{
+	public bool IsEmpty =>
+		LeadSeconds <= 0
+		&& TrailSeconds <= 0;
+}
+
 internal enum TripStage
 {
 	NotStarted,
@@ -110,6 +130,12 @@ internal sealed record TripSnapshot(
 	/// <summary>The ride that follows the current walk: line, boarding stop and time.</summary>
 	public TripEpisode? NextRide { get; init; }
 
+	/// <summary>Where the current ride or walk starts (with its real-time start).</summary>
+	public TripStop? EpisodeStart { get; init; }
+
+	/// <summary>The current walk is the last part of the journey: on to the destination itself.</summary>
+	public bool IsFinalWalk { get; init; }
+
 	public static TripSnapshot Empty { get; } =
 		new(
 			TripStage.NotStarted, TrackingPhase.Planned, -1, 0, 0,
@@ -130,6 +156,75 @@ internal sealed class TripTimeline
 	private TripTimeline(int? dataVersion, IReadOnlyList<TripEpisode> episodes)
 	{
 		DataVersion = dataVersion;
+		_core = episodes;
+		Episodes = episodes;
+	}
+
+	/// <summary>The episodes as the service reports them (rides and the changes between them).</summary>
+	private readonly IReadOnlyList<TripEpisode> _core;
+
+	private TripWalks? _walks;
+
+	/// <summary>
+	/// Adds the walk to the first stop and the walk from the last stop as footpaths. Their times follow the vehicles
+	/// (real time included): the first walk ends when the first vehicle leaves, the last starts when the last vehicle
+	/// arrives. Safe to call again with the same walks; without any, the timeline is the service's own.
+	/// </summary>
+	public void SetWalks(TripWalks? walks)
+	{
+		if (Equals(_walks, walks))
+		{
+			return;
+		}
+
+		_walks = walks;
+
+		var episodes = new List<TripEpisode>(_core);
+
+		if (walks is { IsEmpty: false } && episodes.Count > 0)
+		{
+			if (walks.LeadSeconds > 0 && !episodes[0].IsIndividual)
+			{
+				TripStop boarding = episodes[0].From;
+				TimeSpan walk = TimeSpan.FromSeconds(walks.LeadSeconds);
+
+				episodes.Insert(
+					0,
+					new TripEpisode(
+						true, null, null, null,
+						new TripStop(
+							walks.From ?? boarding.Name,
+							boarding.Scheduled - walk,
+							boarding.Realtime - walk,
+							walks.FromLatitude,
+							walks.FromLongitude),
+						boarding,
+						(List<TripStop>)[],
+						(List<TripPoint>)[],
+						walk));
+			}
+
+			if (walks.TrailSeconds > 0 && !episodes[^1].IsIndividual)
+			{
+				TripStop alighting = episodes[^1].To;
+				TimeSpan walk = TimeSpan.FromSeconds(walks.TrailSeconds);
+
+				episodes.Add(
+					new TripEpisode(
+						true, null, null, null,
+						alighting,
+						new TripStop(
+							walks.To ?? alighting.Name,
+							alighting.Scheduled + walk,
+							alighting.Realtime + walk,
+							walks.ToLatitude,
+							walks.ToLongitude),
+						(List<TripStop>)[],
+						(List<TripPoint>)[],
+						walk));
+			}
+		}
+
 		Episodes = episodes;
 	}
 
@@ -193,7 +288,7 @@ internal sealed class TripTimeline
 		return false;
 	}
 
-	public IReadOnlyList<TripEpisode> Episodes { get; }
+	public IReadOnlyList<TripEpisode> Episodes { get; private set; }
 
 	public DateTimeOffset? Start =>
 		Episodes.Count == 0 ? null : Episodes[0].From.Effective;
@@ -408,7 +503,9 @@ internal sealed class TripTimeline
 		{
 			EpisodeEnd = episode.To,
 			EpisodeStartPosition = episodeStartPosition,
-			NextRide = nextRide
+			NextRide = nextRide,
+			EpisodeStart = episode.From,
+			IsFinalWalk = episode.IsIndividual && current == Episodes.Count - 1
 		};
 	}
 

@@ -33,37 +33,73 @@
 									<BindableLayout.ItemTemplate>
 										<DataTemplate x:DataType="local:ProviderRow">
 
-											<Grid support:Motion.Feedback="True"
-												support:Dense.Padding="12,8"
-												ColumnDefinitions="*,Auto"
-												ColumnSpacing="12"
-												support:Dense.MinHeight="{StaticResource HitRow}"
-												SemanticProperties.Description="{Binding Description}">
+											<VerticalStackLayout>
 
-												<VerticalStackLayout Spacing="3" VerticalOptions="Center">
+												<BoxView IsVisible="{Binding HasDivider}" StyleClass="Divider" />
 
-													<HorizontalStackLayout Spacing="8">
-														<Label
-															FontFamily="{DynamicResource FontSemibold}"
-															Text="{Binding Name}"
-															VerticalOptions="Center" />
+												<!--  The header toggles the details; choosing is the button inside them  -->
+												<Grid support:Motion.Feedback="True"
+													support:Dense.Padding="12,8"
+													ColumnDefinitions="*,Auto,Auto"
+													ColumnSpacing="10"
+													support:Dense.MinHeight="{StaticResource HitRow}"
+													SemanticProperties.Description="{Binding Description}">
 
-														<!--  Informative, not tappable: pill-shaped  -->
-														<Border
-															IsVisible="{Binding IsExperimental}"
-															StyleClass="Chip"
-															VerticalOptions="Center">
-															<Label StyleClass="Faint" Text="{localization:Tr Provider.Experimental}" />
-														</Border>
-													</HorizontalStackLayout>
+													<VerticalStackLayout Spacing="2" VerticalOptions="Center">
 
-													<Label StyleClass="Caption" Text="{Binding FullName}" />
+														<Grid ColumnDefinitions="Auto,Auto,*" ColumnSpacing="8">
+															<Label
+																FontFamily="{DynamicResource FontSemibold}"
+																FontSize="{StaticResource FontSubtitle}"
+																Text="{Binding Name}"
+																VerticalOptions="Center" />
+
+															<!--  Informative, not tappable: pill-shaped  -->
+															<Border
+																Grid.Column="1"
+																IsVisible="{Binding IsExperimental}"
+																StyleClass="Chip"
+																VerticalOptions="Center">
+																<Label
+																	StyleClass="Faint"
+																	Text="{localization:Tr Provider.Experimental}"
+																	VerticalOptions="Center" />
+															</Border>
+														</Grid>
+
+														<Label StyleClass="Caption" Text="{Binding FullName}" />
+													</VerticalStackLayout>
+
+													<controls:Icon
+														Grid.Column="1"
+														Glyph="Check"
+														IsVisible="{Binding IsSelected}"
+														Size="20"
+														VerticalOptions="Center"
+														Color="{DynamicResource Accent}" />
+
+													<controls:Icon
+														Grid.Column="2"
+														Glyph="ChevronDown"
+														support:Motion.Turn="{Binding ChevronRotation}"
+														Size="20"
+														VerticalOptions="Center"
+														Color="{DynamicResource InkMuted}" />
+
+													<Grid.GestureRecognizers>
+														<TapGestureRecognizer Command="{Binding ToggleCommand}" />
+													</Grid.GestureRecognizers>
+												</Grid>
+
+												<VerticalStackLayout
+													IsVisible="{Binding IsExpanded}"
+													support:Dense.Padding="12,0,12,12"
+													Spacing="8">
 
 													<Label StyleClass="Faint" Text="{Binding Coverage}" />
 
 													<!--  What it supports: informative, not tappable, so pill-shaped chips are fine  -->
 													<FlexLayout AlignContent="Start" AlignItems="Start"
-														Margin="0,4,0,0"
 														BindableLayout.ItemsSource="{Binding Capabilities}"
 														Wrap="Wrap">
 
@@ -80,20 +116,22 @@
 															</DataTemplate>
 														</BindableLayout.ItemTemplate>
 													</FlexLayout>
+
+													<Button
+														Command="{Binding SelectCommand}"
+														HorizontalOptions="Start"
+														IsVisible="{Binding IsNotSelected}"
+														StyleClass="Tonal"
+														Text="{Binding UseText}" />
+
+													<Label
+														FontFamily="{DynamicResource FontSemibold}"
+														FontSize="{StaticResource FontCaption}"
+														IsVisible="{Binding IsSelected}"
+														Text="{Binding InUseText}"
+														TextColor="{DynamicResource Accent}" />
 												</VerticalStackLayout>
-
-												<controls:Icon
-													Grid.Column="1"
-													Glyph="Check"
-													IsVisible="{Binding IsSelected}"
-													Size="20"
-													VerticalOptions="Start"
-													Color="{DynamicResource Accent}" />
-
-												<Grid.GestureRecognizers>
-													<TapGestureRecognizer Command="{Binding SelectCommand}" />
-												</Grid.GestureRecognizers>
-											</Grid>
+											</VerticalStackLayout>
 										</DataTemplate>
 									</BindableLayout.ItemTemplate>
 								</VerticalStackLayout>

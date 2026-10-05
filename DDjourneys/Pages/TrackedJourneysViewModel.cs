@@ -600,6 +600,7 @@ public sealed partial class TrackedJourneysViewModel : DisposableViewModel, IQue
 			if (journeys.Count > 0)
 			{
 				FollowedRides.Keep(journeys.Select(item => item.PlanId));
+				FollowedWalks.Keep(journeys.Select(item => item.PlanId));
 			}
 			TrackingStrings strings = _localization.CurrentStrings.Tracking;
 

@@ -250,6 +250,13 @@ internal sealed partial class SchutzengelJourneyTracker : IJourneyTracker, ITrac
 				planId = await CreatePlanAsync(journey, tripReference, cancellationToken).ConfigureAwait(false);
 			}
 
+			// Before the plan shows up in the list: its first progress already counts the walks.
+			FollowedWalks.Save(planId, journey);
+			if (_entries.TryGetValue(planId, out WatchEntry? known))
+			{
+				known.WalksLoaded = false;
+			}
+
 			effects.Add(await SyncAsync(force: true, cancellationToken).ConfigureAwait(false));
 		}
 		finally
@@ -933,6 +940,13 @@ internal sealed partial class SchutzengelJourneyTracker : IJourneyTracker, ITrac
 			cancellationToken);
 	}
 
+	private static TripWalks? ToTripWalks(FollowedWalk? walk) =>
+		walk is { IsEmpty: false }
+			? new TripWalks(
+				walk.LeadSeconds, walk.From, walk.FromLatitude, walk.FromLongitude,
+				walk.TrailSeconds, walk.To, walk.ToLatitude, walk.ToLongitude)
+			: null;
+
 	private WatchedJourney Evaluate(
 		WatchEntry entry,
 		DateTimeOffset now,
@@ -940,6 +954,16 @@ internal sealed partial class SchutzengelJourneyTracker : IJourneyTracker, ITrac
 		PendingEffects effects)
 	{
 		SchutzengelPlanInfo info = entry.Info;
+
+		// The service follows vehicles only: the walks to the first stop and from the last one are added here.
+		if (!entry.WalksLoaded)
+		{
+			entry.WalksLoaded = true;
+			entry.Walks = ToTripWalks(FollowedWalks.Load(info.PlanId));
+		}
+
+		entry.Timeline?.SetWalks(entry.Walks);
+
 		TripSnapshot snapshot = entry.Timeline?.Calculate(now) ?? TripSnapshot.Empty;
 		SchutzengelNotice? newest = entry.Notices.Count > 0 ? entry.Notices[^1] : null;
 
@@ -1646,6 +1670,11 @@ internal sealed partial class SchutzengelJourneyTracker : IJourneyTracker, ITrac
 		public string? TripId { get; set; }
 
 		public TripTimeline? Timeline { get; set; }
+
+		/// <summary>The walks at both ends of the journey (kept on the device, the service does not know them).</summary>
+		public TripWalks? Walks { get; set; }
+
+		public bool WalksLoaded { get; set; }
 
 		public List<SchutzengelNotice> Notices { get; set; } = [];
 
