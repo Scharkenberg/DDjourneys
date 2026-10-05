@@ -814,6 +814,6 @@ public static class Motion
 				_ => null
 			};
 
-		return layout is null ? [] : layout.Children.ToArray();
+		return layout is null ? [] : [.. layout.Children];
 	}
 }

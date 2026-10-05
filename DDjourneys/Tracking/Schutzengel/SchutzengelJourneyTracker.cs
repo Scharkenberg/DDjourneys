@@ -80,7 +80,7 @@ internal sealed partial class SchutzengelJourneyTracker : IJourneyTracker, ITrac
 
 	// Immutable copy of the cached trips for readers outside the gate (GetTrip).
 	private volatile Dictionary<string, TripTimeline> _timelines =
-		new Dictionary<string, TripTimeline>(StringComparer.Ordinal);
+		new(StringComparer.Ordinal);
 
 	private readonly Func<int>? _defaultLeadMinutes;
 

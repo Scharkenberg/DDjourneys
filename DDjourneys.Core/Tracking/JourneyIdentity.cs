@@ -132,8 +132,8 @@ public sealed record JourneyIdentity
 
 	private static RideIdentity ToRide(JourneyLeg ride)
 	{
-		StopTime? first = ride.Stops.FirstOrDefault();
-		StopTime? last = ride.Stops.LastOrDefault();
+		StopTime? first = ride.Stops.Count > 0 ? ride.Stops[0] : null;
+		StopTime? last = ride.Stops.Count > 0 ? ride.Stops[^1] : null;
 
 		return new RideIdentity(
 			Normalize(ride.Line?.Name),

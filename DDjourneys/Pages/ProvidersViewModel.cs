@@ -36,7 +36,7 @@ public sealed partial class ProviderRow(
 				value);
 	}
 
-	public Command SelectCommand { get; }
+	public Command SelectCommand { get; } = select;
 
 	public string Description =>
 		Info.IsExperimental

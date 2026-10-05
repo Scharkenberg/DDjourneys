@@ -45,7 +45,7 @@ internal static class WidgetRenderer
 
 		Header(context, views, layout, snapshot, refreshing, strings);
 
-		IReadOnlyList<WidgetRow> rows =
+		List<WidgetRow> rows =
 			needsSetup || snapshot is null
 				? []
 				: Fit(snapshot.Upcoming(DateTimeOffset.UtcNow), layout.Rows);
