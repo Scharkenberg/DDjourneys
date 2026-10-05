@@ -24,24 +24,26 @@ public sealed record WidgetLayout(int Rows, WidgetDetail Detail, bool ShowUpdate
 
 	public const double MinSize = 120;
 
-	private const double HeaderHeight = 40;
-	private const double Padding = 16;
+	// As dense as the layout is: the header is one 12 sp line, a row one 12 sp line (two at Full), with 1 dp between.
+	private const double HeaderHeight = 20;
+	private const double Padding = 8;
 
-	private const double CompactWidth = 180;
-	private const double FullWidth = 260;
+	private const double CompactWidth = 170;
+	private const double FullWidth = 230;
 
 	public static double RowHeight(WidgetDetail detail) =>
 		detail switch
 		{
-			WidgetDetail.Minimal => 28,
-			WidgetDetail.Compact => 34,
-			_ => 44
+			WidgetDetail.Minimal => 19,
+			WidgetDetail.Compact => 19,
+			_ => 30
 		};
 
 	/// <param name="widthDp">Width the launcher gives the widget.</param>
 	/// <param name="heightDp">Height the launcher gives the widget.</param>
 	/// <param name="maxRows">The user's cap; 0 fits as many as the height allows.</param>
-	public static WidgetLayout For(double widthDp, double heightDp, int maxRows = 0)
+	/// <param name="fontScale">The system's text scale: sp text grows with it, so fewer rows fit.</param>
+	public static WidgetLayout For(double widthDp, double heightDp, int maxRows = 0, double fontScale = 1)
 	{
 		double width = Math.Max(widthDp, MinSize);
 		double height = Math.Max(heightDp, MinSize);
@@ -53,7 +55,9 @@ public sealed record WidgetLayout(int Rows, WidgetDetail Detail, bool ShowUpdate
 					? WidgetDetail.Compact
 					: WidgetDetail.Full;
 
-		int fit = (int)Math.Floor((height - HeaderHeight - Padding) / RowHeight(detail));
+		double scale = Math.Max(1, fontScale);
+
+		int fit = (int)Math.Floor((height - ((HeaderHeight + Padding) * scale)) / (RowHeight(detail) * scale));
 
 		int rows = Math.Clamp(fit, 1, MaxRows);
 

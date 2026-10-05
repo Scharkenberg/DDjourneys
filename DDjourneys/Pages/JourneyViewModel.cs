@@ -35,6 +35,8 @@ public sealed class JourneyViewModel :
 
 	private readonly ProviderRegistry _providers;
 
+	private readonly LegRunResolver _runs;
+
 
 	/// <summary>Saves (and removes) the connection this journey belongs to; empty when it was opened without a search.</summary>
 	public RouteBookmark Bookmark { get; }
@@ -45,9 +47,12 @@ public sealed class JourneyViewModel :
 		ProviderRegistry providers,
 		ContractSession contract,
 		JourneyService journeys,
-		PlaceStore places)
+		PlaceStore places,
+		LegRunResolver runs)
 	{
 		ArgumentNullException.ThrowIfNull(places);
+
+		_runs = runs ?? throw new ArgumentNullException(nameof(runs));
 
 		Bookmark =
 			new RouteBookmark(
@@ -797,7 +802,31 @@ public sealed class JourneyViewModel :
 			// show every vehicle of the line, so a leg that cannot be followed opens nothing.
 			if (row.Source is { } leg)
 			{
-				if (TrackTargets.FromLeg(leg, row.LineNumber) is { } target)
+				// The passenger usually looks before the vehicle has reached the boarding stop, so the whole run is
+				// looked up (the departure at the boarding stop that is this leg, and its stops before and after).
+				// The leg's own course is the fallback.
+				AlternativeStatus = _localization.CurrentStrings.Extras.LiveConnecting;
+
+				TrackTarget? target = null;
+
+				try
+				{
+					target =
+						await _runs.ResolveAsync(
+							leg,
+							row.LineNumber,
+							_settings.TimeoutSeconds);
+				}
+				catch (Exception ex) when (ex is not OperationCanceledException)
+				{
+					DiagnosticLog.Write($"Looking up the run of line {row.LineNumber} failed: {ex.Message}");
+				}
+
+				target ??= TrackTargets.FromLeg(leg, row.LineNumber);
+
+				AlternativeStatus = string.Empty;
+
+				if (target is not null)
 				{
 					parameters[Routes.Track] = target;
 				}

@@ -1,13 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- One layout for every widget: a header, a message line and ten row slots. The renderer fills as many rows as the
-     widget's size allows and hides the rest; only views a RemoteViews may contain are used. -->
+<!-- One layout for every widget: a header, a message line and ten row slots. As dense as it can be: the renderer fills as
+     many rows as the widget's size allows and hides the rest; only views a RemoteViews may contain are used.
+     The middle column has the weight, so a long destination is cut with an ellipsis and never pushed out. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/w_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/widget_background"
     android:orientation="vertical"
-    android:padding="10dp">
+    android:paddingStart="5dp"
+    android:paddingTop="3dp"
+    android:paddingEnd="5dp"
+    android:paddingBottom="3dp">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -21,27 +25,28 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:ellipsize="end"
+            android:includeFontPadding="false"
             android:singleLine="true"
             android:textColor="@color/widget_ink"
-            android:textSize="14sp"
+            android:textSize="12sp"
             android:textStyle="bold" />
 
         <TextView
             android:id="@+id/w_updated"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="6dp"
+            android:layout_marginStart="4dp"
+            android:includeFontPadding="false"
             android:singleLine="true"
             android:textColor="@color/widget_muted"
-            android:textSize="10sp"
+            android:textSize="9sp"
             android:visibility="gone" />
 
         <ImageView
             android:id="@+id/w_open"
-            android:layout_width="22dp"
-            android:layout_height="22dp"
-            android:layout_marginStart="8dp"
-            android:padding="2dp"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:layout_marginStart="4dp"
             android:src="@drawable/ic_stat_journey" />
     </LinearLayout>
 
@@ -49,9 +54,9 @@
         android:id="@+id/w_message"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:paddingTop="8dp"
+        android:paddingTop="3dp"
         android:textColor="@color/widget_muted"
-        android:textSize="12sp"
+        android:textSize="11sp"
         android:visibility="gone" />
 
         <LinearLayout
@@ -60,25 +65,25 @@
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
             android:orientation="horizontal"
-            android:paddingTop="3dp"
-            android:paddingBottom="3dp"
+            android:paddingTop="1dp"
+            android:paddingBottom="1dp"
             android:visibility="gone">
 
             <TextView
                 android:id="@+id/w_chip_0"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginEnd="8dp"
+                android:layout_marginEnd="4dp"
                 android:background="@drawable/widget_chip_default"
                 android:gravity="center"
-                android:minWidth="34dp"
-                android:paddingStart="6dp"
-                android:paddingTop="2dp"
-                android:paddingEnd="6dp"
-                android:paddingBottom="2dp"
+                android:minWidth="16dp"
+                android:paddingStart="3dp"
+                android:paddingTop="0dp"
+                android:paddingEnd="3dp"
+                android:paddingBottom="0dp"
                 android:singleLine="true"
                 android:textColor="@color/widget_chip_text"
-                android:textSize="12sp"
+                android:textSize="11sp"
                 android:textStyle="bold" />
 
             <LinearLayout
@@ -92,18 +97,20 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:ellipsize="end"
+                    android:includeFontPadding="false"
                     android:singleLine="true"
                     android:textColor="@color/widget_ink"
-                    android:textSize="13sp" />
+                    android:textSize="12sp" />
 
                 <TextView
                     android:id="@+id/w_sub_0"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:ellipsize="end"
+                    android:includeFontPadding="false"
                     android:singleLine="true"
                     android:textColor="@color/widget_muted"
-                    android:textSize="11sp"
+                    android:textSize="10sp"
                     android:visibility="gone" />
             </LinearLayout>
 
@@ -111,10 +118,11 @@
                 android:id="@+id/w_delay_0"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="6dp"
+                android:layout_marginStart="4dp"
+                android:includeFontPadding="false"
                 android:singleLine="true"
                 android:textColor="@color/widget_late"
-                android:textSize="11sp"
+                android:textSize="10sp"
                 android:textStyle="bold"
                 android:visibility="gone" />
 
@@ -122,10 +130,11 @@
                 android:id="@+id/w_time_0"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
+                android:layout_marginStart="4dp"
+                android:includeFontPadding="false"
                 android:singleLine="true"
                 android:textColor="@color/widget_ink"
-                android:textSize="14sp"
+                android:textSize="12sp"
                 android:textStyle="bold" />
         </LinearLayout>
 
@@ -135,25 +144,25 @@
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
             android:orientation="horizontal"
-            android:paddingTop="3dp"
-            android:paddingBottom="3dp"
+            android:paddingTop="1dp"
+            android:paddingBottom="1dp"
             android:visibility="gone">
 
             <TextView
                 android:id="@+id/w_chip_1"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginEnd="8dp"
+                android:layout_marginEnd="4dp"
                 android:background="@drawable/widget_chip_default"
                 android:gravity="center"
-                android:minWidth="34dp"
-                android:paddingStart="6dp"
-                android:paddingTop="2dp"
-                android:paddingEnd="6dp"
-                android:paddingBottom="2dp"
+                android:minWidth="16dp"
+                android:paddingStart="3dp"
+                android:paddingTop="0dp"
+                android:paddingEnd="3dp"
+                android:paddingBottom="0dp"
                 android:singleLine="true"
                 android:textColor="@color/widget_chip_text"
-                android:textSize="12sp"
+                android:textSize="11sp"
                 android:textStyle="bold" />
 
             <LinearLayout
@@ -167,18 +176,20 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:ellipsize="end"
+                    android:includeFontPadding="false"
                     android:singleLine="true"
                     android:textColor="@color/widget_ink"
-                    android:textSize="13sp" />
+                    android:textSize="12sp" />
 
                 <TextView
                     android:id="@+id/w_sub_1"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:ellipsize="end"
+                    android:includeFontPadding="false"
                     android:singleLine="true"
                     android:textColor="@color/widget_muted"
-                    android:textSize="11sp"
+                    android:textSize="10sp"
                     android:visibility="gone" />
             </LinearLayout>
 
@@ -186,10 +197,11 @@
                 android:id="@+id/w_delay_1"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="6dp"
+                android:layout_marginStart="4dp"
+                android:includeFontPadding="false"
                 android:singleLine="true"
                 android:textColor="@color/widget_late"
-                android:textSize="11sp"
+                android:textSize="10sp"
                 android:textStyle="bold"
                 android:visibility="gone" />
 
@@ -197,10 +209,11 @@
                 android:id="@+id/w_time_1"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
+                android:layout_marginStart="4dp"
+                android:includeFontPadding="false"
                 android:singleLine="true"
                 android:textColor="@color/widget_ink"
-                android:textSize="14sp"
+                android:textSize="12sp"
                 android:textStyle="bold" />
         </LinearLayout>
 
@@ -210,25 +223,25 @@
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
             android:orientation="horizontal"
-            android:paddingTop="3dp"
-            android:paddingBottom="3dp"
+            android:paddingTop="1dp"
+            android:paddingBottom="1dp"
             android:visibility="gone">
 
             <TextView
                 android:id="@+id/w_chip_2"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginEnd="8dp"
+                android:layout_marginEnd="4dp"
                 android:background="@drawable/widget_chip_default"
                 android:gravity="center"
-                android:minWidth="34dp"
-                android:paddingStart="6dp"
-                android:paddingTop="2dp"
-                android:paddingEnd="6dp"
-                android:paddingBottom="2dp"
+                android:minWidth="16dp"
+                android:paddingStart="3dp"
+                android:paddingTop="0dp"
+                android:paddingEnd="3dp"
+                android:paddingBottom="0dp"
                 android:singleLine="true"
                 android:textColor="@color/widget_chip_text"
-                android:textSize="12sp"
+                android:textSize="11sp"
                 android:textStyle="bold" />
 
             <LinearLayout
@@ -242,18 +255,20 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:ellipsize="end"
+                    android:includeFontPadding="false"
                     android:singleLine="true"
                     android:textColor="@color/widget_ink"
-                    android:textSize="13sp" />
+                    android:textSize="12sp" />
 
                 <TextView
                     android:id="@+id/w_sub_2"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:ellipsize="end"
+                    android:includeFontPadding="false"
                     android:singleLine="true"
                     android:textColor="@color/widget_muted"
-                    android:textSize="11sp"
+                    android:textSize="10sp"
                     android:visibility="gone" />
             </LinearLayout>
 
@@ -261,10 +276,11 @@
                 android:id="@+id/w_delay_2"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="6dp"
+                android:layout_marginStart="4dp"
+                android:includeFontPadding="false"
                 android:singleLine="true"
                 android:textColor="@color/widget_late"
-                android:textSize="11sp"
+                android:textSize="10sp"
                 android:textStyle="bold"
                 android:visibility="gone" />
 
@@ -272,10 +288,11 @@
                 android:id="@+id/w_time_2"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
+                android:layout_marginStart="4dp"
+                android:includeFontPadding="false"
                 android:singleLine="true"
                 android:textColor="@color/widget_ink"
-                android:textSize="14sp"
+                android:textSize="12sp"
                 android:textStyle="bold" />
         </LinearLayout>
 
@@ -285,25 +302,25 @@
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
             android:orientation="horizontal"
-            android:paddingTop="3dp"
-            android:paddingBottom="3dp"
+            android:paddingTop="1dp"
+            android:paddingBottom="1dp"
             android:visibility="gone">
 
             <TextView
                 android:id="@+id/w_chip_3"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginEnd="8dp"
+                android:layout_marginEnd="4dp"
                 android:background="@drawable/widget_chip_default"
                 android:gravity="center"
-                android:minWidth="34dp"
-                android:paddingStart="6dp"
-                android:paddingTop="2dp"
-                android:paddingEnd="6dp"
-                android:paddingBottom="2dp"
+                android:minWidth="16dp"
+                android:paddingStart="3dp"
+                android:paddingTop="0dp"
+                android:paddingEnd="3dp"
+                android:paddingBottom="0dp"
                 android:singleLine="true"
                 android:textColor="@color/widget_chip_text"
-                android:textSize="12sp"
+                android:textSize="11sp"
                 android:textStyle="bold" />
 
             <LinearLayout
@@ -317,18 +334,20 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:ellipsize="end"
+                    android:includeFontPadding="false"
                     android:singleLine="true"
                     android:textColor="@color/widget_ink"
-                    android:textSize="13sp" />
+                    android:textSize="12sp" />
 
                 <TextView
                     android:id="@+id/w_sub_3"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:ellipsize="end"
+                    android:includeFontPadding="false"
                     android:singleLine="true"
                     android:textColor="@color/widget_muted"
-                    android:textSize="11sp"
+                    android:textSize="10sp"
                     android:visibility="gone" />
             </LinearLayout>
 
@@ -336,10 +355,11 @@
                 android:id="@+id/w_delay_3"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="6dp"
+                android:layout_marginStart="4dp"
+                android:includeFontPadding="false"
                 android:singleLine="true"
                 android:textColor="@color/widget_late"
-                android:textSize="11sp"
+                android:textSize="10sp"
                 android:textStyle="bold"
                 android:visibility="gone" />
 
@@ -347,10 +367,11 @@
                 android:id="@+id/w_time_3"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
+                android:layout_marginStart="4dp"
+                android:includeFontPadding="false"
                 android:singleLine="true"
                 android:textColor="@color/widget_ink"
-                android:textSize="14sp"
+                android:textSize="12sp"
                 android:textStyle="bold" />
         </LinearLayout>
 
@@ -360,25 +381,25 @@
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
             android:orientation="horizontal"
-            android:paddingTop="3dp"
-            android:paddingBottom="3dp"
+            android:paddingTop="1dp"
+            android:paddingBottom="1dp"
             android:visibility="gone">
 
             <TextView
                 android:id="@+id/w_chip_4"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginEnd="8dp"
+                android:layout_marginEnd="4dp"
                 android:background="@drawable/widget_chip_default"
                 android:gravity="center"
-                android:minWidth="34dp"
-                android:paddingStart="6dp"
-                android:paddingTop="2dp"
-                android:paddingEnd="6dp"
-                android:paddingBottom="2dp"
+                android:minWidth="16dp"
+                android:paddingStart="3dp"
+                android:paddingTop="0dp"
+                android:paddingEnd="3dp"
+                android:paddingBottom="0dp"
                 android:singleLine="true"
                 android:textColor="@color/widget_chip_text"
-                android:textSize="12sp"
+                android:textSize="11sp"
                 android:textStyle="bold" />
 
             <LinearLayout
@@ -392,18 +413,20 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:ellipsize="end"
+                    android:includeFontPadding="false"
                     android:singleLine="true"
                     android:textColor="@color/widget_ink"
-                    android:textSize="13sp" />
+                    android:textSize="12sp" />
 
                 <TextView
                     android:id="@+id/w_sub_4"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:ellipsize="end"
+                    android:includeFontPadding="false"
                     android:singleLine="true"
                     android:textColor="@color/widget_muted"
-                    android:textSize="11sp"
+                    android:textSize="10sp"
                     android:visibility="gone" />
             </LinearLayout>
 
@@ -411,10 +434,11 @@
                 android:id="@+id/w_delay_4"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="6dp"
+                android:layout_marginStart="4dp"
+                android:includeFontPadding="false"
                 android:singleLine="true"
                 android:textColor="@color/widget_late"
-                android:textSize="11sp"
+                android:textSize="10sp"
                 android:textStyle="bold"
                 android:visibility="gone" />
 
@@ -422,10 +446,11 @@
                 android:id="@+id/w_time_4"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
+                android:layout_marginStart="4dp"
+                android:includeFontPadding="false"
                 android:singleLine="true"
                 android:textColor="@color/widget_ink"
-                android:textSize="14sp"
+                android:textSize="12sp"
                 android:textStyle="bold" />
         </LinearLayout>
 
@@ -435,25 +460,25 @@
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
             android:orientation="horizontal"
-            android:paddingTop="3dp"
-            android:paddingBottom="3dp"
+            android:paddingTop="1dp"
+            android:paddingBottom="1dp"
             android:visibility="gone">
 
             <TextView
                 android:id="@+id/w_chip_5"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginEnd="8dp"
+                android:layout_marginEnd="4dp"
                 android:background="@drawable/widget_chip_default"
                 android:gravity="center"
-                android:minWidth="34dp"
-                android:paddingStart="6dp"
-                android:paddingTop="2dp"
-                android:paddingEnd="6dp"
-                android:paddingBottom="2dp"
+                android:minWidth="16dp"
+                android:paddingStart="3dp"
+                android:paddingTop="0dp"
+                android:paddingEnd="3dp"
+                android:paddingBottom="0dp"
                 android:singleLine="true"
                 android:textColor="@color/widget_chip_text"
-                android:textSize="12sp"
+                android:textSize="11sp"
                 android:textStyle="bold" />
 
             <LinearLayout
@@ -467,18 +492,20 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:ellipsize="end"
+                    android:includeFontPadding="false"
                     android:singleLine="true"
                     android:textColor="@color/widget_ink"
-                    android:textSize="13sp" />
+                    android:textSize="12sp" />
 
                 <TextView
                     android:id="@+id/w_sub_5"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:ellipsize="end"
+                    android:includeFontPadding="false"
                     android:singleLine="true"
                     android:textColor="@color/widget_muted"
-                    android:textSize="11sp"
+                    android:textSize="10sp"
                     android:visibility="gone" />
             </LinearLayout>
 
@@ -486,10 +513,11 @@
                 android:id="@+id/w_delay_5"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="6dp"
+                android:layout_marginStart="4dp"
+                android:includeFontPadding="false"
                 android:singleLine="true"
                 android:textColor="@color/widget_late"
-                android:textSize="11sp"
+                android:textSize="10sp"
                 android:textStyle="bold"
                 android:visibility="gone" />
 
@@ -497,10 +525,11 @@
                 android:id="@+id/w_time_5"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
+                android:layout_marginStart="4dp"
+                android:includeFontPadding="false"
                 android:singleLine="true"
                 android:textColor="@color/widget_ink"
-                android:textSize="14sp"
+                android:textSize="12sp"
                 android:textStyle="bold" />
         </LinearLayout>
 
@@ -510,25 +539,25 @@
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
             android:orientation="horizontal"
-            android:paddingTop="3dp"
-            android:paddingBottom="3dp"
+            android:paddingTop="1dp"
+            android:paddingBottom="1dp"
             android:visibility="gone">
 
             <TextView
                 android:id="@+id/w_chip_6"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginEnd="8dp"
+                android:layout_marginEnd="4dp"
                 android:background="@drawable/widget_chip_default"
                 android:gravity="center"
-                android:minWidth="34dp"
-                android:paddingStart="6dp"
-                android:paddingTop="2dp"
-                android:paddingEnd="6dp"
-                android:paddingBottom="2dp"
+                android:minWidth="16dp"
+                android:paddingStart="3dp"
+                android:paddingTop="0dp"
+                android:paddingEnd="3dp"
+                android:paddingBottom="0dp"
                 android:singleLine="true"
                 android:textColor="@color/widget_chip_text"
-                android:textSize="12sp"
+                android:textSize="11sp"
                 android:textStyle="bold" />
 
             <LinearLayout
@@ -542,18 +571,20 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:ellipsize="end"
+                    android:includeFontPadding="false"
                     android:singleLine="true"
                     android:textColor="@color/widget_ink"
-                    android:textSize="13sp" />
+                    android:textSize="12sp" />
 
                 <TextView
                     android:id="@+id/w_sub_6"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:ellipsize="end"
+                    android:includeFontPadding="false"
                     android:singleLine="true"
                     android:textColor="@color/widget_muted"
-                    android:textSize="11sp"
+                    android:textSize="10sp"
                     android:visibility="gone" />
             </LinearLayout>
 
@@ -561,10 +592,11 @@
                 android:id="@+id/w_delay_6"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="6dp"
+                android:layout_marginStart="4dp"
+                android:includeFontPadding="false"
                 android:singleLine="true"
                 android:textColor="@color/widget_late"
-                android:textSize="11sp"
+                android:textSize="10sp"
                 android:textStyle="bold"
                 android:visibility="gone" />
 
@@ -572,10 +604,11 @@
                 android:id="@+id/w_time_6"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
+                android:layout_marginStart="4dp"
+                android:includeFontPadding="false"
                 android:singleLine="true"
                 android:textColor="@color/widget_ink"
-                android:textSize="14sp"
+                android:textSize="12sp"
                 android:textStyle="bold" />
         </LinearLayout>
 
@@ -585,25 +618,25 @@
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
             android:orientation="horizontal"
-            android:paddingTop="3dp"
-            android:paddingBottom="3dp"
+            android:paddingTop="1dp"
+            android:paddingBottom="1dp"
             android:visibility="gone">
 
             <TextView
                 android:id="@+id/w_chip_7"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginEnd="8dp"
+                android:layout_marginEnd="4dp"
                 android:background="@drawable/widget_chip_default"
                 android:gravity="center"
-                android:minWidth="34dp"
-                android:paddingStart="6dp"
-                android:paddingTop="2dp"
-                android:paddingEnd="6dp"
-                android:paddingBottom="2dp"
+                android:minWidth="16dp"
+                android:paddingStart="3dp"
+                android:paddingTop="0dp"
+                android:paddingEnd="3dp"
+                android:paddingBottom="0dp"
                 android:singleLine="true"
                 android:textColor="@color/widget_chip_text"
-                android:textSize="12sp"
+                android:textSize="11sp"
                 android:textStyle="bold" />
 
             <LinearLayout
@@ -617,18 +650,20 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:ellipsize="end"
+                    android:includeFontPadding="false"
                     android:singleLine="true"
                     android:textColor="@color/widget_ink"
-                    android:textSize="13sp" />
+                    android:textSize="12sp" />
 
                 <TextView
                     android:id="@+id/w_sub_7"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:ellipsize="end"
+                    android:includeFontPadding="false"
                     android:singleLine="true"
                     android:textColor="@color/widget_muted"
-                    android:textSize="11sp"
+                    android:textSize="10sp"
                     android:visibility="gone" />
             </LinearLayout>
 
@@ -636,10 +671,11 @@
                 android:id="@+id/w_delay_7"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="6dp"
+                android:layout_marginStart="4dp"
+                android:includeFontPadding="false"
                 android:singleLine="true"
                 android:textColor="@color/widget_late"
-                android:textSize="11sp"
+                android:textSize="10sp"
                 android:textStyle="bold"
                 android:visibility="gone" />
 
@@ -647,10 +683,11 @@
                 android:id="@+id/w_time_7"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
+                android:layout_marginStart="4dp"
+                android:includeFontPadding="false"
                 android:singleLine="true"
                 android:textColor="@color/widget_ink"
-                android:textSize="14sp"
+                android:textSize="12sp"
                 android:textStyle="bold" />
         </LinearLayout>
 
@@ -660,25 +697,25 @@
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
             android:orientation="horizontal"
-            android:paddingTop="3dp"
-            android:paddingBottom="3dp"
+            android:paddingTop="1dp"
+            android:paddingBottom="1dp"
             android:visibility="gone">
 
             <TextView
                 android:id="@+id/w_chip_8"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginEnd="8dp"
+                android:layout_marginEnd="4dp"
                 android:background="@drawable/widget_chip_default"
                 android:gravity="center"
-                android:minWidth="34dp"
-                android:paddingStart="6dp"
-                android:paddingTop="2dp"
-                android:paddingEnd="6dp"
-                android:paddingBottom="2dp"
+                android:minWidth="16dp"
+                android:paddingStart="3dp"
+                android:paddingTop="0dp"
+                android:paddingEnd="3dp"
+                android:paddingBottom="0dp"
                 android:singleLine="true"
                 android:textColor="@color/widget_chip_text"
-                android:textSize="12sp"
+                android:textSize="11sp"
                 android:textStyle="bold" />
 
             <LinearLayout
@@ -692,18 +729,20 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:ellipsize="end"
+                    android:includeFontPadding="false"
                     android:singleLine="true"
                     android:textColor="@color/widget_ink"
-                    android:textSize="13sp" />
+                    android:textSize="12sp" />
 
                 <TextView
                     android:id="@+id/w_sub_8"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:ellipsize="end"
+                    android:includeFontPadding="false"
                     android:singleLine="true"
                     android:textColor="@color/widget_muted"
-                    android:textSize="11sp"
+                    android:textSize="10sp"
                     android:visibility="gone" />
             </LinearLayout>
 
@@ -711,10 +750,11 @@
                 android:id="@+id/w_delay_8"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="6dp"
+                android:layout_marginStart="4dp"
+                android:includeFontPadding="false"
                 android:singleLine="true"
                 android:textColor="@color/widget_late"
-                android:textSize="11sp"
+                android:textSize="10sp"
                 android:textStyle="bold"
                 android:visibility="gone" />
 
@@ -722,10 +762,11 @@
                 android:id="@+id/w_time_8"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
+                android:layout_marginStart="4dp"
+                android:includeFontPadding="false"
                 android:singleLine="true"
                 android:textColor="@color/widget_ink"
-                android:textSize="14sp"
+                android:textSize="12sp"
                 android:textStyle="bold" />
         </LinearLayout>
 
@@ -735,25 +776,25 @@
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
             android:orientation="horizontal"
-            android:paddingTop="3dp"
-            android:paddingBottom="3dp"
+            android:paddingTop="1dp"
+            android:paddingBottom="1dp"
             android:visibility="gone">
 
             <TextView
                 android:id="@+id/w_chip_9"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginEnd="8dp"
+                android:layout_marginEnd="4dp"
                 android:background="@drawable/widget_chip_default"
                 android:gravity="center"
-                android:minWidth="34dp"
-                android:paddingStart="6dp"
-                android:paddingTop="2dp"
-                android:paddingEnd="6dp"
-                android:paddingBottom="2dp"
+                android:minWidth="16dp"
+                android:paddingStart="3dp"
+                android:paddingTop="0dp"
+                android:paddingEnd="3dp"
+                android:paddingBottom="0dp"
                 android:singleLine="true"
                 android:textColor="@color/widget_chip_text"
-                android:textSize="12sp"
+                android:textSize="11sp"
                 android:textStyle="bold" />
 
             <LinearLayout
@@ -767,18 +808,20 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:ellipsize="end"
+                    android:includeFontPadding="false"
                     android:singleLine="true"
                     android:textColor="@color/widget_ink"
-                    android:textSize="13sp" />
+                    android:textSize="12sp" />
 
                 <TextView
                     android:id="@+id/w_sub_9"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:ellipsize="end"
+                    android:includeFontPadding="false"
                     android:singleLine="true"
                     android:textColor="@color/widget_muted"
-                    android:textSize="11sp"
+                    android:textSize="10sp"
                     android:visibility="gone" />
             </LinearLayout>
 
@@ -786,10 +829,11 @@
                 android:id="@+id/w_delay_9"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="6dp"
+                android:layout_marginStart="4dp"
+                android:includeFontPadding="false"
                 android:singleLine="true"
                 android:textColor="@color/widget_late"
-                android:textSize="11sp"
+                android:textSize="10sp"
                 android:textStyle="bold"
                 android:visibility="gone" />
 
@@ -797,10 +841,11 @@
                 android:id="@+id/w_time_9"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
+                android:layout_marginStart="4dp"
+                android:includeFontPadding="false"
                 android:singleLine="true"
                 android:textColor="@color/widget_ink"
-                android:textSize="14sp"
+                android:textSize="12sp"
                 android:textStyle="bold" />
         </LinearLayout>
 

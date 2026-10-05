@@ -39,7 +39,7 @@ internal static class WidgetRenderer
 		views.SetOnClickPendingIntent(WidgetResources.Id(context, "w_open"), OpenAppIntent(context, widgetId));
 		views.SetInt(WidgetResources.Id(context, "w_open"), "setColorFilter", WidgetResources.ColorValue(context, "widget_accent"));
 
-		WidgetLayout layout = WidgetLayout.For(widthDp, heightDp, config?.MaxRows ?? 0);
+		WidgetLayout layout = WidgetLayout.For(widthDp, heightDp, config?.MaxRows ?? 0, context.Resources?.Configuration?.FontScale ?? 1);
 
 		views.SetTextViewText(WidgetResources.Id(context, "w_title"), Title(kind, snapshot, strings));
 
@@ -165,8 +165,8 @@ internal static class WidgetRenderer
 			views.SetInt(chip, "setBackgroundResource", WidgetResources.Drawable(context, ChipDrawable(row.Mode)));
 		}
 
-		// Main text: a narrow widget keeps chip and time; a row without a time (a stop) keeps its name.
-		bool showMain = row.Main.Length > 0 && (detail != WidgetDetail.Minimal || row.Time.Length == 0 || header);
+		// Main text always shows: it takes what the chip and the time leave and is cut with an ellipsis, never dropped.
+		bool showMain = row.Main.Length > 0;
 
 		views.SetViewVisibility(main, showMain ? ViewStates.Visible : ViewStates.Gone);
 

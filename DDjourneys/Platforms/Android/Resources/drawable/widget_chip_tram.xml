@@ -2,5 +2,5 @@
 <!-- Line chip, in the colour of the mode (Tokens.xaml). -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
     <solid android:color="#B3261E" />
-    <corners android:radius="6dp" />
+    <corners android:radius="3dp" />
 </shape>

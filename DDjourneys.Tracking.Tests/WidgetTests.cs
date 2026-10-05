@@ -15,7 +15,7 @@ public sealed class WidgetTests
 		WidgetLayout layout = WidgetLayout.For(120, 120);
 
 		Assert.Equal(WidgetDetail.Minimal, layout.Detail);
-		Assert.InRange(layout.Rows, 1, 3);
+		Assert.InRange(layout.Rows, 3, 6);
 		Assert.False(layout.ShowUpdated);
 	}
 
@@ -32,6 +32,7 @@ public sealed class WidgetTests
 		Assert.True(tall.Rows > small.Rows);
 		Assert.True(tall.ShowUpdated);
 		Assert.True(tall.Rows <= WidgetLayout.MaxRows);
+		Assert.True(WidgetLayout.For(300, 480, fontScale: 1.5).Rows <= tall.Rows);
 	}
 
 	[Fact]
