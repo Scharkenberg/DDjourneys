@@ -25,6 +25,7 @@ public sealed partial class MapView : ContentView
 	private MapScene? _scene;
 	private string? _pendingFocus;
 	private bool _ready;
+	private readonly System.Diagnostics.Stopwatch _created;
 	private bool _pageReady;
 	private bool _subscribed;
 	private readonly Border _notice;
@@ -43,6 +44,15 @@ public sealed partial class MapView : ContentView
 
 		_web.RawMessageReceived += OnRawMessage;
 
+		// Logging on: every request the page makes, so a style, a tile or a script that never arrives shows.
+		if (DiagnosticLog.Enabled)
+		{
+			_web.WebResourceRequested += (_, e) => DiagnosticLog.Write($"[Map] page requests {e.Uri}");
+		}
+
+		_created = System.Diagnostics.Stopwatch.StartNew();
+		DiagnosticLog.Write("[Map] web view created");
+
 #if ANDROID
 		// The page scales its own text by the OS text size (see MapTheme.FontScale); the web view must not
 		// scale it a second time.
@@ -54,6 +64,9 @@ public sealed partial class MapView : ContentView
 				if (_web.Handler?.PlatformView is Android.Webkit.WebView platformView)
 				{
 					platformView.Settings.TextZoom = 100;
+
+					// Logging on: what the device and its web view are, and a look inside the page when it stays silent.
+					DDjourneys.Platforms.Android.WebViewDiagnostics.Attach(platformView, "map", () => _pageReady);
 				}
 			};
 #endif
@@ -253,6 +266,8 @@ public sealed partial class MapView : ContentView
 			{
 				_pageReady = true;
 
+				DiagnosticLog.Write($"[Map] page ready {_created.ElapsedMilliseconds} ms after the web view was created; map available: {MapAvailability.IsAvailable}");
+
 				if (MapAvailability.IsAvailable)
 				{
 					await InitializeAsync();
@@ -294,6 +309,11 @@ public sealed partial class MapView : ContentView
 			{
 				DiagnosticLog.Write($"[Map JS] {message[6..]}");
 			}
+			else if (message.StartsWith("log:", StringComparison.Ordinal))
+			{
+				// The page's own diagnostics (engine, language features, WebGL, errors with stack, map events).
+				DiagnosticLog.Write($"[Map page] {message[4..]}");
+			}
 		}
 		catch (Exception ex)
 		{
@@ -307,6 +327,8 @@ public sealed partial class MapView : ContentView
 
 		ExtrasStrings strings = LocalizationService.Current.CurrentStrings.Extras;
 
+		DiagnosticLog.Write($"[Map] sending init ({_created.ElapsedMilliseconds} ms)");
+
 		await CallAsync(
 			"init",
 			WebBridge.CurrentTheme().ToInitJson(
@@ -317,6 +339,8 @@ public sealed partial class MapView : ContentView
 				strings.MapInfo));
 
 		_ready = true;
+
+		DiagnosticLog.Write($"[Map] init answered ({_created.ElapsedMilliseconds} ms), pushing scene, mode and overlay");
 
 		await PushSceneAsync();
 		await PushModeAsync();

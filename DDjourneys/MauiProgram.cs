@@ -71,13 +71,17 @@ public static class MauiProgram
 		}
 
 		DiagnosticLog.StartInfo = AppInterfaces.Report;
+#if ANDROID
+		Platforms.Android.WebViewDiagnostics.Install();
+#endif
 
 		// Opt-in only: without the developer option nothing is logged and a leftover file is removed.
 		DiagnosticLog.Enabled = settings.LogToFile;
 
-		if (StartupGuard.IsSafeStart)
+		if (StartupGuard.FailedStarts > 0)
 		{
-			DiagnosticLog.Write($"[Start] {StartupGuard.FailedStarts} starts in a row did not finish: safe start");
+			// The last line of the log before this one is the last thing that happened before the process ended.
+			DiagnosticLog.Write($"[Start] the previous {StartupGuard.FailedStarts} start(s) did not finish (a crash while starting, or the system ended the app){(StartupGuard.IsSafeStart ? ": safe start" : string.Empty)}");
 		}
 
 		if (DiagnosticLog.Enabled)

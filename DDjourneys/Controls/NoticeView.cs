@@ -38,7 +38,17 @@ public sealed partial class NoticeView : ContentView
 			};
 
 		_web.RawMessageReceived += OnRawMessage;
-		_web.HandlerChanged += (_, _) => WebBridge.PaintBackground(_web);
+		_web.HandlerChanged +=
+			(_, _) =>
+			{
+				WebBridge.PaintBackground(_web);
+#if ANDROID
+				if (_web.Handler?.PlatformView is Android.Webkit.WebView platformView)
+				{
+					DDjourneys.Platforms.Android.WebViewDiagnostics.Attach(platformView, "notice", () => _ready);
+				}
+#endif
+			};
 		WebBridge.PaintBackground(_web);
 
 		Content = _web;

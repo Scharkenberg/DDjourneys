@@ -64,9 +64,29 @@ public static class DiagnosticLog
 	/// <summary>Why the last write failed (null: it did not); shown next to the log path so a failure is not silent.</summary>
 	public static string? LastError { get; private set; }
 
+	/// <summary>
+	/// A second place every line goes to while logging is on (the app sends it to the system log under the tag
+	/// <c>DDjourneys</c>, so <c>adb logcat -s DDjourneys</c> shows only this app's lines). Never throws.
+	/// </summary>
+	public static Action<string>? Sink { get; set; }
+
 	public static void Write(string message)
 	{
-		if (!Enabled || FilePath is not { Length: > 0 } path)
+		if (!Enabled)
+		{
+			return;
+		}
+
+		try
+		{
+			Sink?.Invoke(message);
+		}
+		catch (Exception)
+		{
+			// A sink that fails must not stop the file.
+		}
+
+		if (FilePath is not { Length: > 0 } path)
 		{
 			return;
 		}
