@@ -29,6 +29,9 @@ public sealed class JourneyViewModel :
 	private readonly JourneyService _journeys;
 	private CancellationTokenSource? _alternative;
 
+	/// <summary>The journey as searched, once a leg alternative replaced it: following the alternative replaces a followed original.</summary>
+	private Journey? _alternativeOf;
+
 
 	private readonly ProviderRegistry _providers;
 
@@ -378,7 +381,13 @@ public sealed class JourneyViewModel :
 
 		TrackingStrings strings = _localization.CurrentStrings.Tracking;
 
-		await _tracker.FollowAsync(_journey);
+		// An alternative to a followed journey replaces it (the service links the two, the original is hidden).
+		string? replaces =
+			_alternativeOf is { } original && !ReferenceEquals(original, _journey)
+				? _tracker.Find(original)?.PlanId
+				: null;
+
+		await _tracker.FollowAsync(_journey, default, replaces);
 
 		UpdateFollowState();
 
@@ -570,6 +579,8 @@ public sealed class JourneyViewModel :
 				Bookmark.Refresh();
 			}
 
+			_alternativeOf = null;
+
 			Load(journey);
 		}
 	}
@@ -627,6 +638,8 @@ public sealed class JourneyViewModel :
 
 				return;
 			}
+
+			_alternativeOf ??= journey;
 
 			Load(next);
 			AlternativeStatus = strings.AlternativeShown;

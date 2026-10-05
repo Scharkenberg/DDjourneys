@@ -59,6 +59,9 @@ public sealed class CourseRow
 	public double Fade => IsPassed ? 0.55 : 1.0;
 }
 
+/// <summary>One line of the message history of a followed journey: time and text.</summary>
+public sealed record NoticeRow(string Time, string Text, bool IsProblem);
+
 /// <summary>One group of the overview: all followed journeys with the same status.</summary>
 public sealed record TrackedSection(string Title, IReadOnlyList<TrackedRow> Items);
 
@@ -119,6 +122,13 @@ public sealed class TrackedRow
 	public required ICommand DismissNoticeCommand { get; init; }
 
 	public required string DismissNoticeText { get; init; }
+
+	/// <summary>Every message of the service for this journey, newest first (the reference client lists all of them).</summary>
+	public required IReadOnlyList<NoticeRow> History { get; init; }
+
+	public required string HistoryTitle { get; init; }
+
+	public bool HasHistory => History.Count > 0;
 }
 
 /// <summary>The overview of all journeys the user follows.</summary>
@@ -573,6 +583,10 @@ public sealed class TrackedJourneysViewModel : DisposableViewModel, IQueryAttrib
 			Course = rows,
 			CourseHint = strings.CourseNotYet,
 			DismissNoticeText = strings.DismissNotice,
+			HistoryTitle = strings.NoticeHistory,
+			History =
+				[.. (journey.Notices ?? [])
+					.Select(item => new NoticeRow(Format.TimeOrDash(item.Time), item.Text, item.IsProblem))],
 			DismissNoticeCommand = new AsyncCommand(() => _tracker.DismissNoticeAsync(journey.PlanId), null, ShowError),
 			ToggleCourseCommand = new Command(() => ToggleCourse(journey)),
 			ToggleExpandedCommand = new Command(() => ToggleExpanded(journey)),

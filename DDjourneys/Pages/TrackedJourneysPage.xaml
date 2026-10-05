@@ -470,6 +470,28 @@
 
 														<BoxView StyleClass="Divider" />
 
+														<VerticalStackLayout IsVisible="{Binding HasHistory}" Spacing="4">
+															<Label StyleClass="Section" Text="{Binding HistoryTitle}" />
+															<VerticalStackLayout BindableLayout.ItemsSource="{Binding History}" Spacing="6">
+																<BindableLayout.ItemTemplate>
+																	<DataTemplate x:DataType="local:NoticeRow">
+																		<Grid ColumnDefinitions="48,*" ColumnSpacing="8">
+																			<Label
+																				FontFamily="{DynamicResource FontSemibold}"
+																				StyleClass="Caption"
+																				Text="{Binding Time}" />
+																			<Label
+																				Grid.Column="1"
+																				LineBreakMode="WordWrap"
+																				StyleClass="Caption"
+																				Text="{Binding Text}" />
+																		</Grid>
+																	</DataTemplate>
+																</BindableLayout.ItemTemplate>
+															</VerticalStackLayout>
+															<BoxView StyleClass="Divider" />
+														</VerticalStackLayout>
+
 														<Label StyleClass="Section" Text="{localization:Tr Tracking.Alerts}" />
 
 														<FlexLayout AlignContent="Start" AlignItems="Start" Wrap="Wrap">

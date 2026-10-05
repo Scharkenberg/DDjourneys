@@ -200,7 +200,10 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 
 	// ----- Commands -----
 
-	public async Task<WatchedJourney> FollowAsync(Journey journey, CancellationToken cancellationToken = default)
+	public async Task<WatchedJourney> FollowAsync(
+		Journey journey,
+		CancellationToken cancellationToken = default,
+		string? replacesPlanId = null)
 	{
 		ArgumentNullException.ThrowIfNull(journey);
 
@@ -237,7 +240,14 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 			}
 			else
 			{
-				planId = await CreatePlanAsync(journey, cancellationToken).ConfigureAwait(false);
+				// An alternative to a followed plan links to that plan's trip (the original is then no longer listed).
+				string? tripReference =
+					replacesPlanId is not null
+					&& _entries.TryGetValue(replacesPlanId, out WatchEntry? replaced)
+						? replaced.Info.ActiveTripId
+						: null;
+
+				planId = await CreatePlanAsync(journey, tripReference, cancellationToken).ConfigureAwait(false);
 			}
 
 			effects.Add(await SyncAsync(force: true, cancellationToken).ConfigureAwait(false));
@@ -414,7 +424,7 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 
 	// ----- Plan creation -----
 
-	private async Task<string> CreatePlanAsync(Journey journey, CancellationToken cancellationToken)
+	private async Task<string> CreatePlanAsync(Journey journey, string? tripReference, CancellationToken cancellationToken)
 	{
 		if (_provider is not VvoJourneyProvider vvo)
 		{
@@ -444,7 +454,8 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 				SchutzengelOptions.Default with
 				{
 					StartLeadSeconds = Math.Clamp(_defaultLeadMinutes?.Invoke() ?? 5, 1, 60) * 60
-				});
+				},
+				tripReference);
 
 		using JsonDocument created =
 			await _api.CreatePlanAsync(plan, cancellationToken).ConfigureAwait(false);
@@ -740,8 +751,23 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 		var upcoming = new List<WatchedJourney>();
 		bool run = false;
 
+		// The reference client lists a plan only while no other plan replaces it (trip_reference); finished
+		// plans always stay in the history.
+		var replaced =
+			_entries.Values
+				.Select(item => item.Info.TripReference)
+				.OfType<string>()
+				.ToHashSet(StringComparer.Ordinal);
+
 		foreach (WatchEntry entry in _entries.Values)
 		{
+			if (entry.Status != WatchStatus.Recent
+				&& entry.Info.ActiveTripId is { } tripId
+				&& replaced.Contains(tripId))
+			{
+				continue;
+			}
+
 			WatchedJourney view = Evaluate(entry, now, strings, effects);
 
 			views.Add(view);
@@ -1048,7 +1074,10 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 			latest?.Text,
 			info.Options.ToWatchOptions(),
 			periodic,
-			entry.Summary?.EnsuredChanges);
+			entry.Summary?.EnsuredChanges,
+			[.. entry.Notices
+				.OrderByDescending(item => item.Time ?? DateTimeOffset.MinValue)
+				.Select(item => new WatchedNotice(item.Time, item.Text, item.Severity != SchutzengelNoticeSeverity.Information))]);
 	}
 
 	private void RaiseTransitions(
@@ -1398,6 +1427,7 @@ internal sealed class SchutzengelJourneyTracker : IJourneyTracker, ITrackingCall
 				&& a.NextStop == b.NextStop
 				&& a.NextStopTime == b.NextStopTime
 				&& a.LatestNotice == b.LatestNotice
+				&& (a.Notices?.Count ?? 0) == (b.Notices?.Count ?? 0)
 				&& a.Options == b.Options
 				&& a.IsPeriodic == b.IsPeriodic
 				&& a.Lines.SequenceEqual(b.Lines)

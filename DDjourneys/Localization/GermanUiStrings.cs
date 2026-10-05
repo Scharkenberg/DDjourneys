@@ -534,6 +534,7 @@ public sealed class GermanUiStrings : IUiStrings
 		Resume = "Fortsetzen",
 		StopFollowing = "Nicht mehr verfolgen",
 		DismissNotice = "Hinweis ausblenden",
+		NoticeHistory = "Alle Meldungen",
 		LiveTitle = "Live-Benachrichtigung",
 		LiveAutomatic = "Automatisch",
 		LiveAutomaticHint = "Die n\u00e4chste laufende Fahrt",

@@ -22,7 +22,7 @@ public sealed class NoOpJourneyTracker : IJourneyTracker
 
 	public WatchedJourney? Find(Journey journey) => null;
 
-	public Task<WatchedJourney> FollowAsync(Journey journey, CancellationToken cancellationToken = default) =>
+	public Task<WatchedJourney> FollowAsync(Journey journey, CancellationToken cancellationToken = default, string? replacesPlanId = null) =>
 		Task.FromException<WatchedJourney>(
 			new NotSupportedException("Journey tracking is not available on this platform."));
 

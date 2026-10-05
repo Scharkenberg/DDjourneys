@@ -26,8 +26,15 @@ public interface IJourneyTracker
 	/// <summary>Finds the followed entry that belongs to <paramref name="journey"/>, if any.</summary>
 	WatchedJourney? Find(Journey journey);
 
-	/// <summary>Starts following; an already followed journey is re-activated instead of duplicated.</summary>
-	Task<WatchedJourney> FollowAsync(Journey journey, CancellationToken cancellationToken = default);
+	/// <summary>
+	/// Starts following; an already followed journey is re-activated instead of duplicated.
+	/// <paramref name="replacesPlanId"/>: the followed plan this journey is an alternative to (a changed leg). The
+	/// service links the two (<c>trip_reference</c>) and the original is no longer listed, as in the reference client.
+	/// </summary>
+	Task<WatchedJourney> FollowAsync(
+		Journey journey,
+		CancellationToken cancellationToken = default,
+		string? replacesPlanId = null);
 
 	/// <summary>Reloads the watchlist from the provider.</summary>
 	Task RefreshAsync(CancellationToken cancellationToken = default);

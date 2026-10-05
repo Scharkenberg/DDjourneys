@@ -9,7 +9,8 @@ internal static class SchutzengelPlanTranslator
 	public static JsonObject Translate(
 		Journey journey,
 		JsonNode rawData,
-		SchutzengelOptions? options = null)
+		SchutzengelOptions? options = null,
+		string? tripReference = null)
 	{
 		ArgumentNullException.ThrowIfNull(
 			journey);
@@ -69,19 +70,24 @@ internal static class SchutzengelPlanTranslator
 					["change"] = alerts.Change,
 					["problem"] = alerts.Problem
 				},
-			["type"] = "static"
-		};
+			["type"] = "static",
+
+			// The trip of the plan this one replaces; absent (not null) otherwise, as the reference client sends it.
+			["trip_reference"] = tripReference
+		}.WithoutNulls("trip_reference");
 	}
 
 
 	public static string Serialize(
 		Journey journey,
 		JsonNode rawData,
-		SchutzengelOptions? options = null) =>
+		SchutzengelOptions? options = null,
+		string? tripReference = null) =>
 		Translate(
 			journey,
 			rawData,
-			options)
+			options,
+			tripReference)
 			.ToJsonString();
 
 

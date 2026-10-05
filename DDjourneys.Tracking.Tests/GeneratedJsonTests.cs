@@ -4,6 +4,7 @@ using DDjourneys.Core.Models;
 using DDjourneys.Core.Providers.Vvo.Mapping;
 using DDjourneys.Core.Providers.Vvo.Models;
 using DDjourneys.Core.Providers.Vvo.Serialization;
+using DDjourneys.Core.Serialization;
 using DDjourneys.Core.Tracking;
 
 namespace DDjourneys.Tracking.Tests;
@@ -43,6 +44,24 @@ public sealed class GeneratedJsonTests
 		Assert.Equal("Dresden", VvoPlaces.Resolve(null, PlaceKind.Stop));
 		Assert.Equal("Pirna", VvoPlaces.Resolve(" Pirna ", PlaceKind.Address));
 		Assert.Null(VvoPlaces.Resolve(null, PlaceKind.Coordinate));
+	}
+
+	[Fact]
+	public void An_absent_trip_reference_is_omitted_not_sent_as_null()
+	{
+		var plain = new System.Text.Json.Nodes.JsonObject { ["a"] = 1, ["trip_reference"] = (string?)null }
+			.WithoutNulls("trip_reference");
+		var linked = new System.Text.Json.Nodes.JsonObject { ["a"] = 1, ["trip_reference"] = "trip-1" }
+			.WithoutNulls("trip_reference");
+
+		Assert.False(plain.ContainsKey("trip_reference"));
+		Assert.Equal("trip-1", (string?)linked["trip_reference"]);
+	}
+
+	[Fact]
+	public void The_lead_times_are_the_ones_the_reference_client_offers()
+	{
+		Assert.Equal([3, 5, 10, 15, 20, 30, 45, 60], DDjourneys.Core.Tracking.WatchOptions.LeadChoices);
 	}
 
 	[Fact]

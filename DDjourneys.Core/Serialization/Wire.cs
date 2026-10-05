@@ -25,6 +25,22 @@ public static class Wire
 	public static JsonArray Array(params JsonNode?[] items) =>
 		Array((IEnumerable<JsonNode?>)items);
 
+	/// <summary>Removes the named members when they are null (an absent member, not a JSON null).</summary>
+	public static JsonObject WithoutNulls(this JsonObject node, params string[] names)
+	{
+		ArgumentNullException.ThrowIfNull(node);
+
+		foreach (string name in names)
+		{
+			if (node.TryGetPropertyValue(name, out JsonNode? value) && value is null)
+			{
+				node.Remove(name);
+			}
+		}
+
+		return node;
+	}
+
 	/// <summary>{"name": value}</summary>
 	public static string Single(string name, string value) =>
 		new JsonObject { [name] = value }.ToJsonString();

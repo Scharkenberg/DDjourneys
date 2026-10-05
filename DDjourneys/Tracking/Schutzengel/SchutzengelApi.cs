@@ -262,18 +262,31 @@ internal sealed class SchutzengelApi
 
 	// ----- Push registration (kept for parity with the reference client) -----
 
-	public Task<JsonDocument> RegisterFirebaseAsync(string token, CancellationToken cancellationToken) =>
+	/// <summary>The reference client's application id ("APP_ID" of its config); the push endpoints take it with the token.</summary>
+	public const string ReferenceAppId = "dvb_web";
+
+	public Task<JsonDocument> RegisterFirebaseAsync(string token, CancellationToken cancellationToken, string appId = ReferenceAppId) =>
 		SendJsonAsync(
 			HttpMethod.Post,
 			"register-firebase",
-			Wire.Single("token", token),
+			new JsonObject { ["token"] = token, ["app_id"] = appId }.ToJsonString(),
 			cancellationToken);
 
-	public Task<JsonDocument> UnregisterFirebaseAsync(string token, CancellationToken cancellationToken) =>
+	public Task<JsonDocument> UnregisterFirebaseAsync(string token, CancellationToken cancellationToken, string appId = ReferenceAppId) =>
 		SendJsonAsync(
 			HttpMethod.Post,
 			"unregister-firebase",
-			Wire.Single("token", token),
+			new JsonObject { ["token"] = token, ["app_id"] = appId }.ToJsonString(),
+			cancellationToken);
+
+	/// <summary>
+	/// Moves the plans of this anonymous account into a logged-in user (the reference client's login hand-over).
+	/// </summary>
+	public Task<JsonDocument> MigrateIntoUserAsync(string intoUser, CancellationToken cancellationToken) =>
+		SendJsonAsync(
+			HttpMethod.Post,
+			"migrate-into-user",
+			Wire.Single("into_user", intoUser),
 			cancellationToken);
 
 	// ----- Transport -----
