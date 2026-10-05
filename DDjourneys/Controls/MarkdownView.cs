@@ -1,5 +1,6 @@
 using DDjourneys.Core.Diagnostics;
 using DDjourneys.Core.Documents;
+using DDjourneys.Support;
 
 namespace DDjourneys.Controls;
 
@@ -24,10 +25,38 @@ public sealed partial class MarkdownView : ContentView
 			Spacing = 12
 		};
 
+	private bool _subscribed;
+
 	public MarkdownView()
 	{
 		Content = _body;
+
+		HandlerChanged += OnHandlerChanged;
 	}
+
+	// The colours are resolved when the views are built: on a theme change the document is built again.
+	private void OnHandlerChanged(object? sender, EventArgs e)
+	{
+		if (Handler is null)
+		{
+			if (_subscribed)
+			{
+				Theme.Changed -= OnThemeChanged;
+				_subscribed = false;
+			}
+
+			return;
+		}
+
+		if (!_subscribed)
+		{
+			Theme.Changed += OnThemeChanged;
+			_subscribed = true;
+		}
+	}
+
+	private void OnThemeChanged(object? sender, EventArgs e) =>
+		MainThread.BeginInvokeOnMainThread(() => Render(Markdown));
 
 	public string Markdown
 	{

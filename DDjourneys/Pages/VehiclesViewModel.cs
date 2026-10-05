@@ -120,7 +120,9 @@ public sealed partial class VehiclesViewModel : DisposableViewModel, IQueryAttri
 	private const int MaxRows = 300;
 
 	/// <summary>How long to wait for the first position before saying that none arrived.</summary>
-	private static readonly TimeSpan EmptyAfter = TimeSpan.FromSeconds(12);
+	/// <summary>How long to wait for the first position before saying why there may be none: vehicles often report only every minute or two.</summary>
+	private static readonly TimeSpan EmptyAfterTracking = TimeSpan.FromMinutes(3);
+	private static readonly TimeSpan EmptyAfterLines = TimeSpan.FromMinutes(1);
 
 	private readonly VehicleService _vehicles;
 	private readonly LocalizationService _localization;
@@ -355,7 +357,7 @@ public sealed partial class VehiclesViewModel : DisposableViewModel, IQueryAttri
 		if (IsStreaming
 			&& Rows.Count == 0
 			&& HasStatus
-			&& DateTimeOffset.UtcNow - _startedAt > EmptyAfter)
+			&& DateTimeOffset.UtcNow - _startedAt > (_target is null ? EmptyAfterLines : EmptyAfterTracking))
 		{
 			Status =
 				_target is null

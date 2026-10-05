@@ -38,6 +38,8 @@ public sealed partial class NoticeView : ContentView
 			};
 
 		_web.RawMessageReceived += OnRawMessage;
+		_web.HandlerChanged += (_, _) => WebBridge.PaintBackground(_web);
+		WebBridge.PaintBackground(_web);
 
 		Content = _web;
 
@@ -84,6 +86,8 @@ public sealed partial class NoticeView : ContentView
 
 	private async void OnThemeChanged(object? sender, EventArgs e)
 	{
+		WebBridge.PaintBackground(_web);
+
 		if (_ready)
 		{
 			await CallAsync("theme", WebBridge.CurrentTheme().ToJson());

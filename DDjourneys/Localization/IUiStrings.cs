@@ -560,6 +560,7 @@ public sealed class ExtrasStrings
 	public required string LiveStop { get; init; }
 	public required string LiveConnecting { get; init; }
 	public required string LiveWaiting { get; init; }
+	public required string LiveRetry { get; init; }
 	public required string LiveError { get; init; }
 	public required string LiveLine { get; init; }
 	public required string LiveRun { get; init; }

@@ -49,6 +49,8 @@ public sealed partial class MapView : ContentView
 		_web.HandlerChanged +=
 			(_, _) =>
 			{
+				WebBridge.PaintBackground(_web);
+
 				if (_web.Handler?.PlatformView is Android.Webkit.WebView platformView)
 				{
 					platformView.Settings.TextZoom = 100;
@@ -372,6 +374,8 @@ public sealed partial class MapView : ContentView
 
 	private async void OnThemeChanged(object? sender, EventArgs e)
 	{
+		WebBridge.PaintBackground(_web);
+
 		if (!_ready)
 		{
 			return;

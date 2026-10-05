@@ -262,13 +262,20 @@ body.dark .maplibregl-ctrl-group button .maplibregl-ctrl-icon { filter: invert(1
 	}
 
 	// ---- route lines (GeoJSON layers, re-added whenever the style is replaced) ----
+	// Where our layers go: above every layer that is not a symbol (land, water, roads, buildings, extrusions,
+	// hillshade: anything that is the ground), and below the first symbol layer after those, so labels stay readable.
+	// With no symbol layer above the ground they go on top. Never "before the first label", which in some styles
+	// lies underneath roads or buildings and let them cover the route.
 	function firstLabelLayer() {
 		var layers = (map.getStyle() || {}).layers || [];
+		var ground = -1;
 
 		for (var i = 0; i < layers.length; i++) {
-			var l = layers[i];
+			if (layers[i].type !== 'symbol' && layers[i].id.indexOf('dd-') !== 0) { ground = i; }
+		}
 
-			if (l.type === 'symbol' && l.layout && l.layout['text-field']) { return l.id; }
+		for (var j = ground + 1; j < layers.length; j++) {
+			if (layers[j].type === 'symbol' && layers[j].id.indexOf('dd-') !== 0) { return layers[j].id; }
 		}
 
 		return undefined;

@@ -154,7 +154,18 @@
 				</VerticalStackLayout>
 			</Border>
 
-			<Label StyleClass="Caption" Text="{localization:Tr Extras.LiveHint}" />
+			<Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource SpaceS}">
+				<Label
+					StyleClass="Caption"
+					Text="{localization:Tr Extras.LiveHint}"
+					VerticalOptions="Center" />
+				<controls:IconButton
+					Grid.Column="1"
+					Command="{Binding StartCommand}"
+					Glyph="Refresh"
+					SemanticProperties.Description="{localization:Tr Extras.LiveRetry}"
+					TargetSize="{StaticResource HitIconTight}" />
+			</Grid>
 
 		</VerticalStackLayout>
 	</ScrollView>

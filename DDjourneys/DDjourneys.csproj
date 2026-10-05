@@ -102,8 +102,8 @@
 		<!-- Raw Assets (also remove the "Resources\Raw" prefix) -->
 		<MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
 
-		<!-- The README of the project is the About page of the app: in the package, so it works offline and always matches this version -->
-		<MauiAsset Include="..\README.md" Link="Resources\Raw\README.md" LogicalName="README.md" />
+		<!-- The README of the project is the About page of the app: embedded in the assembly, so it works offline, on every platform, and always matches this version -->
+		<EmbeddedResource Include="..\README.md" LogicalName="DDjourneys.README.md" />
 
 		<!-- The map page (HybridWebView) uses the app's own fonts: the same files, served from wwwroot/fonts -->
 		<MauiAsset Include="Resources\Fonts\*.ttf" Link="Resources\Raw\wwwroot\fonts\%(Filename)%(Extension)" LogicalName="wwwroot\fonts\%(Filename)%(Extension)" />

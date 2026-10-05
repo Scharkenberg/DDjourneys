@@ -5,13 +5,13 @@ using DDjourneys.Support;
 namespace DDjourneys.Pages;
 
 /// <summary>
-/// The README of the project, shown as it is. The file is part of the app package (see the MauiAsset entry in the
-/// project file), so it is there without a network and always matches the version of the app that shows it.
+/// The README of the project, shown as it is. The file is part of the app package (see the EmbeddedResource entry in the
+/// project file as an embedded resource), so it is there without a network and always matches the version of the app that shows it.
 /// </summary>
 public partial class AboutPage : ContentPage
 {
 	/// <summary>Name of the document inside the app package.</summary>
-	public const string AssetName = "README.md";
+	public const string ResourceName = "DDjourneys.README.md";
 
 	private bool _loaded;
 
@@ -42,7 +42,10 @@ public partial class AboutPage : ContentPage
 				await Task.Run(
 					async () =>
 					{
-						await using Stream stream = await FileSystem.Current.OpenAppPackageFileAsync(AssetName);
+						await using Stream stream =
+							typeof(AboutPage).Assembly.GetManifestResourceStream(ResourceName)
+							?? throw new FileNotFoundException($"{ResourceName} is not embedded in the app.");
+
 						using var reader = new StreamReader(stream);
 
 						return await reader.ReadToEndAsync();
@@ -52,7 +55,7 @@ public partial class AboutPage : ContentPage
 		}
 		catch (Exception ex)
 		{
-			DiagnosticLog.Write($"About page: {AssetName} not read: {ex.Message}");
+			DiagnosticLog.Write($"About page: {ResourceName} not read: {ex.Message}");
 
 			Message.Text = LocalizationService.Current.CurrentStrings.Common.SomethingWentWrong;
 			Message.IsVisible = true;
