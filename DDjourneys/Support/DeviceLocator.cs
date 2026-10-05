@@ -78,6 +78,50 @@ public sealed class DeviceLocator
 			return null;
 		}
 
+		Remember(fix.Latitude, fix.Longitude);
+
 		return (fix.Latitude, fix.Longitude);
+	}
+
+	private const string LastFixKey = "device.lastFix";
+
+	/// <summary>Keeps the fix so a widget, which cannot ask for one in the background, has a position to work with.</summary>
+	private static void Remember(double latitude, double longitude)
+	{
+		try
+		{
+			Preferences.Default.Set(
+				LastFixKey,
+				string.Create(
+					System.Globalization.CultureInfo.InvariantCulture,
+					$"{latitude:R};{longitude:R};{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}"));
+		}
+		catch (Exception ex)
+		{
+			DiagnosticLog.Write($"Remembering the position failed: {ex.Message}");
+		}
+	}
+
+	/// <summary>The last position this app took itself, with the time it was taken; null when there is none.</summary>
+	public static (double Latitude, double Longitude, DateTimeOffset At)? LastFix()
+	{
+		try
+		{
+			string[] parts = Preferences.Default.Get(LastFixKey, string.Empty).Split(';');
+
+			if (parts.Length == 3
+				&& double.TryParse(parts[0], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double latitude)
+				&& double.TryParse(parts[1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double longitude)
+				&& long.TryParse(parts[2], System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out long seconds))
+			{
+				return (latitude, longitude, DateTimeOffset.FromUnixTimeSeconds(seconds));
+			}
+		}
+		catch (Exception ex)
+		{
+			DiagnosticLog.Write($"Reading the last position failed: {ex.Message}");
+		}
+
+		return null;
 	}
 }

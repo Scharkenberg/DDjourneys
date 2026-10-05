@@ -16,6 +16,7 @@ public interface IUiStrings
 	RoutingStrings Routing { get; }
 	SettingsStrings Settings { get; }
 	TransportStrings Transport { get; }
+	WidgetStrings Widgets { get; }
 }
 
 public sealed class CommonStrings
@@ -622,3 +623,51 @@ public sealed class ExtrasStrings
 	public required string HomeNotSet { get; init; }
 }
 // </extras>
+
+
+/// <summary>Home screen widgets: the texts on the widget and in its settings.</summary>
+public sealed class WidgetStrings
+{
+	public required string NameRoute { get; init; }
+	public required string NameDepartures { get; init; }
+	public required string NameArrivals { get; init; }
+	public required string NameNearby { get; init; }
+	public required string NameNearbyDepartures { get; init; }
+	public required string Here { get; init; }
+	public required string Loading { get; init; }
+	public required string SetUp { get; init; }
+	public required string NoDepartures { get; init; }
+	public required string NoArrivals { get; init; }
+	public required string NoJourneys { get; init; }
+	public required string NoStopsNearby { get; init; }
+	public required string NeedsLocation { get; init; }
+	public required string RefreshFailed { get; init; }
+	public required string UpdatedAt { get; init; }
+	public required string PositionFrom { get; init; }
+	public required string Meters { get; init; }
+	public required string ConfigTitle { get; init; }
+	public required string ConfigFrom { get; init; }
+	public required string ConfigTo { get; init; }
+	public required string ConfigStop { get; init; }
+	public required string ChoosePlace { get; init; }
+	public required string SearchHint { get; init; }
+	public required string NoResults { get; init; }
+	public required string ConfigRadius { get; init; }
+	public required string ConfigRows { get; init; }
+	public required string RowsAuto { get; init; }
+	public required string ConfigStops { get; init; }
+	public required string ConfigPerStop { get; init; }
+	public required string ConfigLines { get; init; }
+	public required string LinesHint { get; init; }
+	public required string ConfigModes { get; init; }
+	public required string ModesAll { get; init; }
+	public required string ConfigAuto { get; init; }
+	public required string ConfigInterval { get; init; }
+	public required string IntervalMinutes { get; init; }
+	public required string IntervalHours { get; init; }
+	public required string ConfigAutoHint { get; init; }
+	public required string ConfigProvider { get; init; }
+	public required string Done { get; init; }
+	public required string LocationHint { get; init; }
+	public required string OpenSettings { get; init; }
+}

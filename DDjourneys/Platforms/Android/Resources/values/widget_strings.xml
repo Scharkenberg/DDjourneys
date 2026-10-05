@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_route_label">DDjourneys · Route</string>
+    <string name="widget_route_description">Journeys from any place A to any place B.</string>
+    <string name="widget_departures_label">DDjourneys · Departures</string>
+    <string name="widget_departures_description">The next departures from one stop.</string>
+    <string name="widget_arrivals_label">DDjourneys · Arrivals</string>
+    <string name="widget_arrivals_description">The next arrivals at one stop.</string>
+    <string name="widget_nearby_label">DDjourneys · Nearby stops</string>
+    <string name="widget_nearby_description">The stops around you with their distance in meters.</string>
+    <string name="widget_nearby_departures_label">DDjourneys · Nearby departures</string>
+    <string name="widget_nearby_departures_description">The next departures from the stops around you, in one view.</string>
+    <string name="widget_config_label">Widget settings</string>
+</resources>

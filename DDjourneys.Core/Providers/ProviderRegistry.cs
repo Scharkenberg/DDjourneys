@@ -13,6 +13,9 @@ public sealed class ProviderRegistry
 
 	private string? _selectedId;
 
+	/// <summary>A provider used for the current async flow only (see <see cref="Override"/>).</summary>
+	private readonly AsyncLocal<string?> _override = new();
+
 	public ProviderRegistry(
 		IEnumerable<ProviderInfo> providers,
 		Func<string?>? load = null,
@@ -46,6 +49,12 @@ public sealed class ProviderRegistry
 	{
 		get
 		{
+			if (_override.Value is { } forced
+				&& Find(forced) is { } known)
+			{
+				return known.Id;
+			}
+
 			_selectedId ??= _load?.Invoke();
 
 			return Find(_selectedId)?.Id
@@ -64,6 +73,25 @@ public sealed class ProviderRegistry
 	public bool Supports(ProviderCapabilities capability) =>
 		Selected?.Supports(capability)
 		?? true;
+
+	/// <summary>
+	/// Makes <paramref name="id"/> the provider for everything awaited inside the returned scope, without changing
+	/// the user's selection (a widget belongs to the provider it was made for, whichever one the app shows now).
+	/// </summary>
+	public IDisposable Override(string? id)
+	{
+		string? previous = _override.Value;
+
+		_override.Value = Find(id)?.Id;
+
+		return new OverrideScope(() => _override.Value = previous);
+	}
+
+	private sealed class OverrideScope(Action restore) : IDisposable
+	{
+		public void Dispose() =>
+			restore();
+	}
 
 	/// <summary>Selects a provider; unknown ids are ignored.</summary>
 	public bool Select(string id)

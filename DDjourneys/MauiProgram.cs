@@ -119,6 +119,7 @@ public static class MauiProgram
 		builder.Services.AddSingleton<IOpenDataProvider, DresdenOpenDataProvider>();
 		builder.Services.AddSingleton<OpenDataService>();
 		builder.Services.AddSingleton<DepartureService>();
+		builder.Services.AddSingleton<Support.Widgets.WidgetLoader>();
 		builder.Services.AddSingleton<NetworkService>();
 
 		builder.Services.AddSingleton<JourneyProviderDiagnostics>();
