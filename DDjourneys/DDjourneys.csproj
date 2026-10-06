@@ -13,6 +13,7 @@
 		<OutputType>Exe</OutputType>
 		<RootNamespace>DDjourneys</RootNamespace>
 		<UseMaui>true</UseMaui>
+		<UseMaterial3 Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">true</UseMaterial3>
 		<SingleProject>true</SingleProject>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
@@ -124,6 +125,7 @@
 		<!-- Share image: MAUI Graphics on SkiaSharp, identical output on every platform -->
 		<PackageReference Include="Microsoft.Maui.Graphics.Skia" Version="$(MauiVersion)" />
 		<PackageReference Include="CommunityToolkit.Maui" Version="15.0.1" />
+		<PackageReference Include="Xamarin.Google.Android.Material" Version="1.14.0.6" Condition="'$(TargetFramework)' == 'net11.0-android'" />
 	</ItemGroup>
 
 	<ItemGroup>

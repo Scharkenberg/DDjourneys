@@ -224,6 +224,7 @@ internal static class WindowsMaterial
 		Microsoft.Maui.Graphics.Color ink = Theme.ColorOf("Ink", Microsoft.Maui.Graphics.Colors.Black);
 		Microsoft.Maui.Graphics.Color muted = Theme.ColorOf("InkMuted", ink);
 		Microsoft.Maui.Graphics.Color background = Theme.BarColor;
+		Microsoft.Maui.Graphics.Color accent = Theme.ColorOf("Accent", background);
 
 		// With a material the title bar shows it; without, it wears the palette (not the OS theme).
 		WinColor? fill = materialShown ? null : ToWin(background);
@@ -237,9 +238,9 @@ internal static class WindowsMaterial
 		bar.ButtonInactiveBackgroundColor = clear;
 		bar.ButtonForegroundColor = ToWin(ink);
 		bar.ButtonInactiveForegroundColor = ToWin(muted);
-		bar.ButtonHoverBackgroundColor = ToWin(ink, 0.10f);
+		bar.ButtonHoverBackgroundColor = ToWin(materialShown ? accent : background, materialShown ? 0.22f : 0.16f);
 		bar.ButtonHoverForegroundColor = ToWin(ink);
-		bar.ButtonPressedBackgroundColor = ToWin(ink, 0.18f);
+		bar.ButtonPressedBackgroundColor = ToWin(materialShown ? accent : background, materialShown ? 0.34f : 0.24f);
 		bar.ButtonPressedForegroundColor = ToWin(ink);
 
 		if (!materialShown)

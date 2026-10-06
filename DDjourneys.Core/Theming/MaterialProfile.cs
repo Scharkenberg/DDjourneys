@@ -54,10 +54,10 @@ public static class MaterialProfile
 			(NormalizeCoverage(coverage), role) switch
 			{
 				(Backdrop, _) => 1,
-				(Layered, "Surface") => acrylic ? (dark ? 0.70 : 0.78) : (dark ? 0.62 : 0.72),
-				(Layered, "Raised") => acrylic ? (dark ? 0.82 : 0.88) : (dark ? 0.78 : 0.86),
-				(Immersive, "Surface") => acrylic ? (dark ? 0.52 : 0.62) : (dark ? 0.45 : 0.55),
-				(Immersive, "Raised") => acrylic ? (dark ? 0.68 : 0.78) : (dark ? 0.65 : 0.75),
+				(Layered, "Surface") => acrylic ? (dark ? 0.56 : 0.64) : (dark ? 0.64 : 0.72),
+				(Layered, "Raised") => acrylic ? (dark ? 0.76 : 0.84) : (dark ? 0.82 : 0.90),
+				(Immersive, "Surface") => acrylic ? (dark ? 0.40 : 0.48) : (dark ? 0.48 : 0.56),
+				(Immersive, "Raised") => acrylic ? (dark ? 0.62 : 0.72) : (dark ? 0.70 : 0.80),
 				_ => 1
 			};
 
