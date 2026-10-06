@@ -6,42 +6,77 @@ using DDjourneys.Support;
 namespace DDjourneys.Pages;
 
 /// <summary>One provider as the list shows it.</summary>
-public sealed class ProviderRow : ObservableObject
+public sealed partial class ProviderRow(
+	ProviderInfo info,
+	IReadOnlyList<string> capabilities,
+	Command select) : ObservableObject
 {
-	public ProviderRow(
-		ProviderInfo info,
-		IReadOnlyList<string> capabilities,
-		Command select)
-	{
-		Info = info;
-		Capabilities = capabilities;
-		SelectCommand = select;
-	}
-
-	public ProviderInfo Info { get; }
+	public ProviderInfo Info { get; } = info;
 
 	public string Name => Info.Name;
+
+	public bool IsExperimental => Info.IsExperimental;
+
+	private static string ExperimentalText =>
+		LocalizationService.Current.CurrentStrings.Provider.Experimental;
 
 	public string FullName => Info.FullName;
 
 	public string Coverage => Info.Coverage;
 
 	/// <summary>Localized labels of what the provider supports.</summary>
-	public IReadOnlyList<string> Capabilities { get; }
+	public IReadOnlyList<string> Capabilities { get; } = capabilities;
 
 	public bool IsSelected
 	{
-		get => field;
-		internal set =>
-			SetProperty(
-				ref field,
-				value);
+		get;
+		internal set
+		{
+			if (SetProperty(ref field, value))
+			{
+				OnPropertyChanged(nameof(IsNotSelected));
+			}
+		}
 	}
 
-	public Command SelectCommand { get; }
+	public bool IsNotSelected =>
+		!IsSelected;
+
+	public Command SelectCommand { get; } = select;
+
+	/// <summary>A hairline above every row but the first of its card.</summary>
+	public bool HasDivider { get; init; }
+
+	/// <summary>The details (coverage, what the provider supports, the button to use it) are shown.</summary>
+	public bool IsExpanded
+	{
+		get;
+		set
+		{
+			if (SetProperty(ref field, value))
+			{
+				OnPropertyChanged(nameof(ChevronRotation));
+			}
+		}
+	}
+
+	public double ChevronRotation =>
+		IsExpanded
+			? 180
+			: 0;
+
+	public Command ToggleCommand => field ??= new Command(() => IsExpanded = !IsExpanded);
+
+	public string UseText =>
+		LocalizationService.Current.CurrentStrings.Provider.Use;
+
+	public string InUseText =>
+		LocalizationService.Current.CurrentStrings.Provider.InUse;
 
 	public string Description =>
-		$"{Info.Name}, {Info.FullName}, {Info.Coverage}";
+		Info.IsExperimental
+			? $"{Info.Name}, {ExperimentalText}, {Info.FullName}, {Info.Coverage}"
+			: $"{Info.Name}, {Info.FullName}, {Info.Coverage}";
 }
 
 
@@ -52,21 +87,25 @@ public sealed record ProviderGroup(
 
 
 /// <summary>Provider picker. Lists whatever the registry holds, grouped by region, so new providers need no UI work.</summary>
-public sealed class ProvidersViewModel : DisposableViewModel
+public sealed partial class ProvidersViewModel : DisposableViewModel
 {
-	private static readonly (ProviderCapabilities Flag, Func<ProviderStrings, string> Label)[] Labels =
+	private static readonly (ProviderCapabilities Flag, Func<IUiStrings, string> Label)[] Labels =
 	[
-		(ProviderCapabilities.Journeys, s => s.CapJourneys),
-		(ProviderCapabilities.Places, s => s.CapPlaces),
-		(ProviderCapabilities.Continuation, s => s.CapContinuation),
-		(ProviderCapabilities.RoutingPreferences, s => s.CapRouting),
-		(ProviderCapabilities.Platforms, s => s.CapPlatforms),
-		(ProviderCapabilities.Occupancy, s => s.CapOccupancy),
-		(ProviderCapabilities.Tracking, s => s.CapTracking),
-		(ProviderCapabilities.Departures, s => s.CapDepartures),
-		(ProviderCapabilities.Disruptions, s => s.CapDisruptions),
-		(ProviderCapabilities.NetworkInfo, s => s.CapNetwork),
-		(ProviderCapabilities.JourneyExtras, s => s.CapExtras)
+		(ProviderCapabilities.Journeys, s => s.Provider.CapJourneys),
+		(ProviderCapabilities.Places, s => s.Provider.CapPlaces),
+		(ProviderCapabilities.Continuation, s => s.Provider.CapContinuation),
+		(ProviderCapabilities.RoutingPreferences, s => s.Provider.CapRouting),
+		(ProviderCapabilities.Platforms, s => s.Provider.CapPlatforms),
+		(ProviderCapabilities.Occupancy, s => s.Provider.CapOccupancy),
+		(ProviderCapabilities.Tracking, s => s.Provider.CapTracking),
+		(ProviderCapabilities.Departures, s => s.Provider.CapDepartures),
+		(ProviderCapabilities.Disruptions, s => s.Provider.CapDisruptions),
+		(ProviderCapabilities.NetworkInfo, s => s.Provider.CapNetwork),
+		(ProviderCapabilities.JourneyExtras, s => s.Provider.CapExtras),
+		(ProviderCapabilities.LiveVehicles, s => s.Extras.CapLive),
+		(ProviderCapabilities.OpenData, s => s.Extras.CapOpenData),
+		(ProviderCapabilities.Fares, s => s.Extras.CapFares),
+		(ProviderCapabilities.RouteOptimisation, s => s.Extras.CapOptimisation)
 	];
 
 	private readonly ProviderRegistry _registry;
@@ -86,7 +125,7 @@ public sealed class ProvidersViewModel : DisposableViewModel
 
 	public IReadOnlyList<ProviderGroup> Groups
 	{
-		get => field;
+		get;
 		private set =>
 			SetProperty(
 				ref field,
@@ -101,27 +140,33 @@ public sealed class ProvidersViewModel : DisposableViewModel
 
 	private void Build()
 	{
-		ProviderStrings strings =
-			_localization.CurrentStrings.Provider;
+		IUiStrings strings =
+			_localization.CurrentStrings;
 
 		Groups =
+			(List<ProviderGroup>)
 			[.. _registry.Providers
 				.GroupBy(provider => provider.Region)
 				.Select(
 					group => new ProviderGroup(
 						group.Key,
+						(List<ProviderRow>)
 						[.. group.Select(
-							provider =>
+							(provider, index) =>
 							{
 								ProviderRow? row = null;
 
 								row =
 									new ProviderRow(
 										provider,
+										(List<string>)
 										[.. Labels
 											.Where(label => provider.Supports(label.Flag))
 											.Select(label => label.Label(strings))],
-										new Command(() => Select(row!)));
+										new Command(() => Select(row!)))
+									{
+										HasDivider = index > 0
+									};
 
 								return row;
 							})]))];

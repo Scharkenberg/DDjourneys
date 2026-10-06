@@ -18,7 +18,7 @@ namespace DDjourneys.Core.Providers.Vvo.Parsing;
 /// and preserves useful structure such as paragraphs, lists, line breaks
 /// and hyperlinks.
 /// </summary>
-public static class VvoNoticeParser
+public static partial class VvoNoticeParser
 {
 	private enum MarkupMode
 	{
@@ -29,14 +29,9 @@ public static class VvoNoticeParser
 	}
 
 
-	private sealed class AnchorContext
+	private sealed class AnchorContext(string? href)
 	{
-		public AnchorContext(string? href)
-		{
-			Href = href;
-		}
-
-		public string? Href { get; }
+		public string? Href { get; } = href;
 
 		public StringBuilder Text { get; } = new();
 	}
@@ -125,56 +120,32 @@ public static class VvoNoticeParser
 		};
 
 
-	private static readonly Regex KnownHtmlTagRegex =
-		new(
-			@"<\s*/?\s*(?:a|abbr|address|article|aside|b|big|blockquote|body|br|caption|center|code|col|del|details|div|em|figcaption|figure|font|footer|h[1-6]|head|header|hr|i|img|ins|li|main|mark|nav|ol|p|pre|q|rp|rt|s|script|section|small|span|strike|strong|style|sub|summary|sup|table|tbody|td|tfoot|th|thead|tr|u|ul|wbr)\b",
-			RegexOptions.IgnoreCase
-			| RegexOptions.Compiled
-			| RegexOptions.CultureInvariant);
+	[GeneratedRegex(@"<\s*/?\s*(?:a|abbr|address|article|aside|b|big|blockquote|body|br|caption|center|code|col|del|details|div|em|figcaption|figure|font|footer|h[1-6]|head|header|hr|i|img|ins|li|main|mark|nav|ol|p|pre|q|rp|rt|s|script|section|small|span|strike|strong|style|sub|summary|sup|table|tbody|td|tfoot|th|thead|tr|u|ul|wbr)\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+	private static partial Regex KnownHtmlTagRegex();
 
 
-	private static readonly Regex HtmlEntityRegex =
-		new(
-			@"&(?:#\d+|#x[0-9a-f]+|[a-z][a-z0-9]+);",
-			RegexOptions.IgnoreCase
-			| RegexOptions.Compiled
-			| RegexOptions.CultureInvariant);
+	[GeneratedRegex(@"&(?:#\d+|#x[0-9a-f]+|[a-z][a-z0-9]+);", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+	private static partial Regex HtmlEntityRegex();
 
 
-	private static readonly Regex MarkdownBlockRegex =
-		new(
-			@"(?m)^\s{0,3}(?:#{1,6}\s|[-*+]\s|\d+[.)]\s|>\s)",
-			RegexOptions.Compiled
-			| RegexOptions.CultureInvariant);
+	[GeneratedRegex(@"(?m)^\s{0,3}(?:#{1,6}\s|[-*+]\s|\d+[.)]\s|>\s)", RegexOptions.CultureInvariant)]
+	private static partial Regex MarkdownBlockRegex();
 
 
-	private static readonly Regex MarkdownInlineRegex =
-		new(
-			@"(?:\[[^\]\r\n]+\]\(\s*(?:<[^>\r\n]+>|[^)\r\n]+)\s*\)|\*\*[^*\r\n]+\*\*|__[^_\r\n]+__|`[^`\r\n]+`)",
-			RegexOptions.Compiled
-			| RegexOptions.CultureInvariant);
+	[GeneratedRegex(@"(?:\[[^\]\r\n]+\]\(\s*(?:<[^>\r\n]+>|[^)\r\n]+)\s*\)|\*\*[^*\r\n]+\*\*|__[^_\r\n]+__|`[^`\r\n]+`)", RegexOptions.CultureInvariant)]
+	private static partial Regex MarkdownInlineRegex();
 
 
-	private static readonly Regex MarkdownLinkRegex =
-		new(
-			@"(?<image>!?)[\[](?<text>[^\]\r\n]+)[\]]\(\s*(?:<(?<angle>[^>\r\n]+)>|(?<url>[^)\r\n]+))\s*\)",
-			RegexOptions.Compiled
-			| RegexOptions.CultureInvariant);
+	[GeneratedRegex(@"(?<image>!?)[\[](?<text>[^\]\r\n]+)[\]]\(\s*(?:<(?<angle>[^>\r\n]+)>|(?<url>[^)\r\n]+))\s*\)", RegexOptions.CultureInvariant)]
+	private static partial Regex MarkdownLinkRegex();
 
 
-	private static readonly Regex MarkdownAutolinkRegex =
-		new(
-			@"<(?<url>(?:https?://|mailto:|tel:)[^>\r\n]+)>",
-			RegexOptions.IgnoreCase
-			| RegexOptions.Compiled
-			| RegexOptions.CultureInvariant);
+	[GeneratedRegex(@"<(?<url>(?:https?://|mailto:|tel:)[^>\r\n]+)>", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+	private static partial Regex MarkdownAutolinkRegex();
 
 
-	private static readonly Regex HtmlAttributeRegex =
-		new(
-			@"(?<name>[A-Za-z_:][A-Za-z0-9_.:-]*)(?:\s*=\s*(?:""(?<double>[^""]*)""|'(?<single>[^']*)'|(?<bare>[^\s""'=<>`]+)))?",
-			RegexOptions.Compiled
-			| RegexOptions.CultureInvariant);
+	[GeneratedRegex(@"(?<name>[A-Za-z_:][A-Za-z0-9_.:-]*)(?:\s*=\s*(?:""(?<double>[^""]*)""|'(?<single>[^']*)'|(?<bare>[^\s""'=<>`]+)))?", RegexOptions.CultureInvariant)]
+	private static partial Regex HtmlAttributeRegex();
 
 
 	public static IReadOnlyList<string> Parse(
@@ -182,15 +153,15 @@ public static class VvoNoticeParser
 	{
 		if (notices is null)
 		{
-			return Array.Empty<string>();
+			return [];
 		}
 
 
-		return notices
-			.Select(Parse)
-			.Where(static value =>
-				!string.IsNullOrWhiteSpace(value))
-			.ToArray();
+		return
+			[.. notices
+				.Select(Parse)
+				.Where(static value =>
+					!string.IsNullOrWhiteSpace(value))];
 	}
 
 
@@ -234,14 +205,14 @@ public static class VvoNoticeParser
 	private static MarkupMode DetectMode(string text)
 	{
 		bool html =
-			KnownHtmlTagRegex.IsMatch(text)
-			|| HtmlEntityRegex.IsMatch(text);
+			KnownHtmlTagRegex().IsMatch(text)
+			|| HtmlEntityRegex().IsMatch(text);
 
 
 		bool markdown =
-			MarkdownBlockRegex.IsMatch(text)
-			|| MarkdownInlineRegex.IsMatch(text)
-			|| MarkdownAutolinkRegex.IsMatch(text);
+			MarkdownBlockRegex().IsMatch(text)
+			|| MarkdownInlineRegex().IsMatch(text)
+			|| MarkdownAutolinkRegex().IsMatch(text);
 
 
 		return (html, markdown) switch
@@ -266,7 +237,7 @@ public static class VvoNoticeParser
 	private static string ParseMarkdown(string text)
 	{
 		string result =
-			MarkdownLinkRegex.Replace(
+			MarkdownLinkRegex().Replace(
 				text,
 				static match =>
 				{
@@ -289,7 +260,7 @@ public static class VvoNoticeParser
 
 
 		result =
-			MarkdownAutolinkRegex.Replace(
+			MarkdownAutolinkRegex().Replace(
 				result,
 				static match =>
 					match.Groups["url"].Value);
@@ -885,7 +856,7 @@ public static class VvoNoticeParser
 		string wantedName)
 	{
 		foreach (Match match in
-			HtmlAttributeRegex.Matches(attributes))
+			HtmlAttributeRegex().Matches(attributes))
 		{
 			string name =
 				match.Groups["name"].Value;

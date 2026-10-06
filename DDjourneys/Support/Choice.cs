@@ -1,7 +1,7 @@
 namespace DDjourneys.Support;
 
 /// <summary>One selectable row of a <see cref="ChoiceGroup"/> (radio-list style, tick on the selected row).</summary>
-public sealed class ChoiceOption : ObservableObject
+public sealed partial class ChoiceOption : ObservableObject
 {
 	private readonly ChoiceGroup _group;
 	private readonly Func<string> _title;
@@ -26,7 +26,7 @@ public sealed class ChoiceOption : ObservableObject
 
 	public bool IsSelected
 	{
-		get => field;
+		get;
 		internal set =>
 			SetProperty(
 				ref field,
@@ -59,6 +59,7 @@ public sealed class ChoiceGroup
 		_set = set;
 
 		Options =
+			(List<ChoiceOption>)
 			[.. options.Select(
 				option => new ChoiceOption(
 					this,
@@ -91,7 +92,7 @@ public sealed class ChoiceGroup
 
 
 /// <summary>A switch row with title and description, bound to a stored value.</summary>
-public sealed class ToggleOption : ObservableObject
+public sealed partial class ToggleOption : ObservableObject
 {
 	private readonly Func<string> _title;
 	private readonly Func<string?>? _description;

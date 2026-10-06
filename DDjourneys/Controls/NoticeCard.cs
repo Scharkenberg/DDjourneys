@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using DDjourneys.Localization;
 using DDjourneys.Support;
 using Microsoft.Maui.Controls.Shapes;
@@ -8,7 +9,7 @@ namespace DDjourneys.Controls;
 /// Displays one provider notice richly: severity accent bar and glyph, paragraphs, hanging bullets,
 /// tappable links, and a fold for long notices.
 /// </summary>
-public sealed class NoticeCard : ContentView
+public sealed partial class NoticeCard : ContentView
 {
 	private const int CollapsedBlocks = 2;
 	private const int CollapsedLines = 3;
@@ -113,7 +114,7 @@ public sealed class NoticeCard : ContentView
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine(
+			DiagnosticLog.Write(
 				$"NoticeCard fallback: {ex}");
 
 			Content = new Label
@@ -124,7 +125,7 @@ public sealed class NoticeCard : ContentView
 		}
 	}
 
-	private View? Build()
+	private Border? Build()
 	{
 		string text = Text ?? string.Empty;
 
@@ -471,7 +472,7 @@ public sealed class NoticeCard : ContentView
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine(
+			DiagnosticLog.Write(
 				$"[NOTICE LINK] Failed to open {uri}: {ex.Message}");
 		}
 	}

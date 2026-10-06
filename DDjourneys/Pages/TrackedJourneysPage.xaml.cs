@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using DDjourneys.Localization;
 using DDjourneys.Support;
 
@@ -141,7 +142,7 @@ public partial class TrackedJourneysPage : ContentPage
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Scrolling to the followed journey failed: {ex.Message}");
+			DiagnosticLog.Write($"Scrolling to the followed journey failed: {ex.Message}");
 		}
 	}
 }

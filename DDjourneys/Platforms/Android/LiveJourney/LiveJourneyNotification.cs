@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using System.Globalization;
 using Android.App;
 using Android.Content;
@@ -6,7 +7,6 @@ using Android.Service.Notification;
 using DDjourneys.Core.Tracking;
 using DDjourneys.Core.Tracking.Live;
 using DDjourneys.Localization;
-using DDjourneys.Platforms.Android.LiveJourney.Schutzengel;
 using DDjourneys.Tracking.Schutzengel;
 
 namespace DDjourneys.Platforms.Android.LiveJourney;
@@ -472,7 +472,7 @@ internal static class LiveJourneyNotification
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"[SCHUTZENGEL] Notification summary not updated: {ex.Message}");
+			DiagnosticLog.Write($"[SCHUTZENGEL] Notification summary not updated: {ex.Message}");
 		}
 	}
 
@@ -518,7 +518,7 @@ internal static class LiveJourneyNotification
 		if (!string.IsNullOrEmpty(planId))
 		{
 			Intent target =
-				new Intent(context, typeof(global::DDjourneys.MainActivity))
+				new Intent(context, typeof(global::DDjourneys.Platforms.Android.MainActivity))
 					.SetAction(ActionOpen)!
 					.PutExtra(ExtraPlanId, planId)!
 					.SetFlags(ActivityFlags.NewTask | ActivityFlags.SingleTop | ActivityFlags.ClearTop)!;

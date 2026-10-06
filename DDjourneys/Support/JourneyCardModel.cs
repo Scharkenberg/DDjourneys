@@ -33,7 +33,7 @@ public static class ModeColors
 }
 
 /// <summary>Display-ready view of a Journey for the results list.</summary>
-public sealed class JourneyCardModel : ObservableObject
+public sealed partial class JourneyCardModel : ObservableObject
 {
 	private readonly LocalizationService _localization;
 
@@ -110,6 +110,7 @@ public sealed class JourneyCardModel : ObservableObject
 
 		_hasNotices = notices > 0;
 		HasNotices = _hasNotices;
+		NoticeCount = notices;
 
 		RebuildLocalizedValues(notices);
 	}
@@ -130,6 +131,34 @@ public sealed class JourneyCardModel : ObservableObject
 
 	public string TransfersText => _transfersText;
 
+	/// <summary>Who the price is for (the option "Tickets for"); the normal adult price by default.</summary>
+	public PassengerCategory Passenger { get; init; } = PassengerCategory.Adult;
+
+	/// <summary>Opens the journey on the map; null on cards that have no map button (the results list).</summary>
+	public System.Windows.Input.ICommand? MapCommand { get; init; }
+
+	public bool HasMap =>
+		MapCommand is not null;
+
+	/// <summary>The single ticket for <see cref="Passenger"/> ("2,70 €"), or null when the provider quotes none.</summary>
+	public string? PriceText
+	{
+		get
+		{
+			JourneyFare? fare =
+				FareChoice.Preferred(
+					Journey.Fares,
+					Passenger);
+
+			return fare is { Price: { } price }
+				? Format.Price(price, fare.Currency)
+				: null;
+		}
+	}
+
+	public bool HasPrice =>
+		PriceText is not null;
+
 	public string? DepartureDelay { get; }
 	public string? ArrivalDelay { get; }
 
@@ -149,8 +178,16 @@ public sealed class JourneyCardModel : ObservableObject
 
 	public string NoticesText => _noticesText;
 	public bool HasNotices { get; }
+
+	/// <summary>How many notices the journey carries; the card shows it as a small badge, not as a line of its own.</summary>
+	public int NoticeCount { get; }
+
+	/// <summary>The line under the legs: only "on time" is worth a line; notices are a badge.</summary>
 	public bool HasStatusRow =>
-		IsOnTime || HasNotices;
+		IsOnTime;
+
+	/// <summary>The icons next to the map icon (journey page); null on the cards of the result list.</summary>
+	public JourneyActions? Actions { get; init; }
 
 	public string AccessibilityText =>
 		_accessibilityText;
@@ -215,7 +252,9 @@ public sealed class JourneyCardModel : ObservableObject
 
 		_chips = chips;
 
-		_transfersText = Journey.TransferCount switch
+		_transfersText = !Journey.Rides.Any()
+			? strings.Walk
+			: Journey.TransferCount switch
 		{
 			0 => strings.Direct,
 			1 => strings.OneTransfer,

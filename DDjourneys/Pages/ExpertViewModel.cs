@@ -6,7 +6,7 @@ using DDjourneys.Support;
 namespace DDjourneys.Pages;
 
 /// <summary>Expert view: everything the provider delivered for one journey, as readable key/value blocks.</summary>
-public sealed class ExpertViewModel : ObservableObject, IQueryAttributable
+public sealed partial class ExpertViewModel : ObservableObject, IQueryAttributable
 {
 	private readonly LocalizationService _localization =
 		LocalizationService.Current;
@@ -20,7 +20,7 @@ public sealed class ExpertViewModel : ObservableObject, IQueryAttributable
 
 	public IReadOnlyList<ExpertSection> Sections
 	{
-		get => field;
+		get;
 
 		private set =>
 			SetProperty(

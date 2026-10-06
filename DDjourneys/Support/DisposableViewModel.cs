@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using System.ComponentModel;
 using DDjourneys.Localization;
 
@@ -58,6 +59,8 @@ public abstract class DisposableViewModel : ObservableObject, IDisposable
 	/// <summary>Releases subscriptions first, then lets the view model stop its own work. Idempotent.</summary>
 	public void Dispose()
 	{
+		GC.SuppressFinalize(this);
+
 		if (_disposed)
 		{
 			return;
@@ -79,7 +82,7 @@ public abstract class DisposableViewModel : ObservableObject, IDisposable
 				}
 				catch (Exception ex)
 				{
-					System.Diagnostics.Debug.WriteLine($"Releasing a subscription failed: {ex.Message}");
+					DiagnosticLog.Write($"Releasing a subscription failed: {ex.Message}");
 				}
 			}
 

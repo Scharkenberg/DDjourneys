@@ -7,8 +7,8 @@ namespace DDjourneys.Support.Sharing;
 
 /// <summary>
 /// The journey as plain text for messengers: a headline, the key figures, then one block per
-/// step with times, lines, directions, platforms, real-time deviations and changes, and the
-/// notices at the end. Mode symbols make the steps scannable; everything also reads without them.
+/// step with times, lines, directions, platforms, real-time deviations and changes. Provider
+/// notices are not shared. Mode symbols make the steps scannable; everything also reads without them.
 /// </summary>
 public static class JourneyShareText
 {
@@ -35,6 +35,11 @@ public static class JourneyShareText
 		figures.Add(model.DurationText);
 		figures.Add(model.TransfersText);
 
+		if (model.PriceText is { Length: > 0 } price)
+		{
+			figures.Add(price);
+		}
+
 		builder.AppendLine(string.Join(" · ", figures));
 
 		if (model.IsCancelled)
@@ -48,11 +53,29 @@ public static class JourneyShareText
 		{
 			switch (step.Kind)
 			{
-				case ShareStepKind.Walk:
-					builder.AppendLine(
-						$"{Symbol(TransitMode.Walk)} {Time(step.Time)}  " +
-						$"{text.Walk} {Duration(step.Duration)} {text.To} {step.To}".TrimEnd());
+				case ShareStepKind.Depart:
+					builder.AppendLine($"\U0001F4CD {Time(step.Time)}  {text.Depart} {step.To}");
 					break;
+
+				case ShareStepKind.Walk:
+					{
+						string walk = $"{text.Walk} {Duration(step.Duration)} {text.To} {step.To}".Replace("  ", " ");
+
+						string wait =
+							step.WaitTime is { } left && left >= TimeSpan.FromMinutes(1)
+								? $" · {Format.Duration(left)} {text.ToChange}"
+								: string.Empty;
+
+						string risk =
+							step.IsEndangered
+								? $" ⚠ {text.ConnectionMayBeMissed}"
+								: step.IsGuaranteed
+									? $" ✓ {text.ConnectionGuaranteed}"
+									: string.Empty;
+
+						builder.AppendLine($"{Symbol(TransitMode.Walk)} {Time(step.Time)}  {walk}{wait}{risk}");
+						break;
+					}
 
 				case ShareStepKind.Ride:
 					AppendRide(builder, step, text);
@@ -65,7 +88,12 @@ public static class JourneyShareText
 								? $" · {Format.Duration(left)} {text.ToChange}"
 								: $" · {text.ImmediateChange}";
 
-						string risk = step.IsEndangered ? $" ⚠ {text.ConnectionMayBeMissed}" : string.Empty;
+						string risk =
+							step.IsEndangered
+								? $" ⚠ {text.ConnectionMayBeMissed}"
+								: step.IsGuaranteed
+									? $" ✓ {text.ConnectionGuaranteed}"
+									: string.Empty;
 
 						builder.AppendLine($"⇄       {text.ChangeAt} {step.From}{wait}{risk}");
 						break;
@@ -74,16 +102,6 @@ public static class JourneyShareText
 				case ShareStepKind.Arrive:
 					builder.AppendLine($"\U0001F3C1 {Time(step.Time)}  {text.Arrive} {step.To}");
 					break;
-			}
-		}
-
-		if (model.Notices.Count > 0)
-		{
-			builder.AppendLine();
-
-			foreach (string notice in model.Notices)
-			{
-				builder.AppendLine($"⚠ {notice}");
 			}
 		}
 

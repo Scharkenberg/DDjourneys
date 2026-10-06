@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using System.Globalization;
 using DDjourneys.Core.Models;
 using DDjourneys.Core.Providers.Abstractions;
@@ -15,6 +16,7 @@ namespace DDjourneys.Core.Providers.Vvo;
 public sealed class VvoNetworkProvider :
 	IDepartureProvider,
 	INetworkInfoProvider,
+	IStopAreaProvider,
 	IProviderDescriptor
 {
 	private static readonly TimeSpan MaxZoneAge = TimeSpan.FromHours(24);
@@ -58,8 +60,8 @@ public sealed class VvoNetworkProvider :
 					IsArrival = query.IsArrival,
 					ModesOfTransport = ModesOf(query.Modes)
 				},
-				cancellationToken,
-				Timeout(query.TimeoutSeconds))
+				Timeout(query.TimeoutSeconds),
+				cancellationToken)
 				.ConfigureAwait(false);
 
 		return response is null
@@ -80,21 +82,49 @@ public sealed class VvoNetworkProvider :
 			return [];
 		}
 
-		// The run is the one that is next at this stop at this time: stop and time stay as the monitor gave them.
+		// tripid names the line's course, not one run (kiliankoe's webapi.md, "Run identity"): the run is the
+		// next real-time departure at stopid at or after time. So the time is the run's own real-time
+		// departure here, a minute early, and the answer is checked against its scheduled time.
+		DateTimeOffset token =
+			departure.Effective.AddSeconds(-60);
+
+		DiagnosticLog.Write(
+			$"[VVO run] departure trip '{departure.Id}' stop {departure.StopId} line {departure.Line.Name} "
+			+ $"scheduled {departure.Scheduled:O} realtime {departure.Realtime:O} arrival {departure.IsArrival} "
+			+ $"now {DateTimeOffset.UtcNow:O} token {token:O} ({(token < DateTimeOffset.UtcNow ? "past" : "future")})");
+
+		bool Matches(VvoRunResponse candidate)
+		{
+			VvoRunStop? current =
+				candidate.Stops.FirstOrDefault(
+					stop => string.Equals(stop.Position, "Current", StringComparison.OrdinalIgnoreCase));
+
+			if (current?.Time is not { } scheduled)
+			{
+				DiagnosticLog.Write($"[VVO run] no 'Current' stop with a time in the answer ({candidate.Stops.Count} stops); taken as is");
+
+				return candidate.Stops.Count > 0;
+			}
+
+			bool same =
+				Math.Abs((scheduled - departure.Scheduled).TotalSeconds) < 90;
+
+			DiagnosticLog.Write(
+				$"[VVO run] Current '{current.Name}' scheduled {scheduled:O}, wanted {departure.Scheduled:O}: {(same ? "same run" : "DIFFERENT run")}");
+
+			return same;
+		}
+
 		VvoRunResponse? response =
 			await _apiClient.GetDepartureRunAsync(
-				new VvoDepartureRunRequest
-				{
-					TripId = departure.Id,
-					StopId = departure.StopId,
-					IsArrival = departure.IsArrival,
-					Time =
-						string.Create(
-							CultureInfo.InvariantCulture,
-							$"/Date({departure.Scheduled.ToUnixTimeMilliseconds()}+0000)/")
-				},
-				cancellationToken,
-				Timeout(timeoutSeconds))
+				_apiClient.BuildRunAttempts(
+					departure.Id,
+					departure.StopId,
+					departure.IsArrival,
+					token),
+				Matches,
+				Timeout(timeoutSeconds),
+				cancellationToken)
 				.ConfigureAwait(false);
 
 		return response is null
@@ -113,7 +143,7 @@ public sealed class VvoNetworkProvider :
 				{
 					ShortTerm = shortTermOnly
 				},
-				cancellationToken)
+				cancellationToken: cancellationToken)
 				.ConfigureAwait(false);
 
 		return response is null
@@ -126,7 +156,7 @@ public sealed class VvoNetworkProvider :
 		CancellationToken cancellationToken = default)
 	{
 		VvoChangedLinesResponse? response =
-			await _apiClient.GetChangedLinesAsync(cancellationToken)
+			await _apiClient.GetChangedLinesAsync(cancellationToken: cancellationToken)
 				.ConfigureAwait(false);
 
 		return response is null
@@ -149,13 +179,22 @@ public sealed class VvoNetworkProvider :
 		}
 
 		VvoStopLinesResponse? response =
-			await _apiClient.GetStopLinesAsync(stop.Id, cancellationToken)
+			await _apiClient.GetStopLinesAsync(stop.Id, cancellationToken: cancellationToken)
 				.ConfigureAwait(false);
 
 		return response is null
 			? []
 			: VvoNetworkMapper.MapStopLines(response);
 	}
+
+	/// <inheritdoc />
+	public async Task<IReadOnlyList<NearbyStop>> GetStopsAroundAsync(
+		double latitude,
+		double longitude,
+		int radiusMeters,
+		int limit,
+		CancellationToken cancellationToken = default) =>
+		[.. (await GetNearbyStopsAsync(latitude, longitude, radiusMeters, cancellationToken).ConfigureAwait(false)).Take(limit)];
 
 	/// <inheritdoc />
 	public async Task<IReadOnlyList<NearbyStop>> GetNearbyStopsAsync(
@@ -188,7 +227,7 @@ public sealed class VvoNetworkProvider :
 					NorthEastLongitude = Metres(centre.Easting + radius),
 					PinTypes = ["Stop"]
 				},
-				cancellationToken)
+				cancellationToken: cancellationToken)
 				.ConfigureAwait(false);
 
 		if (response is null)
@@ -267,7 +306,7 @@ public sealed class VvoNetworkProvider :
 			}
 
 			VvoMapPolygonsResponse? response =
-				await _apiClient.GetTariffPolygonsAsync(cancellationToken)
+				await _apiClient.GetTariffPolygonsAsync(cancellationToken: cancellationToken)
 					.ConfigureAwait(false);
 
 			IReadOnlyList<ZonePolygon> zones =

@@ -18,7 +18,12 @@
 		<Nullable>enable</Nullable>
 		<LangVersion>15.0</LangVersion>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+		<MauiXamlInflator>SourceGen</MauiXamlInflator>
 
+		<!-- No runtime reflection for JSON: every serializer call goes through source-generated metadata
+		     (VvoJsonContext) or hand-built JsonNode trees, so trimming and AOT cannot break the APIs. -->
+		<JsonSerializerIsReflectionEnabledByDefault>false</JsonSerializerIsReflectionEnabledByDefault>
+		<EnableTrimAnalyzer>true</EnableTrimAnalyzer>
 
 		<!-- Display name -->
 		<ApplicationTitle>DDjourneys</ApplicationTitle>
@@ -27,8 +32,8 @@
 		<ApplicationId>dev.Scharkenberg.DDjourneys</ApplicationId>
 
 		<!-- Versions -->
-		<ApplicationDisplayVersion>0.6.1</ApplicationDisplayVersion>
-		<ApplicationVersion>28</ApplicationVersion>
+		<ApplicationDisplayVersion>0.8.5</ApplicationDisplayVersion>
+		<ApplicationVersion>4</ApplicationVersion>
 
 		<!-- To develop, package, and publish an app to the Microsoft Store, see: https://aka.ms/MauiTemplateUnpackaged -->
 		<WindowsPackageType>MSIX</WindowsPackageType>
@@ -40,30 +45,29 @@
 		<TargetPlatformMinVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</TargetPlatformMinVersion>
 		<AssemblyTitle>DDjourneys</AssemblyTitle>
 	</PropertyGroup>
-
+ 
 	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net11.0-android|AnyCPU'">
-	  <ApplicationId>dev.Scharkenberg.DDjourneys</ApplicationId>
-	  <ApplicationDisplayVersion>0.6.1</ApplicationDisplayVersion>
-	  <ApplicationVersion>28</ApplicationVersion>
-	  <EmbedAssembliesIntoApk>True</EmbedAssembliesIntoApk>
+	  <EmbedAssembliesIntoApk>False</EmbedAssembliesIntoApk>
+	  <AndroidUseAapt2>True</AndroidUseAapt2>
+	  <AndroidEnableMultiDex>True</AndroidEnableMultiDex>
+	  <AndroidDexTool>d8</AndroidDexTool>
+	  <AndroidLinkTool>r8</AndroidLinkTool>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net11.0-windows10.0.26100.0|AnyCPU'">
-	  <ApplicationId>dev.Scharkenberg.DDjourneys</ApplicationId>
-	  <ApplicationDisplayVersion>0.6.1</ApplicationDisplayVersion>
-	  <ApplicationVersion>28</ApplicationVersion>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net11.0-android|AnyCPU'">
-	  <ApplicationId>dev.Scharkenberg.DDjourneys</ApplicationId>
-	  <ApplicationDisplayVersion>0.6.1</ApplicationDisplayVersion>
-	  <ApplicationVersion>28</ApplicationVersion>
+	  <EmbedAssembliesIntoApk>True</EmbedAssembliesIntoApk>
+	  <AndroidUseAapt2>True</AndroidUseAapt2>
+	  <AndroidEnableMultiDex>True</AndroidEnableMultiDex>
+	  <AndroidLinkTool>r8</AndroidLinkTool>
+	  <AndroidDexTool>d8</AndroidDexTool>
+	  <MauiEnableFullReadyToRun>True</MauiEnableFullReadyToRun>
+	  <PublishReadyToRunComposite>True</PublishReadyToRunComposite>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net11.0-windows10.0.26100.0|AnyCPU'">
-	  <ApplicationId>dev.Scharkenberg.DDjourneys</ApplicationId>
-	  <ApplicationDisplayVersion>0.6.1</ApplicationDisplayVersion>
-	  <ApplicationVersion>28</ApplicationVersion>
 	</PropertyGroup>
 
   <ItemGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net11.0-android|AnyCPU'">
@@ -102,11 +106,14 @@
 
 		<!-- Raw Assets (also remove the "Resources\Raw" prefix) -->
 		<MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
-	</ItemGroup>
 
-  <ItemGroup>
-    <None Remove="Resources\Splash\splash.svg" />
-  </ItemGroup>
+		<!-- The README of the project is the About page of the app: embedded in the assembly, so it works offline, on every platform, and always matches this version -->
+		<EmbeddedResource Include="..\README.md" LogicalName="DDjourneys.README.md" />
+		<EmbeddedResource Include="..\README.de.md" LogicalName="DDjourneys.README.de.md" />
+
+		<!-- The map page (HybridWebView) uses the app's own fonts: the same files, served from wwwroot/fonts -->
+		<MauiAsset Include="Resources\Fonts\*.ttf" Link="Resources\Raw\wwwroot\fonts\%(Filename)%(Extension)" LogicalName="wwwroot\fonts\%(Filename)%(Extension)" />
+	</ItemGroup>
 
   <ItemGroup>
     <MauiSplashScreen Include="Resources\Splash\splash.svg" Color="#121016" BaseSize="160,160" />
@@ -117,7 +124,6 @@
 		<!-- Share image: MAUI Graphics on SkiaSharp, identical output on every platform -->
 		<PackageReference Include="Microsoft.Maui.Graphics.Skia" Version="$(MauiVersion)" />
 		<PackageReference Include="CommunityToolkit.Maui" Version="15.0.1" />
-		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="11.0.0-*" />
 	</ItemGroup>
 
 	<ItemGroup>

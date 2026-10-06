@@ -1,4 +1,5 @@
-﻿using DDjourneys.Core.Tracking.Live;
+﻿using DDjourneys.Core.Diagnostics;
+using DDjourneys.Core.Tracking.Live;
 using Microsoft.Windows.AppNotifications;
 
 namespace DDjourneys.Platforms.Windows.LiveJourney;
@@ -19,7 +20,7 @@ internal sealed class WindowsNotificationAccess : INotificationAccess
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"[NOTIFY] Setting unavailable: {ex.Message}");
+			DiagnosticLog.Write($"[NOTIFY] Setting unavailable: {ex.Message}");
 
 			return Task.FromResult(true);
 		}

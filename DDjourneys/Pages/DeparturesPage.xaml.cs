@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using DDjourneys.Core.Models;
 using DDjourneys.Localization;
 using DDjourneys.Support;
@@ -21,6 +22,12 @@ public partial class DeparturesPage : ContentPage, IQueryAttributable
 		_localization = LocalizationService.Current;
 		BindingContext = _vm = vm;
 
+		LiveRow.Command =
+			new Command(
+				() => _ = NavigateAsync(
+					Routes.Vehicles,
+					[]));
+
 		vm.OpenPlaceSearch = () =>
 			NavigateAsync(
 				Routes.PlaceSearch,
@@ -38,14 +45,34 @@ public partial class DeparturesPage : ContentPage, IQueryAttributable
 					[Routes.DepartureData] = departure
 				});
 
-		vm.OpenChanges = ids =>
+		vm.OpenChanges = departure =>
 			NavigateAsync(
 				Routes.Disruptions,
-				new ShellNavigationQueryParameters
-				{
-					[Routes.ChangeIds] = string.Join(',', ids)
-				});
+				string.IsNullOrWhiteSpace(departure.Line.Name)
+					? new ShellNavigationQueryParameters
+					{
+						[Routes.ChangeIds] = string.Join(',', departure.RouteChangeIds)
+					}
+					: new ShellNavigationQueryParameters
+					{
+						[Routes.LineName] = departure.Line.Name
+					});
 	}
+
+	/// <summary>The map in pick mode: a tapped stop becomes the stop of the board.</summary>
+	private void MapClicked(object? sender, EventArgs e) =>
+		_ = NavigateAsync(
+			Routes.Map,
+			new ShellNavigationQueryParameters
+			{
+				[Routes.MapMode] = Routes.MapModePick,
+				[Routes.TargetIsFrom] = false,
+				[Routes.Target] = Routes.TargetDepartures
+			});
+
+	/// <summary>The quick action "departures from here": locates the device; the nearest stop becomes the stop.</summary>
+	public void StartHere() =>
+		_vm.LocateCommand.Execute(null);
 
 	public void ApplyQueryAttributes(
 		IDictionary<string, object> query)
@@ -64,6 +91,13 @@ public partial class DeparturesPage : ContentPage, IQueryAttributable
 		if (query.TryGetValue(Routes.Stop, out object? stop)
 			&& stop is Location opened)
 		{
+			// From a request of another app: arrivals and a time, set before the stop loads the board.
+			if (query.TryGetValue(Routes.BoardArrivals, out object? arrivals)
+				&& arrivals is bool showArrivals)
+			{
+				_vm.ApplyBoard(showArrivals, query.TryGetValue(Routes.BoardTime, out object? boardTime) ? boardTime as DateTime? : null);
+			}
+
 			_vm.SetStop(opened);
 		}
 	}
@@ -126,7 +160,7 @@ public partial class DeparturesPage : ContentPage, IQueryAttributable
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine(
+			DiagnosticLog.Write(
 				$"Navigation to '{route}' failed:\n{ex}");
 
 			await DisplayAlertAsync(

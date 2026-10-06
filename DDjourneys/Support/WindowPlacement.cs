@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using System.Globalization;
 
 namespace DDjourneys.Support;
@@ -59,6 +60,19 @@ public static class WindowPlacement
 		return timer;
 	}
 
+	/// <summary>Forgets the saved size and position (the next window opens at its default).</summary>
+	internal static void Forget()
+	{
+		try
+		{
+			Preferences.Default.Remove(Key);
+		}
+		catch (Exception ex)
+		{
+			DiagnosticLog.Write($"Window placement not forgotten: {ex.Message}");
+		}
+	}
+
 	private static void Restore(Window window)
 	{
 		double width = DefaultWidth;
@@ -85,7 +99,7 @@ public static class WindowPlacement
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Window placement not restored: {ex.Message}");
+			DiagnosticLog.Write($"Window placement not restored: {ex.Message}");
 		}
 
 		DisplayInfo display = DeviceDisplay.Current.MainDisplayInfo;
@@ -130,7 +144,7 @@ public static class WindowPlacement
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Window placement not saved: {ex.Message}");
+			DiagnosticLog.Write($"Window placement not saved: {ex.Message}");
 		}
 	}
 

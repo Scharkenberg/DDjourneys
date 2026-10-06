@@ -5,7 +5,7 @@ using Microsoft.Maui;
 
 namespace DDjourneys.Localization;
 
-public sealed class LocalizationService : INotifyPropertyChanged
+public sealed partial class LocalizationService : INotifyPropertyChanged
 {
 	private static readonly Lazy<LocalizationService> _instance =
 		new(() => new LocalizationService());
@@ -29,12 +29,11 @@ public sealed class LocalizationService : INotifyPropertyChanged
 		remove => _weakEventManager.RemoveEventHandler(value, nameof(PropertyChanged));
 	}
 
-	public IReadOnlyList<LocalizationPack> AvailableLanguages =>
-		_packs.Values
+	public LocalizationPack[] AvailableLanguages =>
+		[.. _packs.Values
 			.OrderBy(
 				pack => pack.DisplayName,
-				StringComparer.CurrentCultureIgnoreCase)
-			.ToArray();
+				StringComparer.CurrentCultureIgnoreCase)];
 
 	public string LanguageCode
 	{

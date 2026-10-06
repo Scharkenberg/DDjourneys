@@ -31,7 +31,7 @@ public sealed class JourneyResult
 	/// Journeys returned by the provider.
 	/// </summary>
 	public IReadOnlyList<Journey> Journeys { get; init; }
-		= Array.Empty<Journey>();
+		= [];
 
 
 	/// <summary>
@@ -43,7 +43,7 @@ public sealed class JourneyResult
 	/// - partial data
 	/// </summary>
 	public IReadOnlyList<string> Notices { get; init; }
-		= Array.Empty<string>();
+		= [];
 
 
 	/// <summary>
@@ -101,7 +101,7 @@ public sealed class JourneyResult
 					? JourneyOutcome.Found
 					: JourneyOutcome.Empty,
 			Journeys = journeys,
-			Notices = notices ?? Array.Empty<string>()
+			Notices = notices ?? []
 		};
 	}
 

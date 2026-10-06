@@ -17,7 +17,7 @@ public sealed class VvoTripResponse
 
 	[JsonPropertyName("Routes")]
 	public IReadOnlyList<VvoRoute> Routes { get; init; }
-		= Array.Empty<VvoRoute>();
+		= [];
 }
 
 
@@ -84,17 +84,17 @@ public sealed class VvoRoute
 
 	[JsonPropertyName("MotChain")]
 	public IReadOnlyList<VvoMot> MotChain { get; init; }
-		= Array.Empty<VvoMot>();
+		= [];
 
 
 	[JsonPropertyName("PartialRoutes")]
 	public IReadOnlyList<VvoPartialRoute> PartialRoutes { get; init; }
-		= Array.Empty<VvoPartialRoute>();
+		= [];
 
 
 	[JsonPropertyName("MapData")]
 	public IReadOnlyList<string> MapData { get; init; }
-		= Array.Empty<string>();
+		= [];
 }
 
 
@@ -124,7 +124,7 @@ public sealed class VvoPartialRoute
 
 	[JsonPropertyName("Infos")]
 	public IReadOnlyList<string> Infos { get; init; }
-		= Array.Empty<string>();
+		= [];
 
 
 	[JsonPropertyName("BookingLink")]
@@ -137,7 +137,7 @@ public sealed class VvoPartialRoute
 
 	[JsonPropertyName("RegularStops")]
 	public IReadOnlyList<VvoStop> RegularStops { get; init; }
-		= Array.Empty<VvoStop>();
+		= [];
 
 
 	[JsonPropertyName("MapDataIndex")]
@@ -232,7 +232,7 @@ public sealed class VvoMot
 	/// </summary>
 	[JsonPropertyName("Changes")]
 	public IReadOnlyList<string> Changes { get; init; }
-		= Array.Empty<string>();
+		= [];
 }
 
 

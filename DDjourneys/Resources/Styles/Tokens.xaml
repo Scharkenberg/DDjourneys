@@ -24,6 +24,16 @@
 	<!-- Native controls (pickers, entries) get generous padding: their own chrome differs per platform -->
 	<Thickness x:Key="PadField">14,8</Thickness>
 
+	<!-- Control sizes, four tiers for the whole app (the density profile scales them through Dense.*):
+	     HitIcon icon buttons, HitIconTight icons in a strip (field, card action row), HitButton secondary buttons,
+	     HitRowTight pinned/compact rows, HitRow list and settings rows, HitPrimary the filled primary button -->
+	<x:Double x:Key="HitIcon">40</x:Double>
+	<x:Double x:Key="HitIconTight">36</x:Double>
+	<x:Double x:Key="HitButton">36</x:Double>
+	<x:Double x:Key="HitRowTight">44</x:Double>
+	<x:Double x:Key="HitRow">52</x:Double>
+	<x:Double x:Key="HitPrimary">48</x:Double>
+
 	<!-- Radii: sharp. Pills are reserved for non-interactive elements. -->
 	<x:Double x:Key="RadiusControl">4</x:Double>
 	<x:Double x:Key="RadiusCard">6</x:Double>

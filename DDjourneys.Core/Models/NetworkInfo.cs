@@ -31,6 +31,9 @@ public sealed class Disruption
 	/// <summary>Plain text (the provider sends HTML).</summary>
 	public string Description { get; init; } = string.Empty;
 
+	/// <summary>The description as the provider sent it (HTML, may contain links, images and PDF links).</summary>
+	public string DescriptionHtml { get; init; } = string.Empty;
+
 	/// <summary>Planned (construction) as opposed to a short-term disruption.</summary>
 	public bool IsPlanned { get; init; }
 
@@ -58,6 +61,8 @@ public sealed class NetworkBanner
 	public required string Title { get; init; }
 
 	public string Description { get; init; } = string.Empty;
+
+	public string DescriptionHtml { get; init; } = string.Empty;
 
 	public DateTimeOffset? Modified { get; init; }
 }

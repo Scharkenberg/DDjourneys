@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using Shapes = Microsoft.Maui.Controls.Shapes;
 
 namespace DDjourneys.Controls;
@@ -65,6 +66,9 @@ public sealed partial class Icon : ContentView
 		HorizontalOptions = LayoutOptions.Center;
 		VerticalOptions = LayoutOptions.Center;
 
+		// Decoration: the control that holds the icon carries the description, a screen reader skips this.
+		AutomationProperties.SetIsInAccessibleTree(this, false);
+
 		ApplySize();
 		ApplyGlyph();
 	}
@@ -101,7 +105,8 @@ public sealed partial class Icon : ContentView
 
 	private void ApplySize()
 	{
-		double size = Math.Max(1, Size);
+		// Icons next to text grow with the OS text size (up to 1.6x; a bigger icon would break rows).
+		double size = Math.Max(1, Size) * Math.Clamp(DDjourneys.Support.SystemAccessibility.TextScale, 1, 1.6);
 
 		WidthRequest = size;
 		HeightRequest = size;
@@ -127,7 +132,7 @@ public sealed partial class Icon : ContentView
 		catch (Exception ex)
 		{
 			// A broken path must never take the page down with it.
-			System.Diagnostics.Debug.WriteLine($"Icon '{Glyph}' failed to parse: {ex.Message}");
+			DiagnosticLog.Write($"Icon '{Glyph}' failed to parse: {ex.Message}");
 
 			_path.Data = null;
 			return;

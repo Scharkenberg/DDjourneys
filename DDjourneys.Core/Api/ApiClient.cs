@@ -1,3 +1,6 @@
+using System.Diagnostics;
+using DDjourneys.Core.Diagnostics;
+
 namespace DDjourneys.Core.Api;
 
 /// <summary>Small HTTP client with bounded retries for idempotent GET requests.</summary>
@@ -11,8 +14,14 @@ public sealed class ApiClient : IDisposable
 	/// Budget used when the caller passes none. The HttpClient itself has no timeout of its own,
 	/// otherwise it would cap every per-call timeout longer than its fixed value.
 	/// </summary>
-	private static readonly TimeSpan DefaultTimeout =
-		TimeSpan.FromSeconds(15);
+	private static TimeSpan _defaultTimeout = TimeSpan.FromSeconds(15);
+
+	/// <summary>The app's "request timeout" setting: the budget of every call that names none (5..60 s).</summary>
+	public static TimeSpan DefaultTimeout
+	{
+		get => _defaultTimeout;
+		set => _defaultTimeout = TimeSpan.FromSeconds(Math.Clamp(value.TotalSeconds, 5, 60));
+	}
 
 	public ApiClient()
 	{
@@ -31,8 +40,8 @@ public sealed class ApiClient : IDisposable
 	/// <summary>Sends a GET request with bounded retries for transient failures.</summary>
 	public async Task<string> GetAsync(
 		string requestUri,
-		CancellationToken cancellationToken = default,
-		TimeSpan? timeout = null)
+		TimeSpan? timeout = null,
+		CancellationToken cancellationToken = default)
 	{
 		using var timeoutCts =
 			new CancellationTokenSource(
@@ -48,6 +57,8 @@ public sealed class ApiClient : IDisposable
 
 		for (int attempt = 1; ; attempt++)
 		{
+			long started = Stopwatch.GetTimestamp();
+
 			try
 			{
 				using HttpResponseMessage response =
@@ -62,6 +73,8 @@ public sealed class ApiClient : IDisposable
 						.ReadAsStringAsync(requestToken)
 						.ConfigureAwait(false);
 
+				LogExchange("GET", requestUri, null, response, content, started, attempt);
+
 				EnsureSuccess(
 					response,
 					content);
@@ -71,15 +84,19 @@ public sealed class ApiClient : IDisposable
 			catch (ApiException ex)
 				when (ex.IsTransient && attempt < MaxRetries)
 			{
+				DiagnosticLog.Write($"[HTTP] GET {requestUri} transient failure, retry {attempt}: {ex.Message}");
+
 				await DelayRetryAsync(
 					ex.RetryAfter,
 					attempt,
 					requestToken)
 					.ConfigureAwait(false);
 			}
-			catch (HttpRequestException)
+			catch (HttpRequestException ex)
 				when (attempt < MaxRetries)
 			{
+				DiagnosticLog.Write($"[HTTP] GET {requestUri} network failure, retry {attempt}: {ex.Message}");
+
 				await DelayRetryAsync(
 					null,
 					attempt,
@@ -113,11 +130,115 @@ public sealed class ApiClient : IDisposable
 	/// Sends a JSON POST once. A dropped response does not prove the server did not process
 	/// the request, so replaying it could create duplicate work at the provider.
 	/// </summary>
-	public async Task<string> PostJsonAsync(
+	public Task<string> PostJsonAsync(
 		string requestUri,
 		string json,
-		CancellationToken cancellationToken = default,
-		TimeSpan? timeout = null)
+		TimeSpan? timeout = null,
+		CancellationToken cancellationToken = default) =>
+		PostAsync(
+			requestUri,
+			json,
+			"application/json",
+			timeout,
+			cancellationToken);
+
+	/// <summary>Sends an XML POST once (same rules as <see cref="PostJsonAsync"/>).</summary>
+	public Task<string> PostXmlAsync(
+		string requestUri,
+		string xml,
+		TimeSpan? timeout = null,
+		CancellationToken cancellationToken = default) =>
+		PostAsync(
+			requestUri,
+			xml,
+			"text/xml",
+			timeout,
+			cancellationToken);
+
+	/// <summary>
+	/// Downloads a binary resource once (no retries) and returns its bytes and media type.
+	/// Non-success statuses throw <see cref="ApiException"/> like the other calls.
+	/// </summary>
+	public async Task<(byte[] Content, string? MediaType)> GetBytesAsync(
+		string requestUri,
+		string accept,
+		TimeSpan? timeout = null,
+		CancellationToken cancellationToken = default)
+	{
+		try
+		{
+			using var timeoutCts =
+				new CancellationTokenSource(
+					timeout ?? DefaultTimeout);
+
+			using var linkedCts =
+				CancellationTokenSource.CreateLinkedTokenSource(
+					cancellationToken,
+					timeoutCts.Token);
+
+			CancellationToken requestToken =
+				linkedCts.Token;
+
+			using var request =
+				new HttpRequestMessage(
+					HttpMethod.Get,
+					requestUri);
+
+			request.Headers.Accept.ParseAdd(accept);
+
+			using HttpResponseMessage response =
+				await _httpClient
+					.SendAsync(
+						request,
+						requestToken)
+					.ConfigureAwait(false);
+
+			byte[] bytes =
+				await response.Content
+					.ReadAsByteArrayAsync(requestToken)
+					.ConfigureAwait(false);
+
+			DiagnosticLog.Write(
+				$"[HTTP] GET {requestUri} -> {(int)response.StatusCode} {response.Content.Headers.ContentType?.MediaType} {bytes.Length} bytes");
+
+			if (!response.IsSuccessStatusCode)
+			{
+				EnsureSuccess(
+					response,
+					System.Text.Encoding.UTF8.GetString(bytes));
+			}
+
+			return (
+				bytes,
+				response.Content.Headers.ContentType?.MediaType);
+		}
+		catch (OperationCanceledException ex)
+			when (!cancellationToken.IsCancellationRequested)
+		{
+			throw new ApiException(
+				string.Empty,
+				null,
+				true,
+				null,
+				ex);
+		}
+		catch (HttpRequestException ex)
+		{
+			throw new ApiException(
+				string.Empty,
+				null,
+				true,
+				null,
+				ex);
+		}
+	}
+
+	private async Task<string> PostAsync(
+		string requestUri,
+		string body,
+		string mediaType,
+		TimeSpan? timeout,
+		CancellationToken cancellationToken)
 	{
 		try
 		{
@@ -135,9 +256,11 @@ public sealed class ApiClient : IDisposable
 
 			using var content =
 				new StringContent(
-					json,
+					body,
 					System.Text.Encoding.UTF8,
-					"application/json");
+					mediaType);
+
+			long started = Stopwatch.GetTimestamp();
 
 			using HttpResponseMessage response =
 				await _httpClient
@@ -151,6 +274,8 @@ public sealed class ApiClient : IDisposable
 				await response.Content
 					.ReadAsStringAsync(requestToken)
 					.ConfigureAwait(false);
+
+			LogExchange("POST", requestUri, body, response, responseContent, started, 1);
 
 			EnsureSuccess(
 				response,
@@ -177,6 +302,31 @@ public sealed class ApiClient : IDisposable
 				null,
 				ex);
 		}
+	}
+
+	private static void LogExchange(
+		string method,
+		string requestUri,
+		string? requestBody,
+		HttpResponseMessage response,
+		string responseBody,
+		long started,
+		int attempt)
+	{
+		if (!DiagnosticLog.Enabled)
+		{
+			return;
+		}
+
+		DiagnosticLog.Write(
+			$"[HTTP] {method} {requestUri} attempt {attempt} -> {(int)response.StatusCode} in {Stopwatch.GetElapsedTime(started).TotalMilliseconds:0} ms");
+
+		if (requestBody is not null)
+		{
+			DiagnosticLog.Api("HTTP", "request body:", requestBody);
+		}
+
+		DiagnosticLog.Api("HTTP", "response body:", responseBody);
 	}
 
 	private static async Task DelayRetryAsync(
@@ -258,10 +408,25 @@ public sealed class ApiClient : IDisposable
 			: null;
 	}
 
+	/// <summary>
+	/// The handler every client of the app uses: compressed answers (the trip lists are large JSON that packs to a
+	/// fifth), pooled connections that are renewed now and then (DNS changes, mobile networks) and dropped when idle.
+	/// </summary>
+	public static SocketsHttpHandler CreateHandler() =>
+		new()
+		{
+			AutomaticDecompression =
+				System.Net.DecompressionMethods.GZip
+				| System.Net.DecompressionMethods.Deflate
+				| System.Net.DecompressionMethods.Brotli,
+			PooledConnectionLifetime = TimeSpan.FromMinutes(5),
+			PooledConnectionIdleTimeout = TimeSpan.FromMinutes(1)
+		};
+
 	private static HttpClient CreateHttpClient()
 	{
 		var client =
-			new HttpClient
+			new HttpClient(CreateHandler(), disposeHandler: true)
 			{
 				Timeout =
 					Timeout.InfiniteTimeSpan

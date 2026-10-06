@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using System.Runtime.CompilerServices;
 
 namespace DDjourneys.Support;
@@ -38,31 +39,106 @@ public static class Motion
 	private const int CascadeCap = 8;
 
 	private static readonly object Marker = new();
-	private static readonly ConditionalWeakTable<Page, object> Entered = new();
+	private static readonly ConditionalWeakTable<Page, object> Entered = [];
 
 	/// <summary>Views that are being animated in right now: a second entrance on the same view is skipped.</summary>
-	private static readonly ConditionalWeakTable<VisualElement, object> Playing = new();
+	private static readonly ConditionalWeakTable<VisualElement, object> Playing = [];
 
 	/// <summary>Views whose entrance has played (once per instance, so recycled list cells do not replay it).</summary>
-	private static readonly ConditionalWeakTable<VisualElement, object> Seen = new();
+	private static readonly ConditionalWeakTable<VisualElement, object> Seen = [];
 
-	private static readonly ConditionalWeakTable<VisualElement, object> Breathing = new();
-	private static readonly ConditionalWeakTable<VisualElement, Quiet> Quiets = new();
+	private static readonly ConditionalWeakTable<VisualElement, object> Breathing = [];
+	private static readonly ConditionalWeakTable<VisualElement, Quiet> Quiets = [];
 
-	public static bool Enabled { get; private set; } = true;
+	/// <summary>The app setting, and the OS: "remove animations" always wins.</summary>
+	public static bool Enabled
+	{
+		get => _enabled;
+		private set
+		{
+			if (_enabled == value)
+			{
+				return;
+			}
+
+			_enabled = value;
+
+			// Whoever waits for animations to come back is woken now instead of polling.
+			Interlocked.Exchange(ref _enabledSignal, NewSignal()).TrySetResult();
+		}
+	}
+
+	private static bool _enabled = true;
+	private static TaskCompletionSource _enabledSignal = NewSignal();
+
+	private static TaskCompletionSource NewSignal() =>
+		new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+	/// <summary>
+	/// Waits until a looping animation has a reason to run again: animations are switched on, or a long pause has
+	/// passed (so a view that was removed meanwhile is not held alive for ever).
+	/// </summary>
+	internal static async Task WaitUntilWorthAnimatingAsync()
+	{
+		if (!Enabled)
+		{
+			TaskCompletionSource signal = _enabledSignal;
+
+			if (!Enabled)
+			{
+				try
+				{
+					await signal.Task.WaitAsync(TimeSpan.FromSeconds(30));
+				}
+				catch (TimeoutException)
+				{
+					// The pause is over: the caller looks again.
+				}
+			}
+
+			return;
+		}
+
+		// Off screen, or on a page that is under another one: nothing to animate, check again later.
+		await Task.Delay(1500);
+	}
+
+	/// <summary>False for a view that is hidden, not loaded, or on a page that is not the one the user sees.</summary>
+	internal static bool IsShowing(VisualElement view)
+	{
+		if (!view.IsVisible || !view.IsLoaded)
+		{
+			return false;
+		}
+
+		Element? parent = view;
+
+		while (parent is not null and not Page)
+		{
+			parent = parent.Parent;
+		}
+
+		return parent is not Page page
+			|| Shell.Current is not { } shell
+			|| ReferenceEquals(shell.CurrentPage, page);
+	}
 
 	public static void Bind(AppSettings settings)
 	{
 		ArgumentNullException.ThrowIfNull(settings);
 
-		Enabled = settings.Animations;
+		Enabled = settings.Animations && !SystemAccessibility.ReduceMotion;
+
 		settings.Changed += (_, name) =>
 		{
 			if (name == nameof(AppSettings.Animations))
 			{
-				Enabled = settings.Animations;
+				Enabled = settings.Animations && !SystemAccessibility.ReduceMotion;
 			}
 		};
+
+		SystemAccessibility.Changed += (_, _) =>
+			Enabled = settings.Animations && !SystemAccessibility.ReduceMotion;
 	}
 
 	// ---------------------------------------------------------------- attached properties
@@ -388,7 +464,7 @@ public static class Motion
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Entrance skipped: {ex.Message}");
+			DiagnosticLog.Write($"Entrance skipped: {ex.Message}");
 		}
 		finally
 		{
@@ -431,7 +507,7 @@ public static class Motion
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Cascade skipped: {ex.Message}");
+			DiagnosticLog.Write($"Cascade skipped: {ex.Message}");
 		}
 	}
 
@@ -475,7 +551,7 @@ public static class Motion
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Grow skipped: {ex.Message}");
+			DiagnosticLog.Write($"Grow skipped: {ex.Message}");
 		}
 		finally
 		{
@@ -506,7 +582,7 @@ public static class Motion
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Tick skipped: {ex.Message}");
+			DiagnosticLog.Write($"Tick skipped: {ex.Message}");
 		}
 		finally
 		{
@@ -522,9 +598,9 @@ public static class Motion
 		{
 			while (view.Handler is not null)
 			{
-				if (!Enabled || !view.IsVisible || !view.IsLoaded)
+				if (!Enabled || !IsShowing(view))
 				{
-					await Task.Delay(800);
+					await WaitUntilWorthAnimatingAsync();
 					continue;
 				}
 
@@ -542,7 +618,7 @@ public static class Motion
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Breathe stopped: {ex.Message}");
+			DiagnosticLog.Write($"Breathe stopped: {ex.Message}");
 		}
 		finally
 		{
@@ -559,7 +635,7 @@ public static class Motion
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Turn skipped: {ex.Message}");
+			DiagnosticLog.Write($"Turn skipped: {ex.Message}");
 		}
 		finally
 		{
@@ -580,7 +656,7 @@ public static class Motion
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Hover skipped: {ex.Message}");
+			DiagnosticLog.Write($"Hover skipped: {ex.Message}");
 		}
 	}
 
@@ -602,7 +678,7 @@ public static class Motion
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Spin skipped: {ex.Message}");
+			DiagnosticLog.Write($"Spin skipped: {ex.Message}");
 		}
 		finally
 		{
@@ -635,7 +711,7 @@ public static class Motion
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Tap feedback skipped: {ex.Message}");
+			DiagnosticLog.Write($"Tap feedback skipped: {ex.Message}");
 		}
 		finally
 		{
@@ -704,7 +780,7 @@ public static class Motion
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Page exit skipped: {ex.Message}");
+			DiagnosticLog.Write($"Page exit skipped: {ex.Message}");
 		}
 	}
 
@@ -787,7 +863,7 @@ public static class Motion
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Page entrance skipped: {ex.Message}");
+			DiagnosticLog.Write($"Page entrance skipped: {ex.Message}");
 		}
 		finally
 		{
@@ -798,7 +874,7 @@ public static class Motion
 	}
 
 	/// <summary>The top-level sections of a scrolling page (the children of its single layout), if it has that shape.</summary>
-	private static IEnumerable<IView> SectionsOf(VisualElement content)
+	private static IView[] SectionsOf(VisualElement content)
 	{
 		Layout? layout =
 			content switch
@@ -808,6 +884,6 @@ public static class Motion
 				_ => null
 			};
 
-		return layout is null ? [] : layout.Children.ToArray();
+		return layout is null ? [] : [.. layout.Children];
 	}
 }

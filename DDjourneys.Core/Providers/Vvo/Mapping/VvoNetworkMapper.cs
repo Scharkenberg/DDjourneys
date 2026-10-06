@@ -7,7 +7,7 @@ using DDjourneys.Core.Providers.Vvo.Models;
 namespace DDjourneys.Core.Providers.Vvo.Mapping;
 
 /// <summary>Maps the departure monitor, route change, line and map DTOs of the VVO WebAPI to the app's models.</summary>
-public static class VvoNetworkMapper
+public static partial class VvoNetworkMapper
 {
 	public static DepartureBoard MapBoard(
 		VvoDepartureResponse response,
@@ -22,7 +22,7 @@ public static class VvoNetworkMapper
 		return new DepartureBoard
 		{
 			StopName = response.Name ?? stop.Name,
-			StopPlace = response.Place ?? stop.Place,
+			StopPlace = VvoPlaces.Resolve(response.Place ?? stop.Place),
 			Departures =
 				[.. response.Departures
 					.Select(departure => MapDeparture(departure, stopId, isArrival))
@@ -85,7 +85,7 @@ public static class VvoNetworkMapper
 								Id = stop.Id ?? string.Empty,
 								ProviderId = VvoProviderInfo.Id,
 								Name = stop.Name ?? string.Empty,
-								Place = stop.Place,
+								Place = VvoPlaces.Resolve(stop.Place),
 								Latitude = position?.Latitude,
 								Longitude = position?.Longitude,
 								Platform = stop.Platform?.Name,
@@ -121,6 +121,7 @@ public static class VvoNetworkMapper
 								Id = change.Id!,
 								Title = PlainText(change.Title),
 								Description = PlainText(change.Description),
+								DescriptionHtml = change.Description ?? string.Empty,
 								IsPlanned = string.Equals(change.Type, "Scheduled", StringComparison.OrdinalIgnoreCase),
 								AffectsRouting = change.TripRequestInclude,
 								Published = change.PublishDate,
@@ -147,6 +148,7 @@ public static class VvoNetworkMapper
 							{
 								Title = PlainText(banner.Title),
 								Description = PlainText(banner.Description),
+								DescriptionHtml = banner.Description ?? string.Empty,
 								Modified = banner.ModifiedTime
 							})]
 		};
@@ -246,30 +248,30 @@ public static class VvoNetworkMapper
 			return string.Empty;
 		}
 
-		string text = LineBreaks.Replace(html, "\n");
+		string text = LineBreaksRx().Replace(html, "\n");
 
-		text = Tags.Replace(text, string.Empty);
+		text = TagsRx().Replace(text, string.Empty);
 		text = WebUtility.HtmlDecode(text);
-		text = text.Replace('\u00A0', ' ');
-		text = Spaces.Replace(text, " ");
-		text = NewlineSpaces.Replace(text, "\n");
-		text = BlankLines.Replace(text, "\n\n");
+		text = text.Replace(' ', ' ');
+		text = SpacesRx().Replace(text, " ");
+		text = NewlineSpacesRx().Replace(text, "\n");
+		text = BlankLinesRx().Replace(text, "\n\n");
 
 		return text.Trim();
 	}
 
-	private static readonly Regex LineBreaks =
-		new(@"<\s*(br\s*/?|/p|/div|/li|/h\d)\s*>", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+	[GeneratedRegex(@"<\s*(br\s*/?|/p|/div|/li|/h\d)\s*>", RegexOptions.IgnoreCase)]
+	private static partial Regex LineBreaksRx();
 
-	private static readonly Regex Tags =
-		new(@"<[^>]+>", RegexOptions.Compiled);
+	[GeneratedRegex(@"<[^>]+>")]
+	private static partial Regex TagsRx();
 
-	private static readonly Regex Spaces =
-		new(@"[ \t\r\f\v]+", RegexOptions.Compiled);
+	[GeneratedRegex(@"[ \t\r\f\v]+")]
+	private static partial Regex SpacesRx();
 
-	private static readonly Regex NewlineSpaces =
-		new(@" *\n *", RegexOptions.Compiled);
+	[GeneratedRegex(@" *\n *")]
+	private static partial Regex NewlineSpacesRx();
 
-	private static readonly Regex BlankLines =
-		new(@"\n{3,}", RegexOptions.Compiled);
+	[GeneratedRegex(@"\n{3,}")]
+	private static partial Regex BlankLinesRx();
 }

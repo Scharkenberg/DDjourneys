@@ -10,6 +10,18 @@ namespace DDjourneys.Tracking.Tests;
 
 public sealed class SchutzengelTrackerContractTests
 {
+	private static readonly string[] ExpectedRequestPaths =
+	[
+		"serverTime",
+		"plansMinimal",
+		"planRealtime?trip_id=trip%209",
+		"notifications",
+		"planSetOptions",
+		"activatePlan",
+		"register-firebase",
+		"unregister-firebase"
+	];
+
 	[Fact]
 	public async Task Account_creation_uses_documented_path_and_returns_plain_token()
 	{
@@ -214,10 +226,10 @@ public sealed class SchutzengelTrackerContractTests
 			};
 
 
-		object rawData =
-			new
+		System.Text.Json.Nodes.JsonObject rawData =
+			new()
 			{
-				source = "test"
+				["source"] = "test"
 			};
 
 
@@ -498,7 +510,7 @@ public sealed class SchutzengelTrackerContractTests
 			};
 
 
-		object raw =
+		System.Text.Json.Nodes.JsonObject raw =
 			SchutzengelRawDataTranslator.Translate(
 				route,
 				journey,
@@ -511,7 +523,7 @@ public sealed class SchutzengelTrackerContractTests
 
 		using JsonDocument document =
 			JsonDocument.Parse(
-				JsonSerializer.Serialize(raw));
+				raw.ToJsonString());
 
 
 		JsonElement root =
@@ -734,17 +746,7 @@ public sealed class SchutzengelTrackerContractTests
 
 
 		Assert.Equal(
-			new[]
-			{
-				"serverTime",
-				"plansMinimal",
-				"planRealtime?trip_id=trip%209",
-				"notifications",
-				"planSetOptions",
-				"activatePlan",
-				"register-firebase",
-				"unregister-firebase"
-			},
+			ExpectedRequestPaths,
 			handler.Requests
 				.Select(
 					request =>
@@ -785,7 +787,7 @@ public sealed class SchutzengelTrackerContractTests
 						"End"),
 
 				Legs =
-					Array.Empty<JourneyLeg>()
+					[]
 			};
 
 
@@ -835,7 +837,10 @@ public sealed class SchutzengelTrackerContractTests
 	}
 
 
-	private sealed class RecordingHandler :
+	private sealed class RecordingHandler(
+		Func<
+			HttpRequestMessage,
+			HttpResponseMessage> responseFactory) :
 		HttpMessageHandler
 	{
 		public List<CapturedRequest> Requests { get; } =
@@ -844,17 +849,8 @@ public sealed class SchutzengelTrackerContractTests
 
 		private readonly Func<
 			HttpRequestMessage,
-			HttpResponseMessage> _responseFactory;
-
-
-		public RecordingHandler(
-			Func<
-				HttpRequestMessage,
-				HttpResponseMessage> responseFactory)
-		{
-			_responseFactory =
+			HttpResponseMessage> _responseFactory =
 				responseFactory;
-		}
 
 
 		protected override async Task<HttpResponseMessage> SendAsync(

@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using DDjourneys.Support;
 
 namespace DDjourneys.Pages;
@@ -49,7 +50,7 @@ public partial class PlaceSearchPage : ContentPage
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Focus failed: {ex.Message}");
+			DiagnosticLog.Write($"Focus failed: {ex.Message}");
 		}
 	}
 
@@ -63,7 +64,7 @@ public partial class PlaceSearchPage : ContentPage
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Hiding keyboard failed: {ex.Message}");
+			DiagnosticLog.Write($"Hiding keyboard failed: {ex.Message}");
 		}
 	}
 
@@ -82,7 +83,7 @@ public partial class PlaceSearchPage : ContentPage
 
 	private void PlaceTapped(object? sender, TappedEventArgs e)
 	{
-		if (sender is VisualElement row && (sender as BindableObject)?.BindingContext is PlaceRow place)
+		if (sender is VisualElement { BindingContext: PlaceRow place } row)
 		{
 			HideKeyboard();
 			_ = Motion.TapAsync(row);

@@ -39,7 +39,7 @@ public static class TimelineBuilder
 
 		if (journey.Legs.Count == 0)
 		{
-			return Array.Empty<TimelineItem>();
+			return (TimelineItem[])[];
 		}
 
 		var items =
@@ -138,7 +138,8 @@ public static class TimelineBuilder
 						transfers,
 						showWait: isInterchange,
 						nextLeg: next,
-						previousArrival: previousEffectiveArrival));
+						previousArrival: previousEffectiveArrival,
+						previousLeg: leg));
 			}
 		}
 
@@ -186,7 +187,8 @@ public static class TimelineBuilder
 		IReadOnlyList<JourneyTransfer> transfers,
 		bool showWait,
 		JourneyLeg? nextLeg = null,
-		DateTimeOffset? previousArrival = null)
+		DateTimeOffset? previousArrival = null,
+		JourneyLeg? previousLeg = null)
 	{
 		TimeSpan? walkTime =
 			GetWalkingDuration(transfers);
@@ -215,16 +217,30 @@ public static class TimelineBuilder
 			&& departs < arrives + (walkTime ?? TimeSpan.Zero);
 
 		string[] notes =
-			transfers
+			[.. transfers
 				.SelectMany(transfer => transfer.Notices)
 				.Where(n => !string.IsNullOrWhiteSpace(n))
-				.Distinct()
-				.ToArray();
+				.Distinct()];
+
+		// With real-time times on either side the arithmetic decides: the next vehicle leaves after the previous one
+		// arrived plus the walk, so the change is not endangered, whatever the provider's timetable-based flag says
+		// (a vehicle that is late on departure does not endanger a change). Without real-time data the provider's
+		// flag stands.
+		bool live =
+			previousLeg?.RealtimeArrival is not null
+			|| nextLeg?.RealtimeDeparture is not null;
+
+		bool computable =
+			showWait
+			&& previousArrival is not null
+			&& nextDeparture is not null;
 
 		bool endangered =
 			!ensured
-			&& (missed
-				|| transfers.Any(transfer => !transfer.IsGuaranteed));
+			&& (computable && live
+				? missed
+				: missed
+					|| transfers.Any(transfer => !transfer.IsGuaranteed));
 
 		return new BoundaryItem(
 			location,
@@ -299,12 +315,11 @@ public static class TimelineBuilder
 		Journey journey,
 		int? previousLegIndex,
 		int? nextLegIndex) =>
-		journey.Transfers
+		[.. journey.Transfers
 			.Where(
 				transfer =>
 					transfer.PreviousLegIndex
 						== previousLegIndex
 					&& transfer.NextLegIndex
-						== nextLegIndex)
-			.ToArray();
+						== nextLegIndex)];
 }

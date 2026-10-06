@@ -47,7 +47,7 @@ public sealed class Journey
 	public object? ProviderData { get; init; }
 
 	public IReadOnlyList<string> Notices { get; init; }
-		= Array.Empty<string>();
+		= [];
 
 	/// <summary>
 	/// Effective time at which the passenger starts the journey,
@@ -140,8 +140,13 @@ public sealed class Journey
 	/// <summary>The journey cannot take place as planned. Broader than <see cref="IsCancelled"/>.</summary>
 	public bool IsImpossible => Block is not null;
 
+	/// <summary>Tickets and prices the provider quotes for the whole journey.</summary>
+	public IReadOnlyList<JourneyFare> Fares { get; init; }
+		= [];
+
+
 	public IReadOnlyList<JourneyTransfer> Transfers { get; init; }
-		= Array.Empty<JourneyTransfer>();
+		= [];
 
 	/// <summary>
 	/// Arrival of the last leg. Walking legs carry no realtime data, so a

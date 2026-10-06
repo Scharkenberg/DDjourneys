@@ -1,0 +1,98 @@
+using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
+using DDjourneys.Core.Models;
+using DDjourneys.Core.Providers.Vvo.Mapping;
+using DDjourneys.Core.Providers.Vvo.Models;
+using DDjourneys.Core.Providers.Vvo.Serialization;
+using DDjourneys.Core.Serialization;
+using DDjourneys.Core.Tracking;
+
+namespace DDjourneys.Tracking.Tests;
+
+public sealed class GeneratedJsonTests
+{
+	[Fact]
+	public void Vvo_trip_responses_read_through_generated_metadata_with_microsoft_dates()
+	{
+		const string json =
+			"""{"Status":{"Code":"Ok"},"Routes":[{"RouteId":7,"PartialRoutes":[{"RegularStops":[{"Name":"Postplatz","ArrivalTime":"\/Date(1512770460000+0100)\/"}]}]}]}""";
+
+		var info = (JsonTypeInfo<VvoTripResponse>)VvoJson.TypeInfo(typeof(VvoTripResponse))!;
+
+		VvoTripResponse? response = JsonSerializer.Deserialize(json, info);
+
+		VvoStop stop = response!.Routes[0].PartialRoutes[0].RegularStops[0];
+
+		Assert.Equal("Ok", response.Status?.Code);
+		Assert.Equal("Postplatz", stop.Name);
+		Assert.Equal(1512770460000, stop.ArrivalTime!.Value.ToUnixTimeMilliseconds());
+	}
+
+	[Fact]
+	public void Provider_dtos_expose_names_and_getters_without_reflection()
+	{
+		JsonTypeInfo info = VvoJson.TypeInfo(typeof(VvoRoute))!;
+
+		Assert.Contains(info.Properties, property => property.Name == "RouteId" && property.Get is not null);
+		Assert.Null(VvoJson.TypeInfo(typeof(DateTime)));
+	}
+
+	[Fact]
+	public void Implicit_dresden_is_made_explicit_except_for_bare_coordinates()
+	{
+		Assert.Equal("Dresden", VvoPlaces.Resolve(""));
+		Assert.Equal("Dresden", VvoPlaces.Resolve(null, PlaceKind.Stop));
+		Assert.Equal("Pirna", VvoPlaces.Resolve(" Pirna ", PlaceKind.Address));
+		Assert.Null(VvoPlaces.Resolve(null, PlaceKind.Coordinate));
+	}
+
+	[Fact]
+	public void An_absent_trip_reference_is_omitted_not_sent_as_null()
+	{
+		var plain = new System.Text.Json.Nodes.JsonObject { ["a"] = 1, ["trip_reference"] = (string?)null }
+			.WithoutNulls("trip_reference");
+		var linked = new System.Text.Json.Nodes.JsonObject { ["a"] = 1, ["trip_reference"] = "trip-1" }
+			.WithoutNulls("trip_reference");
+
+		Assert.False(plain.ContainsKey("trip_reference"));
+		Assert.Equal("trip-1", (string?)linked["trip_reference"]);
+	}
+
+	[Fact]
+	public void The_lead_times_are_the_ones_the_reference_client_offers()
+	{
+		Assert.Equal([3, 5, 10, 15, 20, 30, 45, 60], DDjourneys.Core.Tracking.WatchOptions.LeadChoices);
+	}
+
+	[Fact]
+	public void Vvo_prices_become_a_single_and_a_day_fare()
+	{
+		Assert.Equal(2.70m, VvoFareMapper.ParsePrice("2,70 \u20ac"));
+		Assert.Null(VvoFareMapper.ParsePrice("0,00"));
+		Assert.Null(VvoFareMapper.ParsePrice(null));
+
+		var route = new VvoRoute { Price = "2,70", PriceDayTicket = "6.80", FareZoneNames = "TZ Dresden (1), TZ Radebeul (2)", TicketNotes = "Fahrrad extra" };
+
+		IReadOnlyList<JourneyFare> fares = VvoFareMapper.Map(route);
+
+		Assert.Equal([FareKind.Single, FareKind.Day], fares.Select(fare => fare.Kind));
+		Assert.Equal(6.80m, fares[1].Price);
+		Assert.Equal("Dresden, Radebeul", fares[0].Zones);
+		Assert.Equal("Fahrrad extra", fares[0].Notes);
+	}
+
+	[Fact]
+	public void Boarding_instructions_age_out_quickly_and_other_notices_do_not()
+	{
+		DateTimeOffset issued = new(2026, 10, 5, 8, 0, 0, TimeSpan.Zero);
+
+		const string text = "Einstieg Hauptbahnhof: bitte gehen Sie zur Haltestelle Hauptbahnhof Steig 1";
+
+		Assert.True(NoticePolicy.IsBoardingInstruction(text));
+		Assert.False(NoticePolicy.IsBoardingInstruction("Umleitung wegen Bauarbeiten"));
+
+		Assert.True(NoticePolicy.Evaluate(NoticeKind.Instruction, issued, false, false, issued.AddMinutes(10)).IsVisible);
+		Assert.False(NoticePolicy.Evaluate(NoticeKind.Instruction, issued, false, false, issued.AddMinutes(16)).IsVisible);
+		Assert.True(NoticePolicy.Evaluate(NoticeKind.Information, issued, false, false, issued.AddMinutes(16)).IsVisible);
+	}
+}

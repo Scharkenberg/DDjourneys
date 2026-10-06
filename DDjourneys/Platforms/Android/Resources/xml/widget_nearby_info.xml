@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Smallest size 2 x 1 cells (120 x 54 dp); the widget shows more rows and more detail the larger it is made.
+     updatePeriodMillis is the shortest the system allows (30 minutes); the widget's own interval can only be longer. -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:configure="dev.scharkenberg.ddjourneys.widgets.WidgetConfigActivity"
+    android:description="@string/widget_nearby_description"
+    android:initialLayout="@layout/widget_main"
+    android:minWidth="120dp"
+    android:minHeight="54dp"
+    android:minResizeWidth="120dp"
+    android:minResizeHeight="54dp"
+    android:resizeMode="horizontal|vertical"
+    android:targetCellWidth="2"
+    android:targetCellHeight="2"
+    android:updatePeriodMillis="1800000"
+    android:widgetCategory="home_screen"
+    android:widgetFeatures="reconfigurable" />

@@ -36,7 +36,53 @@ public enum ContractCommand
 	Tracked,
 
 	/// <summary>Asks what this app version supports. Needs no UI; replies at once.</summary>
-	Capabilities
+	Capabilities,
+
+	/// <summary>
+	/// The short form of <see cref="Plan"/>: <c>to</c> is all that is needed. The start is where the user starts (the
+	/// app's start setting, else the device), the time is now, and the search runs at once.
+	/// </summary>
+	Go,
+
+	/// <summary>The departures (or arrivals) at a place; without one, at the stop nearest to the device.</summary>
+	Departures,
+
+	/// <summary>"Take me home": from where the device is to the home stop, starting now.</summary>
+	Home,
+
+	/// <summary>Opens the map, centred on a place when one is given.</summary>
+	Map,
+
+	/// <summary>Opens the disruptions, limited to a line when one is given.</summary>
+	Disruptions,
+
+	/// <summary>Opens the live vehicles of a line.</summary>
+	Live
+}
+
+/// <summary>
+/// Words a place can be instead of a name (a real name never starts with "@"): the places the user has set up or
+/// carries along. They resolve to whatever is current in the app when the request is carried out.
+/// </summary>
+public static class ContractKeywords
+{
+	/// <summary>The stop nearest to the device.</summary>
+	public const string Here = "@here";
+
+	/// <summary>The user's home place.</summary>
+	public const string Home = "@home";
+
+	/// <summary>Where the user starts: the app's start setting (a chosen place, or the device).</summary>
+	public const string Start = "@start";
+
+	public static bool IsKeyword(string? text) =>
+		text is not null
+		&& text.StartsWith('@');
+
+	public static bool IsKnown(string? text) =>
+		string.Equals(text, Here, StringComparison.OrdinalIgnoreCase)
+		|| string.Equals(text, Home, StringComparison.OrdinalIgnoreCase)
+		|| string.Equals(text, Start, StringComparison.OrdinalIgnoreCase);
 }
 
 public enum ContractErrorCode
@@ -78,6 +124,12 @@ public static class ContractWire
 			ContractCommand.Pick => "pick",
 			ContractCommand.Tracked => "tracked",
 			ContractCommand.Capabilities => "capabilities",
+			ContractCommand.Go => "go",
+			ContractCommand.Departures => "departures",
+			ContractCommand.Home => "home",
+			ContractCommand.Map => "map",
+			ContractCommand.Disruptions => "disruptions",
+			ContractCommand.Live => "live",
 			_ => "unknown"
 		};
 
@@ -102,7 +154,13 @@ public static class ContractWire
 			["plan"] = ContractCommand.Plan,
 			["pick"] = ContractCommand.Pick,
 			["tracked"] = ContractCommand.Tracked,
-			["capabilities"] = ContractCommand.Capabilities
+			["capabilities"] = ContractCommand.Capabilities,
+			["go"] = ContractCommand.Go,
+			["departures"] = ContractCommand.Departures,
+			["home"] = ContractCommand.Home,
+			["map"] = ContractCommand.Map,
+			["disruptions"] = ContractCommand.Disruptions,
+			["live"] = ContractCommand.Live
 		}.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
 
 	public static bool TryParseCommand(string? text, out ContractCommand command) =>

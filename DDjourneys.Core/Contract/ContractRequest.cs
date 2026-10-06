@@ -43,6 +43,15 @@ public sealed record ContractRequest
 
 	public ContractPlace? To { get; init; }
 
+	/// <summary>Plan, pick and go: a stop over between start and destination.</summary>
+	public ContractPlace? Via { get; init; }
+
+	/// <summary>Departures and map: the place concerned (departures: the stop; map: the centre). Null: where the device is.</summary>
+	public ContractPlace? At { get; init; }
+
+	/// <summary>Disruptions and live: the line; departures: only this line.</summary>
+	public string? Line { get; init; }
+
 	public ContractTime? Time { get; init; }
 
 	/// <summary>Null: keep what the app uses (departure unless the user prefers arrival).</summary>

@@ -1,0 +1,85 @@
+<ContentPage
+	x:Class="DDjourneys.Pages.DisruptionPage"
+	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+	xmlns:controls="clr-namespace:DDjourneys.Controls"
+	xmlns:local="clr-namespace:DDjourneys.Pages"
+	xmlns:localization="clr-namespace:DDjourneys.Localization"
+	Title="{localization:Tr Disruptions.Details}"
+	x:DataType="local:DisruptionRow">
+
+	<!--  The facts stay above; the text (HTML, links, pictures, PDFs) scrolls inside its own view  -->
+	<Grid RowDefinitions="Auto,*" RowSpacing="0">
+
+		<VerticalStackLayout Padding="16,12,16,4" Spacing="6">
+
+			<FlexLayout AlignContent="Start" AlignItems="Start" BindableLayout.ItemsSource="{Binding Lines}" IsVisible="{Binding HasLines}" Wrap="Wrap">
+				<BindableLayout.ItemTemplate>
+					<DataTemplate x:DataType="local:DisruptionLineRow">
+						<Border
+							Margin="0,0,6,6"
+							BackgroundColor="{Binding Look.Fill}"
+							Stroke="{Binding Look.Stroke}"
+							StrokeDashArray="{Binding Look.Dashes}"
+							StrokeShape="{Binding Look.Shape}"
+							StrokeThickness="{Binding Look.StrokeThickness}"
+							StyleClass="Chip">
+							<Label
+								FontFamily="{DynamicResource FontSemibold}"
+								FontSize="{StaticResource FontCaption}"
+								StyleClass="ChipLabel"
+								Text="{Binding Name}"
+								TextColor="{Binding Look.Text}" />
+						</Border>
+					</DataTemplate>
+				</BindableLayout.ItemTemplate>
+			</FlexLayout>
+
+			<Label StyleClass="Subtitle" Text="{Binding Title}" />
+
+			<FlexLayout AlignContent="Start" AlignItems="Center" Wrap="Wrap">
+				<Label
+					Margin="0,0,12,0"
+					StyleClass="Caption"
+					Text="{Binding KindText}" />
+				<Label
+					Margin="0,0,12,0"
+					IsVisible="{Binding HasPeriod}"
+					StyleClass="Caption"
+					Text="{Binding PeriodText}" />
+				<HorizontalStackLayout IsVisible="{Binding AffectsRouting}" Spacing="4">
+					<controls:Icon
+						Glyph="Warning"
+						Size="16"
+						VerticalOptions="Center"
+						Color="{DynamicResource Delay}" />
+					<Label
+						StyleClass="Caption"
+						Text="{localization:Tr Disruptions.AffectsRouting}"
+						VerticalOptions="Center" />
+				</HorizontalStackLayout>
+			</FlexLayout>
+
+			<Label
+				x:Name="Status"
+				IsVisible="False"
+				StyleClass="Delay" />
+
+			<BoxView Margin="-16,4,-16,0" StyleClass="Divider" />
+		</VerticalStackLayout>
+
+		<controls:NoticeView
+			x:Name="Notice"
+			Grid.Row="1"
+			Html="{Binding Html}" />
+
+		<ActivityIndicator
+			x:Name="Busy"
+			Grid.Row="1"
+			HorizontalOptions="Center"
+			IsRunning="False"
+			IsVisible="False"
+			VerticalOptions="Start"
+			Margin="0,16,0,0" />
+	</Grid>
+</ContentPage>

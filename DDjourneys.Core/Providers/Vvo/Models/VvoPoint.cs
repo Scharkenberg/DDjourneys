@@ -1,4 +1,6 @@
-﻿namespace DDjourneys.Core.Providers.Vvo.Models;
+﻿using DDjourneys.Core.Models;
+
+namespace DDjourneys.Core.Providers.Vvo.Models;
 
 /// <summary>
 /// Represents one raw point returned by the VVO PointFinder API.
@@ -58,7 +60,7 @@ public sealed class VvoPoint
 	/// Remaining provider-specific fields.
 	/// </summary>
 	public IReadOnlyList<string> AdditionalData { get; init; }
-		= Array.Empty<string>();
+		= [];
 
 
 	/// <summary>
@@ -68,6 +70,52 @@ public sealed class VvoPoint
 	public required string Raw { get; init; }
 
 	public bool IsStop => int.TryParse(Id, out _);
+
+	/// <summary>
+	/// The kind of point. The id says it first (numeric stop id, "streetID:", "poiID:", ...); the type
+	/// column is the fallback.
+	/// </summary>
+	public PlaceKind Kind
+	{
+		get
+		{
+			if (IsStop)
+			{
+				return PlaceKind.Stop;
+			}
+
+			if (Id.StartsWith("streetID", StringComparison.OrdinalIgnoreCase)
+				|| Id.StartsWith("addressID", StringComparison.OrdinalIgnoreCase)
+				|| Id.StartsWith("buildingID", StringComparison.OrdinalIgnoreCase))
+			{
+				return PlaceKind.Address;
+			}
+
+			if (Id.StartsWith("poiID", StringComparison.OrdinalIgnoreCase))
+			{
+				return PlaceKind.Poi;
+			}
+
+			if (Id.StartsWith("coord", StringComparison.OrdinalIgnoreCase))
+			{
+				return PlaceKind.Coordinate;
+			}
+
+			if (Id.StartsWith("suburbID", StringComparison.OrdinalIgnoreCase)
+				|| Id.StartsWith("placeID", StringComparison.OrdinalIgnoreCase))
+			{
+				return PlaceKind.Area;
+			}
+
+			return Type.ToUpperInvariant() switch
+			{
+				"POI" => PlaceKind.Poi,
+				"ADDRESS" or "STREET" => PlaceKind.Address,
+				"STOP" => PlaceKind.Stop,
+				_ => PlaceKind.Area
+			};
+		}
+	}
 
 	/// <summary>
 	/// Parses a raw pipe-delimited PointFinder response entry into a VVO point.
@@ -101,7 +149,7 @@ public sealed class VvoPoint
 			AdditionalData =
 				fields.Length > 6
 					? fields[6..]
-					: Array.Empty<string>()
+					: []
 		};
 	}
 

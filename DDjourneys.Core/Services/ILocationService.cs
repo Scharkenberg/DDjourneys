@@ -13,8 +13,8 @@ public interface ILocationService
 	/// </summary>
 	Task<IReadOnlyList<Location>> SearchAsync(
 		string query,
-		CancellationToken cancellationToken = default,
-		TimeSpan? timeout = null);
+		TimeSpan? timeout = null,
+		CancellationToken cancellationToken = default);
 
 	/// <summary>
 	/// Searches for locations near the given coordinates.
@@ -22,8 +22,8 @@ public interface ILocationService
 	Task<IReadOnlyList<Location>> SearchByCoordinatesAsync(
 		double latitude,
 		double longitude,
-		CancellationToken cancellationToken = default,
-		TimeSpan? timeout = null);
+		TimeSpan? timeout = null,
+		CancellationToken cancellationToken = default);
 
 	/// <summary>
 	/// Gets the current device location using GPS.

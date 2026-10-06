@@ -20,7 +20,7 @@ public sealed class VvoPointResponse
 	/// </summary>
 	[JsonPropertyName("Points")]
 	public IReadOnlyList<string> RawPoints { get; init; }
-		= Array.Empty<string>();
+		= [];
 
 
 	/// <summary>
@@ -30,9 +30,8 @@ public sealed class VvoPointResponse
 	/// </summary>
 	[JsonIgnore]
 	public IReadOnlyList<VvoPoint> Points =>
-		RawPoints
-			.Select(VvoPoint.Parse)
-			.ToArray();
+		[.. RawPoints
+			.Select(VvoPoint.Parse)];
 }
 
 

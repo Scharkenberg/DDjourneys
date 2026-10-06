@@ -1,5 +1,6 @@
 ﻿using System.Globalization;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using DDjourneys.Core.Models;
 using DDjourneys.Core.Providers.Vvo.Mapping;
@@ -13,7 +14,7 @@ namespace DDjourneys.Tracking.Schutzengel;
 /// </summary>
 internal static class SchutzengelNodeMapper
 {
-	internal static object NodeObject(
+	internal static JsonObject NodeObject(
 		VvoStop stop,
 		JourneyLeg leg,
 		int stopIndex,
@@ -35,89 +36,41 @@ internal static class SchutzengelNodeMapper
 			?? 0;
 
 
-		return new
+		return new JsonObject
 		{
-			id =
-				stop.DataId
-				?? station?.Id
-				?? string.Empty,
-
-			name =
-				stop.Name
-				?? station?.Name
-				?? string.Empty,
-
-			city =
-				string.IsNullOrWhiteSpace(
-					stop.Place)
-					? station?.Place
-						?? "Dresden"
+			["id"] = stop.DataId ?? station?.Id ?? string.Empty,
+			["name"] = stop.Name ?? station?.Name ?? string.Empty,
+			["city"] =
+				string.IsNullOrWhiteSpace(stop.Place)
+					? station?.Place ?? "Dresden"
 					: stop.Place,
-
-			type =
-				TrafficNodeType(
-					stop.Type),
-
-			location =
-				new
+			["type"] = TrafficNodeType(stop.Type),
+			["location"] =
+				new JsonObject
 				{
-					latitude,
-					longitude,
-					projection =
-						MapProjectionWgs84
+					["latitude"] = latitude,
+					["longitude"] = longitude,
+					["projection"] = MapProjectionWgs84
 				},
-
-			weather =
-				Array.Empty<object>(),
-
-			servingLines =
-				Array.Empty<object>(),
-
-			arrivalDateTime =
-				stop.ArrivalTime,
-
-			departureDateTime =
-				stop.DepartureTime,
-
-			actualArrivalDateTime =
-				stop.ArrivalRealTime
-				?? stop.ArrivalTime,
-
-			actualDepartureDateTime =
-				stop.DepartureRealTime
-				?? stop.DepartureTime,
-
-			platform =
-				new
+			["weather"] = new JsonArray(),
+			["servingLines"] = new JsonArray(),
+			["arrivalDateTime"] = stop.ArrivalTime,
+			["departureDateTime"] = stop.DepartureTime,
+			["actualArrivalDateTime"] = stop.ArrivalRealTime ?? stop.ArrivalTime,
+			["actualDepartureDateTime"] = stop.DepartureRealTime ?? stop.DepartureTime,
+			["platform"] =
+				new JsonObject
 				{
-					name =
-						stop.Platform?.Name
-						?? string.Empty,
-
-					type =
-						PlatformType(
-							stop.Platform?.Type)
+					["name"] = stop.Platform?.Name ?? string.Empty,
+					["type"] = PlatformType(stop.Platform?.Type)
 				},
-
-			positionInSequence =
-				StopSequenceOnward,
-
-			tariffZone =
-				Array.Empty<object>(),
-
-			occupancy =
-				Occupancy(
-					stop.Occupancy),
-
-			cancelled =
+			["positionInSequence"] = StopSequenceOnward,
+			["tariffZone"] = new JsonArray(),
+			["occupancy"] = Occupancy(stop.Occupancy),
+			["cancelled"] =
 				VvoStopStates.IsCancelled(stop.ArrivalState)
 				|| VvoStopStates.IsCancelled(stop.DepartureState),
-
-			metaData =
-				new
-				{
-					serverTime
-				}
+			["metaData"] = new JsonObject { ["serverTime"] = serverTime }
 		};
 	}
 
@@ -161,19 +114,12 @@ internal static class SchutzengelNodeMapper
 	}
 
 
-	internal static object PointObject(
-		(double Latitude, double Longitude) point)
-	{
-		return new
+	internal static JsonObject PointObject(
+		(double Latitude, double Longitude) point) =>
+		new()
 		{
-			latitude =
-				point.Latitude,
-
-			longitude =
-				point.Longitude,
-
-			projection =
-				MapProjectionWgs84
+			["latitude"] = point.Latitude,
+			["longitude"] = point.Longitude,
+			["projection"] = MapProjectionWgs84
 		};
-	}
 }

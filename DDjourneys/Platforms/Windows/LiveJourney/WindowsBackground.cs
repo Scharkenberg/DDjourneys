@@ -217,7 +217,7 @@ internal static class WindowsBackground
 		window.Activate();
 
 		if (Microsoft.Maui.Controls.Application.Current is { } app
-			&& app.Windows.FirstOrDefault() is { } mauiWindow)
+			&& app.Windows is [{ } mauiWindow, ..])
 		{
 			app.ActivateWindow(mauiWindow);
 		}

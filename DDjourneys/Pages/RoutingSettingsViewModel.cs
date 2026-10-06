@@ -1,38 +1,49 @@
 using DDjourneys.Core.Models;
+using DDjourneys.Core.Providers;
+using DDjourneys.Core.Providers.Abstractions;
 using DDjourneys.Localization;
 using DDjourneys.Support;
 
 namespace DDjourneys.Pages;
 
 /// <summary>Route preferences: what the planner has to respect on the next search.</summary>
-public sealed class RoutingSettingsViewModel : DisposableViewModel
+public sealed partial class RoutingSettingsViewModel : DisposableViewModel
 {
 	private readonly AppSettings _settings;
+	private readonly ProviderRegistry _providers;
 	private readonly LocalizationService _localization;
 
-	public RoutingSettingsViewModel(AppSettings settings)
+	public RoutingSettingsViewModel(AppSettings settings, ProviderRegistry providers)
 	{
 		ArgumentNullException.ThrowIfNull(settings);
+		ArgumentNullException.ThrowIfNull(providers);
 
 		_settings = settings;
+		_providers = providers;
 		_localization = LocalizationService.Current;
 
 		ListenToLocalization(_localization, OnLocalizationChanged);
 
+		Subscribe(
+			() => _providers.SelectionChanged += OnProviderChanged,
+			() => _providers.SelectionChanged -= OnProviderChanged);
+
 		Modes =
-		[
-			Mode(ModeFilter.Tram, s => s.Tram),
-			Mode(ModeFilter.CityBus, s => s.CityBus),
-			Mode(ModeFilter.IntercityBus, s => s.IntercityBus),
-			Mode(ModeFilter.SuburbanRailway, s => s.SuburbanRailway),
-			Mode(ModeFilter.Train, s => s.Train),
-			Mode(ModeFilter.Cableway, s => s.Cableway),
-			Mode(ModeFilter.Ferry, s => s.Ferry),
-			Mode(ModeFilter.HailedSharedTaxi, s => s.HailedSharedTaxi)
-		];
+			(List<ToggleOption>)
+			[
+				Mode(ModeFilter.Tram, s => s.Tram),
+				Mode(ModeFilter.CityBus, s => s.CityBus),
+				Mode(ModeFilter.IntercityBus, s => s.IntercityBus),
+				Mode(ModeFilter.SuburbanRailway, s => s.SuburbanRailway),
+				Mode(ModeFilter.Train, s => s.Train),
+				Mode(ModeFilter.Cableway, s => s.Cableway),
+				Mode(ModeFilter.Ferry, s => s.Ferry),
+				Mode(ModeFilter.HailedSharedTaxi, s => s.HailedSharedTaxi)
+			];
 
 		Transfers =
 			new ChoiceGroup(
+				(List<(int Code, Func<string> Title)>)
 				[
 					((int)MaxTransfers.Unlimited, () => Strings.TransfersUnlimited),
 					((int)MaxTransfers.Two, () => Strings.TransfersTwo),
@@ -44,6 +55,7 @@ public sealed class RoutingSettingsViewModel : DisposableViewModel
 
 		Pace =
 			new ChoiceGroup(
+				(List<(int Code, Func<string> Title)>)
 				[
 					((int)WalkingPace.VerySlow, () => Strings.PaceVerySlow),
 					((int)WalkingPace.Slow, () => Strings.PaceSlow),
@@ -56,6 +68,7 @@ public sealed class RoutingSettingsViewModel : DisposableViewModel
 
 		Accessibility =
 			new ChoiceGroup(
+				(List<(int Code, Func<string> Title)>)
 				[
 					((int)AccessibilityNeed.None, () => Strings.AccessNone),
 					((int)AccessibilityNeed.Medium, () => Strings.AccessMedium),
@@ -64,8 +77,21 @@ public sealed class RoutingSettingsViewModel : DisposableViewModel
 				() => (int)_settings.Accessibility,
 				value => _settings.Accessibility = (AccessibilityNeed)value);
 
+		Optimisation =
+			new ChoiceGroup(
+				(List<(int Code, Func<string> Title)>)
+				[
+					((int)RouteOptimisation.Fastest, () => ExtraStrings.OptFastest),
+					((int)RouteOptimisation.FewestChanges, () => ExtraStrings.OptFewestChanges),
+					((int)RouteOptimisation.LeastWalking, () => ExtraStrings.OptLeastWalking),
+					((int)RouteOptimisation.LowestFare, () => ExtraStrings.OptLowestFare)
+				],
+				() => (int)_settings.Optimisation,
+				value => _settings.Optimisation = (RouteOptimisation)value);
+
 		Entrance =
 			new ChoiceGroup(
+				(List<(int Code, Func<string> Title)>)
 				[
 					((int)EntranceNeed.Any, () => Strings.EntranceAny),
 					((int)EntranceNeed.SmallStep, () => Strings.EntranceSmallStep),
@@ -74,8 +100,21 @@ public sealed class RoutingSettingsViewModel : DisposableViewModel
 				() => (int)_settings.Entrance,
 				value => _settings.Entrance = (EntranceNeed)value);
 
+		Passenger =
+			new ChoiceGroup(
+				(List<(int Code, Func<string> Title)>)
+				[
+					((int)PassengerCategory.Adult, () => ExtraStrings.PassengerAdult),
+					((int)PassengerCategory.Youth, () => ExtraStrings.PassengerYouth),
+					((int)PassengerCategory.Child, () => ExtraStrings.PassengerChild),
+					((int)PassengerCategory.Senior, () => ExtraStrings.PassengerSenior)
+				],
+				() => (int)_settings.Passenger,
+				value => _settings.Passenger = (PassengerCategory)value);
+
 		ExtraCharge =
 			new ChoiceGroup(
+				(List<(int Code, Func<string> Title)>)
 				[
 					((int)ExtraChargeFilter.Any, () => Strings.ExtraChargeAny),
 					((int)ExtraChargeFilter.None, () => Strings.ExtraChargeNone),
@@ -85,48 +124,50 @@ public sealed class RoutingSettingsViewModel : DisposableViewModel
 				value => _settings.ExtraCharge = (ExtraChargeFilter)value);
 
 		Walking =
-		[
-			new ToggleOption(
-				() => Strings.AlternativeStops,
-				() => Strings.AlternativeStopsDescription,
-				() => _settings.AlternativeStops,
-				value =>
-				{
-					_settings.AlternativeStops = value;
-					return true;
-				})
-		];
+			(List<ToggleOption>)
+			[
+				new(
+					() => Strings.AlternativeStops,
+					() => Strings.AlternativeStopsDescription,
+					() => _settings.AlternativeStops,
+					value =>
+					{
+						_settings.AlternativeStops = value;
+						return true;
+					})
+			];
 
 		More =
-		[
-			new ToggleOption(
-				() => Strings.AvoidStairs,
-				() => Strings.AvoidStairsDescription,
-				() => _settings.AvoidStairs,
-				value =>
-				{
-					_settings.AvoidStairs = value;
-					return true;
-				}),
-			new ToggleOption(
-				() => Strings.AvoidEscalators,
-				() => Strings.AvoidEscalatorsDescription,
-				() => _settings.AvoidEscalators,
-				value =>
-				{
-					_settings.AvoidEscalators = value;
-					return true;
-				}),
-			new ToggleOption(
-				() => Strings.FewestTransfers,
-				() => Strings.FewestTransfersDescription,
-				() => _settings.FewestTransfers,
-				value =>
-				{
-					_settings.FewestTransfers = value;
-					return true;
-				})
-		];
+			(List<ToggleOption>)
+			[
+				new(
+					() => Strings.AvoidStairs,
+					() => Strings.AvoidStairsDescription,
+					() => _settings.AvoidStairs,
+					value =>
+					{
+						_settings.AvoidStairs = value;
+						return true;
+					}),
+				new(
+					() => Strings.AvoidEscalators,
+					() => Strings.AvoidEscalatorsDescription,
+					() => _settings.AvoidEscalators,
+					value =>
+					{
+						_settings.AvoidEscalators = value;
+						return true;
+					}),
+				new(
+					() => Strings.FewestTransfers,
+					() => Strings.FewestTransfersDescription,
+					() => _settings.FewestTransfers,
+					value =>
+					{
+						_settings.FewestTransfers = value;
+						return true;
+					})
+			];
 
 		ResetCommand = new Command(Reset);
 	}
@@ -139,8 +180,14 @@ public sealed class RoutingSettingsViewModel : DisposableViewModel
 
 	public ChoiceGroup Accessibility { get; }
 
+	/// <summary>What the router optimises for (providers with route optimisation).</summary>
+	public ChoiceGroup Optimisation { get; }
+
 	/// <summary>Required vehicle entrance.</summary>
 	public ChoiceGroup Entrance { get; }
+
+	/// <summary>Who the tickets are for.</summary>
+	public ChoiceGroup Passenger { get; }
 
 	/// <summary>Fare supplements to avoid.</summary>
 	public ChoiceGroup ExtraCharge { get; }
@@ -153,7 +200,35 @@ public sealed class RoutingSettingsViewModel : DisposableViewModel
 
 	public Command ResetCommand { get; }
 
-	public double MaxFootpath => AppSettings.MaxFootpathMinutes;
+	// ----- What the selected provider can do with a preference. A control that would change nothing is not shown. -----
+
+	/// <summary>Walking time to a stop and nearby stops.</summary>
+	public bool ShowWalkToStops => _providers.Supports(ProviderCapabilities.WalkToStops);
+
+	/// <summary>Who the tickets are for.</summary>
+	public bool ShowPassenger => _providers.Supports(ProviderCapabilities.PassengerFares);
+
+	/// <summary>Fastest, fewest changes, least walking, lowest fare.</summary>
+	public bool ShowOptimisation => _providers.Supports(ProviderCapabilities.RouteOptimisation);
+
+	/// <summary>Journeys without fare supplements.</summary>
+	public bool ShowExtraCharge => _providers.Supports(ProviderCapabilities.SupplementFilter);
+
+	private void OnProviderChanged(object? sender, string providerId) =>
+		MainThread.BeginInvokeOnMainThread(
+			() =>
+			{
+				if (!IsDisposed)
+				{
+					OnPropertyChanged(nameof(ShowWalkToStops));
+					OnPropertyChanged(nameof(ShowPassenger));
+					OnPropertyChanged(nameof(ShowOptimisation));
+					OnPropertyChanged(nameof(ShowExtraCharge));
+					RefreshAll();
+				}
+			});
+
+	public const double MaxFootpath = AppSettings.MaxFootpathMinutes;
 
 	public double FootpathMinutes
 	{
@@ -176,6 +251,9 @@ public sealed class RoutingSettingsViewModel : DisposableViewModel
 		string.Format(
 			Strings.FootpathDescription,
 			_settings.FootpathMinutes);
+
+	private ExtrasStrings ExtraStrings =>
+		_localization.CurrentStrings.Extras;
 
 	private RoutingStrings Strings =>
 		_localization.CurrentStrings.Routing;
@@ -233,7 +311,9 @@ public sealed class RoutingSettingsViewModel : DisposableViewModel
 		Pace.Refresh();
 		Accessibility.Refresh();
 		Entrance.Refresh();
+		Optimisation.Refresh();
 		ExtraCharge.Refresh();
+		Passenger.Refresh();
 
 		OnPropertyChanged(nameof(FootpathMinutes));
 		OnPropertyChanged(nameof(FootpathText));

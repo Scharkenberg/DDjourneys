@@ -1,11 +1,14 @@
+using CommunityToolkit.Maui.Alerts;
+using DDjourneys.Core.Diagnostics;
 using DDjourneys.Core.Providers;
 using DDjourneys.Localization;
 using DDjourneys.Support;
+using Microsoft.Maui.ApplicationModel.DataTransfer;
 
 namespace DDjourneys.Pages;
 
 /// <summary>Thin, two-way view over <see cref="AppSettings"/>. Persisting is AppSettings' job.</summary>
-public sealed class SettingsViewModel : DisposableViewModel
+public sealed partial class SettingsViewModel : DisposableViewModel
 {
 	private readonly AppSettings _settings;
 	private readonly LocalizationService _localization;
@@ -27,19 +30,118 @@ public sealed class SettingsViewModel : DisposableViewModel
 		SelectLanguageCommand = new Command<string>(SelectLanguage);
 		ResetCommand = new Command(Reset);
 		OpenRoutingCommand = new AsyncCommand(OpenRoutingAsync);
+		OpenStartCommand = new AsyncCommand(OpenStartAsync);
 		OpenProvidersCommand = new AsyncCommand(OpenProvidersAsync);
+		ShareLogCommand = new AsyncCommand(ShareLogAsync);
+		ClearLogCommand = new Command(ClearLog);
+		OpenAboutCommand = new AsyncCommand(OpenAboutAsync);
+		CopyInterfacesCommand = new AsyncCommand(CopyInterfacesAsync);
+		SaveMapKeyCommand = new Command(SaveMapKey, () => MapKeyChanged);
+		SelectMapEngineCommand = new Command<string>(SelectMapEngine);
+
+		_mapKeyDraft = _settings.MapApiKey;
+
+		Subscribe(
+			() => MapAvailability.Changed += OnMapAvailabilityChanged,
+			() => MapAvailability.Changed -= OnMapAvailabilityChanged);
 	}
+
+	private string _mapKeyDraft;
+
+	/// <summary>What is typed in the key field; it is used when "Use key" is pressed (not on every keystroke).</summary>
+	public string MapKeyDraft
+	{
+		get => _mapKeyDraft;
+		set
+		{
+			if (SetProperty(ref _mapKeyDraft, value ?? string.Empty))
+			{
+				OnPropertyChanged(nameof(MapKeyChanged));
+				SaveMapKeyCommand.ChangeCanExecute();
+			}
+		}
+	}
+
+	public bool MapKeyChanged =>
+		!string.Equals(_mapKeyDraft.Trim(), _settings.MapApiKey, StringComparison.Ordinal);
+
+	public Command SaveMapKeyCommand { get; }
+
+	public Command<string> SelectMapEngineCommand { get; }
+
+	public bool MapEngineIsCarto =>
+		_settings.MapEngine == MapEngine.Carto;
+
+	public bool MapEngineIsLeaflet =>
+		_settings.MapEngine == MapEngine.Leaflet;
+
+	private void SelectMapEngine(string? id)
+	{
+		_settings.MapEngine =
+			string.Equals(id, MapAvailability.LeafletId, StringComparison.Ordinal)
+				? MapEngine.Leaflet
+				: MapEngine.Carto;
+
+		OnPropertyChanged(nameof(MapEngineIsCarto));
+		OnPropertyChanged(nameof(MapEngineIsLeaflet));
+	}
+
+	public string MapKeyStatus
+	{
+		get
+		{
+			SettingsStrings strings = _localization.CurrentStrings.Settings;
+
+			return !MapAvailability.HasKey
+				? strings.MapKeyStatusMissing
+				: MapAvailability.IsRejected
+					? strings.MapKeyStatusInvalid
+					: strings.MapKeyStatusSet;
+		}
+	}
+
+	private void SaveMapKey()
+	{
+		_settings.MapApiKey = _mapKeyDraft.Trim();
+
+		OnPropertyChanged(nameof(MapKeyChanged));
+		OnPropertyChanged(nameof(MapKeyStatus));
+		SaveMapKeyCommand.ChangeCanExecute();
+	}
+
+	private void OnMapAvailabilityChanged(object? sender, EventArgs e) =>
+		MainThread.BeginInvokeOnMainThread(
+			() =>
+			{
+				if (!IsDisposed)
+				{
+					OnPropertyChanged(nameof(MapKeyStatus));
+					OnPropertyChanged(nameof(MapKeyChanged));
+					OnPropertyChanged(nameof(MapEngineIsCarto));
+					OnPropertyChanged(nameof(MapEngineIsLeaflet));
+				}
+			});
 
 	public AsyncCommand OpenAppearanceCommand { get; }
 	public Command<string> SelectLanguageCommand { get; }
 	public Command ResetCommand { get; }
 	public AsyncCommand OpenRoutingCommand { get; }
+	public AsyncCommand OpenStartCommand { get; }
 	public AsyncCommand OpenProvidersCommand { get; }
+	public AsyncCommand ShareLogCommand { get; }
+	public Command ClearLogCommand { get; }
+	public AsyncCommand OpenAboutCommand { get; }
+	public AsyncCommand CopyInterfacesCommand { get; }
+
+	/// <summary>Build and the version of every interface, as the log file starts with it (see <see cref="AppInterfaces"/>).</summary>
+	public string InterfaceReport => field ??= AppInterfaces.Report();
 
 	/// <summary>Name of the selected provider, shown on the entry row.</summary>
 	public string ProviderText =>
 		_providers.Selected is { } provider
-			? $"{provider.Name} \u00b7 {provider.FullName}"
+			? provider.IsExperimental
+				? $"{provider.Name} \u00b7 {provider.FullName} \u00b7 {_localization.CurrentStrings.Provider.Experimental}"
+				: $"{provider.Name} \u00b7 {provider.FullName}"
 			: string.Empty;
 
 	public void RefreshProvider() =>
@@ -145,9 +247,9 @@ public sealed class SettingsViewModel : DisposableViewModel
 			_localization.CurrentStrings.Settings.RequestTimeoutDescription,
 			_settings.TimeoutSeconds);
 
-	public double MinResults => AppSettings.MinResults;
+	public const double MinResults = AppSettings.MinResults;
 
-	public double MaxResultsLimit => AppSettings.MaxResultsLimit;
+	public const double MaxResultsLimit = AppSettings.MaxResultsLimit;
 
 	public bool DefaultArrival
 	{
@@ -175,6 +277,38 @@ public sealed class SettingsViewModel : DisposableViewModel
 		set
 		{
 			_settings.ExpandNotices = value;
+			OnPropertyChanged();
+		}
+	}
+
+	// ----- Places -----
+
+	public bool SearchAddresses
+	{
+		get => _settings.SearchAddresses;
+		set
+		{
+			_settings.SearchAddresses = value;
+			OnPropertyChanged();
+		}
+	}
+
+	public bool SearchPois
+	{
+		get => _settings.SearchPois;
+		set
+		{
+			_settings.SearchPois = value;
+			OnPropertyChanged();
+		}
+	}
+
+	public bool ExactPosition
+	{
+		get => _settings.ExactPosition;
+		set
+		{
+			_settings.ExactPosition = value;
 			OnPropertyChanged();
 		}
 	}
@@ -219,6 +353,81 @@ public sealed class SettingsViewModel : DisposableViewModel
 			_settings.ExpertView = value;
 			OnPropertyChanged();
 		}
+	}
+
+	// ----- Developer options -----
+
+	public bool DeveloperOptions
+	{
+		get => _settings.DeveloperOptions;
+		set
+		{
+			_settings.DeveloperOptions = value;
+			OnPropertyChanged();
+			OnPropertyChanged(nameof(ExpertView));
+			OnPropertyChanged(nameof(LogToFile));
+			OnPropertyChanged(nameof(HasLog));
+		}
+	}
+
+	public bool LogToFile
+	{
+		get => _settings.LogToFile;
+		set
+		{
+			_settings.LogToFile = value;
+			OnPropertyChanged();
+			RefreshLog();
+		}
+	}
+
+	/// <summary>There is a log (or one is being written) to share or delete.</summary>
+	public bool HasLog => LogToFile || DiagnosticLog.Exists;
+
+	/// <summary>Where the log file is, how big it is, and why writing failed if it did.</summary>
+	public string LogInfo { get; private set; } = DescribeLog();
+
+	private static string DescribeLog()
+	{
+		string path = DiagnosticLog.FilePath ?? "-";
+
+		string size =
+			DiagnosticLog.Exists && DiagnosticLog.FilePath is { } file
+				? $" ({new FileInfo(file).Length / 1024.0:0.#} KB)"
+				: string.Empty;
+
+		return DiagnosticLog.LastError is { } error
+			? $"{path}{size}\n{error}"
+			: $"{path}{size}";
+	}
+
+	/// <summary>Called when the page appears: the file may have grown or appeared since.</summary>
+	public void RefreshLog()
+	{
+		LogInfo = DescribeLog();
+		OnPropertyChanged(nameof(HasLog));
+		OnPropertyChanged(nameof(LogInfo));
+	}
+
+	private async Task ShareLogAsync()
+	{
+		if (!DiagnosticLog.Exists || DiagnosticLog.FilePath is not { } path)
+		{
+			RefreshLog();
+
+			return;
+		}
+
+		await Share.Default.RequestAsync(
+			new ShareFileRequest(
+				_localization.CurrentStrings.Settings.LogToFile,
+				new ReadOnlyFile(path)));
+	}
+
+	private void ClearLog()
+	{
+		DiagnosticLog.Delete();
+		RefreshLog();
 	}
 
 	// ----- Place search -----
@@ -267,19 +476,32 @@ public sealed class SettingsViewModel : DisposableViewModel
 			_localization.CurrentStrings.Settings.MinQueryLengthDescription,
 			_settings.MinQueryLength);
 
-	public double MinQueryLengthFloor => AppSettings.MinQueryLengthFloor;
+	public const double MinQueryLengthFloor = AppSettings.MinQueryLengthFloor;
 
-	public double MinQueryLengthCeiling => AppSettings.MinQueryLengthCeiling;
+	public const double MinQueryLengthCeiling = AppSettings.MinQueryLengthCeiling;
 
-	public double MinSearchDelay => AppSettings.MinSearchDelayMs;
+	public const double MinSearchDelay = AppSettings.MinSearchDelayMs;
 
-	public double MaxSearchDelay => AppSettings.MaxSearchDelayMs;
+	public const double MaxSearchDelay = AppSettings.MaxSearchDelayMs;
+
+	private static Task OpenAboutAsync() =>
+		Shell.Current.GoToAsync(Routes.About);
+
+	private async Task CopyInterfacesAsync()
+	{
+		await Clipboard.Default.SetTextAsync(InterfaceReport);
+
+		await Toast.Make(_localization.CurrentStrings.Settings.InterfacesCopied).Show();
+	}
 
 	private static Task OpenProvidersAsync() =>
 		Shell.Current.GoToAsync(Routes.Providers);
 
 	private static Task OpenRoutingAsync() =>
 		Shell.Current.GoToAsync(Routes.Routing);
+
+	private static Task OpenStartAsync() =>
+		Shell.Current.GoToAsync(Routes.StartSettings);
 
 	public string Version
 	{
@@ -315,7 +537,7 @@ public sealed class SettingsViewModel : DisposableViewModel
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Opening appearance failed: {ex}");
+			DiagnosticLog.Write($"Opening appearance failed: {ex}");
 		}
 	}
 
@@ -334,7 +556,7 @@ public sealed class SettingsViewModel : DisposableViewModel
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine(
+			DiagnosticLog.Write(
 				$"Language change failed: {ex}");
 		}
 	}
@@ -379,9 +601,11 @@ public sealed class SettingsViewModel : DisposableViewModel
 		OnPropertyChanged(nameof(LeadMinutes));
 		OnPropertyChanged(nameof(LeadText));
 		OnPropertyChanged(nameof(ShowOccupancy));
+		OnPropertyChanged(nameof(SearchAddresses));
+		OnPropertyChanged(nameof(SearchPois));
+		OnPropertyChanged(nameof(ExactPosition));
 		OnPropertyChanged(nameof(ShowPlatforms));
 		OnPropertyChanged(nameof(ExpandStops));
-		OnPropertyChanged(nameof(ExpertView));
 		OnPropertyChanged(nameof(SearchDelayMs));
 		OnPropertyChanged(nameof(SearchDelayText));
 		OnPropertyChanged(nameof(MinQueryLength));

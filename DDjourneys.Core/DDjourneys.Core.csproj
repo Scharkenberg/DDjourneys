@@ -13,4 +13,8 @@
     <PackageReference Include="ProjNET" Version="2.1.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="DDjourneys.Tracking.Tests" />
+  </ItemGroup>
+
 </Project>

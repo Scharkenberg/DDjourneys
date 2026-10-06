@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using Android.App;
 using Android.Content;
 using DDjourneys.Core.Tracking.Live;
@@ -30,10 +31,10 @@ internal sealed class AndroidLiveJourneySurface : ILiveJourneySurface
 internal sealed class AndroidTrackingRuntime : ITrackingRuntime
 {
 	public bool TryKeepAlive() =>
-		Schutzengel.JourneyTrackingForegroundService.TryStart();
+		JourneyTrackingForegroundService.TryStart();
 
 	public void Release() =>
-		Schutzengel.JourneyTrackingForegroundService.Stop();
+		JourneyTrackingForegroundService.Stop();
 }
 
 /// <summary>POST_NOTIFICATIONS (Android 13+) and the user's per-app notification switch.</summary>
@@ -51,7 +52,7 @@ internal sealed class AndroidNotificationAccess : INotificationAccess
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"[TRACKING] Notification state unreadable: {ex.Message}");
+			DiagnosticLog.Write($"[TRACKING] Notification state unreadable: {ex.Message}");
 
 			return Task.FromResult(false);
 		}
@@ -78,7 +79,7 @@ internal sealed class AndroidNotificationAccess : INotificationAccess
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"[TRACKING] Notification permission request failed: {ex.Message}");
+			DiagnosticLog.Write($"[TRACKING] Notification permission request failed: {ex.Message}");
 		}
 	}
 }

@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using System.Runtime.CompilerServices;
 using DDjourneys.Core.Theming;
 
@@ -13,8 +14,8 @@ namespace DDjourneys.Support;
 /// </summary>
 public static class Density
 {
-	private static readonly ConditionalWeakTable<Page, StampBox> Stamps = new();
-	private static readonly Dictionary<string, object> Current = new();
+	private static readonly ConditionalWeakTable<Page, StampBox> Stamps = [];
+	private static readonly Dictionary<string, object> Current = [];
 
 	private static Application? _app;
 	private static AppSettings? _settings;
@@ -57,7 +58,7 @@ public static class Density
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Density apply failed: {ex}");
+			DiagnosticLog.Write($"Density apply failed: {ex}");
 		}
 
 		Changed?.Invoke(null, EventArgs.Empty);
@@ -100,7 +101,7 @@ public static class Density
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Density revalidate failed: {ex.Message}");
+			DiagnosticLog.Write($"Density revalidate failed: {ex.Message}");
 		}
 	}
 

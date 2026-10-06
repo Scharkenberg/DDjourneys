@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using System.Windows.Input;
 
 namespace DDjourneys.Support;
@@ -6,7 +7,7 @@ namespace DDjourneys.Support;
 /// An ICommand for async work that cannot crash the app: exceptions are caught and reported,
 /// cancellation is ignored, and it refuses to run twice at once (double taps, impatient users).
 /// </summary>
-public sealed class AsyncCommand : ICommand
+public sealed partial class AsyncCommand : ICommand
 {
 	private readonly Func<Task> _execute;
 	private readonly Func<bool>? _canExecute;
@@ -49,7 +50,7 @@ public sealed class AsyncCommand : ICommand
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Command failed:\n{ex}");
+			DiagnosticLog.Write($"Command failed:\n{ex}");
 
 			try
 			{
@@ -57,7 +58,7 @@ public sealed class AsyncCommand : ICommand
 			}
 			catch (Exception inner)
 			{
-				System.Diagnostics.Debug.WriteLine($"Command error handler failed: {inner.Message}");
+				DiagnosticLog.Write($"Command error handler failed: {inner.Message}");
 			}
 		}
 		finally
@@ -69,7 +70,7 @@ public sealed class AsyncCommand : ICommand
 }
 
 /// <summary>Typed variant. A parameter of the wrong type is ignored, never cast blindly.</summary>
-public sealed class AsyncCommand<T> : ICommand
+public sealed partial class AsyncCommand<T> : ICommand
 {
 	private readonly AsyncCommand _inner;
 	private T? _parameter;

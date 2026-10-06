@@ -50,7 +50,7 @@ public sealed record JourneyIdentity
 	{
 		ArgumentNullException.ThrowIfNull(journey);
 
-		List<JourneyLeg> rides = journey.Rides.ToList();
+		List<JourneyLeg> rides = [.. journey.Rides];
 
 		if (rides.Count == 0)
 		{
@@ -61,7 +61,7 @@ public sealed record JourneyIdentity
 			new JourneyIdentity
 			{
 				ProviderId = journey.ProviderId,
-				Rides = rides.Select(ToRide).ToArray()
+				Rides = [.. rides.Select(ToRide)]
 			};
 
 		return identity.Key is null ? null : identity;
@@ -132,8 +132,8 @@ public sealed record JourneyIdentity
 
 	private static RideIdentity ToRide(JourneyLeg ride)
 	{
-		StopTime? first = ride.Stops.FirstOrDefault();
-		StopTime? last = ride.Stops.LastOrDefault();
+		StopTime? first = ride.Stops.Count > 0 ? ride.Stops[0] : null;
+		StopTime? last = ride.Stops.Count > 0 ? ride.Stops[^1] : null;
 
 		return new RideIdentity(
 			Normalize(ride.Line?.Name),

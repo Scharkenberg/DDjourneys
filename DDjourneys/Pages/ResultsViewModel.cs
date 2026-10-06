@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Globalization;
@@ -8,7 +9,7 @@ using DDjourneys.Support;
 
 namespace DDjourneys.Pages;
 
-public sealed class ResultsViewModel :
+public sealed partial class ResultsViewModel :
 	DisposableViewModel,
 	IQueryAttributable
 {
@@ -45,10 +46,14 @@ public sealed class ResultsViewModel :
 
 	public ResultsViewModel(
 		JourneyService journeys,
-		AppSettings settings)
+		AppSettings settings,
+		PlaceStore places)
 	{
 		ArgumentNullException.ThrowIfNull(
 			journeys);
+
+		ArgumentNullException.ThrowIfNull(
+			places);
 
 		ArgumentNullException.ThrowIfNull(
 			settings);
@@ -56,6 +61,15 @@ public sealed class ResultsViewModel :
 		_journeys = journeys;
 		_settings = settings;
 		_localization = LocalizationService.Current;
+
+		Bookmark =
+			new RouteBookmark(
+				places,
+				() => _query is { } asked
+					? (asked.From, asked.To)
+					: null,
+				message => ShowError?.Invoke(message) ?? Task.CompletedTask,
+				hideWhenUnavailable: true);
 
 		ListenToLocalization(
 			_localization,
@@ -104,6 +118,9 @@ public sealed class ResultsViewModel :
 
 	public Func<string, Task>? ShowError { get; set; }
 
+	/// <summary>Saves (and removes) the searched connection; the icon shows whether it is saved.</summary>
+	public RouteBookmark Bookmark { get; }
+
 	public Command RefreshCommand { get; }
 
 	public Command ReloadCommand { get; }
@@ -119,7 +136,7 @@ public sealed class ResultsViewModel :
 
 	public string RouteText
 	{
-		get => field;
+		get;
 		private set => SetProperty(
 			ref field,
 			value);
@@ -130,7 +147,7 @@ public sealed class ResultsViewModel :
 	/// <summary>Start and destination, split so the header can put the city under the name.</summary>
 	public string FromName
 	{
-		get => field;
+		get;
 		private set => SetProperty(
 			ref field,
 			value);
@@ -139,7 +156,7 @@ public sealed class ResultsViewModel :
 
 	public string? FromPlace
 	{
-		get => field;
+		get;
 		private set => SetProperty(
 			ref field,
 			value);
@@ -148,7 +165,7 @@ public sealed class ResultsViewModel :
 
 	public string ToName
 	{
-		get => field;
+		get;
 		private set => SetProperty(
 			ref field,
 			value);
@@ -157,7 +174,7 @@ public sealed class ResultsViewModel :
 
 	public string? ToPlace
 	{
-		get => field;
+		get;
 		private set => SetProperty(
 			ref field,
 			value);
@@ -166,7 +183,7 @@ public sealed class ResultsViewModel :
 
 	public string WhenText
 	{
-		get => field;
+		get;
 		private set => SetProperty(
 			ref field,
 			value);
@@ -175,7 +192,7 @@ public sealed class ResultsViewModel :
 
 	public string StatusText
 	{
-		get => field;
+		get;
 		private set
 		{
 			if (SetProperty(
@@ -195,7 +212,7 @@ public sealed class ResultsViewModel :
 
 	public bool IsRefreshing
 	{
-		get => field;
+		get;
 		set => SetProperty(
 			ref field,
 			value);
@@ -204,7 +221,7 @@ public sealed class ResultsViewModel :
 
 	public bool IsLoading
 	{
-		get => field;
+		get;
 		private set
 		{
 			if (SetProperty(
@@ -238,7 +255,7 @@ public sealed class ResultsViewModel :
 
 	public bool HasError
 	{
-		get => field;
+		get;
 		private set => SetProperty(
 			ref field,
 			value);
@@ -274,6 +291,8 @@ public sealed class ResultsViewModel :
 				journeyQuery))
 		{
 			_query = journeyQuery;
+
+			Bookmark.Refresh();
 
 			RouteText =
 				$"{StopLabel.Compose(journeyQuery.From)} \u2192 " +
@@ -393,7 +412,7 @@ public sealed class ResultsViewModel :
 			{
 				HasError = true;
 
-				Debug.WriteLine(
+				DiagnosticLog.Write(
 					$"Journey search not answered: {result.Outcome} " +
 					$"{result.ErrorMessage} {result.ErrorDetail}");
 
@@ -438,13 +457,16 @@ public sealed class ResultsViewModel :
 				{
 					Items.Add(
 						new JourneyCardModel(
-							journey));
+							journey)
+						{
+							Passenger = _settings.Passenger
+						});
 				}
 				catch (Exception ex)
 				{
 					skipped++;
 
-					Debug.WriteLine(
+					DiagnosticLog.Write(
 						$"Journey card failed:\n{ex}");
 				}
 			}
@@ -465,7 +487,7 @@ public sealed class ResultsViewModel :
 		}
 		catch (Exception ex)
 		{
-			Debug.WriteLine(
+			DiagnosticLog.Write(
 				$"Journey search failed:\n{ex}");
 
 			if (!cts.IsCancellationRequested)
@@ -528,9 +550,7 @@ public sealed class ResultsViewModel :
 		}
 
 		Journey[] shown =
-			Items
-				.Select(item => item.Journey)
-				.ToArray();
+			[.. Items.Select(item => item.Journey)];
 
 		var cts =
 			_paging =
@@ -547,7 +567,7 @@ public sealed class ResultsViewModel :
 					query,
 					shown,
 					previous,
-					_queryMaxResults(),
+					QueryMaxResults(),
 					cts.Token);
 
 			if (cts.IsCancellationRequested)
@@ -574,13 +594,16 @@ public sealed class ResultsViewModel :
 				{
 					replacement.Add(
 						new JourneyCardModel(
-							journey));
+							journey)
+						{
+							Passenger = _settings.Passenger
+						});
 				}
 				catch (Exception ex)
 				{
 					skipped++;
 
-					Debug.WriteLine(
+					DiagnosticLog.Write(
 						$"Adjacent journey card failed:\n{ex}");
 				}
 			}
@@ -634,7 +657,7 @@ public sealed class ResultsViewModel :
 	}
 
 
-	private int _queryMaxResults()
+	private int QueryMaxResults()
 	{
 		return Math.Clamp(
 			_query?.MaxResults ?? 5,
@@ -683,7 +706,7 @@ public sealed class ResultsViewModel :
 		}
 		catch (Exception inner)
 		{
-			Debug.WriteLine(
+			DiagnosticLog.Write(
 				$"Reporting failed: {inner.Message}");
 		}
 	}
@@ -692,7 +715,7 @@ public sealed class ResultsViewModel :
 	private void ReportContinuationFailure(
 		Exception ex)
 	{
-		Debug.WriteLine(
+		DiagnosticLog.Write(
 			$"Journey continuation failed:\n{ex}");
 
 		try
@@ -717,7 +740,7 @@ public sealed class ResultsViewModel :
 		}
 		catch (Exception inner)
 		{
-			Debug.WriteLine(
+			DiagnosticLog.Write(
 				$"Reporting continuation failure failed: {inner.Message}");
 		}
 	}

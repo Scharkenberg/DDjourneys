@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using System.Runtime.CompilerServices;
 
 namespace DDjourneys.Support;
@@ -21,12 +22,12 @@ public static class Theme
 	private static readonly string[] BrushKeys = ["Outline", "Accent", "Surface", "Raised", "Ink", "InkMuted", "AccentSoft", "OnAccent"];
 
 	// Everything currently written to Application.Resources by the theme (colours, brushes, fonts).
-	private static readonly Dictionary<string, object> Current = new();
+	private static readonly Dictionary<string, object> Current = [];
 
 	// The palette as chosen, before a window material made parts of it translucent: what drawing code and
 	// native chrome (status bar, share image) must use.
-	private static readonly Dictionary<string, Color> Solid = new();
-	private static readonly ConditionalWeakTable<Element, StampBox> Stamps = new();
+	private static readonly Dictionary<string, Color> Solid = [];
+	private static readonly ConditionalWeakTable<Element, StampBox> Stamps = [];
 
 	private static Application? _app;
 	private static AppSettings? _settings;
@@ -38,7 +39,7 @@ public static class Theme
 
 	/// <summary>The page background of the palette in effect; the system bars wear it.</summary>
 	public static Color BarColor =>
-		Solid.TryGetValue("Bg", out Color color)
+		Solid.TryGetValue("Bg", out Color? color) && color is not null
 			? color
 			: IsDark
 				? Colors.Black
@@ -164,7 +165,7 @@ public static class Theme
 
 	/// <summary>A colour of the palette currently in effect (for code that draws outside the view tree).</summary>
 	public static Color ColorOf(string key, Color fallback) =>
-		Solid.TryGetValue(key, out Color color)
+		Solid.TryGetValue(key, out Color? color) && color is not null
 			? color
 			: Current.TryGetValue(key, out object? value) && value is Color current ? current : fallback;
 
@@ -211,7 +212,7 @@ public static class Theme
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Theme revalidate failed: {ex.Message}");
+			DiagnosticLog.Write($"Theme revalidate failed: {ex.Message}");
 		}
 	}
 
@@ -247,7 +248,7 @@ public static class Theme
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Theme fade-out skipped: {ex.Message}");
+			DiagnosticLog.Write($"Theme fade-out skipped: {ex.Message}");
 		}
 
 		try
@@ -266,12 +267,9 @@ public static class Theme
 			}
 			catch (Exception ex)
 			{
-				System.Diagnostics.Debug.WriteLine($"Theme fade-in skipped: {ex.Message}");
+				DiagnosticLog.Write($"Theme fade-in skipped: {ex.Message}");
 
-				if (page is not null)
-				{
-					page.Opacity = 1;
-				}
+				page?.Opacity = 1;
 			}
 		}
 	}
@@ -384,7 +382,7 @@ public static class Theme
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Theme apply failed: {ex}");
+			DiagnosticLog.Write($"Theme apply failed: {ex}");
 		}
 		finally
 		{

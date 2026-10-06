@@ -17,9 +17,8 @@ public static class VvoLegMapper
 	IReadOnlyList<(double Latitude, double Longitude)> path)
 	{
 		StopTime[] stops =
-			route.RegularStops
-				.Select(VvoStopMapper.MapStop)
-				.ToArray();
+			[.. route.RegularStops
+				.Select(VvoStopMapper.MapStop)];
 
 
 		Station from;

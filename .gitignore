@@ -361,3 +361,6 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# Secrets (CARTO API key etc.) - never commit
+DDjourneys/Resources/Raw/secrets.json

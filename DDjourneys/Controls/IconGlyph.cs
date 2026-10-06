@@ -22,6 +22,7 @@ public enum IconGlyph
 	Warning,
 	Tune,
 	Bell,
+	BellFilled,
 	Search,
 	Close,
 	Clock,
@@ -40,7 +41,21 @@ public enum IconGlyph
 	History,
 	Locate,
 	Home,
-	Bookmark
+	Bookmark,
+	BookmarkFilled,
+	Ticket,
+	Document,
+	Image,
+	Map,
+	Fit,
+	Eye,
+	EyeOff,
+	Flag,
+	Download,
+	External,
+	Accessible,
+	Bus,
+	Edit
 }
 
 /// <summary>One icon: path markup on the 24x24 grid, and whether it is drawn solid.</summary>
@@ -117,6 +132,11 @@ internal static class IconPaths
 				new("M12 3 A6 6 0 0 1 18 9 C18 14.6 20 16.6 20 16.6 H4 C4 16.6 6 14.6 6 9 A6 6 0 0 1 12 3 Z "
 					+ "M9.8 19.6 A2.4 2.4 0 0 0 14.2 19.6"),
 
+			// The same bell, solid: a followed journey.
+			[IconGlyph.BellFilled] =
+				new("M12 3 A6 6 0 0 1 18 9 C18 14.6 20 16.6 20 16.6 H4 C4 16.6 6 14.6 6 9 A6 6 0 0 1 12 3 Z "
+					+ "M9.8 19.6 A2.4 2.4 0 0 0 14.2 19.6", true),
+
 			[IconGlyph.Search] =
 				new("M10.8 3.8 A7 7 0 1 0 10.8 17.8 A7 7 0 1 0 10.8 3.8 Z M15.9 15.9 L20.8 20.8"),
 
@@ -183,6 +203,55 @@ internal static class IconPaths
 				new("M3.5 11.5 L12 4 L20.5 11.5 M5.5 10 V20.5 H18.5 V10 M10 20.5 V14.5 H14 V20.5"),
 
 			[IconGlyph.Bookmark] =
-				new("M7 3.5 H17 V20.5 L12 16.5 L7 20.5 Z")
+				new("M7 3.5 H17 V20.5 L12 16.5 L7 20.5 Z"),
+
+			// A ticket with the two notches of a perforation: tickets and prices.
+			[IconGlyph.Ticket] =
+				new("M3.5 7.5 H20.5 V10.5 A1.5 1.5 0 0 0 20.5 13.5 V16.5 H3.5 V13.5 A1.5 1.5 0 0 0 3.5 10.5 Z M14.5 7.5 V9 M14.5 11.25 V12.75 M14.5 15 V16.5"),
+
+			[IconGlyph.BookmarkFilled] =
+				new("M7 3.5 H17 V20.5 L12 16.5 L7 20.5 Z", true),
+
+			// A sheet with a folded corner and two text lines: an attachment or document.
+			[IconGlyph.Document] =
+				new("M6 3.5 H14 L18.5 8 V20.5 H6 Z M14 3.5 V8 H18.5 M9 13 H15.5 M9 16.5 H15.5"),
+
+			[IconGlyph.Image] =
+				new("M4 5 H20 V19 H4 Z M4 15.5 L9 10.5 L13 14.5 L16 11.5 L20 15.5 M14.6 8.6 V8.7"),
+
+			// A folded map.
+			[IconGlyph.Map] =
+				new("M3.5 6.2 L9 4 L15 6.2 L20.5 4 V17.8 L15 20 L9 17.8 L3.5 20 Z M9 4 V17.8 M15 6.2 V20"),
+
+			// Four corners: fit everything into view.
+			[IconGlyph.Fit] =
+				new("M4 9 V4 H9 M20 9 V4 H15 M4 15 V20 H9 M20 15 V20 H15"),
+
+			[IconGlyph.Eye] =
+				new("M2.5 12 C5 7.4 8.5 5.6 12 5.6 C15.5 5.6 19 7.4 21.5 12 C19 16.6 15.5 18.4 12 18.4 C8.5 18.4 5 16.6 2.5 12 Z "
+					+ "M9.4 12 A2.6 2.6 0 1 0 14.6 12 A2.6 2.6 0 1 0 9.4 12 Z"),
+
+			[IconGlyph.EyeOff] =
+				new("M2.5 12 C5 7.4 8.5 5.6 12 5.6 C15.5 5.6 19 7.4 21.5 12 C19 16.6 15.5 18.4 12 18.4 C8.5 18.4 5 16.6 2.5 12 Z "
+					+ "M9.4 12 A2.6 2.6 0 1 0 14.6 12 A2.6 2.6 0 1 0 9.4 12 Z M4 4 L20 20"),
+
+			[IconGlyph.Flag] =
+				new("M5.5 21 V3.5 M5.5 4.5 H18 L15 8.5 L18 12.5 H5.5"),
+
+			[IconGlyph.Download] =
+				new("M12 4 V15 M7 10.5 L12 15.5 L17 10.5 M5 20 H19"),
+
+			[IconGlyph.External] =
+				new("M13.5 4 H20 V10.5 M20 4 L11 13 M17.5 14 V20 H4 V6.5 H10"),
+
+			// A person with open arms: accessibility.
+			[IconGlyph.Bus] =
+				new("M5.5 3.5 H18.5 V17 H5.5 Z M5.5 11 H18.5 M8 17 V20.5 M16 17 V20.5 M8.6 14 V14.1 M15.4 14 V14.1"),
+
+			[IconGlyph.Edit] =
+				new("M4 20 H8.2 L19.4 8.8 L15.2 4.6 L4 15.8 Z M13 6.8 L17.2 11"),
+
+			[IconGlyph.Accessible] =
+				new("M12 3.4 A1.9 1.9 0 1 0 12 7.2 A1.9 1.9 0 1 0 12 3.4 Z M5 9.4 H19 M12 9.4 V14.4 M12 14.4 L8.6 21 M12 14.4 L15.4 21")
 		};
 }

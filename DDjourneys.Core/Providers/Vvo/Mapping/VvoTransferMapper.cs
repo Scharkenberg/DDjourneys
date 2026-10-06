@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using DDjourneys.Core.Models;
 using DDjourneys.Core.Providers.Vvo.Models;
 using DDjourneys.Core.Providers.Vvo.Parsing;
@@ -52,6 +53,16 @@ public static class VvoTransferMapper
 			"StayForConnection",
 			StringComparison.OrdinalIgnoreCase);
 
+	private static StopTime? FirstStopOf(JourneyLeg? leg) =>
+		leg is { Stops.Count: > 0 }
+			? leg.Stops[0]
+			: null;
+
+	private static StopTime? LastStopOf(JourneyLeg? leg) =>
+		leg is { Stops.Count: > 0 }
+			? leg.Stops[^1]
+			: null;
+
 	public static JourneyTransfer MapTransfer(
 		VvoPartialRoute route,
 		JourneyLeg? previousLeg,
@@ -62,42 +73,29 @@ public static class VvoTransferMapper
 			(double Latitude, double Longitude)> path)
 	{
 		StopTime? arrivalStop =
-			previousLeg?
-				.Stops
-				.LastOrDefault();
+			LastStopOf(previousLeg);
 
 
 		StopTime? departureStop =
-			nextLeg?
-				.Stops
-				.FirstOrDefault();
+			FirstStopOf(nextLeg);
 
 
 		// A transfer partial route normally has no RegularStops.
 		// Therefore its location must come from the surrounding
 		// movement legs.
-		Station? location =
+		Station location =
 			previousLeg?.To
-			?? nextLeg?.From;
-
-
-		if (location is null)
-		{
-			throw new InvalidOperationException(
+			?? nextLeg?.From
+			?? throw new InvalidOperationException(
 				"VVO transfer has no identifiable location.");
-		}
 
 
 		DebugTransfer(
 			route,
 			departureStop
-				?? nextLeg?
-					.Stops
-					.FirstOrDefault(),
+				?? FirstStopOf(nextLeg),
 			arrivalStop
-				?? previousLeg?
-					.Stops
-					.LastOrDefault(),
+				?? LastStopOf(previousLeg),
 			path.Count);
 
 
@@ -263,7 +261,7 @@ public static class VvoTransferMapper
 	StopTime? arrivalStop,
 	int pathCount)
 	{
-		System.Diagnostics.Debug.WriteLine(
+		DiagnosticLog.Write(
 			$"""
 			[VVO TRANSFER]
 			PartialRouteId: {route.PartialRouteId}

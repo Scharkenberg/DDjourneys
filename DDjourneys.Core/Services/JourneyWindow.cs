@@ -74,13 +74,12 @@ public static class JourneyWindow
 
 	/// <summary>Orders by the mode's key; journeys without a key go last; equal keys keep their order.</summary>
 	public static List<Journey> Order(IEnumerable<Journey> journeys, JourneySearchMode mode) =>
-		journeys
+		[.. journeys
 			.Select((journey, index) => (journey, index, key: SortKey(journey, mode)))
 			.OrderBy(item => item.key is null)
 			.ThenBy(item => item.key)
 			.ThenBy(item => item.index)
-			.Select(item => item.journey)
-			.ToList();
+			.Select(item => item.journey)];
 
 	/// <summary>
 	/// Brings a first answer to exactly <paramref name="wanted"/> journeys when the timetable allows:
@@ -220,13 +219,13 @@ public static class JourneyWindow
 		// Keep the journeys closest to the list: the latest of the earlier ones, the first of the later ones.
 		page =
 			previous
-				? page.Skip(Math.Max(0, page.Count - wanted)).ToList()
-				: page.Take(wanted).ToList();
+				? [.. page.Skip(Math.Max(0, page.Count - wanted))]
+				: [.. page.Take(wanted)];
 
 		return new PageResult(page, page.Count == 0 ? failure : null);
 	}
 
-	private static IReadOnlyList<Journey> Trim(
+	private static List<Journey> Trim(
 		List<Journey> ordered,
 		JourneySearchMode mode,
 		int wanted)
@@ -238,15 +237,15 @@ public static class JourneyWindow
 
 		// Departures: the first ones after the requested time. Arrive by: the last ones before it.
 		return mode == JourneySearchMode.Arrival
-			? ordered.Skip(ordered.Count - wanted).ToList()
-			: ordered.Take(wanted).ToList();
+			? [.. ordered.Skip(ordered.Count - wanted)]
+			: [.. ordered.Take(wanted)];
 	}
 
 	private static List<Journey> Distinct(IEnumerable<Journey> journeys)
 	{
 		var seen = new HashSet<string>(StringComparer.Ordinal);
 
-		return journeys.Where(journey => seen.Add(IdentityOf(journey))).ToList();
+		return [.. journeys.Where(journey => seen.Add(IdentityOf(journey)))];
 	}
 
 	private static JourneyQuery Copy(

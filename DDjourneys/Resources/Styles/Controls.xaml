@@ -28,6 +28,7 @@
 		<Setter Property="FontSize" Value="{StaticResource FontHeadline}" />
 	</Style>
 	<Style Class="Title" TargetType="Label">
+		<Setter Property="SemanticProperties.HeadingLevel" Value="Level2" />
 		<Setter Property="FontFamily" Value="{DynamicResource FontSemibold}" />
 		<Setter Property="FontSize" Value="{StaticResource FontTitle}" />
 	</Style>
@@ -104,7 +105,7 @@
 		<Setter Property="CornerRadius" Value="6" />
 		<Setter Property="BorderWidth" Value="0" />
 		<Setter Property="BorderColor" Value="Transparent" />
-		<Setter Property="support:Dense.MinHeight" Value="48" />
+		<Setter Property="support:Dense.MinHeight" Value="{StaticResource HitPrimary}" />
 		<Setter Property="Padding" Value="16,0" />
 		<Setter Property="support:Motion.Enter" Value="Zoom" />
 		<Setter Property="support:Motion.OnShow" Value="True" />
@@ -130,8 +131,8 @@
 		<Setter Property="support:Themed.DisabledText" Value="InkMuted" />
 		<Setter Property="FontSize" Value="22" />
 		<Setter Property="Padding" Value="0" />
-		<Setter Property="support:Dense.MinHeight" Value="44" />
-		<Setter Property="support:Dense.MinWidth" Value="44" />
+		<Setter Property="support:Dense.MinHeight" Value="{StaticResource HitIcon}" />
+		<Setter Property="support:Dense.MinWidth" Value="{StaticResource HitIcon}" />
 		<Setter Property="VisualStateManager.VisualStateGroups">
 			<VisualStateGroupList>
 				<VisualStateGroup x:Name="CommonStates">
@@ -167,6 +168,7 @@
 		<Setter Property="support:Motion.Enter" Value="Grow" />
 	</Style>
 	<Style Class="Section" TargetType="Label">
+		<Setter Property="SemanticProperties.HeadingLevel" Value="Level2" />
 		<Setter Property="FontFamily" Value="{DynamicResource FontSemibold}" />
 		<Setter Property="FontSize" Value="{StaticResource FontCaption}" />
 		<Setter Property="TextColor" Value="{DynamicResource Accent}" />

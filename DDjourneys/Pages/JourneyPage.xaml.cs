@@ -5,12 +5,16 @@ namespace DDjourneys.Pages;
 public partial class JourneyPage : ContentPage
 {
 	private readonly JourneyViewModel _vm;
+	private IDispatcherTimer? _clock;
 
 	public JourneyPage(JourneyViewModel vm)
 	{
 		InitializeComponent();
 		Motion.Prepare(this);
 		BindingContext = _vm = vm;
+
+		// The notice badge in the card: bring the notices into view.
+		vm.ScrollToNotices = () => _ = PageScroll.ScrollToAsync(NoticesBlock, ScrollToPosition.Start, true);
 
 		vm.ChooseShareFormat = (title, cancel, options) =>
 			DisplayActionSheetAsync(title, cancel, null, options);
@@ -40,11 +44,23 @@ public partial class JourneyPage : ContentPage
 
 		_vm.StartObservingTracking();
 
+		// "In progress" ends with the ride: the rows are asked again every few seconds while the page shows.
+		if (_clock is null)
+		{
+			_clock = Dispatcher.CreateTimer();
+			_clock.Interval = TimeSpan.FromSeconds(15);
+			_clock.Tick += (_, _) => _vm.TickClock();
+		}
+
+		_clock.Start();
+		_vm.TickClock();
+
 		Motion.EnterPage(this);
 	}
 
 	protected override void OnDisappearing()
 	{
+		_clock?.Stop();
 		_vm.StopObservingTracking();
 		base.OnDisappearing();
 	}
@@ -73,7 +89,7 @@ public partial class JourneyPage : ContentPage
 
 	private void StopsToggled(object? sender, TappedEventArgs e)
 	{
-		if ((sender as BindableObject)?.BindingContext is LegRow leg)
+		if (sender is BindableObject { BindingContext: LegRow leg })
 		{
 			_vm.ToggleStopsCommand.Execute(leg);
 		}

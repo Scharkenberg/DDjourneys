@@ -19,4 +19,10 @@ public interface IJourneyExtrasProvider
 	Uri? GetJourneyDocumentUri(
 		JourneyQuery query,
 		Journey journey);
+
+	/// <summary>Downloads the printable version; null when the provider could not deliver it.</summary>
+	Task<JourneyDocument?> GetJourneyDocumentAsync(
+		JourneyQuery query,
+		Journey journey,
+		CancellationToken cancellationToken = default);
 }

@@ -1,4 +1,5 @@
-﻿using DDjourneys.Core.Models;
+﻿using DDjourneys.Core.Diagnostics;
+using DDjourneys.Core.Models;
 using DDjourneys.Core.Providers.Abstractions;
 using DDjourneys.Core.Providers.Vvo.Mapping;
 using DDjourneys.Core.Providers.Vvo.Models;
@@ -9,7 +10,7 @@ namespace DDjourneys.Core.Providers.Vvo;
 /// <summary>
 /// Provides journey planning using the VVO WebAPI.
 /// </summary>
-public sealed class VvoJourneyProvider :
+public sealed partial class VvoJourneyProvider :
 	IJourneyProvider,
 	IJourneyContinuationProvider,
 	IJourneyExtrasProvider,
@@ -56,10 +57,10 @@ public sealed class VvoJourneyProvider :
 			new VvoTripRequest
 			{
 				Origin =
-					query.From.Id,
+					query.From.Id ?? string.Empty,
 
 				Destination =
-					query.To.Id,
+					query.To.Id ?? string.Empty,
 
 				Time =
 					query.DateTime,
@@ -85,12 +86,12 @@ public sealed class VvoJourneyProvider :
 			VvoTripResponse? response =
 				await _apiClient.GetTripsAsync(
 					request,
-					cancellationToken,
 					TimeSpan.FromSeconds(
 						Math.Clamp(
 							query.TimeoutSeconds,
 							5,
-							60)))
+							60)),
+					cancellationToken)
 				.ConfigureAwait(false);
 
 
@@ -106,7 +107,7 @@ public sealed class VvoJourneyProvider :
 			if (response.Routes.Count == 0)
 			{
 				return JourneyResult.Success(
-					Array.Empty<Journey>());
+					[]);
 			}
 
 
@@ -114,7 +115,9 @@ public sealed class VvoJourneyProvider :
 				VvoJourneyMapper.Map(
 					response,
 					query.From,
-					query.To);
+					query.To,
+					query.DateTime,
+					query.SearchMode == JourneySearchMode.Arrival);
 
 			RememberRouting(journeys, query.Routing);
 
@@ -134,7 +137,7 @@ public sealed class VvoJourneyProvider :
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine(
+			DiagnosticLog.Write(
 				$"VVO journey request failed: {ex}");
 
 			return JourneyResult.Failure(
@@ -176,9 +179,9 @@ public sealed class VvoJourneyProvider :
 
 		DateTimeOffset requestedTime =
 			target.Departure
-			?? target.Legs
-				.FirstOrDefault()
-				?.ScheduledDeparture
+			?? (target.Legs.Count > 0
+				? target.Legs[0].ScheduledDeparture
+				: null)
 			?? DateTimeOffset.UtcNow;
 
 
@@ -209,8 +212,8 @@ public sealed class VvoJourneyProvider :
 		VvoTripResponse? response =
 			await _apiClient.GetTripsAsync(
 				request,
-				cancellationToken,
-				TimeSpan.FromSeconds(15))
+				TimeSpan.FromSeconds(15),
+				cancellationToken)
 			.ConfigureAwait(false);
 
 
@@ -282,7 +285,7 @@ public sealed class VvoJourneyProvider :
 
 		if (candidates.Count == 0)
 		{
-			System.Diagnostics.Debug.WriteLine(
+			DiagnosticLog.Write(
 				$"[VVO SCHUTZENGEL] No match among {count} routes for {target.From.Id}->{target.To.Id} at {requestedTime:u} (legs={target.Legs.Count}).");
 
 			return null;
@@ -302,7 +305,7 @@ public sealed class VvoJourneyProvider :
 			response.Routes[best.Index];
 
 
-		System.Diagnostics.Debug.WriteLine(
+		DiagnosticLog.Write(
 			$"""
 			[VVO SCHUTZENGEL]
 			Matched RouteId={route.RouteId}
@@ -314,8 +317,8 @@ public sealed class VvoJourneyProvider :
 
 		return (
 			Route: route,
-			SessionId: response.SessionId,
-			Status: response.Status);
+			response.SessionId,
+			response.Status);
 	}
 
 
@@ -398,10 +401,10 @@ public sealed class VvoJourneyProvider :
 			new VvoPrevNextRequest
 			{
 				Origin =
-					query.From.Id,
+					query.From.Id ?? string.Empty,
 
 				Destination =
-					query.To.Id,
+					query.To.Id ?? string.Empty,
 
 				SessionId =
 					currentJourney.Context,
@@ -443,12 +446,12 @@ public sealed class VvoJourneyProvider :
 			VvoTripResponse? response =
 				await _apiClient.GetPreviousNextTripsAsync(
 					request,
-					cancellationToken,
 					TimeSpan.FromSeconds(
 						Math.Clamp(
 							query.TimeoutSeconds,
 							5,
-							60)))
+							60)),
+					cancellationToken)
 				.ConfigureAwait(false);
 
 
@@ -462,7 +465,7 @@ public sealed class VvoJourneyProvider :
 			if (response.Routes.Count == 0)
 			{
 				return JourneyResult.Success(
-					Array.Empty<Journey>());
+					[]);
 			}
 
 
@@ -470,7 +473,9 @@ public sealed class VvoJourneyProvider :
 				VvoJourneyMapper.Map(
 					response,
 					query.From,
-					query.To);
+					query.To,
+					query.DateTime,
+					query.SearchMode == JourneySearchMode.Arrival);
 
 			RememberRouting(journeys, query.Routing);
 
@@ -489,7 +494,7 @@ public sealed class VvoJourneyProvider :
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine(
+			DiagnosticLog.Write(
 				$"VVO continuation request failed: {ex}");
 
 			return JourneyResult.Failure(
@@ -554,12 +559,12 @@ public sealed class VvoJourneyProvider :
 			VvoTripResponse? response =
 				await _apiClient.GetLegAlternativeAsync(
 					request,
-					cancellationToken,
 					TimeSpan.FromSeconds(
 						Math.Clamp(
 							query.TimeoutSeconds,
 							5,
-							60)))
+							60)),
+					cancellationToken)
 				.ConfigureAwait(false);
 
 			if (response is null)
@@ -571,14 +576,16 @@ public sealed class VvoJourneyProvider :
 			if (response.Routes.Count == 0)
 			{
 				return JourneyResult.Success(
-					Array.Empty<Journey>());
+					[]);
 			}
 
 			IReadOnlyList<Journey> journeys =
 				VvoJourneyMapper.Map(
 					response,
 					query.From,
-					query.To);
+					query.To,
+					query.DateTime,
+					query.SearchMode == JourneySearchMode.Arrival);
 
 			RememberRouting(journeys, query.Routing);
 
@@ -595,7 +602,7 @@ public sealed class VvoJourneyProvider :
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine(
+			DiagnosticLog.Write(
 				$"VVO leg alternative request failed: {ex}");
 
 			return JourneyResult.Failure(
@@ -624,7 +631,7 @@ public sealed class VvoJourneyProvider :
 			return null;
 		}
 
-		return _apiClient.BuildTripPdfUri(
+		return VvoApiClient.BuildTripPdfUri(
 			journey.Id,
 			journey.Context,
 			query.From.Id!,
@@ -634,6 +641,76 @@ public sealed class VvoJourneyProvider :
 			query.Via?.Id,
 			CreateStandardSettings(query.Routing),
 			CreateMobilitySettings(query.Routing));
+	}
+
+
+	// A VVO session id looks like "367417461:efa4".
+	[System.Text.RegularExpressions.GeneratedRegex(@"^\d+:[A-Za-z0-9]+$")]
+	private static partial System.Text.RegularExpressions.Regex SessionShape();
+
+
+	/// <inheritdoc />
+	public async Task<JourneyDocument?> GetJourneyDocumentAsync(
+		JourneyQuery query,
+		Journey journey,
+		CancellationToken cancellationToken = default)
+	{
+		ArgumentNullException.ThrowIfNull(query);
+		ArgumentNullException.ThrowIfNull(journey);
+
+		DiagnosticLog.Write(
+			$"[VVO PDF] journey Id={journey.Id} SessionId={journey.Context} provider={journey.ProviderId} " +
+			$"from={query.From.Id} to={query.To.Id} via={query.Via?.Id} time={query.DateTime:O} arrival={query.SearchMode == JourneySearchMode.Arrival}");
+
+		if (string.IsNullOrWhiteSpace(journey.Context)
+			|| !SessionShape().IsMatch(journey.Context))
+		{
+			DiagnosticLog.Write(
+				$"[VVO PDF] the session id '{journey.Context}' does not look like a VVO session id (digits, colon, letters); asking anyway");
+		}
+
+		if (CheckEndpoints(
+			query.From,
+			query.To,
+			query.Via) is not null
+			|| !IsVvoJourney(journey)
+			|| string.IsNullOrWhiteSpace(journey.Context)
+			|| string.IsNullOrWhiteSpace(journey.Id))
+		{
+			DiagnosticLog.Write("[VVO PDF] not asked: endpoints, provider, session or route id missing");
+
+			return null;
+		}
+
+		var attempts =
+			VvoApiClient.BuildTripPdfAttempts(
+				journey.Id,
+				journey.Context,
+				query.From.Id!,
+				query.To.Id!,
+				query.DateTime,
+				query.SearchMode == JourneySearchMode.Arrival,
+				query.Via?.Id,
+				CreateStandardSettings(query.Routing),
+				CreateMobilitySettings(query.Routing));
+
+		byte[]? pdf =
+			await _apiClient
+				.DownloadTripPdfAsync(
+					attempts,
+					TimeSpan.FromSeconds(
+						Math.Clamp(
+							query.TimeoutSeconds,
+							5,
+							60)),
+					cancellationToken)
+				.ConfigureAwait(false);
+
+		return pdf is null
+			? null
+			: new JourneyDocument(
+				pdf,
+				$"journey-{journey.Id}.pdf");
 	}
 
 
@@ -710,7 +787,7 @@ public sealed class VvoJourneyProvider :
 	private static JourneyResult Failed(
 		DDjourneys.Core.Api.ApiException ex)
 	{
-		System.Diagnostics.Debug.WriteLine(
+		DiagnosticLog.Write(
 			$"VVO request failed: {ex}");
 
 		return JourneyResult.Failure(
@@ -721,7 +798,7 @@ public sealed class VvoJourneyProvider :
 	}
 
 
-	private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Journey, RoutingPreferences> RoutingByJourney = new();
+	private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Journey, RoutingPreferences> RoutingByJourney = [];
 
 	private static void RememberRouting(IReadOnlyList<Journey> journeys, RoutingPreferences routing)
 	{
@@ -982,8 +1059,6 @@ public sealed class VvoJourneyProvider :
 			return journeys;
 		}
 
-		return journeys
-			.Take(maximum)
-			.ToArray();
+		return [.. journeys.Take(maximum)];
 	}
 }

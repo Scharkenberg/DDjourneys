@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using DDjourneys.Core.Storage;
 
 namespace DDjourneys.Support;
@@ -34,8 +35,9 @@ public sealed class PreferencesKeyValueStore(IPreferences? preferences = null) :
 public static class AppStorage
 {
 	public static IReadOnlyList<StorageMigration> Migrations { get; } =
+	(List<StorageMigration>)
 	[
-		new StorageMigration(
+		new(
 			1,
 			"appearance",
 			store =>
@@ -45,7 +47,7 @@ public static class AppStorage
 					new AppSettings().MigrateAppearance();
 				}
 			}),
-		new StorageMigration(
+		new(
 			2,
 			"place lists",
 			store => new PlaceStore(store).Normalize())
@@ -61,12 +63,12 @@ public static class AppStorage
 
 			if (ran.Count > 0)
 			{
-				System.Diagnostics.Debug.WriteLine($"Storage upgraded: {string.Join(", ", ran)}");
+				DiagnosticLog.Write($"Storage upgraded: {string.Join(", ", ran)}");
 			}
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Storage upgrade skipped: {ex.Message}");
+			DiagnosticLog.Write($"Storage upgrade skipped: {ex.Message}");
 		}
 	}
 }

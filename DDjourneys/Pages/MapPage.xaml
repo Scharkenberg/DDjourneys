@@ -1,0 +1,33 @@
+<ContentPage
+	x:Class="DDjourneys.Pages.MapPage"
+	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+	xmlns:controls="clr-namespace:DDjourneys.Controls"
+	xmlns:localization="clr-namespace:DDjourneys.Localization"
+	Title="{localization:Tr Extras.MapTitle}">
+
+	<Grid>
+		<controls:MapView x:Name="Map" />
+
+		<!--  What to do here: zoom in for stops, or tap to pick (not interactive)  -->
+		<Border
+			x:Name="Hint"
+			Margin="12,8"
+			Padding="12,6"
+			BackgroundColor="{DynamicResource Surface}"
+			HorizontalOptions="Center"
+			InputTransparent="True"
+			IsVisible="False"
+			Opacity="0.95"
+			Stroke="{DynamicResource Outline}"
+			StrokeShape="RoundRectangle 100"
+			StrokeThickness="1"
+			VerticalOptions="Start">
+			<Label
+				x:Name="HintLabel"
+				FontSize="{StaticResource FontCaption}"
+				HorizontalTextAlignment="Center"
+				TextColor="{DynamicResource InkMuted}" />
+		</Border>
+	</Grid>
+</ContentPage>

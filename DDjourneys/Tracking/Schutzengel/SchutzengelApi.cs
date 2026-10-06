@@ -1,23 +1,20 @@
+using DDjourneys.Core.Diagnostics;
 using System.Diagnostics;
 using System.Globalization;
 using System.Net;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
+using DDjourneys.Core.Serialization;
 
 namespace DDjourneys.Tracking.Schutzengel;
 
 /// <summary>A parsed response together with the status code the protocol keys on.</summary>
-internal sealed class SchutzengelResponse : IDisposable
+internal sealed partial class SchutzengelResponse(HttpStatusCode statusCode, JsonDocument json) : IDisposable
 {
-	public SchutzengelResponse(HttpStatusCode statusCode, JsonDocument json)
-	{
-		StatusCode = statusCode;
-		Json = json;
-	}
+	public HttpStatusCode StatusCode { get; } = statusCode;
 
-	public HttpStatusCode StatusCode { get; }
-
-	public JsonDocument Json { get; }
+	public JsonDocument Json { get; } = json;
 
 	public JsonElement Root => Json.RootElement;
 
@@ -27,7 +24,7 @@ internal sealed class SchutzengelResponse : IDisposable
 internal sealed class SchutzengelApi
 {
 	private const string BaseUrl =
-		"https://m.dvb.de/schutzengel/";
+		InterfaceSchemas.SchutzengelUrl;
 
 	private const string BrowserUserAgent =
 		"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
@@ -157,14 +154,14 @@ internal sealed class SchutzengelApi
 		SendJsonAsync(
 			HttpMethod.Post,
 			"activatePlan",
-			JsonSerializer.Serialize(new { plan_id = planId }),
+			Wire.Single("plan_id", planId),
 			cancellationToken);
 
 	public Task<JsonDocument> DeactivateAsync(string planId, CancellationToken cancellationToken) =>
 		SendJsonAsync(
 			HttpMethod.Post,
 			"deactivatePlan",
-			JsonSerializer.Serialize(new { plan_id = planId }),
+			Wire.Single("plan_id", planId),
 			cancellationToken);
 
 	/// <summary>
@@ -181,12 +178,11 @@ internal sealed class SchutzengelApi
 		return SendJsonAsync(
 			HttpMethod.Post,
 			"planSetOptions",
-			JsonSerializer.Serialize(
-				new
-				{
-					plan_id = planId,
-					newOptions = options.ToPayload()
-				}),
+			new JsonObject
+			{
+				["plan_id"] = planId,
+				["newOptions"] = options.ToPayload()
+			}.ToJsonString(),
 			cancellationToken);
 	}
 
@@ -194,7 +190,7 @@ internal sealed class SchutzengelApi
 		SendJsonAsync(
 			HttpMethod.Delete,
 			"plan",
-			JsonSerializer.Serialize(new { plan_id = planId }),
+			Wire.Single("plan_id", planId),
 			cancellationToken);
 
 	public Task<JsonDocument> DeleteAllPlansAsync(CancellationToken cancellationToken) =>
@@ -260,18 +256,31 @@ internal sealed class SchutzengelApi
 
 	// ----- Push registration (kept for parity with the reference client) -----
 
-	public Task<JsonDocument> RegisterFirebaseAsync(string token, CancellationToken cancellationToken) =>
+	/// <summary>The reference client's application id ("APP_ID" of its config); the push endpoints take it with the token.</summary>
+	public const string ReferenceAppId = "dvb_web";
+
+	public Task<JsonDocument> RegisterFirebaseAsync(string token, CancellationToken cancellationToken, string appId = ReferenceAppId) =>
 		SendJsonAsync(
 			HttpMethod.Post,
 			"register-firebase",
-			JsonSerializer.Serialize(new { token }),
+			new JsonObject { ["token"] = token, ["app_id"] = appId }.ToJsonString(),
 			cancellationToken);
 
-	public Task<JsonDocument> UnregisterFirebaseAsync(string token, CancellationToken cancellationToken) =>
+	public Task<JsonDocument> UnregisterFirebaseAsync(string token, CancellationToken cancellationToken, string appId = ReferenceAppId) =>
 		SendJsonAsync(
 			HttpMethod.Post,
 			"unregister-firebase",
-			JsonSerializer.Serialize(new { token }),
+			new JsonObject { ["token"] = token, ["app_id"] = appId }.ToJsonString(),
+			cancellationToken);
+
+	/// <summary>
+	/// Moves the plans of this anonymous account into a logged-in user (the reference client's login hand-over).
+	/// </summary>
+	public Task<JsonDocument> MigrateIntoUserAsync(string intoUser, CancellationToken cancellationToken) =>
+		SendJsonAsync(
+			HttpMethod.Post,
+			"migrate-into-user",
+			Wire.Single("into_user", intoUser),
 			cancellationToken);
 
 	// ----- Transport -----
@@ -345,8 +354,8 @@ internal sealed class SchutzengelApi
 
 		(HttpStatusCode Status, string Text) result =
 			await SendAuthenticatedAsync(
-				method, path, body, token, cancellationToken,
-				planId, tripId, dataVersion, notificationCount).ConfigureAwait(false);
+				method, path, body, token,
+				planId, tripId, dataVersion, notificationCount, cancellationToken).ConfigureAwait(false);
 
 		if (result.Status == HttpStatusCode.Unauthorized)
 		{
@@ -360,8 +369,8 @@ internal sealed class SchutzengelApi
 
 			result =
 				await SendAuthenticatedAsync(
-					method, path, body, retryToken, cancellationToken,
-					planId, tripId, dataVersion, notificationCount).ConfigureAwait(false);
+					method, path, body, retryToken,
+					planId, tripId, dataVersion, notificationCount, cancellationToken).ConfigureAwait(false);
 		}
 
 		if ((int)result.Status is < 200 or >= 300)
@@ -394,7 +403,7 @@ internal sealed class SchutzengelApi
 		}
 		catch (JsonException)
 		{
-			return JsonDocument.Parse(JsonSerializer.Serialize(trimmed));
+			return JsonDocument.Parse(JsonValue.Create(trimmed)!.ToJsonString());
 		}
 	}
 
@@ -444,11 +453,11 @@ internal sealed class SchutzengelApi
 		string path,
 		string? body,
 		string token,
-		CancellationToken cancellationToken,
 		string? planId,
 		string? tripId,
 		string? dataVersion,
-		string? notificationCount)
+		string? notificationCount,
+		CancellationToken cancellationToken)
 	{
 		using HttpRequestMessage request = CreateRequest(method, path);
 
@@ -511,12 +520,12 @@ internal sealed class SchutzengelApi
 					? body
 					: body[..Limit] + $"... (+{body.Length - Limit} chars)";
 
-		Debug.WriteLine($"[SCHUTZENGEL] {method.Method} {path} {preview}");
+		DiagnosticLog.Write($"[SCHUTZENGEL] {method.Method} {path} {preview}");
 	}
 
 	[Conditional("DEBUG")]
 	private static void Log(string message) =>
-		Debug.WriteLine($"[SCHUTZENGEL] {message}");
+		DiagnosticLog.Write($"[SCHUTZENGEL] {message}");
 
 	private static HttpRequestMessage CreateRequest(HttpMethod method, string path)
 	{

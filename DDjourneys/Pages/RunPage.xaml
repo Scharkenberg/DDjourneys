@@ -9,11 +9,11 @@
 	Title="{localization:Tr Departures.RunTitle}"
 	x:DataType="local:RunViewModel">
 
-	<RefreshView Command="{Binding RefreshCommand}" IsRefreshing="{Binding IsBusy}">
+	<RefreshView Command="{Binding RefreshCommand}" IsRefreshing="{Binding IsBusy, Mode=OneWay}">
 		<ScrollView>
 			<VerticalStackLayout Padding="{DynamicResource PadPage}" Spacing="{DynamicResource SpaceM}">
 
-				<Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+				<Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
 					<Border
 						BackgroundColor="{Binding Look.Fill}"
 						StrokeDashArray="{Binding Look.Dashes}"
@@ -36,7 +36,22 @@
 						LineBreakMode="TailTruncation"
 						Text="{Binding Direction}"
 						VerticalOptions="Center" />
+
+					<controls:IconButton
+						Grid.Column="2"
+						Command="{Binding OpenMapCommand}"
+						Glyph="MapPin"
+						HorizontalOptions="End"
+						IsVisible="{Binding CanShowMap}"
+						SemanticProperties.Description="{localization:Tr Extras.MapShow}"
+						VerticalOptions="Center" />
 				</Grid>
+
+				<Label
+					HorizontalTextAlignment="Center"
+					IsVisible="{Binding HasOperatingText}"
+					StyleClass="Caption"
+					Text="{Binding OperatingText}" />
 
 				<Label
 					HorizontalTextAlignment="Center"
@@ -59,8 +74,8 @@
 							<DataTemplate x:DataType="local:RunRow">
 								<Grid RowDefinitions="Auto,Auto" RowSpacing="0">
 									<Grid
-										support:Dense.Padding="14,10"
-										support:Dense.MinHeight="52"
+										support:Dense.Padding="12,8"
+										support:Dense.MinHeight="{StaticResource HitRow}"
 										ColumnDefinitions="Auto,*,Auto"
 										ColumnSpacing="10"
 										Opacity="{Binding RowOpacity}"
@@ -85,7 +100,7 @@
 											<Label
 												IsVisible="{Binding IsCancelled}"
 												StyleClass="Cancelled"
-												Text="{Binding CancelledText}" />
+												Text="{localization:Tr Departures.Cancelled}" />
 										</VerticalStackLayout>
 
 										<HorizontalStackLayout

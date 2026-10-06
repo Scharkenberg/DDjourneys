@@ -51,10 +51,23 @@ public sealed class Location
 
 
 	/// <summary>
+	/// What this is. Stored places from before addresses existed are stops.
+	/// </summary>
+	public PlaceKind Kind { get; init; } = PlaceKind.Stop;
+
+
+	/// <summary>
 	/// Indicates whether this location represents a public transport stop.
 	/// </summary>
 	public bool IsStation =>
-		!string.IsNullOrWhiteSpace(Id);
+		Kind == PlaceKind.Stop
+		&& !string.IsNullOrWhiteSpace(Id);
+
+
+	/// <summary>The router can start or end here (stop, address, point of interest or an exact position).</summary>
+	public bool IsRoutable =>
+		Kind is PlaceKind.Stop or PlaceKind.Address or PlaceKind.Poi or PlaceKind.Coordinate
+		&& !string.IsNullOrWhiteSpace(Id);
 
 
 	/// <summary>Provider-qualified stop key ("vvo:33000028"); null for free-form places.</summary>

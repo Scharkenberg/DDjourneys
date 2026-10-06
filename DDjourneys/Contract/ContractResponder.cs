@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using DDjourneys.Core.Contract;
 
 namespace DDjourneys.Contract;
@@ -35,7 +36,7 @@ public sealed class ContractResponder(ICallbackLauncher launcher)
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Contract reply failed: {ex.Message}");
+			DiagnosticLog.Write($"Contract reply failed: {ex.Message}");
 
 			return false;
 		}
@@ -66,7 +67,7 @@ internal sealed class PlatformCallbackLauncher : ICallbackLauncher
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Opening the callback failed: {ex.Message}");
+			DiagnosticLog.Write($"Opening the callback failed: {ex.Message}");
 
 			return Task.FromResult(false);
 		}

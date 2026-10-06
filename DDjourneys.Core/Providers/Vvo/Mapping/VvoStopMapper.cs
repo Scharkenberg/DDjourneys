@@ -105,7 +105,7 @@ public static class VvoStopMapper
 			?? string.Empty,
 
 		Place =
-			stop.Place,
+			VvoPlaces.Resolve(stop.Place),
 
 		Latitude =
 			latitude,

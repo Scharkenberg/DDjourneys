@@ -37,8 +37,32 @@ public enum ProviderCapabilities
 	NetworkInfo = 512,
 
 	/// <summary>Alternatives for a single leg of a journey, and a printable journey.</summary>
-	JourneyExtras = 1024
+	JourneyExtras = 1024,
+
+	/// <summary>Live positions of vehicles.</summary>
+	LiveVehicles = 2048,
+
+	/// <summary>Open data of the city: stop accessibility, service points.</summary>
+	OpenData = 4096,
+
+	/// <summary>Fares and tickets of a journey.</summary>
+	Fares = 8192,
+
+	/// <summary>The router can optimise for fastest, fewest changes, least walking or lowest fare.</summary>
+	RouteOptimisation = 16384,
+
+	/// <summary>Fares are priced for the traveller category the passenger names (youth, child, senior).</summary>
+	PassengerFares = 32768,
+
+	/// <summary>The router honours the walking time to a stop and plans from and to nearby stops.</summary>
+	WalkToStops = 65536,
+
+	/// <summary>The router can leave out journeys with a fare supplement.</summary>
+	SupplementFilter = 131072
 }
+
+/// <summary>A place a map can start at: the central city of a provider's area.</summary>
+public sealed record MapCenter(string Name, double Latitude, double Longitude, int Zoom = 12);
 
 /// <summary>
 /// Static description of a data provider (one transport authority or API). Names are proper nouns and
@@ -50,13 +74,17 @@ public enum ProviderCapabilities
 /// <param name="Region">Group heading in the picker ("Sachsen"); providers with the same region are listed together.</param>
 /// <param name="Coverage">Main places served, as proper nouns.</param>
 /// <param name="Capabilities">What the provider supports.</param>
+/// <param name="IsExperimental">Works, but not to the standard of the others; the UI says so.</param>
+/// <param name="Center">The central city of the area served: where a map without any other hint starts.</param>
 public sealed record ProviderInfo(
 	string Id,
 	string Name,
 	string FullName,
 	string Region,
 	string Coverage,
-	ProviderCapabilities Capabilities)
+	ProviderCapabilities Capabilities,
+	bool IsExperimental = false,
+	MapCenter? Center = null)
 {
 	public bool Supports(ProviderCapabilities capability) =>
 		(Capabilities & capability) == capability;

@@ -10,93 +10,114 @@
 	Title="{localization:Tr Departures.Title}"
 	x:DataType="local:DeparturesViewModel">
 
-	<RefreshView Command="{Binding RefreshCommand}" IsRefreshing="{Binding IsBusy}">
-		<ScrollView>
-			<VerticalStackLayout Padding="{DynamicResource PadPage}" Spacing="{DynamicResource SpaceM}">
+	<!--  The stop and the choice between departures and arrivals stay where they are; only the list below them scrolls  -->
+	<Grid RowDefinitions="Auto,*" RowSpacing="0">
 
-				<!--  Stop  -->
-				<Border Padding="0" StyleClass="Card">
-					<Grid
-						support:Dense.Padding="14,10"
-						support:Dense.MinHeight="56"
-						ColumnDefinitions="*,Auto,Auto"
-						ColumnSpacing="{DynamicResource SpaceS}"
-						SemanticProperties.Description="{localization:Tr Departures.Stop}">
+		<VerticalStackLayout Padding="12,8,12,0" Spacing="6">
 
-						<controls:StopNameView
-							Place="{Binding StopPlace}"
-							Stop="{Binding StopName}"
-							VerticalOptions="Center" />
+			<!--  Stop: one slim line  -->
+			<Border Padding="0" StyleClass="Card">
+				<Grid
+					support:Dense.Padding="12,4"
+					support:Dense.MinHeight="{StaticResource HitRowTight}"
+					ColumnDefinitions="*,Auto,Auto,Auto"
+					ColumnSpacing="0"
+					SemanticProperties.Description="{localization:Tr Departures.Stop}">
 
-						<controls:IconButton
-							Grid.Column="1"
-							Command="{Binding LocateCommand}"
-							Glyph="Locate"
-							SemanticProperties.Description="{localization:Tr Departures.UseMyLocation}" />
+					<controls:StopNameView
+						Compact="True"
+						Place="{Binding StopPlace}"
+						Stop="{Binding StopName}"
+						VerticalOptions="Center" />
 
-						<controls:IconButton
-							Grid.Column="2"
-							Command="{Binding RefreshCommand}"
-							Glyph="Refresh"
-							IsVisible="{Binding HasStop}"
-							SemanticProperties.Description="{localization:Tr Departures.Refresh}" />
+					<controls:IconButton
+						Grid.Column="1"
+						Command="{Binding LocateCommand}"
+						Glyph="Locate"
+						SemanticProperties.Description="{localization:Tr Departures.UseMyLocation}"
+						TargetSize="{StaticResource HitIconTight}" />
 
-						<Grid.GestureRecognizers>
-							<TapGestureRecognizer Command="{Binding PickStopCommand}" />
-						</Grid.GestureRecognizers>
-					</Grid>
-				</Border>
+					<controls:IconButton
+						Grid.Column="2"
+						Clicked="MapClicked"
+						Glyph="Map"
+						SemanticProperties.Description="{localization:Tr Extras.MapPickOnMap}"
+						TargetSize="{StaticResource HitIconTight}" />
 
-				<Label
-					IsVisible="{Binding HasZone}"
-					StyleClass="Caption"
-					Text="{Binding ZoneText}" />
+					<controls:IconButton
+						Grid.Column="3"
+						Command="{Binding RefreshCommand}"
+						Glyph="Refresh"
+						IsVisible="{Binding HasStop}"
+						SemanticProperties.Description="{localization:Tr Departures.Refresh}"
+						TargetSize="{StaticResource HitIconTight}" />
 
-				<!--  Departures / arrivals and the moment  -->
-				<VerticalStackLayout IsVisible="{Binding HasStop}" Spacing="{DynamicResource SpaceS}">
+					<Grid.GestureRecognizers>
+						<TapGestureRecognizer Command="{Binding PickStopCommand}" />
+					</Grid.GestureRecognizers>
+				</Grid>
+			</Border>
 
-					<Grid ColumnDefinitions="*,*,Auto" ColumnSpacing="{DynamicResource SpaceS}">
-						<Button
-							Command="{Binding DepartCommand}"
-							StyleClass="Tonal"
-							support:Themed.IsOn="{Binding IsDeparture}"
-							support:Themed.OnBackground="Accent"
-							support:Themed.OnText="OnAccent"
-							Text="{localization:Tr Departures.DeparturesTab}" />
-						<Button
-							Grid.Column="1"
-							Command="{Binding ArriveCommand}"
-							StyleClass="Tonal"
-							support:Themed.IsOn="{Binding IsArrival}"
-							support:Themed.OnBackground="Accent"
-							support:Themed.OnText="OnAccent"
-							Text="{localization:Tr Departures.ArrivalsTab}" />
-						<Button
-							Grid.Column="2"
-							Command="{Binding NowCommand}"
-							IsEnabled="{Binding IsNotNow}"
-							StyleClass="Tonal"
-							Text="{localization:Tr Departures.Now}" />
-					</Grid>
+			<Label
+				IsVisible="{Binding HasZone}"
+				StyleClass="Caption"
+				Text="{Binding ZoneText}" />
 
-					<Grid ColumnDefinitions="*,*" ColumnSpacing="{DynamicResource SpaceS}">
-						<DatePicker
-							Date="{Binding Date}"
-							Format="ddd, d MMM"
-							HorizontalOptions="Start" />
-						<TimePicker
-							Grid.Column="1"
-							Format="HH:mm"
-							HorizontalOptions="Start"
-							Time="{Binding Time}" />
-					</Grid>
-				</VerticalStackLayout>
+			<!--  Departures / arrivals / now: one slim row  -->
+			<Grid
+				ColumnDefinitions="*,*,Auto"
+				ColumnSpacing="{DynamicResource SpaceS}"
+				IsVisible="{Binding HasStop}">
+				<Button
+					Command="{Binding DepartCommand}"
+					support:Dense.MinHeight="{StaticResource HitButton}"
+					StyleClass="Tonal"
+					support:Themed.IsOn="{Binding IsDeparture}"
+					support:Themed.OnBackground="Accent"
+					support:Themed.OnText="OnAccent"
+					Text="{localization:Tr Departures.DeparturesTab}" />
+				<Button
+					Grid.Column="1"
+					Command="{Binding ArriveCommand}"
+					support:Dense.MinHeight="{StaticResource HitButton}"
+					StyleClass="Tonal"
+					support:Themed.IsOn="{Binding IsArrival}"
+					support:Themed.OnBackground="Accent"
+					support:Themed.OnText="OnAccent"
+					Text="{localization:Tr Departures.ArrivalsTab}" />
+				<Button
+					Grid.Column="2"
+					Padding="14,0"
+					Command="{Binding NowCommand}"
+					IsEnabled="{Binding IsNotNow}"
+					support:Dense.MinHeight="{StaticResource HitButton}"
+					StyleClass="Tonal"
+					Text="{localization:Tr Departures.Now}" />
+			</Grid>
 
-				<Label
-					HorizontalTextAlignment="Center"
-					IsVisible="{Binding HasMessage}"
-					StyleClass="Caption"
-					Text="{Binding Message}" />
+			<BoxView Margin="-12,2,-12,0" StyleClass="Divider" />
+		</VerticalStackLayout>
+
+		<RefreshView
+			Grid.Row="1"
+			Command="{Binding RefreshCommand}"
+			IsRefreshing="{Binding IsBusy}">
+			<ScrollView>
+				<VerticalStackLayout Padding="{DynamicResource PadPage}" Spacing="{DynamicResource SpaceM}">
+
+					<!--  The moment  -->
+					<Border
+						Padding="0"
+						IsVisible="{Binding HasStop}"
+						StyleClass="Card">
+						<controls:WhenPicker Date="{Binding Date}" Time="{Binding Time}" />
+					</Border>
+
+					<Label
+						HorizontalTextAlignment="Center"
+						IsVisible="{Binding HasMessage}"
+						StyleClass="Caption"
+						Text="{Binding Message}" />
 
 				<!--  Departure rows  -->
 				<Border Padding="0" StyleClass="Card">
@@ -114,8 +135,8 @@
 							<DataTemplate x:DataType="local:DepartureRow">
 								<Grid RowDefinitions="Auto,Auto" RowSpacing="0">
 									<Grid
-										support:Dense.Padding="14,10"
-										support:Dense.MinHeight="56"
+										support:Dense.Padding="12,8"
+										support:Dense.MinHeight="{StaticResource HitRow}"
 										support:Motion.Feedback="True"
 										ColumnDefinitions="68,*,Auto"
 										ColumnSpacing="10"
@@ -156,7 +177,7 @@
 												<Label
 													IsVisible="{Binding IsCancelled}"
 													StyleClass="Cancelled"
-													Text="{Binding CancelledText}" />
+													Text="{localization:Tr Departures.Cancelled}" />
 												<controls:OccupancyIndicator
 													IsVisible="{Binding HasOccupancy}"
 													Level="{Binding Occupancy}"
@@ -168,6 +189,14 @@
 											Grid.Column="2"
 											Spacing="4"
 											VerticalOptions="Center">
+
+											<!--  Route changes: before the time, so the times stay in one column on the right  -->
+											<controls:IconButton
+												Command="{Binding Source={RelativeSource AncestorType={x:Type local:DeparturesViewModel}}, x:DataType=local:DeparturesViewModel, Path=OpenChangesCommand}"
+												CommandParameter="{Binding .}"
+												Glyph="Warning"
+												IsVisible="{Binding HasChanges}"
+												SemanticProperties.Description="{localization:Tr Departures.RouteChanges}" />
 
 											<VerticalStackLayout Spacing="0" HorizontalOptions="End">
 												<Label
@@ -185,13 +214,6 @@
 													StyleClass="Caption"
 													Text="{Binding InText}" />
 											</VerticalStackLayout>
-
-											<controls:IconButton
-												Command="{Binding Source={RelativeSource AncestorType={x:Type local:DeparturesViewModel}}, x:DataType=local:DeparturesViewModel, Path=OpenChangesCommand}"
-												CommandParameter="{Binding .}"
-												Glyph="Warning"
-												IsVisible="{Binding HasChanges}"
-												SemanticProperties.Description="{localization:Tr Departures.RouteChanges}" />
 										</HorizontalStackLayout>
 
 										<Grid.GestureRecognizers>
@@ -217,8 +239,8 @@
 								<DataTemplate x:DataType="local:NearbyRow">
 									<Grid RowDefinitions="Auto,Auto" RowSpacing="0">
 										<Grid
-											support:Dense.Padding="14,10"
-											support:Dense.MinHeight="48"
+											support:Dense.Padding="12,8"
+											support:Dense.MinHeight="{StaticResource HitRow}"
 											support:Motion.Feedback="True"
 											ColumnDefinitions="*,Auto"
 											ColumnSpacing="10">
@@ -245,50 +267,156 @@
 					</Border>
 				</VerticalStackLayout>
 
-				<!--  Lines serving the stop  -->
+				<!--  Around this stop: where to go next, and what can be unfolded. Every row says what it holds.  -->
 				<VerticalStackLayout IsVisible="{Binding HasStop}" Spacing="{DynamicResource SpaceS}">
-					<Button Command="{Binding ToggleLinesCommand}" StyleClass="Tonal" Text="{Binding LinesToggleText}" />
+					<Label StyleClass="Section" Text="{localization:Tr Extras.AroundTitle}" />
 
-					<Border
-						Padding="0"
-						IsVisible="{Binding ShowLines}"
-						StyleClass="Card">
-						<VerticalStackLayout BindableLayout.ItemsSource="{Binding Lines}">
-							<BindableLayout.ItemTemplate>
-								<DataTemplate x:DataType="local:StopLineRow">
-									<Grid RowDefinitions="Auto,Auto" RowSpacing="0">
-										<Grid
-											support:Dense.Padding="14,10"
-											ColumnDefinitions="68,*"
-											ColumnSpacing="10">
-											<Border
-												BackgroundColor="{Binding Look.Fill}"
-												StrokeDashArray="{Binding Look.Dashes}"
-												StrokeShape="{Binding Look.Shape}"
-												StrokeThickness="{Binding Look.StrokeThickness}"
-												StyleClass="Chip"
-												Stroke="{Binding Look.Stroke}"
-												HorizontalOptions="Start"
-												VerticalOptions="Start"
-												WidthRequest="68">
-												<support:PillScroll>
-													<Label
-														FontFamily="{DynamicResource FontSemibold}"
-														FontSize="{StaticResource FontCaption}"
-														StyleClass="ChipLabel"
-														Text="{Binding LineText}"
-														TextColor="{Binding Look.Text}" />
-												</support:PillScroll>
-											</Border>
-											<Label
-												Grid.Column="1"
-												StyleClass="Caption"
-												Text="{Binding DirectionsText}" />
+					<Border Padding="0" StyleClass="Card">
+						<VerticalStackLayout>
+
+							<controls:SectionRow
+								Command="{Binding OpenMapCommand}"
+								Glyph="Map"
+								Summary="{localization:Tr Extras.MapSummary}"
+								Title="{localization:Tr Extras.MapShow}" />
+							<BoxView StyleClass="Divider" />
+
+							<controls:SectionRow
+								x:Name="LiveRow"
+								Glyph="Pulse"
+								Summary="{localization:Tr Extras.LiveSummary}"
+								Title="{localization:Tr Extras.LiveTitle}" />
+							<BoxView StyleClass="Divider" />
+
+							<!--  Lines  -->
+							<controls:SectionRow
+								Command="{Binding ToggleLinesCommand}"
+								Glyph="Bus"
+								IsExpandable="True"
+								IsExpanded="{Binding ShowLines}"
+								Summary="{Binding LinesSummary}"
+								Title="{localization:Tr Extras.LinesTitle}" />
+							<VerticalStackLayout BindableLayout.ItemsSource="{Binding Lines}" IsVisible="{Binding ShowLines}">
+								<BindableLayout.ItemTemplate>
+									<DataTemplate x:DataType="local:StopLineRow">
+										<Grid RowDefinitions="Auto,Auto" RowSpacing="0">
+											<BoxView StyleClass="Divider" />
+											<Grid
+												Grid.Row="1"
+												support:Dense.Padding="12,8"
+												ColumnDefinitions="68,*"
+												ColumnSpacing="10">
+												<Border
+													BackgroundColor="{Binding Look.Fill}"
+													StrokeDashArray="{Binding Look.Dashes}"
+													StrokeShape="{Binding Look.Shape}"
+													StrokeThickness="{Binding Look.StrokeThickness}"
+													StyleClass="Chip"
+													Stroke="{Binding Look.Stroke}"
+													HorizontalOptions="Start"
+													VerticalOptions="Start"
+													WidthRequest="68">
+													<support:PillScroll>
+														<Label
+															FontFamily="{DynamicResource FontSemibold}"
+															FontSize="{StaticResource FontCaption}"
+															StyleClass="ChipLabel"
+															Text="{Binding LineText}"
+															TextColor="{Binding Look.Text}" />
+													</support:PillScroll>
+												</Border>
+												<Label
+													Grid.Column="1"
+													StyleClass="Caption"
+													Text="{Binding DirectionsText}" />
+											</Grid>
 										</Grid>
-										<BoxView Grid.Row="1" StyleClass="Divider" />
-									</Grid>
-								</DataTemplate>
-							</BindableLayout.ItemTemplate>
+									</DataTemplate>
+								</BindableLayout.ItemTemplate>
+							</VerticalStackLayout>
+							<BoxView StyleClass="Divider" />
+
+							<!--  Accessibility of the chosen stop (open data)  -->
+							<controls:SectionRow
+								Command="{Binding ToggleAccessibilityCommand}"
+								Glyph="Accessible"
+								IsExpandable="True"
+								IsExpanded="{Binding ShowAccessibility}"
+								Summary="{localization:Tr Extras.AccessHint}"
+								Title="{localization:Tr Extras.AccessTitle}" />
+							<VerticalStackLayout IsVisible="{Binding ShowAccessibility}">
+								<Label
+									Margin="14,0,14,10"
+									IsVisible="{Binding HasAccessibilityMessage}"
+									StyleClass="Caption"
+									Text="{Binding AccessibilityMessage}" />
+								<VerticalStackLayout BindableLayout.ItemsSource="{Binding Accessibility}">
+									<BindableLayout.ItemTemplate>
+										<DataTemplate x:DataType="local:AccessRow">
+											<Grid RowDefinitions="Auto,Auto" RowSpacing="0">
+												<BoxView StyleClass="Divider" />
+												<VerticalStackLayout
+													Grid.Row="1"
+													support:Dense.Padding="12,8"
+													Spacing="2">
+													<Label FontFamily="{DynamicResource FontSemibold}" Text="{Binding Title}" />
+													<Label StyleClass="Caption" Text="{Binding Details}" />
+												</VerticalStackLayout>
+											</Grid>
+										</DataTemplate>
+									</BindableLayout.ItemTemplate>
+								</VerticalStackLayout>
+							</VerticalStackLayout>
+							<BoxView StyleClass="Divider" />
+
+							<!--  DVB service points near the stop or the passenger (open data)  -->
+							<controls:SectionRow
+								Command="{Binding ToggleServicePointsCommand}"
+								Glyph="MapPin"
+								IsExpandable="True"
+								IsExpanded="{Binding ShowServicePoints}"
+								Summary="{Binding ServicePointsSummary}"
+								Title="{localization:Tr Extras.ServiceTitle}" />
+							<VerticalStackLayout IsVisible="{Binding ShowServicePoints}">
+								<Label
+									Margin="14,0,14,10"
+									IsVisible="{Binding HasServicePointsMessage}"
+									StyleClass="Caption"
+									Text="{Binding ServicePointsMessage}" />
+								<VerticalStackLayout BindableLayout.ItemsSource="{Binding ServicePoints}">
+									<BindableLayout.ItemTemplate>
+										<DataTemplate x:DataType="local:ServicePointRow">
+											<Grid RowDefinitions="Auto,Auto" RowSpacing="0">
+												<BoxView StyleClass="Divider" />
+												<Grid
+													Grid.Row="1"
+													support:Dense.Padding="12,8"
+													support:Motion.Feedback="True"
+													ColumnDefinitions="*,Auto"
+													ColumnSpacing="10">
+													<VerticalStackLayout Spacing="2">
+														<Label FontFamily="{DynamicResource FontSemibold}" Text="{Binding Name}" />
+														<Label
+															IsVisible="{Binding HasDetails}"
+															StyleClass="Caption"
+															Text="{Binding Details}" />
+													</VerticalStackLayout>
+													<Label
+														Grid.Column="1"
+														StyleClass="Caption"
+														Text="{Binding DistanceText}"
+														VerticalOptions="Start" />
+													<Grid.GestureRecognizers>
+														<TapGestureRecognizer
+															Command="{Binding Source={RelativeSource AncestorType={x:Type local:DeparturesViewModel}}, x:DataType=local:DeparturesViewModel, Path=OpenServicePointCommand}"
+															CommandParameter="{Binding .}" />
+													</Grid.GestureRecognizers>
+												</Grid>
+											</Grid>
+										</DataTemplate>
+									</BindableLayout.ItemTemplate>
+								</VerticalStackLayout>
+							</VerticalStackLayout>
 						</VerticalStackLayout>
 					</Border>
 				</VerticalStackLayout>
@@ -296,7 +424,7 @@
 				<!--  Favourites and recent stops, until one is chosen  -->
 				<VerticalStackLayout IsVisible="{Binding ShowQuickPicks}" Spacing="{DynamicResource SpaceS}">
 					<Label StyleClass="Title" Text="{localization:Tr Plan.Recent}" />
-					<FlexLayout BindableLayout.ItemsSource="{Binding QuickPicks}" Wrap="Wrap">
+					<FlexLayout AlignContent="Start" AlignItems="Start" BindableLayout.ItemsSource="{Binding QuickPicks}" Wrap="Wrap">
 						<BindableLayout.ItemTemplate>
 							<DataTemplate x:DataType="core:Location">
 								<Border Margin="0,0,8,8" StyleClass="ChipButton">
@@ -326,5 +454,6 @@
 
 			</VerticalStackLayout>
 		</ScrollView>
-	</RefreshView>
+		</RefreshView>
+	</Grid>
 </ContentPage>

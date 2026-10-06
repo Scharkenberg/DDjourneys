@@ -353,7 +353,7 @@ public sealed class ContractReplyTests
 	{
 		string commands = ContractCapabilities.Values("1.2.3").Single(pair => pair.Key == "commands").Value;
 
-		Assert.Equal("plan,pick,tracked,capabilities", commands);
+		Assert.Equal("plan,pick,tracked,capabilities,go,departures,home,map,disruptions,live", commands);
 	}
 }
 
@@ -447,4 +447,170 @@ public sealed class JourneyPayloadTests
 	[InlineData(TransitMode.Bus, "bus")]
 	public void Mode_names_are_snake_case(TransitMode mode, string expected) =>
 		Assert.Equal(expected, JourneyPayload.ModeName(mode));
+}
+
+
+public sealed class ContractShortFormTests
+{
+	private static ContractRequest Valid(string uri)
+	{
+		ContractParseResult result = ContractParser.ParseUri(uri);
+
+		Assert.True(result.IsValid, result.Failure?.Message);
+
+		return result.Request!;
+	}
+
+	[Fact]
+	public void Go_needs_only_a_destination_and_starts_where_the_user_starts()
+	{
+		ContractRequest request = Valid("ddjourneys://go?to=Hellerau");
+
+		Assert.Equal(ContractCommand.Go, request.Command);
+		Assert.True(request.Search);
+		Assert.Equal(ContractKeywords.Start, request.From!.Name);
+		Assert.Equal("Hellerau", request.To!.Name);
+	}
+
+	[Fact]
+	public void Go_without_a_destination_is_refused() =>
+		Assert.Equal(
+			ContractErrorCode.MissingParameter,
+			ContractParser.ParseUri("ddjourneys://go?from=A").Failure!.Code);
+
+	[Fact]
+	public void Plan_with_search_and_no_start_uses_the_default_start()
+	{
+		ContractRequest request = Valid("ddjourneys://plan?to=Hellerau&search=1");
+
+		Assert.Equal(ContractKeywords.Start, request.From!.Name);
+	}
+
+	[Fact]
+	public void Pick_still_names_both_ends() =>
+		Assert.Equal(
+			ContractErrorCode.MissingParameter,
+			ContractParser.ParseUri("ddjourneys://pick?to=A&x-success=myapp%3A%2F%2Fok").Failure!.Code);
+
+	[Fact]
+	public void Keywords_are_places_and_unknown_ones_are_refused()
+	{
+		ContractRequest request = Valid("ddjourneys://go?from=@here&to=@HOME&via=Postplatz");
+
+		Assert.Equal(ContractKeywords.Here, request.From!.Name);
+		Assert.Equal(ContractKeywords.Home, request.To!.Name);
+		Assert.Equal("Postplatz", request.Via!.Name);
+
+		Assert.Equal(
+			ContractErrorCode.InvalidParameter,
+			ContractParser.ParseUri("ddjourneys://go?to=@work").Failure!.Code);
+	}
+
+	[Fact]
+	public void Departures_default_to_the_stop_near_the_device()
+	{
+		ContractRequest request = Valid("ddjourneys://departures");
+
+		Assert.Equal(ContractKeywords.Here, request.At!.Name);
+		Assert.Null(request.Mode);
+
+		ContractRequest arrivals = Valid("ddjourneys://departures?at.stop=vvo:33000028&mode=arr&time=now");
+
+		Assert.Equal("vvo:33000028", arrivals.At!.StopKey);
+		Assert.Equal(JourneySearchMode.Arrival, arrivals.Mode);
+		Assert.True(arrivals.Time!.IsNow);
+	}
+
+	[Fact]
+	public void Page_commands_read_their_parameters()
+	{
+		Assert.Equal(ContractCommand.Home, Valid("ddjourneys://home").Command);
+		Assert.Null(Valid("ddjourneys://map").At);
+		Assert.Equal(51.05, Valid("ddjourneys://map?at.lat=51.05&at.lon=13.74").At!.Latitude);
+		Assert.Null(Valid("ddjourneys://disruptions").Line);
+		Assert.Equal("S1", Valid("ddjourneys://disruptions?line=S1").Line);
+		Assert.Equal("3,11", Valid("ddjourneys://live?line=3,11").Line);
+	}
+
+	[Theory]
+	[InlineData("ddjourneys://live", ContractErrorCode.MissingParameter)]
+	[InlineData("ddjourneys://live?line=S1", ContractErrorCode.InvalidParameter)]
+	[InlineData("ddjourneys://disruptions?line=%3Cscript%3E", ContractErrorCode.InvalidParameter)]
+	public void Bad_line_values_are_refused(string uri, ContractErrorCode expected) =>
+		Assert.Equal(expected, ContractParser.ParseUri(uri).Failure!.Code);
+
+	[Fact]
+	public void Built_links_parse_back()
+	{
+		var hellerau = new ContractPlace("Hellerau", null, null, null);
+		var stop = new ContractPlace(null, "vvo:33000028", null, null);
+
+		Assert.Equal("Hellerau", Valid(ContractLinks.Go(hellerau).ToString()).To!.Name);
+		Assert.Equal(ContractCommand.Home, Valid(ContractLinks.Home().ToString()).Command);
+		Assert.Equal("vvo:33000028", Valid(ContractLinks.Departures(stop, arrivals: true).ToString()).At!.StopKey);
+		Assert.Equal(ContractCommand.Map, Valid(ContractLinks.Map().ToString()).Command);
+		Assert.Equal("S1", Valid(ContractLinks.Disruptions("S1").ToString()).Line);
+		Assert.Equal("3", Valid(ContractLinks.Live("3").ToString()).Line);
+		Assert.Equal("Postplatz", Valid(ContractLinks.Plan(null, hellerau, via: new ContractPlace("Postplatz", null, null, null)).ToString()).Via!.Name);
+	}
+}
+
+
+public sealed class ContractIntentsTests
+{
+	[Theory]
+	[InlineData("51.05,13.73", null, 51.05, 13.73)]
+	[InlineData("51.05,13.73;u=35", null, 51.05, 13.73)]
+	[InlineData("0,0?q=Hellerau", "Hellerau", null, null)]
+	[InlineData("51.05,13.73?q=Hellerau", "Hellerau", 51.05, 13.73)]
+	[InlineData("0,0?q=51.05,13.73(Hellerau)", "Hellerau", 51.05, 13.73)]
+	[InlineData("0,0?q=Alter%20Markt+Dresden", "Alter Markt Dresden", null, null)]
+	public void A_geo_link_becomes_go_to_that_place(string part, string? name, double? lat, double? lon)
+	{
+		ContractParseResult? result = ContractIntents.FromGeo(part);
+
+		Assert.NotNull(result);
+		Assert.True(result.IsValid, result.Failure?.Message);
+
+		ContractRequest request = result.Request!;
+
+		Assert.Equal(ContractCommand.Go, request.Command);
+		Assert.Equal(name, request.To!.Name);
+		Assert.Equal(lat, request.To.Latitude);
+		Assert.Equal(lon, request.To.Longitude);
+	}
+
+	[Theory]
+	[InlineData("0,0")]
+	[InlineData("")]
+	[InlineData("0,0?z=12")]
+	public void A_geo_link_without_a_place_is_ignored(string part) =>
+		Assert.Null(ContractIntents.FromGeo(part));
+}
+
+public sealed class ContractCapabilityKeyTests
+{
+	private static string Value(string key) =>
+		ContractCapabilities.Values("1.2.3").Single(pair => pair.Key == key).Value;
+
+	[Fact]
+	public void The_versions_are_part_of_the_answer()
+	{
+		Assert.Equal(ContractVersion.Current.ToString(), Value("contract"));
+		Assert.Equal(ContractVersion.Oldest.ToString(), Value("oldest"));
+		Assert.Equal(JourneyPayload.SchemaVersion.ToString(), Value("journey.schema"));
+		Assert.Equal("1.2.3", Value("app.version"));
+	}
+
+	[Fact]
+	public void The_app_does_not_offer_itself_for_shared_text() =>
+		Assert.Equal("view:ddjourneys,view:geo", Value("android.intents"));
+
+	[Fact]
+	public void Every_key_is_unique()
+	{
+		string[] keys = [.. ContractCapabilities.Values("1").Select(pair => pair.Key)];
+
+		Assert.Equal(keys.Length, keys.Distinct(StringComparer.Ordinal).Count());
+	}
 }

@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using System.Diagnostics;
 using Microsoft.Maui.Storage;
 
@@ -11,12 +12,12 @@ namespace DDjourneys.Tracking.Schutzengel;
 /// in the app's private preferences (it is an anonymous identifier, not a credential of the person); it is
 /// only discarded when the service itself rejects it (<see cref="RemoveToken"/>).
 /// </summary>
-internal sealed class SchutzengelTokenStore
+internal static class SchutzengelTokenStore
 {
 	private const string TokenKey = "schutzengel_auth_token";
 	private const string FallbackKey = "schutzengel_auth_token.fallback";
 
-	public async Task<string?> GetAsync(CancellationToken cancellationToken)
+	public static async Task<string?> GetAsync(CancellationToken cancellationToken)
 	{
 		cancellationToken.ThrowIfCancellationRequested();
 
@@ -30,7 +31,7 @@ internal sealed class SchutzengelTokenStore
 		{
 			// A keystore that cannot decrypt (restored backup, reset lock screen) throws. Drop the unreadable
 			// entry; the fallback copy below still has the token.
-			Debug.WriteLine($"[SCHUTZENGEL] Token storage unreadable: {ex.Message}");
+			DiagnosticLog.Write($"[SCHUTZENGEL] Token storage unreadable: {ex.Message}");
 
 			RemoveSecure();
 		}
@@ -56,13 +57,13 @@ internal sealed class SchutzengelTokenStore
 		}
 		catch (Exception ex)
 		{
-			Debug.WriteLine($"[SCHUTZENGEL] Token not restored to secure storage: {ex.Message}");
+			DiagnosticLog.Write($"[SCHUTZENGEL] Token not restored to secure storage: {ex.Message}");
 		}
 
 		return fallback;
 	}
 
-	public async Task SetAsync(string value, CancellationToken cancellationToken)
+	public static async Task SetAsync(string value, CancellationToken cancellationToken)
 	{
 		cancellationToken.ThrowIfCancellationRequested();
 
@@ -77,12 +78,12 @@ internal sealed class SchutzengelTokenStore
 		catch (Exception ex)
 		{
 			// The fallback copy carries the token until the secure store works again.
-			Debug.WriteLine($"[SCHUTZENGEL] Token not saved to secure storage: {ex.Message}");
+			DiagnosticLog.Write($"[SCHUTZENGEL] Token not saved to secure storage: {ex.Message}");
 		}
 	}
 
 	/// <summary>The service rejected the token: both copies go.</summary>
-	public void RemoveToken()
+	public static void RemoveToken()
 	{
 		RemoveSecure();
 
@@ -92,7 +93,7 @@ internal sealed class SchutzengelTokenStore
 		}
 		catch (Exception ex)
 		{
-			Debug.WriteLine($"[SCHUTZENGEL] Token fallback removal failed: {ex.Message}");
+			DiagnosticLog.Write($"[SCHUTZENGEL] Token fallback removal failed: {ex.Message}");
 		}
 	}
 
@@ -104,7 +105,7 @@ internal sealed class SchutzengelTokenStore
 		}
 		catch (Exception ex)
 		{
-			Debug.WriteLine($"[SCHUTZENGEL] Token removal failed: {ex.Message}");
+			DiagnosticLog.Write($"[SCHUTZENGEL] Token removal failed: {ex.Message}");
 		}
 	}
 
@@ -119,7 +120,7 @@ internal sealed class SchutzengelTokenStore
 		}
 		catch (Exception ex)
 		{
-			Debug.WriteLine($"[SCHUTZENGEL] Token fallback not saved: {ex.Message}");
+			DiagnosticLog.Write($"[SCHUTZENGEL] Token fallback not saved: {ex.Message}");
 		}
 	}
 
@@ -133,7 +134,7 @@ internal sealed class SchutzengelTokenStore
 		}
 		catch (Exception ex)
 		{
-			Debug.WriteLine($"[SCHUTZENGEL] Token fallback unreadable: {ex.Message}");
+			DiagnosticLog.Write($"[SCHUTZENGEL] Token fallback unreadable: {ex.Message}");
 
 			return null;
 		}

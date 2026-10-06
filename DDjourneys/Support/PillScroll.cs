@@ -1,3 +1,5 @@
+using DDjourneys.Core.Diagnostics;
+
 namespace DDjourneys.Support;
 
 /// <summary>
@@ -14,7 +16,7 @@ namespace DDjourneys.Support;
 /// A pill pops in once its width is known. One that overflows scrolls to its end and back once after it appears, as a hint that it can be scrolled.
 /// </para>
 /// </summary>
-public sealed class PillScroll : ScrollView
+public sealed partial class PillScroll : ScrollView
 {
 	public static readonly BindableProperty FractionProperty =
 		BindableProperty.Create(
@@ -81,10 +83,7 @@ public sealed class PillScroll : ScrollView
 
 		_host = Pill?.Parent as VisualElement;
 
-		if (_host is not null)
-		{
-			_host.SizeChanged += OnSizeChanged;
-		}
+		_host?.SizeChanged += OnSizeChanged;
 
 		Resize();
 
@@ -96,11 +95,8 @@ public sealed class PillScroll : ScrollView
 
 	private void Release()
 	{
-		if (_host is not null)
-		{
-			_host.SizeChanged -= OnSizeChanged;
-			_host = null;
-		}
+		_host?.SizeChanged -= OnSizeChanged;
+		_host = null;
 
 		if (_label is not null)
 		{
@@ -125,6 +121,10 @@ public sealed class PillScroll : ScrollView
 
 		_label = label;
 		label.HorizontalOptions = LayoutOptions.Start;
+
+		// Centred in the pill whatever the font: a label that is not in the ChipLabel class would sit at the top.
+		label.VerticalOptions = LayoutOptions.Center;
+		VerticalOptions = LayoutOptions.Center;
 		label.SizeChanged += OnSizeChanged;
 		label.PropertyChanged += OnLabelChanged;
 	}
@@ -135,9 +135,33 @@ public sealed class PillScroll : ScrollView
 		{
 			_hinted = false;
 		}
+
+		// A new font face or size changes the text width without any guarantee of a size notification
+		// (the label may keep its old box until it is measured again): measure again, then size the pill.
+		if (e.PropertyName is nameof(Label.Text)
+			or nameof(Label.FontFamily)
+			or nameof(Label.FontSize)
+			or nameof(Label.FontAttributes))
+		{
+			Remeasure();
+		}
 	}
 
 	private void OnSizeChanged(object? sender, EventArgs e) => Resize();
+
+	private void Remeasure()
+	{
+		if (_label is null)
+		{
+			return;
+		}
+
+		_label.InvalidateMeasure();
+
+		// After the layout pass the label's width is the new one.
+		Dispatcher.DispatchDelayed(TimeSpan.FromMilliseconds(60), Resize);
+		Dispatcher.DispatchDelayed(TimeSpan.FromMilliseconds(400), Resize);
+	}
 
 	private void Resize()
 	{
@@ -213,7 +237,7 @@ public sealed class PillScroll : ScrollView
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Pill reveal skipped: {ex.Message}");
+			DiagnosticLog.Write($"Pill reveal skipped: {ex.Message}");
 		}
 		finally
 		{
@@ -253,7 +277,7 @@ public sealed class PillScroll : ScrollView
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Pill hint skipped: {ex.Message}");
+			DiagnosticLog.Write($"Pill hint skipped: {ex.Message}");
 		}
 	}
 

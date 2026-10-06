@@ -85,17 +85,41 @@ internal static class SchutzengelLiveContent
 				string here = snapshot.CurrentStop ?? snapshot.NextStop ?? origin;
 				string? there = ride?.From.Name;
 
+				// The walk after the last ride goes to the destination itself, and the journey ends with it.
+				string? goal = snapshot.IsFinalWalk ? destination : there;
+
 				// A real walk to another stop is named as such; a change at the same stop is just "change".
+				bool walks =
+					snapshot.IsFinalWalk
+					|| snapshot.EpisodeIndex == 0
+					|| (there is { Length: > 0 } && !string.Equals(there.Trim(), here.Trim(), StringComparison.OrdinalIgnoreCase));
+
 				title =
-					there is { Length: > 0 } && !string.Equals(there.Trim(), here.Trim(), StringComparison.OrdinalIgnoreCase)
-						? string.Format(CultureInfo.CurrentCulture, strings.CourseWalk, there)
+					walks && goal is { Length: > 0 }
+						? string.Format(CultureInfo.CurrentCulture, strings.CourseWalk, goal)
 						: string.Format(CultureInfo.CurrentCulture, strings.NotifChangeTitle, here);
+
+				// Walks say from when until when; a walk to a ride adds where and when to board.
+				string? walkTimes =
+					walks && snapshot.EpisodeStart is { } walkStart && snapshot.EpisodeEnd is { } walkEnd
+						? string.Format(
+							CultureInfo.CurrentCulture,
+							strings.NotifWalkFromUntil,
+							Format.TimeOrDash(walkStart.Effective),
+							Format.TimeOrDash(walkEnd.Effective))
+						: null;
 
 				text =
 					ride is not null
-						? Boarding(ride, strings)
-						: string.Format(CultureInfo.CurrentCulture, strings.NotifChangeText, Format.TimeOrDash(snapshot.NextStopTime));
-				when = ride?.From.Effective ?? snapshot.NextStopTime;
+						? walkTimes is null
+							? Boarding(ride, strings)
+							: $"{walkTimes}. {Boarding(ride, strings)}"
+						: walkTimes
+							?? string.Format(CultureInfo.CurrentCulture, strings.NotifChangeText, Format.TimeOrDash(snapshot.NextStopTime));
+				when =
+					snapshot.IsFinalWalk
+						? snapshot.EpisodeEnd?.Effective
+						: ride?.From.Effective ?? snapshot.NextStopTime;
 				position = snapshot.EpisodeStartPosition;
 				positionAt = now - TimeSpan.FromSeconds(Math.Max(0, snapshot.Position - snapshot.EpisodeStartPosition));
 				break;

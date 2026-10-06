@@ -24,7 +24,7 @@
 									support:Dense.Padding="12,8"
 									ColumnDefinitions="*,Auto"
 									ColumnSpacing="12"
-									support:Dense.MinHeight="52"
+									support:Dense.MinHeight="{StaticResource HitRow}"
 									SemanticProperties.Description="{Binding Title}">
 
 									<VerticalStackLayout Spacing="1" VerticalOptions="Center">
@@ -41,7 +41,7 @@
 										Color="{DynamicResource Accent}" />
 
 									<Grid.GestureRecognizers>
-										<TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type local:AppearanceViewModel}}, Path=SelectModeCommand}" CommandParameter="{Binding Id}" />
+										<TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type local:AppearanceViewModel}}, x:DataType=local:AppearanceViewModel, Path=SelectModeCommand}" CommandParameter="{Binding Id}" />
 									</Grid.GestureRecognizers>
 								</Grid>
 
@@ -57,7 +57,7 @@
 					support:Dense.Padding="12,8"
 					ColumnDefinitions="*,Auto"
 					ColumnSpacing="12"
-					support:Dense.MinHeight="52">
+					support:Dense.MinHeight="{StaticResource HitRow}">
 
 					<VerticalStackLayout Spacing="1" VerticalOptions="Center">
 						<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.PureBlack}" />
@@ -86,7 +86,7 @@
 									support:Dense.Padding="12,8"
 									ColumnDefinitions="Auto,*,Auto"
 									ColumnSpacing="12"
-									support:Dense.MinHeight="52"
+									support:Dense.MinHeight="{StaticResource HitRow}"
 									SemanticProperties.Description="{Binding Title}">
 
 									<!--  Swatch: background, raised panel, accent and ink bars (for the mode currently in effect)  -->
@@ -134,7 +134,7 @@
 										Color="{DynamicResource Accent}" />
 
 									<Grid.GestureRecognizers>
-										<TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type local:AppearanceViewModel}}, Path=SelectColorCommand}" CommandParameter="{Binding Id}" />
+										<TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type local:AppearanceViewModel}}, x:DataType=local:AppearanceViewModel, Path=SelectColorCommand}" CommandParameter="{Binding Id}" />
 									</Grid.GestureRecognizers>
 								</Grid>
 
@@ -159,7 +159,7 @@
 									support:Dense.Padding="12,8"
 									ColumnDefinitions="*,Auto"
 									ColumnSpacing="12"
-									support:Dense.MinHeight="52"
+									support:Dense.MinHeight="{StaticResource HitRow}"
 									SemanticProperties.Description="{Binding Title}">
 
 									<VerticalStackLayout Spacing="1" VerticalOptions="Center">
@@ -176,7 +176,7 @@
 										Color="{DynamicResource Accent}" />
 
 									<Grid.GestureRecognizers>
-										<TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type local:AppearanceViewModel}}, Path=SelectFontCommand}" CommandParameter="{Binding Id}" />
+										<TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type local:AppearanceViewModel}}, x:DataType=local:AppearanceViewModel, Path=SelectFontCommand}" CommandParameter="{Binding Id}" />
 									</Grid.GestureRecognizers>
 								</Grid>
 
@@ -201,7 +201,7 @@
 									support:Dense.Padding="12,8"
 									ColumnDefinitions="*,Auto"
 									ColumnSpacing="12"
-									support:Dense.MinHeight="52"
+									support:Dense.MinHeight="{StaticResource HitRow}"
 									SemanticProperties.Description="{Binding Title}">
 
 									<VerticalStackLayout Spacing="1" VerticalOptions="Center">
@@ -218,7 +218,7 @@
 										Color="{DynamicResource Accent}" />
 
 									<Grid.GestureRecognizers>
-										<TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type local:AppearanceViewModel}}, Path=SelectDensityCommand}" CommandParameter="{Binding Id}" />
+										<TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type local:AppearanceViewModel}}, x:DataType=local:AppearanceViewModel, Path=SelectDensityCommand}" CommandParameter="{Binding Id}" />
 									</Grid.GestureRecognizers>
 								</Grid>
 
@@ -231,13 +231,13 @@
 
 			<Label
 				Margin="{DynamicResource SectionGap}"
-				IsVisible="{Binding ShowMaterial}"
+				IsVisible="{x:Static support:Material.Available}"
 				StyleClass="Section"
 				Text="{localization:Tr Settings.MaterialHeader}" />
 
 			<Border
 				Padding="0"
-				IsVisible="{Binding ShowMaterial}"
+				IsVisible="{x:Static support:Material.Available}"
 				StyleClass="Card">
 				<VerticalStackLayout BindableLayout.ItemsSource="{Binding Materials}">
 					<BindableLayout.ItemTemplate>
@@ -247,7 +247,7 @@
 									support:Dense.Padding="12,8"
 									ColumnDefinitions="*,Auto"
 									ColumnSpacing="12"
-									support:Dense.MinHeight="52"
+									support:Dense.MinHeight="{StaticResource HitRow}"
 									SemanticProperties.Description="{Binding Title}">
 
 									<VerticalStackLayout Spacing="1" VerticalOptions="Center">
@@ -264,7 +264,7 @@
 										Color="{DynamicResource Accent}" />
 
 									<Grid.GestureRecognizers>
-										<TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type local:AppearanceViewModel}}, Path=SelectMaterialCommand}" CommandParameter="{Binding Id}" />
+										<TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type local:AppearanceViewModel}}, x:DataType=local:AppearanceViewModel, Path=SelectMaterialCommand}" CommandParameter="{Binding Id}" />
 									</Grid.GestureRecognizers>
 								</Grid>
 
@@ -277,13 +277,13 @@
 
 			<Label
 				Margin="{DynamicResource SectionGap}"
-				IsVisible="{Binding ShowMaterial}"
+				IsVisible="{x:Static support:Material.Available}"
 				StyleClass="Section"
 				Text="{localization:Tr Settings.SurfacesHeader}" />
 
 			<Border
 				Padding="0"
-				IsVisible="{Binding ShowMaterial}"
+				IsVisible="{x:Static support:Material.Available}"
 				StyleClass="Card">
 				<VerticalStackLayout BindableLayout.ItemsSource="{Binding MaterialSurfaces}">
 					<BindableLayout.ItemTemplate>
@@ -293,7 +293,7 @@
 									support:Dense.Padding="12,8"
 									ColumnDefinitions="*,Auto"
 									ColumnSpacing="12"
-									support:Dense.MinHeight="52"
+									support:Dense.MinHeight="{StaticResource HitRow}"
 									SemanticProperties.Description="{Binding Title}">
 
 									<VerticalStackLayout Spacing="1" VerticalOptions="Center">
@@ -310,7 +310,7 @@
 										Color="{DynamicResource Accent}" />
 
 									<Grid.GestureRecognizers>
-										<TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type local:AppearanceViewModel}}, Path=SelectMaterialSurfacesCommand}" CommandParameter="{Binding Id}" />
+										<TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type local:AppearanceViewModel}}, x:DataType=local:AppearanceViewModel, Path=SelectMaterialSurfacesCommand}" CommandParameter="{Binding Id}" />
 									</Grid.GestureRecognizers>
 								</Grid>
 
@@ -322,7 +322,7 @@
 			</Border>
 
 			<Label
-				IsVisible="{Binding ShowMaterial}"
+				IsVisible="{x:Static support:Material.Available}"
 				Margin="4,0,0,0"
 				StyleClass="Caption"
 				Text="{localization:Tr Settings.MaterialNote}" />

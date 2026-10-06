@@ -52,7 +52,7 @@ public sealed class JourneyService
 
 
 	/// <summary>The providers eligible for the current selection, in registration order.</summary>
-	private IEnumerable<IJourneyProvider> _providers =>
+	private IEnumerable<IJourneyProvider> Providers =>
 		_registry is null
 			? _all
 			: _all.Where(_registry.IsSelected);
@@ -71,7 +71,7 @@ public sealed class JourneyService
 		var outcomes = new Outcomes();
 
 		foreach (IJourneyProvider provider
-			in _providers)
+			in Providers)
 		{
 			if (!IsSuitable(
 				provider,
@@ -138,7 +138,7 @@ public sealed class JourneyService
 		var outcomes = new Outcomes();
 
 		foreach (IJourneyProvider provider
-			in _providers)
+			in Providers)
 		{
 			if (!IsSuitable(
 					provider,
@@ -175,7 +175,7 @@ public sealed class JourneyService
 			outcomes.Add(
 				page.Failure
 				?? JourneyResult.Success(
-					Array.Empty<Journey>()));
+					[]));
 		}
 
 		return outcomes.Best()
@@ -258,6 +258,31 @@ public sealed class JourneyService
 			? JourneyResult.NotSuitable("no_leg_alternatives")
 			: await provider
 				.GetLegAlternativeAsync(query, journey, legIndex, previous, cancellationToken)
+				.ConfigureAwait(false);
+	}
+
+
+	/// <summary>Downloads the printable version of the journey; null when it is not available.</summary>
+	public async Task<JourneyDocument?> GetJourneyDocumentAsync(
+		JourneyQuery query,
+		Journey journey,
+		CancellationToken cancellationToken = default)
+	{
+		ArgumentNullException.ThrowIfNull(query);
+		ArgumentNullException.ThrowIfNull(journey);
+
+		IJourneyExtrasProvider? provider =
+			_all
+				.OfType<IJourneyExtrasProvider>()
+				.FirstOrDefault(
+					candidate => candidate is IJourneyProvider journeyProvider
+						&& (_registry?.IsSelected(journeyProvider) ?? true)
+						&& IsSuitable(journeyProvider, journey));
+
+		return provider is null
+			? null
+			: await provider
+				.GetJourneyDocumentAsync(query, journey, cancellationToken)
 				.ConfigureAwait(false);
 	}
 

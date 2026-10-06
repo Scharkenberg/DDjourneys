@@ -7,9 +7,9 @@ using SkiaSharp;
 namespace DDjourneys.Support.Sharing;
 
 /// <summary>
-/// Renders a shared journey as a PNG in the visual language of the app: a header on the accent colour with
-/// route and key figures, and a card with the timeline (coloured rail per ride, line pills, times with
-/// real-time deviations, changes and walks), followed by notices.
+/// Renders a shared journey as a PNG in the visual language of the app: a slim route line with the key figures,
+/// then a card with the timeline (start, coloured rail per ride, line pills, times with real-time deviations,
+/// changes and walks, destination), followed by notices. The surroundings are kept small and quiet.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -29,12 +29,20 @@ namespace DDjourneys.Support.Sharing;
 public static class JourneyShareImage
 {
 	private const int Width = 1080;
-	private const float Margin = 56;
-	private const float CardInset = 40;
+	private const float Margin = 36;
+	private const float CardInset = 34;
+
+	// Type scale: the content (times, stops, lines) is large; the surroundings are small and quiet.
+	private const float SzTitle = 38;
+	private const float SzBody = 36;
+	private const float SzSub = 28;
+	private const float SzSmall = 25;
+	private const float SzLive = 27;
+	private const float SzPill = 30;
 	// The picture is about 2.7 times a 400 dp phone width; corner radii follow the app's (6 dp cards).
 	private const float Scale = 2.7f;
 	private const float CardRadius = 6 * Scale;
-	private const float RailGap = 30;
+	private const float RailGap = 28;
 	private const float RailWidth = 8;
 	private const float LineFactor = 1.32f;
 
@@ -97,9 +105,7 @@ public static class JourneyShareImage
 
 	/// <summary>The colours of the picture, taken from the palette in effect when sharing.</summary>
 	private sealed record SharePalette(
-		SKColor HeaderTop,
-		SKColor HeaderBottom,
-		SKColor OnHeader,
+		SKColor Page,
 		SKColor Card,
 		SKColor Raised,
 		SKColor Outline,
@@ -115,10 +121,6 @@ public static class JourneyShareImage
 		public static SharePalette Capture()
 		{
 			Color accent = Theme.ColorOf("Accent", Color.FromArgb("#0B6E8A"));
-			Color onAccent = Theme.ColorOf("OnAccent", Colors.White);
-
-			// The gradient moves AWAY from the text colour, so the header text only gains contrast.
-			Color away = onAccent.GetLuminosity() > 0.5f ? Colors.Black : Colors.White;
 
 			var modes = new Dictionary<TransitMode, SKColor>();
 			var shapes = new Dictionary<TransitMode, CornerRadius>();
@@ -130,9 +132,7 @@ public static class JourneyShareImage
 			}
 
 			return new SharePalette(
-				Sk(accent),
-				Sk(Mix(accent, away, 0.45f)),
-				Sk(onAccent),
+				Sk(Theme.ColorOf("Bg", Color.FromArgb("#F2F4F5"))),
 				Sk(Theme.ColorOf("Surface", Colors.White)),
 				Sk(Theme.ColorOf("Raised", Color.FromArgb("#DFE6E9"))),
 				Sk(Theme.ColorOf("Outline", Color.FromArgb("#B4C1C7"))),
@@ -145,12 +145,6 @@ public static class JourneyShareImage
 				modes,
 				shapes);
 		}
-
-		private static Color Mix(Color a, Color b, float t) =>
-			Color.FromRgb(
-				a.Red + ((b.Red - a.Red) * t),
-				a.Green + ((b.Green - a.Green) * t),
-				a.Blue + ((b.Blue - a.Blue) * t));
 
 		private static SKColor Sk(Color c) =>
 			new(
@@ -173,53 +167,50 @@ public static class JourneyShareImage
 
 			if (canvas is not null && known is not null)
 			{
-				Header(known.Height);
+				canvas.Clear(p.Page);
 
 				using var card = new SKPaint { Color = p.Card, IsAntialias = true };
 				canvas.DrawRoundRect(new SKRect(Margin, known.CardTop, Width - Margin, known.CardBottom), CardRadius, CardRadius, card);
 			}
 
-			// ----- Header -----
+			// ----- Route and figures: one slim block, no banner -----
 
-			SKColor soft = p.OnHeader.WithAlpha(190);
+			y += Text($"{model.Origin} → {model.Destination}", Margin, y, inner, SzTitle, fonts.Semibold, p.Ink, 2) + 6;
 
-			y += Text("DDJOURNEYS", Margin, y, inner, 22, fonts.Semibold, soft, 1, spacing: 3) + 14;
-			y += Text($"{model.Origin} → {model.Destination}", Margin, y, inner, 44, fonts.Semibold, p.OnHeader, 3) + 8;
+			var figures = new List<string>(4);
 
 			if (model.Day.Length > 0)
 			{
-				y += Text(model.Day, Margin, y, inner, 28, fonts.Regular, soft, 1) + 12;
+				figures.Add(model.Day);
 			}
 
-			y += Text(
-				$"{Format.TimeOrDash(model.Departure)} – {Format.TimeOrDash(model.Arrival)}",
-				Margin, y, inner, 64, fonts.Semibold, p.OnHeader, 1) + 18;
+			figures.Add($"{Format.TimeOrDash(model.Departure)}–{Format.TimeOrDash(model.Arrival)}");
+			figures.Add(model.DurationText);
+			figures.Add(model.TransfersText);
 
-			float x = Margin;
-			SKColor chip = p.OnHeader.WithAlpha(40);
-
-			foreach (string label in new[] { model.DurationText, model.TransfersText })
+			if (model.PriceText is { Length: > 0 } price)
 			{
-				if (label.Length > 0)
-				{
-					x += Pill(label, x, y, 26, chip, p.OnHeader, fonts.Semibold) + 12;
-				}
+				figures.Add(price);
 			}
+
+			y += Text(string.Join(" · ", figures.Where(figure => figure.Length > 0)), Margin, y, inner, SzSub, fonts.Regular, p.Muted, 2);
 
 			if (model.IsCancelled)
 			{
-				Pill(text.NotPossible, x, y, 26, p.Cancelled, SKColors.White, fonts.Semibold);
+				y += 12;
+				float width = Pill(text.NotPossible, Margin, y, SzSmall, p.Cancelled, SKColors.White, fonts.Semibold);
+				float height = PillHeight(SzSmall);
+
+				if (model.BlockReason.Length > 0)
+				{
+					float dx = width + 14;
+					Text(model.BlockReason, Margin + dx, y + ((height - LineHeight(SzSub)) / 2), inner - dx, SzSub, fonts.Semibold, p.Cancelled, 2);
+				}
+
+				y += height;
 			}
 
-			y += PillHeight(26);
-
-			// Why it cannot take place, right under the figures.
-			if (model.IsCancelled && model.BlockReason.Length > 0)
-			{
-				y += 14 + Text(model.BlockReason, Margin, y + 14, inner, 28, fonts.Semibold, p.OnHeader, 2);
-			}
-
-			y += 36;
+			y += 24;
 
 			float cardTop = y;
 
@@ -237,48 +228,41 @@ public static class JourneyShareImage
 			{
 				y = step.Kind switch
 				{
+					ShareStepKind.Depart => Endpoint(step, text.Depart, left, timeColumn, rail, content, contentWidth, y),
 					ShareStepKind.Ride => Ride(step, text, left, timeColumn, rail, content, contentWidth, y),
 					ShareStepKind.Walk => Walk(step, text, rail, content, contentWidth, y),
 					ShareStepKind.Change => Change(step, text, content, contentWidth, y),
-					_ => Arrive(step, text, left, timeColumn, rail, content, contentWidth, y)
+					_ => Endpoint(step, text.Arrive, left, timeColumn, rail, content, contentWidth, y)
 				};
 			}
 
-			// ----- Notices -----
-
-			if (model.Notices.Count > 0)
-			{
-				y += 8;
-
-				foreach (string notice in model.Notices.Take(3))
-				{
-					y = Notice(notice, left, Width - Margin - CardInset - left, y) + 12;
-				}
-
-				y -= 12;
-			}
-
-			y += CardInset;
+			y += CardInset - 6;
 
 			float cardBottom = y;
 
-			// ----- Footer -----
+			// ----- Signature: small and quiet -----
 
-			y += 24;
-
-			string stamp =
-				string.Format(
-					CultureInfo.CurrentCulture,
-					"DDjourneys · {0}",
-					Format.ToWall(DateTimeOffset.UtcNow).ToString("g", CultureInfo.CurrentCulture));
-
-			y += Text(stamp, Margin, y, inner, 22, fonts.Regular, soft, 1, align: SKTextAlign.Center);
-			y += Margin - 12;
+			y += 14;
+			y += Text("DDjourneys", Margin, y, inner, 20, fonts.Regular, p.Muted.WithAlpha(150), 1, align: SKTextAlign.Right);
+			y += 22;
 
 			return new Geometry(y, cardTop, cardBottom);
 		}
 
 		// ----- Blocks -----
+
+		/// <summary>A stop name in the content colour, its platform small underneath; returns the height.</summary>
+		private float StopBlock(string name, string? platform, float x, float y, float width)
+		{
+			float height = Text(name, x, y, width, SzBody, fonts.Semibold, p.Ink, 2);
+
+			if (!string.IsNullOrWhiteSpace(platform))
+			{
+				height += Text(platform, x, y + height, width, SzSmall, fonts.Regular, p.Muted, 1);
+			}
+
+			return height;
+		}
 
 		private float Ride(
 			ShareStep step,
@@ -292,25 +276,33 @@ public static class JourneyShareImage
 		{
 			SKColor line = step.IsCancelled ? p.Cancelled : p.Modes.GetValueOrDefault(step.Mode, p.Accent);
 			float top = y;
-			float rowHeight = PillHeight(26);
 
-			TimeCell(step.Time, step.LiveTime, left, timeColumn, y, rowHeight);
+			// Boarding: time, node and stop on one line.
+			float boardHeight = StopBlock(step.From, step.FromPlatform, content, y, contentWidth);
 
-			float pillWidth = Pill(step.Line, content, y, 26, line, SKColors.White, fonts.Semibold, p.Shapes.GetValueOrDefault(step.Mode));
+			TimeCell(step.Time, step.LiveTime, left, timeColumn, y);
+
+			y += Math.Max(boardHeight, TimeCellHeight(step.LiveTime is not null && step.Time is not null)) + 12;
+
+			// The ride itself: line pill, direction, then stops and duration.
+			float pillHeight = PillHeight(SzPill);
+			float pillWidth = Pill(step.Line, content, y, SzPill, line, SKColors.White, fonts.Semibold, p.Shapes.GetValueOrDefault(step.Mode));
+			float rowHeight = pillHeight;
 
 			if (step.Direction is { Length: > 0 } toward)
 			{
 				float dx = pillWidth + 14;
-				float h = Text($"→ {toward}", content + dx, y + ((rowHeight - LineHeight(28)) / 2), contentWidth - dx, 28, fonts.Semibold, p.Ink, 2);
-				rowHeight = Math.Max(rowHeight, h + ((rowHeight - LineHeight(28)) / 2));
+				float inset = (pillHeight - LineHeight(SzSub)) / 2;
+				float h = Text($"→ {toward}", content + dx, y + inset, contentWidth - dx, SzSub, fonts.Regular, p.Ink, 2);
+
+				rowHeight = Math.Max(rowHeight, h + inset);
 			}
 
-			y += rowHeight + 6;
-			y += Text($"{step.From}{Suffix(step.FromPlatform)}", content, y, contentWidth, 26, fonts.Regular, p.Muted, 2);
+			y += rowHeight;
 
 			if (step.IsCancelled)
 			{
-				y += 4 + Text(text.Cancelled, content, y + 4, contentWidth, 26, fonts.Semibold, p.Cancelled, 1);
+				y += 4 + Text(text.Cancelled, content, y + 4, contentWidth, SzSmall, fonts.Semibold, p.Cancelled, 1);
 			}
 
 			string stops =
@@ -326,22 +318,22 @@ public static class JourneyShareImage
 
 			if (summary.Length > 0)
 			{
-				y += 14;
-				y += Text(summary, content, y, contentWidth, 24, fonts.Regular, p.Muted, 1);
+				y += 6;
+				y += Text(summary, content, y, contentWidth, SzSmall, fonts.Regular, p.Muted, 1);
 			}
 
-			y += 20;
+			y += 14;
 
-			// Arrival row
+			// Alighting: time, node and stop on one line.
 			float arrival = y;
-			float arrivalHeight = Text($"{step.To}{Suffix(step.ToPlatform)}", content, y, contentWidth, 28, fonts.Semibold, p.Ink, 2);
+			float arrivalHeight = StopBlock(step.To, step.ToPlatform, content, y, contentWidth);
 
-			TimeCell(step.EndTime, step.EndLiveTime, left, timeColumn, y, LineHeight(28));
+			TimeCell(step.EndTime, step.EndLiveTime, left, timeColumn, y);
 
 			if (canvas is not null)
 			{
-				float from = top + (PillHeight(26) / 2);
-				float to = arrival + (LineHeight(28) / 2);
+				float from = top + (LineHeight(SzBody) / 2);
+				float to = arrival + (LineHeight(SzBody) / 2);
 
 				using var paint = new SKPaint { Color = line, IsAntialias = true };
 				canvas.DrawRoundRect(new SKRect(rail - (RailWidth / 2), from, rail + (RailWidth / 2), to), RailWidth / 2, RailWidth / 2, paint);
@@ -350,7 +342,7 @@ public static class JourneyShareImage
 				Node(rail, to, line);
 			}
 
-			return y + Math.Max(arrivalHeight, TimeCellHeight(step.EndLiveTime is not null && step.EndTime is not null)) + 28;
+			return y + Math.Max(arrivalHeight, TimeCellHeight(step.EndLiveTime is not null && step.EndTime is not null)) + 26;
 		}
 
 		private float Walk(ShareStep step, JourneyStrings text, float rail, float content, float contentWidth, float y)
@@ -358,7 +350,24 @@ public static class JourneyShareImage
 			string duration = step.Duration is { } walk && walk > TimeSpan.Zero ? Format.Duration(walk) : string.Empty;
 			string label = string.Join(' ', new[] { text.Walk, duration, text.To, step.To }.Where(part => part.Length > 0));
 
-			float height = Math.Max(40, Text(label, content, y + 4, contentWidth, 24, fonts.Regular, p.Muted, 2) + 8);
+			if (step.WaitTime is { } left && left >= TimeSpan.FromMinutes(1))
+			{
+				label += $" · {Format.Duration(left)} {text.ToChange}";
+			}
+
+			SKColor color = step.IsEndangered ? p.Cancelled : p.Muted;
+			float height = Text(label, content, y + 4, contentWidth, SzSub, fonts.Regular, color, 3) + 8;
+
+			if (step.IsEndangered)
+			{
+				height += Text(text.ConnectionMayBeMissed, content, y + height, contentWidth, SzSmall, fonts.Semibold, p.Cancelled, 2);
+			}
+			else if (step.IsGuaranteed)
+			{
+				height += Text(text.ConnectionGuaranteed, content, y + height, contentWidth, SzSmall, fonts.Semibold, p.OnTime, 2);
+			}
+
+			height = Math.Max(44, height);
 
 			if (canvas is not null)
 			{
@@ -371,7 +380,7 @@ public static class JourneyShareImage
 				}
 			}
 
-			return y + height + 20;
+			return y + height + 16;
 		}
 
 		private float Change(ShareStep step, JourneyStrings text, float content, float contentWidth, float y)
@@ -382,32 +391,37 @@ public static class JourneyShareImage
 					: text.ImmediateChange;
 
 			SKColor color = step.IsEndangered ? p.Cancelled : p.Muted;
-			const float icon = 26;
+			const float icon = 28;
 
-			float height = Text($"{text.ChangeAt} {step.From} · {wait}", content + icon + 10, y, contentWidth - icon - 10, 24, fonts.Semibold, color, 2);
+			float height = Text($"{text.ChangeAt} {step.From} · {wait}", content + icon + 10, y, contentWidth - icon - 10, SzSub, fonts.Semibold, color, 2);
 
 			if (canvas is not null)
 			{
-				ChangeIcon(content, y + ((LineHeight(24) - icon) / 2), icon, color);
+				ChangeIcon(content, y + ((LineHeight(SzSub) - icon) / 2), icon, color);
 			}
 
 			if (step.IsEndangered)
 			{
-				height += 4 + Text(text.ConnectionMayBeMissed, content + icon + 10, y + height + 4, contentWidth - icon - 10, 22, fonts.Regular, p.Cancelled, 2);
+				height += 4 + Text(text.ConnectionMayBeMissed, content + icon + 10, y + height + 4, contentWidth - icon - 10, SzSmall, fonts.Regular, p.Cancelled, 2);
+			}
+			else if (step.IsGuaranteed)
+			{
+				height += 4 + Text(text.ConnectionGuaranteed, content + icon + 10, y + height + 4, contentWidth - icon - 10, SzSmall, fonts.Semibold, p.OnTime, 2);
 			}
 
 			if (canvas is not null)
 			{
 				using var hairline = new SKPaint { Color = p.Outline.WithAlpha(120), StrokeWidth = 2, IsAntialias = true };
-				canvas.DrawLine(content, y + height + 16, content + contentWidth, y + height + 16, hairline);
+				canvas.DrawLine(content, y + height + 14, content + contentWidth, y + height + 14, hairline);
 			}
 
-			return y + height + 36;
+			return y + height + 32;
 		}
 
-		private float Arrive(
+		/// <summary>The starting point or the destination: a ring on the rail, the place in the content colour.</summary>
+		private float Endpoint(
 			ShareStep step,
-			JourneyStrings text,
+			string caption,
 			float left,
 			float timeColumn,
 			float rail,
@@ -415,78 +429,43 @@ public static class JourneyShareImage
 			float contentWidth,
 			float y)
 		{
-			float height = Text($"{text.Arrive} {step.To}", content, y, contentWidth, 30, fonts.Semibold, p.Ink, 2);
+			float height = Text($"{caption} {step.To}", content, y, contentWidth, SzBody, fonts.Semibold, p.Ink, 3);
 
-			TimeCell(step.Time, null, left, timeColumn, y, LineHeight(30));
+			TimeCell(step.Time, null, left, timeColumn, y);
 
 			if (canvas is not null)
 			{
-				float cy = y + (LineHeight(30) / 2);
+				float cy = y + (LineHeight(SzBody) / 2);
 
 				using var ring = new SKPaint { Color = p.Accent, IsAntialias = true };
 				using var hole = new SKPaint { Color = p.Card, IsAntialias = true };
 
-				canvas.DrawCircle(rail, cy, 14, ring);
-				canvas.DrawCircle(rail, cy, 5, hole);
+				canvas.DrawCircle(rail, cy, 15, ring);
+				canvas.DrawCircle(rail, cy, 5.5f, hole);
 			}
 
-			return y + height + 8;
-		}
-
-		private float Notice(string notice, float x, float width, float y)
-		{
-			const float pad = 22;
-			const float icon = 26;
-
-			float textWidth = width - (2 * pad) - icon - 12;
-			float height = Text(notice, x + pad + icon + 12, y + pad, textWidth, 24, fonts.Regular, p.Ink, 6, measureOnly: true);
-
-			if (canvas is not null)
-			{
-				using var fill = new SKPaint { Color = p.Raised, IsAntialias = true };
-				canvas.DrawRoundRect(new SKRect(x, y, x + width, y + height + (2 * pad)), 4 * Scale, 4 * Scale, fill);
-
-				WarningIcon(x + pad, y + pad + ((LineHeight(24) - icon) / 2), icon, p.Delay);
-
-				Text(notice, x + pad + icon + 12, y + pad, textWidth, 24, fonts.Regular, p.Ink, 6);
-			}
-
-			return y + height + (2 * pad);
+			return y + Math.Max(height, LineHeight(SzBody)) + 14;
 		}
 
 		// ----- Primitives -----
 
-		private void Header(float height)
-		{
-			using var shader =
-				SKShader.CreateLinearGradient(
-					new SKPoint(0, 0),
-					new SKPoint(Width * 0.35f, height),
-					[p.HeaderTop, p.HeaderBottom],
-					SKShaderTileMode.Clamp);
-
-			using var paint = new SKPaint { Shader = shader, IsAntialias = true };
-
-			canvas!.DrawRect(new SKRect(0, 0, Width, height), paint);
-		}
-
 		/// <summary>The time column fits the widest time shown, so the rail sits close to the times.</summary>
 		private float TimeColumn(JourneyShareModel model)
 		{
-			float widest = Measure("00:00", fonts.Semibold, 30);
+			float widest = Measure("00:00", fonts.Semibold, SzBody);
 
 			foreach (ShareStep step in model.Steps)
 			{
 				foreach (DateTimeOffset? time in new[] { step.Time, step.EndTime })
 				{
-					widest = Math.Max(widest, Measure(Format.TimeOrDash(time), fonts.Semibold, 30));
+					widest = Math.Max(widest, Measure(Format.TimeOrDash(time), fonts.Semibold, SzBody));
 				}
 
 				foreach (DateTimeOffset? time in new[] { step.LiveTime, step.EndLiveTime })
 				{
 					if (time is not null)
 					{
-						widest = Math.Max(widest, Measure(Format.TimeOrDash(time), fonts.Semibold, 24));
+						widest = Math.Max(widest, Measure(Format.TimeOrDash(time), fonts.Semibold, SzLive));
 					}
 				}
 			}
@@ -494,30 +473,29 @@ public static class JourneyShareImage
 			return widest + 4;
 		}
 
-		private void TimeCell(DateTimeOffset? planned, DateTimeOffset? live, float left, float width, float y, float rowHeight)
+		/// <summary>The time on the same line as its stop; a real-time deviation sits right under it.</summary>
+		private void TimeCell(DateTimeOffset? planned, DateTimeOffset? live, float left, float width, float y)
 		{
-			float top = y + ((rowHeight - LineHeight(30)) / 2);
-
-			Text(Format.TimeOrDash(planned), left, top, width, 30, fonts.Semibold, p.Ink, 1, align: SKTextAlign.Right);
+			Text(Format.TimeOrDash(planned), left, y, width, SzBody, fonts.Semibold, p.Ink, 1, align: SKTextAlign.Right);
 
 			if (live is { } actual && planned is { } plan)
 			{
 				SKColor color = actual > plan ? p.Delay : p.OnTime;
 
-				Text(Format.TimeOrDash(actual), left, top + LineHeight(30), width, 24, fonts.Semibold, color, 1, align: SKTextAlign.Right);
+				Text(Format.TimeOrDash(actual), left, y + LineHeight(SzBody), width, SzLive, fonts.Semibold, color, 1, align: SKTextAlign.Right);
 			}
 		}
 
 		private static float TimeCellHeight(bool withLive) =>
-			LineHeight(30) + (withLive ? LineHeight(24) : 0);
+			LineHeight(SzBody) + (withLive ? LineHeight(SzLive) : 0);
 
 		private void Node(float x, float y, SKColor color)
 		{
 			using var fill = new SKPaint { Color = p.Card, IsAntialias = true };
 			using var ring = new SKPaint { Color = color, IsAntialias = true, Style = SKPaintStyle.Stroke, StrokeWidth = 5 };
 
-			canvas!.DrawCircle(x, y, 11, fill);
-			canvas.DrawCircle(x, y, 9.5f, ring);
+			canvas!.DrawCircle(x, y, 12, fill);
+			canvas.DrawCircle(x, y, 10.5f, ring);
 		}
 
 		private void ChangeIcon(float x, float y, float size, SKColor color)
@@ -550,25 +528,6 @@ public static class JourneyShareImage
 			path.LineTo(x + (s * 0.34f), y + (s * 0.90f));
 
 			canvas!.DrawPath(path, paint);
-		}
-
-		private void WarningIcon(float x, float y, float size, SKColor color)
-		{
-			using var fill = new SKPaint { Color = color, IsAntialias = true, Style = SKPaintStyle.Fill };
-			using var mark = new SKPaint { Color = p.Raised, IsAntialias = true, StrokeWidth = size * 0.11f, StrokeCap = SKStrokeCap.Round };
-			using var triangle = new SKPath();
-
-			float s = size;
-
-			triangle.MoveTo(x + (s * 0.5f), y + (s * 0.06f));
-			triangle.LineTo(x + (s * 0.97f), y + (s * 0.90f));
-			triangle.LineTo(x + (s * 0.03f), y + (s * 0.90f));
-			triangle.Close();
-
-			canvas!.DrawPath(triangle, fill);
-			canvas.DrawLine(x + (s * 0.5f), y + (s * 0.36f), x + (s * 0.5f), y + (s * 0.60f), mark);
-			using var dot = new SKPaint { Color = p.Raised, IsAntialias = true };
-			canvas.DrawCircle(x + (s * 0.5f), y + (s * 0.75f), s * 0.06f, dot);
 		}
 
 		/// <summary>
@@ -720,7 +679,7 @@ public static class JourneyShareImage
 				}
 
 				current = face;
-				builder.Append(rune.ToString());
+				builder.Append(rune);
 			}
 
 			if (current is not null && builder.Length > 0)

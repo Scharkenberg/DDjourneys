@@ -38,6 +38,28 @@
 						HorizontalTextAlignment="Center"
 						StyleClass="Caption"
 						Text="{Binding TransfersText}" />
+					<!--  Price: a soft pill (not tappable)  -->
+					<Border
+						Padding="10,2"
+						BackgroundColor="{DynamicResource AccentSoft}"
+						HorizontalOptions="Center"
+						IsVisible="{Binding HasPrice}"
+						StrokeShape="RoundRectangle 100"
+						StrokeThickness="0">
+						<HorizontalStackLayout Spacing="6">
+							<controls:Icon
+								Glyph="Ticket"
+								Size="14"
+								VerticalOptions="Center"
+								Color="{DynamicResource Accent}" />
+							<Label
+								FontFamily="{DynamicResource FontSemibold}"
+								FontSize="{StaticResource FontCaption}"
+								Text="{Binding PriceText}"
+								TextColor="{DynamicResource Accent}"
+								VerticalOptions="Center" />
+						</HorizontalStackLayout>
+					</Border>
 				</VerticalStackLayout>
 
 				<VerticalStackLayout
@@ -74,31 +96,112 @@
 					Stop="{Binding ToName}" />
 			</Grid>
 
-			<!--  Legs  -->
-			<FlexLayout BindableLayout.ItemsSource="{Binding Chips}" Wrap="Wrap">
-				<BindableLayout.ItemTemplate>
-					<DataTemplate x:DataType="support:LegChip">
-						<Border
-							Margin="0,0,6,6"
-							BackgroundColor="{Binding Look.Fill}"
-							FlexLayout.Shrink="0"
-							StrokeDashArray="{Binding Look.Dashes}"
-							StrokeShape="{Binding Look.Shape}"
-							StrokeThickness="{Binding Look.StrokeThickness}"
-							StyleClass="Chip"
-							Stroke="{Binding Look.Stroke}">
-							<support:PillScroll>
-								<Label
-									FontFamily="{DynamicResource FontSemibold}"
-									FontSize="{StaticResource FontCaption}"
-									StyleClass="ChipLabel"
-									Text="{Binding Text}"
-									TextColor="{Binding Look.Text}" />
-							</support:PillScroll>
-						</Border>
-					</DataTemplate>
-				</BindableLayout.ItemTemplate>
-			</FlexLayout>
+			<!--  Legs: one line, centered, and swipeable when it is too long for the card; the actions sit beside it  -->
+			<Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource SpaceS}">
+
+				<ScrollView
+					HorizontalScrollBarVisibility="Never"
+					Orientation="Horizontal"
+					VerticalOptions="Center">
+					<HorizontalStackLayout
+						BindableLayout.ItemsSource="{Binding Chips}"
+						Spacing="6"
+						VerticalOptions="Center">
+						<BindableLayout.ItemTemplate>
+							<DataTemplate x:DataType="support:LegChip">
+								<Border
+									BackgroundColor="{Binding Look.Fill}"
+									StrokeDashArray="{Binding Look.Dashes}"
+									StrokeShape="{Binding Look.Shape}"
+									StrokeThickness="{Binding Look.StrokeThickness}"
+									StyleClass="Chip"
+									Stroke="{Binding Look.Stroke}"
+									VerticalOptions="Center">
+									<Label
+										FontFamily="{DynamicResource FontSemibold}"
+										FontSize="{StaticResource FontCaption}"
+										LineBreakMode="NoWrap"
+										StyleClass="ChipLabel"
+										Text="{Binding Text}"
+										TextColor="{Binding Look.Text}" />
+								</Border>
+							</DataTemplate>
+						</BindableLayout.ItemTemplate>
+					</HorizontalStackLayout>
+				</ScrollView>
+
+				<!--  Actions, vertically centered with the legs: notices (a badge, not a line), PDF, hand-over, follow, pause, map  -->
+				<HorizontalStackLayout
+					Grid.Column="1"
+					HorizontalOptions="End"
+					Spacing="0"
+					VerticalOptions="Center">
+
+					<Border
+						Padding="6,3"
+						Margin="0,0,4,0"
+						BackgroundColor="{DynamicResource Raised}"
+						IsVisible="{Binding HasNotices}"
+						SemanticProperties.Description="{Binding NoticesText}"
+						StrokeShape="RoundRectangle 100"
+						StrokeThickness="0"
+						VerticalOptions="Center"
+						support:Motion.Feedback="True">
+						<HorizontalStackLayout Spacing="3">
+							<controls:Icon
+								Glyph="Warning"
+								Size="14"
+								VerticalOptions="Center"
+								Color="{DynamicResource InkMuted}" />
+							<Label
+								FontFamily="{DynamicResource FontSemibold}"
+								FontSize="{StaticResource FontCaption}"
+								Text="{Binding NoticeCount}"
+								TextColor="{DynamicResource InkMuted}"
+								VerticalOptions="Center" />
+						</HorizontalStackLayout>
+						<Border.GestureRecognizers>
+							<TapGestureRecognizer Command="{Binding Actions.NoticesCommand}" />
+						</Border.GestureRecognizers>
+					</Border>
+
+					<controls:IconButton
+						Command="{Binding Actions.PdfCommand}"
+						Glyph="Document"
+						IsVisible="{Binding Actions.HasPdf}"
+						SemanticProperties.Description="{Binding Actions.PdfDescription}"
+						TargetSize="{StaticResource HitIconTight}" />
+
+					<controls:IconButton
+						Command="{Binding Actions.HandOffCommand}"
+						Glyph="External"
+						IsVisible="{Binding Actions.HasHandOff}"
+						SemanticProperties.Description="{Binding Actions.HandOffDescription}"
+						TargetSize="{StaticResource HitIconTight}" />
+
+					<controls:IconButton
+						Command="{Binding Actions.PauseCommand}"
+						Glyph="{Binding Actions.PauseGlyph}"
+						IsVisible="{Binding Actions.ShowPause}"
+						SemanticProperties.Description="{Binding Actions.PauseDescription}"
+						TargetSize="{StaticResource HitIconTight}" />
+
+					<controls:IconButton
+						Command="{Binding Actions.FollowCommand}"
+						Glyph="{Binding Actions.FollowGlyph}"
+						IsVisible="{Binding Actions.CanFollow}"
+						SemanticProperties.Description="{Binding Actions.FollowDescription}"
+						TargetSize="{StaticResource HitIconTight}" />
+
+					<controls:IconButton
+						Command="{Binding MapCommand}"
+						Glyph="Map"
+						IsVisible="{Binding HasMap}"
+						SemanticProperties.Description="{localization:Tr Extras.MapShow}"
+						TargetSize="{StaticResource HitIconTight}" />
+				</HorizontalStackLayout>
+
+			</Grid>
 
 			<!--  Cannot take place: own row, so a long reason can wrap  -->
 			<Label
@@ -114,10 +217,6 @@
 						<localization:Tr Key="Journey.OnTime" />
 					</Label.Text>
 				</Label>
-				<Label
-					IsVisible="{Binding HasNotices}"
-					StyleClass="Caption"
-					Text="{Binding NoticesText}" />
 			</HorizontalStackLayout>
 
 		</VerticalStackLayout>

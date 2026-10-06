@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using DDjourneys.Support;
 using System.Windows.Input;
 
@@ -7,7 +8,7 @@ namespace DDjourneys.Controls;
 /// A tappable icon with a full-size touch target and a soft pressed state. Used wherever a text
 /// glyph used to stand in for a button, so every control in the app shares one icon family.
 /// </summary>
-public sealed class IconButton : ContentView
+public sealed partial class IconButton : ContentView
 {
 	public static readonly BindableProperty GlyphProperty =
 		BindableProperty.Create(
@@ -52,6 +53,16 @@ public sealed class IconButton : ContentView
 			typeof(IconButton),
 			null);
 
+	/// <summary>Smallest touch target (40 by default; the app uses 40 and 36 for strips); a row of several icons may use less.</summary>
+	public static readonly BindableProperty TargetSizeProperty =
+		BindableProperty.Create(
+			nameof(TargetSize),
+			typeof(double),
+			typeof(IconButton),
+			40d,
+			propertyChanged: (bindable, _, value) =>
+				((IconButton)bindable).ApplyTarget((double)value!));
+
 	private readonly Icon _icon = new();
 	private readonly Border _surface;
 
@@ -78,10 +89,22 @@ public sealed class IconButton : ContentView
 		tap.Tapped += OnTapped;
 		_surface.GestureRecognizers.Add(tap);
 
-		Dense.SetMinHeight(_surface, 44);
-		Dense.SetMinWidth(_surface, 44);
+		Dense.SetMinHeight(_surface, 40);
+		Dense.SetMinWidth(_surface, 40);
 
 		Content = _surface;
+	}
+
+	public double TargetSize
+	{
+		get => (double)GetValue(TargetSizeProperty);
+		set => SetValue(TargetSizeProperty, value);
+	}
+
+	private void ApplyTarget(double size)
+	{
+		Dense.SetMinHeight(_surface, size);
+		Dense.SetMinWidth(_surface, size);
 	}
 
 	/// <summary>Which icon to show.</summary>
@@ -133,15 +156,8 @@ public sealed class IconButton : ContentView
 
 	private void OnCommandChanged(ICommand? previous, ICommand? next)
 	{
-		if (previous is not null)
-		{
-			previous.CanExecuteChanged -= OnCanExecuteChanged;
-		}
-
-		if (next is not null)
-		{
-			next.CanExecuteChanged += OnCanExecuteChanged;
-		}
+		previous?.CanExecuteChanged -= OnCanExecuteChanged;
+		next?.CanExecuteChanged += OnCanExecuteChanged;
 
 		RefreshEnabled();
 	}
@@ -172,7 +188,7 @@ public sealed class IconButton : ContentView
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Icon button feedback skipped: {ex.Message}");
+			DiagnosticLog.Write($"Icon button feedback skipped: {ex.Message}");
 		}
 
 		Clicked?.Invoke(this, EventArgs.Empty);

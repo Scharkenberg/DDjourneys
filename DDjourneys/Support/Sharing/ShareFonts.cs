@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using SkiaSharp;
 
 namespace DDjourneys.Support.Sharing;
@@ -65,7 +66,7 @@ internal sealed class ShareFonts
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"No fallback face for U+{codepoint:X4}: {ex.Message}");
+			DiagnosticLog.Write($"No fallback face for U+{codepoint:X4}: {ex.Message}");
 		}
 
 		SKTypeface result = match ?? preferred;
@@ -106,7 +107,7 @@ internal sealed class ShareFonts
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Share font {file} not loaded: {ex.Message}");
+			DiagnosticLog.Write($"Share font {file} not loaded: {ex.Message}");
 
 			return null;
 		}

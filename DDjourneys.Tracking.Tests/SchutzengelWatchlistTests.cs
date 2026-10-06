@@ -8,7 +8,78 @@ namespace DDjourneys.Tracking.Tests;
 
 public sealed class SchutzengelWatchlistTests
 {
+	private static readonly int[] OneAndTwo = [1, 2];
+
 	private static readonly DateTimeOffset Base = new(2026, 10, 2, 8, 0, 0, TimeSpan.Zero);
+
+	// ----- Walks at both ends -----
+
+	[Fact]
+	public void A_walk_to_the_first_stop_starts_the_journey_before_the_first_vehicle()
+	{
+		TripTimeline timeline = Parse(Trip(rideOneArrival: 10, secondDeparture: 15, realtimeArrival: null));
+		int episodes = timeline.Episodes.Count;
+
+		timeline.SetWalks(new TripWalks(300, "Home", 51.0, 13.7, 0, null, null, null));
+
+		Assert.Equal(episodes + 1, timeline.Episodes.Count);
+		Assert.True(timeline.Episodes[0].IsIndividual);
+		Assert.Equal("Home", timeline.Episodes[0].From.Name);
+		Assert.Equal(Base.AddMinutes(-5), timeline.Start);
+
+		TripSnapshot walking = timeline.Calculate(Base.AddMinutes(-3));
+
+		Assert.Equal(TrackingPhase.AtInterchange, walking.Phase);
+		Assert.Equal(0, walking.EpisodeIndex);
+		Assert.False(walking.IsFinalWalk);
+		Assert.Equal(Base.AddMinutes(-5), walking.EpisodeStart!.Effective);
+		Assert.Equal(Base, walking.EpisodeEnd!.Effective);
+		Assert.Equal("11", walking.NextRide!.MotName);
+
+		Assert.Equal(TripStage.NotStarted, timeline.Calculate(Base.AddMinutes(-6)).Stage);
+		Assert.Equal(TrackingPhase.InProgress, timeline.Calculate(Base.AddMinutes(3)).Phase);
+	}
+
+	[Fact]
+	public void A_walk_from_the_last_stop_ends_the_journey_at_the_destination()
+	{
+		TripTimeline timeline = Parse(Trip(rideOneArrival: 10, secondDeparture: 15, realtimeArrival: null));
+		DateTimeOffset ridesEnd = timeline.End!.Value;
+
+		timeline.SetWalks(new TripWalks(0, null, null, null, 240, "Office", 51.1, 13.8));
+
+		Assert.Equal(ridesEnd.AddMinutes(4), timeline.End);
+
+		TripSnapshot walking = timeline.Calculate(ridesEnd.AddMinutes(2));
+
+		Assert.True(walking.IsFinalWalk);
+		Assert.Equal(TrackingPhase.AtInterchange, walking.Phase);
+		Assert.Equal("Office", walking.Destination);
+		Assert.Equal("Office", walking.EpisodeEnd!.Name);
+		Assert.Equal(ridesEnd, walking.EpisodeStart!.Effective);
+		Assert.Equal(ridesEnd.AddMinutes(4), walking.EpisodeEnd.Effective);
+		Assert.Null(walking.NextRide);
+
+		Assert.Equal(TrackingPhase.Arrived, timeline.Calculate(ridesEnd.AddMinutes(5)).Phase);
+	}
+
+	[Fact]
+	public void The_walks_can_be_set_again_and_taken_away()
+	{
+		TripTimeline timeline = Parse(Trip(rideOneArrival: 10, secondDeparture: 15, realtimeArrival: null));
+		int episodes = timeline.Episodes.Count;
+		var walks = new TripWalks(120, "A", null, null, 120, "B", null, null);
+
+		timeline.SetWalks(walks);
+		timeline.SetWalks(walks with { });
+
+		Assert.Equal(episodes + 2, timeline.Episodes.Count);
+
+		timeline.SetWalks(null);
+
+		Assert.Equal(episodes, timeline.Episodes.Count);
+		Assert.Equal(Base, timeline.Start);
+	}
 
 	// ----- Trip progress -----
 
@@ -133,7 +204,7 @@ public sealed class SchutzengelWatchlistTests
 		SchutzengelOptions updated =
 			SchutzengelOptions.Default.With(new WatchOptions(true, 10, false, true));
 
-		string json = JsonSerializer.Serialize(updated.ToPayload());
+		string json = updated.ToPayload().ToJsonString();
 
 		using JsonDocument document = JsonDocument.Parse(json);
 
@@ -262,8 +333,8 @@ public sealed class SchutzengelWatchlistTests
 		broadcaster.Publish(1);
 		broadcaster.Publish(2);
 
-		Assert.Equal(new[] { 1, 2 }, await first);
-		Assert.Equal(new[] { 1, 2 }, await second);
+		Assert.Equal(OneAndTwo, await first);
+		Assert.Equal(OneAndTwo, await second);
 	}
 
 	// ----- Transport -----

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace DDjourneys.Core.Storage;
 
@@ -21,8 +22,6 @@ public sealed record StoredRead<T>(
 public static class StoredJson
 {
 	public const int CurrentVersion = 2;
-
-	private static readonly JsonSerializerOptions Options = new() { WriteIndented = false };
 
 	public static StoredRead<T> Read<T>(string? json, Func<JsonElement, T?> parse)
 		where T : class
@@ -88,11 +87,24 @@ public static class StoredJson
 		}
 	}
 
-	public static string Write<T>(IEnumerable<T> items)
+	/// <summary>Writes the versioned envelope; <paramref name="toNode"/> builds one entry (no reflection).</summary>
+	public static string Write<T>(IEnumerable<T> items, Func<T, JsonNode?> toNode)
 	{
 		ArgumentNullException.ThrowIfNull(items);
+		ArgumentNullException.ThrowIfNull(toNode);
 
-		return JsonSerializer.Serialize(new Envelope<T> { V = CurrentVersion, Items = items.ToArray() }, Options);
+		var array = new JsonArray();
+
+		foreach (T item in items)
+		{
+			array.Add(toNode(item));
+		}
+
+		return new JsonObject
+		{
+			["v"] = CurrentVersion,
+			["items"] = array
+		}.ToJsonString();
 	}
 
 	// ----- tolerant field readers -----
@@ -157,14 +169,5 @@ public static class StoredJson
 		}
 
 		return false;
-	}
-
-	private sealed class Envelope<T>
-	{
-		[System.Text.Json.Serialization.JsonPropertyName("v")]
-		public int V { get; init; }
-
-		[System.Text.Json.Serialization.JsonPropertyName("items")]
-		public T[] Items { get; init; } = [];
 	}
 }
