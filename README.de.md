@@ -2,7 +2,7 @@
 
 DDjourneys ist eine Fahrplanauskunft für Busse, Straßenbahnen und Züge in und um Dresden. Sie sagen der App, wohin Sie wollen und wann, und sie zeigt Ihnen, wie Sie dorthin kommen, was sich verspätet und wo Ihr Fahrzeug gerade ist. Sie läuft auf Android-Telefonen und unter Windows.
 
-Ich habe sie geschrieben, weil ich etwas wie die alte Android-App oeffi haben wollte, aber für die Fahrplandaten des Verkehrsverbunds Oberelbe (VVO) und in einer Form, die zu heutigen Telefonen passt und auch unter Windows läuft. Sie ist keine offizielle App des VVO oder der DVB und wird von keinem von beiden hergestellt oder ausdrücklich empfohlen.
+Ich habe sie geschrieben, weil ich etwas wie die alte Android-App Öffi haben wollte, aber für die Fahrplandaten des Verkehrsverbunds Oberelbe (VVO) und in einer Form, die zu heutigen Telefonen passt und auch unter Windows läuft. Sie ist keine offizielle App des VVO oder der DVB und wird von keinem von beiden hergestellt oder ausdrücklich empfohlen.
 
 ## Erste Schritte
 

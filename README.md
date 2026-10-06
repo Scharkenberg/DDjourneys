@@ -2,7 +2,7 @@
 
 DDjourneys is a journey planner for buses, trams and trains in and around Dresden. You tell it where you are going and when, and it shows you how to get there, what is late, and where your vehicle is right now. It runs on Android phones and on Windows.
 
-I wrote it because I wanted something like the old Android app oeffi, but made for the timetable data of the Verkehrsverbund Oberelbe (VVO) and in a shape that fits current phones and works on Windows too. It is not an official app of the VVO or the DVB, and it is not made or actively endorsed by either of them.
+I wrote it because I wanted something like the old Android app Öffi, but made for the timetable data of the Verkehrsverbund Oberelbe (VVO) and in a shape that fits current phones and works on Windows too. It is not an official app of the VVO or the DVB, and it is not made or actively endorsed by either of them.
 
 ## Getting started
 

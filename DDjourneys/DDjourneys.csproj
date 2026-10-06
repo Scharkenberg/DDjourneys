@@ -33,7 +33,7 @@
 
 		<!-- Versions -->
 		<ApplicationDisplayVersion>0.8.5</ApplicationDisplayVersion>
-		<ApplicationVersion>3</ApplicationVersion>
+		<ApplicationVersion>4</ApplicationVersion>
 
 		<!-- To develop, package, and publish an app to the Microsoft Store, see: https://aka.ms/MauiTemplateUnpackaged -->
 		<WindowsPackageType>MSIX</WindowsPackageType>
@@ -45,25 +45,26 @@
 		<TargetPlatformMinVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</TargetPlatformMinVersion>
 		<AssemblyTitle>DDjourneys</AssemblyTitle>
 	</PropertyGroup>
-
-	<PropertyGroup>
-		<UseMaterial3>true</UseMaterial3>
-	</PropertyGroup>
-
  
 	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net11.0-android|AnyCPU'">
-	  <EmbedAssembliesIntoApk>True</EmbedAssembliesIntoApk>
+	  <EmbedAssembliesIntoApk>False</EmbedAssembliesIntoApk>
 	  <AndroidUseAapt2>True</AndroidUseAapt2>
 	  <AndroidEnableMultiDex>True</AndroidEnableMultiDex>
+	  <AndroidDexTool>d8</AndroidDexTool>
+	  <AndroidLinkTool>r8</AndroidLinkTool>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net11.0-windows10.0.26100.0|AnyCPU'">
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net11.0-android|AnyCPU'">
+	  <EmbedAssembliesIntoApk>True</EmbedAssembliesIntoApk>
 	  <AndroidUseAapt2>True</AndroidUseAapt2>
 	  <AndroidEnableMultiDex>True</AndroidEnableMultiDex>
 	  <AndroidLinkTool>r8</AndroidLinkTool>
+	  <AndroidDexTool>d8</AndroidDexTool>
+	  <MauiEnableFullReadyToRun>True</MauiEnableFullReadyToRun>
+	  <PublishReadyToRunComposite>True</PublishReadyToRunComposite>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net11.0-windows10.0.26100.0|AnyCPU'">
