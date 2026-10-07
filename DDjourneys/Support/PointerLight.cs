@@ -101,7 +101,7 @@ public static class PointerLight
 			float share = alpha <= 0 ? 0 : (float)state.Strength / alpha;
 
 			Color centre =
-				new Color(
+				new(
 					baseColor.Red + ((lightColor.Red - baseColor.Red) * share),
 					baseColor.Green + ((lightColor.Green - baseColor.Green) * share),
 					baseColor.Blue + ((lightColor.Blue - baseColor.Blue) * share),
