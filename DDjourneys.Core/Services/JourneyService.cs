@@ -17,9 +17,8 @@ namespace DDjourneys.Core.Services;
 /// - parsing provider responses,
 /// - mapping results into DDjourneys domain models.
 ///
-/// Earlier and later journeys are found with ordinary searches that move a time window
-/// (<see cref="JourneyWindow"/>), so they work with every provider; the number of journeys per
-/// search is enforced here as well, not left to the providers.
+/// Earlier and later journeys use a provider's native session continuation when available, and
+/// fall back to bounded time-window searches for providers without that capability.
 ///
 /// When several providers are eligible they are asked in order. Only an answer with journeys ends
 /// the search; an empty answer, a failure and a provider that is not suitable for the request all
@@ -119,8 +118,8 @@ public sealed class JourneyService
 
 	/// <summary>
 	/// The next <paramref name="count"/> journeys before (<paramref name="previous"/>) or after the
-	/// journeys on screen, none of them repeated. Works with every provider: the window is moved with
-	/// ordinary searches (see <see cref="JourneyWindow"/>), so no provider-side session is needed.
+	/// journeys on screen, none of them repeated. Uses a provider's session continuation when available,
+	/// with bounded time-window searches (see <see cref="JourneyWindow"/>) as a fallback.
 	/// </summary>
 	public async Task<JourneyResult> PageAsync(
 		JourneyQuery query,
@@ -156,6 +155,26 @@ public sealed class JourneyService
 				continue;
 			}
 
+			if (provider is IJourneyContinuationProvider continuation
+				&& shown.Count > 0)
+			{
+				List<Journey> orderedShown = JourneyWindow.Order(shown, query.SearchMode);
+				Journey edge = previous ? orderedShown[0] : orderedShown[^1];
+				JourneyResult native = previous
+					? await continuation.GetPreviousAsync(query, edge, count, cancellationToken).ConfigureAwait(false)
+					: await continuation.GetNextAsync(query, edge, count, cancellationToken).ConfigureAwait(false);
+
+				if (native.Outcome == JourneyOutcome.Found)
+				{
+					return JourneyResult.Success(JourneyWindow.Order(native.Journeys, query.SearchMode));
+				}
+
+				if (native.Outcome == JourneyOutcome.Failed)
+				{
+					outcomes.Add(native);
+				}
+			}
+
 			PageResult page =
 				await JourneyWindow.PageAsync(
 					provider.SearchAsync,
@@ -185,7 +204,7 @@ public sealed class JourneyService
 
 
 	/// <summary>
-	/// Gets journeys preceding the supplied journey.
+	/// Gets journeys preceding the supplied journey, using its provider's session where available.
 	/// </summary>
 	public Task<JourneyResult> GetPreviousAsync(
 		JourneyQuery query,
@@ -199,17 +218,12 @@ public sealed class JourneyService
 		ArgumentNullException.ThrowIfNull(
 			currentJourney);
 
-		return PageAsync(
-			query,
-			[currentJourney],
-			previous: true,
-			count,
-			cancellationToken);
+		return GetAdjacentAsync(query, currentJourney, previous: true, count, cancellationToken);
 	}
 
 
 	/// <summary>
-	/// Gets journeys following the supplied journey.
+	/// Gets journeys following the supplied journey, using its provider's session where available.
 	/// </summary>
 	public Task<JourneyResult> GetNextAsync(
 		JourneyQuery query,
@@ -223,12 +237,52 @@ public sealed class JourneyService
 		ArgumentNullException.ThrowIfNull(
 			currentJourney);
 
-		return PageAsync(
-			query,
-			[currentJourney],
-			previous: false,
-			count,
-			cancellationToken);
+		return GetAdjacentAsync(query, currentJourney, previous: false, count, cancellationToken);
+	}
+
+	private async Task<JourneyResult> GetAdjacentAsync(
+		JourneyQuery query,
+		Journey currentJourney,
+		bool previous,
+		int count,
+		CancellationToken cancellationToken)
+	{
+		var outcomes = new Outcomes();
+
+		foreach (IJourneyProvider provider in Providers)
+		{
+			if (!IsSuitable(provider, query.From, query.To)
+				|| !IsSuitable(provider, currentJourney))
+			{
+				continue;
+			}
+
+			if (provider is not IJourneyContinuationProvider continuation)
+			{
+				continue;
+			}
+
+			JourneyResult result = previous
+				? await continuation.GetPreviousAsync(query, currentJourney, count, cancellationToken).ConfigureAwait(false)
+				: await continuation.GetNextAsync(query, currentJourney, count, cancellationToken).ConfigureAwait(false);
+
+			if (result.Outcome == JourneyOutcome.Found)
+			{
+				return result;
+			}
+
+			outcomes.Add(result);
+		}
+
+		// Use the bounded, provider-independent cursor when native paging is unsupported, has no
+		// session, or returned no adjacent journeys. A real provider failure remains visible.
+		JourneyResult? nativeFailure = outcomes.Best();
+		if (nativeFailure?.Outcome == JourneyOutcome.Failed)
+		{
+			return nativeFailure;
+		}
+
+		return await PageAsync(query, [currentJourney], previous, count, cancellationToken).ConfigureAwait(false);
 	}
 
 

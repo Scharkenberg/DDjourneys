@@ -40,6 +40,7 @@ internal sealed partial class SchutzengelJourneyTracker : IJourneyTracker, ITrac
 	private static readonly TimeSpan RenderInterval = TimeSpan.FromSeconds(10);
 	private static readonly TimeSpan PlanListInterval = TimeSpan.FromMinutes(5);
 	private static readonly TimeSpan ClockInterval = TimeSpan.FromMinutes(10);
+	private const int MissingPlanConfirmations = 2;
 
 	/// <summary>
 	/// A journey is watched in the background from this long before its alert lead time on.
@@ -59,6 +60,7 @@ internal sealed partial class SchutzengelJourneyTracker : IJourneyTracker, ITrac
 
 	private readonly SemaphoreSlim _gate = new(1, 1);
 	private readonly Dictionary<string, WatchEntry> _entries = new(StringComparer.Ordinal);
+	private readonly Dictionary<string, int> _missingPlanCounts = new(StringComparer.Ordinal);
 	private readonly Dictionary<string, string> _dismissed = new(StringComparer.Ordinal);
 
 	/// <summary>Per plan: the notice (time and text) the user swiped away.</summary>
@@ -588,6 +590,10 @@ internal sealed partial class SchutzengelJourneyTracker : IJourneyTracker, ITrac
 		using JsonDocument document = await _api.GetAllPlansAsync(cancellationToken).ConfigureAwait(false);
 
 		IReadOnlyList<SchutzengelPlanInfo> plans = SchutzengelPlanList.Parse(document.RootElement);
+		if (!SchutzengelPlanList.HasValidShape(document.RootElement))
+		{
+			throw new InvalidDataException("Schutzengel returned an invalid plan-list response.");
+		}
 
 		_planListSyncedAt = localNow;
 
@@ -595,11 +601,21 @@ internal sealed partial class SchutzengelJourneyTracker : IJourneyTracker, ITrac
 
 		foreach (string vanished in _entries.Keys.Where(id => !known.Contains(id)).ToList())
 		{
-			Forget(vanished);
+			int missing = _missingPlanCounts.TryGetValue(vanished, out int count) ? count + 1 : 1;
+			if (missing >= MissingPlanConfirmations)
+			{
+				_missingPlanCounts.Remove(vanished);
+				Forget(vanished);
+			}
+			else
+			{
+				_missingPlanCounts[vanished] = missing;
+			}
 		}
 
 		foreach (SchutzengelPlanInfo plan in plans)
 		{
+			_missingPlanCounts.Remove(plan.PlanId);
 			if (_entries.TryGetValue(plan.PlanId, out WatchEntry? entry))
 			{
 				entry.Info = plan;

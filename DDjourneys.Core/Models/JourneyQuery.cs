@@ -18,7 +18,7 @@ public sealed class JourneyQuery
 
 
 	/// <summary>
-	/// Optional stop the journey has to pass through. It needs a stop id, like the endpoints.
+	/// Optional intermediate stop, address, or point of interest the journey has to pass through.
 	/// </summary>
 	public Location? Via { get; init; }
 

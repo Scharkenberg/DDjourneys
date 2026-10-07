@@ -141,6 +141,12 @@ internal sealed record SchutzengelPlanInfo(
 
 internal static class SchutzengelPlanList
 {
+	public static bool HasValidShape(JsonElement root) =>
+		root.ValueKind == JsonValueKind.Array
+		|| root.ValueKind == JsonValueKind.Object
+			&& root.TryGetProperty("plans", out JsonElement plans)
+			&& plans.ValueKind == JsonValueKind.Array;
+
 	/// <summary>
 	/// Accepts the bare array of the service as well as an object wrapping it in <c>plans</c>.
 	/// Plan ids are matched exactly, never by substring.

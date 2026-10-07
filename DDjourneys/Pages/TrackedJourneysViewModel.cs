@@ -597,11 +597,6 @@ public sealed partial class TrackedJourneysViewModel : DisposableViewModel, IQue
 
 			List<WatchedJourney> journeys = [.. _tracker.Watched.Select(item => Reconcile(item, now))];
 
-			if (journeys.Count > 0)
-			{
-				FollowedRides.Keep(journeys.Select(item => item.PlanId));
-				FollowedWalks.Keep(journeys.Select(item => item.PlanId));
-			}
 			TrackingStrings strings = _localization.CurrentStrings.Tracking;
 
 			var sections = new List<TrackedSection>();
