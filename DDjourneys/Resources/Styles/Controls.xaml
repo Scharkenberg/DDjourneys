@@ -93,8 +93,10 @@
 	</Style>
 
 	<!--  Buttons. Default filled; class Tonal for secondary actions.  -->
-	<!--  Colours go through support:Themed (local dynamic resources); see Themed.cs for why
-	      DynamicResource setters must not be used in VisualStates or Triggers here.  -->
+	<!--
+		Colours go through support:Themed (local dynamic resources); see Themed.cs for why
+		DynamicResource setters must not be used in VisualStates or Triggers here.
+	-->
 	<Style TargetType="Button">
 		<Setter Property="support:Themed.Background" Value="Accent" />
 		<Setter Property="support:Themed.Text" Value="OnAccent" />

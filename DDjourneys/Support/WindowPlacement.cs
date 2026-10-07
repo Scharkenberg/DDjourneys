@@ -9,11 +9,11 @@ namespace DDjourneys.Support;
 /// </summary>
 public static class WindowPlacement
 {
-	public const double MinWidth = 400;
-	public const double MinHeight = 600;
+	public const double MinWidth = 480;
+	public const double MinHeight = 540;
 
 	private const double DefaultWidth = 480;
-	private const double DefaultHeight = 860;
+	private const double DefaultHeight = 800;
 	private const string Key = "windowPlacement";
 
 	public static void Attach(Window window)

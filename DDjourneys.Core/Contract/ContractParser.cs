@@ -456,7 +456,7 @@ public static partial class ContractParser
 
 		if (text is null)
 		{
-			return null;
+			return new ContractTime(true, null, null);
 		}
 
 		if (text.Equals("now", StringComparison.OrdinalIgnoreCase))
