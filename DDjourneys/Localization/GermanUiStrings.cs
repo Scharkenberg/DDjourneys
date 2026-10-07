@@ -312,6 +312,10 @@ public sealed class GermanUiStrings : IUiStrings
 		ShareTitle = "Verbindung teilen",
 		ShareAsText = "Als Text",
 		ShareAsImage = "Als Bild",
+		ShareSubtitle = "Wähle, wie du diese Verbindung teilen möchtest.",
+		ShareTextDescription = "Reiner Text für Nachrichten und E-Mails.",
+		ShareImageDescription = "Eine gerenderte Verbindungskarte mit Zeitlinie und App-Design.",
+		ShareChooseFormat = "Format auswählen.",
 		HandOff = "Diese Verbindung \u00FCbernehmen",
 		HandOffFailed = "Die Verbindung konnte nicht an die andere App \u00FCbergeben werden.",
 

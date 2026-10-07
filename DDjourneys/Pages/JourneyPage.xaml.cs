@@ -1,3 +1,7 @@
+using CommunityToolkit.Maui;
+using CommunityToolkit.Maui.Core;
+using CommunityToolkit.Maui.Extensions;
+using CommunityToolkit.Maui.Views;
 using DDjourneys.Support;
 
 namespace DDjourneys.Pages;
@@ -16,8 +20,8 @@ public partial class JourneyPage : ContentPage
 		// The notice badge in the card: bring the notices into view.
 		vm.ScrollToNotices = () => _ = PageScroll.ScrollToAsync(NoticesBlock, ScrollToPosition.Start, true);
 
-		vm.ChooseShareFormat = (title, cancel, options) =>
-			DisplayActionSheetAsync(title, cancel, null, options);
+		vm.ChooseShareFormat = (title, cancel, options) => ShowSharePopupAsync(this, options);
+
 	}
 
 	protected override void OnNavigatedFrom(
@@ -93,5 +97,24 @@ public partial class JourneyPage : ContentPage
 		{
 			_vm.ToggleStopsCommand.Execute(leg);
 		}
+	}
+
+	private static async Task<string?> ShowSharePopupAsync(ContentPage page, string[] options)
+	{
+		var popup =	 new JourneySharePopup(page, options[0], options[1]);
+
+		IPopupResult<string?> result =
+			await page.ShowPopupAsync<string?>(
+				popup,
+				new PopupOptions
+				{
+					CanBeDismissedByTappingOutsideOfPopup = true,
+					PageOverlayColor = Colors.Black.WithAlpha(0.45f)
+				},
+				CancellationToken.None);
+
+		return result.WasDismissedByTappingOutsideOfPopup
+			? null
+			: result.Result;
 	}
 }

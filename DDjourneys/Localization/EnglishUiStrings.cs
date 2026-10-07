@@ -307,6 +307,10 @@ public sealed class EnglishUiStrings : IUiStrings
 		ShareTitle = "Share journey",
 		ShareAsText = "As text",
 		ShareAsImage = "As image",
+		ShareSubtitle = "Choose how to share this journey.",
+		ShareTextDescription = "Plain text that works well in messages and email.",
+		ShareImageDescription = "A rendered journey card with the timeline and app styling.",
+		ShareChooseFormat = "Choose a format.",
 		HandOff = "Use this journey",
 		HandOffFailed = "The journey could not be passed to the other app.",
 

@@ -120,4 +120,10 @@
 	  <ProjectReference Include="..\DDjourneys.Core\DDjourneys.Core.csproj" />
 	</ItemGroup>
 
+	<ItemGroup>
+	  <MauiXaml Update="Pages\JourneySharePopup.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </MauiXaml>
+	</ItemGroup>
+
 </Project>

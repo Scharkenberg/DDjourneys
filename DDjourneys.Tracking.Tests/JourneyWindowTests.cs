@@ -316,7 +316,7 @@ public sealed class JourneyWindowTests
 		public Task<JourneyResult> GetNextAsync(JourneyQuery query, Journey currentJourney, int count = 5, CancellationToken cancellationToken = default)
 		{
 			ContinuationCalls++;
-			return Task.FromResult(JourneyResult.Success(Enumerable.Range(1, count).Select(i => Timetable.BuildForTest(At(8, 30).AddMinutes((i - 1) * 10))).ToArray()));
+			return Task.FromResult(JourneyResult.Success([.. Enumerable.Range(1, count).Select(i => Timetable.BuildForTest(At(8, 30).AddMinutes((i - 1) * 10)))]));
 		}
 	}
 }
