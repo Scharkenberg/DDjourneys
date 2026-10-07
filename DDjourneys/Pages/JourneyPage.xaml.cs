@@ -101,7 +101,7 @@ public partial class JourneyPage : ContentPage
 
 	private static async Task<string?> ShowSharePopupAsync(ContentPage page, string[] options)
 	{
-		var popup =	 new JourneySharePopup(page, options[0], options[1]);
+		var popup = new JourneySharePopup(page, options[0], options[1]);
 
 		IPopupResult<string?> result =
 			await page.ShowPopupAsync<string?>(
@@ -109,7 +109,11 @@ public partial class JourneyPage : ContentPage
 				new PopupOptions
 				{
 					CanBeDismissedByTappingOutsideOfPopup = true,
-					PageOverlayColor = Colors.Black.WithAlpha(0.45f)
+					PageOverlayColor = Colors.Black.WithAlpha(0.45f),
+
+					// The sheet draws its own shape, stroke and surface.
+					Shape = null,
+					Shadow = null
 				},
 				CancellationToken.None);
 

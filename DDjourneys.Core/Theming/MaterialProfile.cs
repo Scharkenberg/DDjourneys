@@ -50,17 +50,43 @@ public static class MaterialProfile
 
 		bool acrylic = NormalizeMaterial(material) == Acrylic;
 
+		// Thin layers: the first release (0.56-0.90) hid the material behind nearly opaque cards. A card is a sheet of
+		// tinted glass now, chips and fields on it a little denser so that text on them stays easy to read.
 		double opacity =
 			(NormalizeCoverage(coverage), role) switch
 			{
 				(Backdrop, _) => 1,
-				(Layered, "Surface") => acrylic ? (dark ? 0.56 : 0.64) : (dark ? 0.64 : 0.72),
-				(Layered, "Raised") => acrylic ? (dark ? 0.76 : 0.84) : (dark ? 0.82 : 0.90),
-				(Immersive, "Surface") => acrylic ? (dark ? 0.40 : 0.48) : (dark ? 0.48 : 0.56),
-				(Immersive, "Raised") => acrylic ? (dark ? 0.62 : 0.72) : (dark ? 0.70 : 0.80),
+				(Layered, "Surface") => acrylic ? (dark ? 0.40 : 0.50) : (dark ? 0.50 : 0.60),
+				(Layered, "Raised") => acrylic ? (dark ? 0.62 : 0.70) : (dark ? 0.72 : 0.80),
+				(Immersive, "Surface") => acrylic ? (dark ? 0.20 : 0.28) : (dark ? 0.30 : 0.38),
+				(Immersive, "Raised") => acrylic ? (dark ? 0.42 : 0.52) : (dark ? 0.52 : 0.62),
 				_ => 1
 			};
 
 		return (byte)Math.Round(opacity * 255, MidpointRounding.AwayFromZero);
 	}
+
+	/// <summary>
+	/// How the backdrop itself is rendered: the opacity of its tint and of its luminosity layer (both 0..1: lower
+	/// lets more of the wallpaper or the windows behind through) and how much of the accent colour is mixed into the tint.
+	/// The system's own defaults are tuned to be hardly noticeable; the app asks for more, and more the further the
+	/// material reaches into the app (<see cref="Backdrop"/> calm, <see cref="Immersive"/> pronounced).
+	/// </summary>
+	public static BackdropLook Look(string material, string coverage, bool dark)
+	{
+		bool acrylic = NormalizeMaterial(material) == Acrylic;
+
+		return (NormalizeCoverage(coverage), acrylic) switch
+		{
+			(Backdrop, false) => new(dark ? 0.62 : 0.46, 1.00, 0.06),
+			(Layered, false) => new(dark ? 0.44 : 0.30, 0.92, 0.12),
+			(Immersive, false) => new(dark ? 0.26 : 0.16, 0.80, 0.20),
+			(Backdrop, true) => new(dark ? 0.52 : 0.40, 0.78, 0.08),
+			(Layered, true) => new(dark ? 0.36 : 0.26, 0.58, 0.16),
+			_ => new(dark ? 0.22 : 0.14, 0.38, 0.26)
+		};
+	}
 }
+
+/// <summary>Opacity of the tint (0..1), opacity of the luminosity layer (0..1) and the share of the accent colour in the tint (0..1).</summary>
+public readonly record struct BackdropLook(double TintOpacity, double LuminosityOpacity, double AccentMix);

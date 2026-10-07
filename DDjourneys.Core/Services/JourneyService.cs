@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using DDjourneys.Core.Models;
 using DDjourneys.Core.Providers;
 using DDjourneys.Core.Providers.Abstractions;
@@ -85,7 +86,8 @@ public sealed class JourneyService
 			}
 
 			JourneyResult result =
-				await provider.SearchAsync(
+				await SearchAsync(
+					provider,
 					query,
 					cancellationToken)
 				.ConfigureAwait(false);
@@ -95,7 +97,7 @@ public sealed class JourneyService
 				// Exactly the requested number when the timetable allows: top up or cut.
 				IReadOnlyList<Journey> window =
 					await JourneyWindow.FillAsync(
-						provider.SearchAsync,
+						(next, token) => SearchAsync(provider, next, token),
 						query,
 						result.Journeys,
 						query.MaxResults,
@@ -155,8 +157,11 @@ public sealed class JourneyService
 				continue;
 			}
 
+			// A stop-over is applied by this service (see SearchAsync), so the pages are windows of that search, not the
+			// provider's own continuation, which knows nothing of journeys that were put together here.
 			if (provider is IJourneyContinuationProvider continuation
-				&& shown.Count > 0)
+				&& shown.Count > 0
+				&& query.Via is null)
 			{
 				List<Journey> orderedShown = JourneyWindow.Order(shown, query.SearchMode);
 				Journey edge = previous ? orderedShown[0] : orderedShown[^1];
@@ -177,7 +182,7 @@ public sealed class JourneyService
 
 			PageResult page =
 				await JourneyWindow.PageAsync(
-					provider.SearchAsync,
+					(next, token) => SearchAsync(provider, next, token),
 					query,
 					shown,
 					previous,
@@ -251,7 +256,8 @@ public sealed class JourneyService
 
 		foreach (IJourneyProvider provider in Providers)
 		{
-			if (!IsSuitable(provider, query.From, query.To)
+			if (query.Via is not null
+				|| !IsSuitable(provider, query.From, query.To)
 				|| !IsSuitable(provider, currentJourney))
 			{
 				continue;
@@ -287,8 +293,10 @@ public sealed class JourneyService
 
 
 	/// <summary>
-	/// The connection with one leg replaced by an earlier or later alternative, from the provider that
-	/// issued the journey. Not suitable when that provider offers no such thing.
+	/// The connection with one ride replaced by the previous or next one. The provider that issued the journey is
+	/// asked first (a continuation of its own session); its answer counts only when the ride really moved to the wanted
+	/// side. Otherwise, and for providers without such a thing, the journey is rebuilt from ordinary searches (see
+	/// <see cref="LegAlternatives"/>). An empty answer means that there is no other ride.
 	/// </summary>
 	public async Task<JourneyResult> GetLegAlternativeAsync(
 		JourneyQuery query,
@@ -300,19 +308,59 @@ public sealed class JourneyService
 		ArgumentNullException.ThrowIfNull(query);
 		ArgumentNullException.ThrowIfNull(journey);
 
-		IJourneyExtrasProvider? provider =
-			_all
-				.OfType<IJourneyExtrasProvider>()
-				.FirstOrDefault(
-					candidate => candidate is IJourneyProvider journeyProvider
-						&& (_registry?.IsSelected(journeyProvider) ?? true)
-						&& IsSuitable(journeyProvider, journey));
+		IJourneyProvider? issuer =
+			Providers.FirstOrDefault(
+				candidate => IsSuitable(candidate, journey)
+					&& IsSuitable(candidate, query.From, query.To));
 
-		return provider is null
-			? JourneyResult.NotSuitable("no_leg_alternatives")
-			: await provider
-				.GetLegAlternativeAsync(query, journey, legIndex, previous, cancellationToken)
+		if (issuer is null)
+		{
+			return JourneyResult.NotSuitable("no_leg_alternatives");
+		}
+
+		JourneyResult? native = null;
+
+		if (issuer is IJourneyExtrasProvider extras)
+		{
+			try
+			{
+				native =
+					await extras
+						.GetLegAlternativeAsync(query, journey, legIndex, previous, cancellationToken)
+						.ConfigureAwait(false);
+			}
+			catch (OperationCanceledException)
+			{
+				throw;
+			}
+			catch (Exception ex)
+			{
+				DiagnosticLog.Write($"[Leg alternative] the provider failed: {ex.Message}");
+			}
+
+			if (native is { Outcome: JourneyOutcome.Found }
+				&& LegAlternatives.Pick(journey, legIndex, previous, native.Journeys) is { } moved)
+			{
+				return JourneyResult.Success([moved]);
+			}
+
+			DiagnosticLog.Write(
+				$"[Leg alternative] the provider's answer ({native?.Outcome.ToString() ?? "none"}, {native?.Journeys.Count ?? 0} journey(s)) holds no {(previous ? "earlier" : "later")} ride; searching on");
+		}
+
+		Journey? composed =
+			await LegAlternatives
+				.ComposeAsync(issuer.SearchAsync, query, journey, legIndex, previous, cancellationToken)
 				.ConfigureAwait(false);
+
+		if (composed is not null)
+		{
+			return JourneyResult.Success([composed]);
+		}
+
+		return native is { Outcome: JourneyOutcome.Failed }
+			? native
+			: JourneyResult.Success([]);
 	}
 
 
@@ -365,6 +413,69 @@ public sealed class JourneyService
 	/// id (hand-made or stored before ids existed) are not held against it, and neither are free-form
 	/// places without a stop id: the provider itself decides whether it can resolve those.
 	/// </summary>
+	/// <summary>
+	/// A search of one provider that applies the stop-over itself when the query has one: the provider is asked with it,
+	/// and only journeys that really pass the place are kept; when there are none (the provider ignores the stop-over,
+	/// refuses it or fails on it) the journeys are put together from two searches (see <see cref="ViaRouting"/>).
+	/// </summary>
+	private static async Task<JourneyResult> SearchAsync(
+		IJourneyProvider provider,
+		JourneyQuery query,
+		CancellationToken cancellationToken)
+	{
+		if (query.Via is not { } via)
+		{
+			return await provider.SearchAsync(query, cancellationToken).ConfigureAwait(false);
+		}
+
+		JourneyResult direct = JourneyResult.NotSuitable("via_not_asked");
+
+		try
+		{
+			direct = await provider.SearchAsync(query, cancellationToken).ConfigureAwait(false);
+		}
+		catch (OperationCanceledException)
+		{
+			throw;
+		}
+		catch (Exception ex)
+		{
+			DiagnosticLog.Write($"[Via] the provider failed with the stop-over: {ex.Message}");
+		}
+
+		if (direct.Outcome == JourneyOutcome.Found)
+		{
+			Journey[] passing = [.. direct.Journeys.Where(journey => ViaRouting.Passes(journey, via))];
+
+			if (passing.Length > 0)
+			{
+				return JourneyResult.Success(passing, direct.Notices);
+			}
+
+			DiagnosticLog.Write($"[Via] {direct.Journeys.Count} journey(s) came back, none passes {via.Name}; building them from two searches");
+		}
+		else
+		{
+			DiagnosticLog.Write($"[Via] the provider answered {direct.Outcome} ({direct.ErrorMessage}) with the stop-over; building journeys from two searches");
+		}
+
+		IReadOnlyList<Journey> built =
+			await ViaRouting
+				.ComposeAsync(provider.SearchAsync, query, cancellationToken)
+				.ConfigureAwait(false);
+
+		if (built.Count > 0)
+		{
+			return JourneyResult.Success(built);
+		}
+
+		// Nothing either way: what the provider said about the stop-over is the answer (a failure stays a failure).
+		return direct.Outcome == JourneyOutcome.Found
+			? JourneyResult.Success([])
+			: direct;
+	}
+
+
 	private static bool IsSuitable(
 		IJourneyProvider provider,
 		Location from,

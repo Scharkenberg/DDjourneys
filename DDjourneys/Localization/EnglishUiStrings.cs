@@ -287,6 +287,7 @@ public sealed class EnglishUiStrings : IUiStrings
 		LegEarlierHint = "Find an earlier alternative for this ride",
 		LegLaterHint = "Find a later alternative for this ride",
 		LegNone = "No alternative found for this ride.",
+		LegSearching = "Looking for another ride…",
 		OpenPdf = "Open as PDF",
 		AlternativeShown = "Showing an alternative connection. Search again to go back.",
 		Title = "Journey",

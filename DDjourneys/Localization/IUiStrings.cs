@@ -166,6 +166,7 @@ public sealed class JourneyStrings
 	public required string LegEarlierHint { get; init; }
 	public required string LegLaterHint { get; init; }
 	public required string LegNone { get; init; }
+	public required string LegSearching { get; init; }
 	public required string OpenPdf { get; init; }
 	public required string AlternativeShown { get; init; }
 	public required string Title { get; init; }

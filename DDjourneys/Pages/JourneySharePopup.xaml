@@ -3,215 +3,216 @@
 	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
 	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
 	xmlns:controls="clr-namespace:DDjourneys.Controls"
-	xmlns:localization="clr-namespace:DDjourneys.Localization">
+	xmlns:localization="clr-namespace:DDjourneys.Localization"
+	xmlns:support="clr-namespace:DDjourneys.Support"
+	BackgroundColor="Transparent">
 
+	<!--
+		A sheet in the app's own terms: the card pattern (rows with dividers, as on the settings page), the sheet radius,
+		density-scaled rows and paddings. The card is translucent where a window material is on, so it sits on a solid
+		layer of the page colour (SheetBase, set in code) instead of on the dimmed page behind the popup.
+	-->
 	<Grid
-		x:Name="Root"
-		Padding="20"
+		Padding="16"
 		HorizontalOptions="Fill"
 		VerticalOptions="Fill">
 
 		<Border
-			x:Name="DialogCard"
-			Margin="0,12"
-			Padding="20"
+			x:Name="SheetBase"
 			HorizontalOptions="Center"
-			MaximumWidthRequest="720"
-			StyleClass="Card"
+			MaximumWidthRequest="480"
+			Padding="0"
+			StrokeThickness="0"
 			VerticalOptions="Center">
 
 			<Border.StrokeShape>
-				<RoundRectangle CornerRadius="24" />
+				<RoundRectangle CornerRadius="{StaticResource CornerSheet}" />
 			</Border.StrokeShape>
 
-			<VerticalStackLayout Spacing="16">
+			<Border
+				Padding="0"
+				StyleClass="Card">
 
-				<!-- Header -->
+				<Border.StrokeShape>
+					<RoundRectangle CornerRadius="{StaticResource CornerSheet}" />
+				</Border.StrokeShape>
+
+				<VerticalStackLayout>
+
+					<!-- Header -->
+					<Grid
+						support:Dense.Padding="12,12"
+						ColumnDefinitions="Auto,*"
+						ColumnSpacing="{StaticResource SpaceM}">
+
+						<Border
+							support:Dense.MinHeight="{StaticResource HitIcon}"
+							support:Dense.MinWidth="{StaticResource HitIcon}"
+							BackgroundColor="{DynamicResource AccentSoft}"
+							StrokeThickness="0"
+							VerticalOptions="Center">
+
+							<Border.StrokeShape>
+								<RoundRectangle CornerRadius="{StaticResource CornerControl}" />
+							</Border.StrokeShape>
+
+							<controls:Icon
+								Glyph="Share"
+								HorizontalOptions="Center"
+								Size="22"
+								VerticalOptions="Center"
+								Color="{DynamicResource Accent}" />
+						</Border>
+
+						<VerticalStackLayout
+							Grid.Column="1"
+							Spacing="2"
+							VerticalOptions="Center">
+
+							<Label
+								StyleClass="Subtitle"
+								Text="{localization:Tr Journey.ShareTitle}" />
+
+							<Label
+								StyleClass="Caption"
+								Text="{localization:Tr Journey.ShareSubtitle}" />
+						</VerticalStackLayout>
+					</Grid>
+
+					<BoxView StyleClass="Divider" />
+
 				<Grid
-					ColumnDefinitions="Auto,*"
-					ColumnSpacing="12"
-					VerticalOptions="Center">
+					support:Dense.MinHeight="{StaticResource HitRow}"
+					support:Dense.Padding="12,8"
+					support:Motion.Feedback="True"
+					ColumnDefinitions="Auto,*,Auto"
+					ColumnSpacing="{StaticResource SpaceM}"
+					SemanticProperties.Description="{localization:Tr Journey.ShareAsText}">
 
 					<Border
-						Padding="10"
-						BackgroundColor="{DynamicResource Raised}">
+						support:Dense.MinHeight="{StaticResource HitIconTight}"
+						support:Dense.MinWidth="{StaticResource HitIconTight}"
+						BackgroundColor="{DynamicResource Raised}"
+						StrokeThickness="0"
+						VerticalOptions="Center">
+
 						<Border.StrokeShape>
-							<RoundRectangle CornerRadius="16" />
+							<RoundRectangle CornerRadius="{StaticResource CornerControl}" />
 						</Border.StrokeShape>
 
 						<controls:Icon
-							Glyph="Share"
+							Glyph="Document"
 							HorizontalOptions="Center"
-							Size="24"
+							Size="20"
 							VerticalOptions="Center"
 							Color="{DynamicResource Accent}" />
 					</Border>
 
 					<VerticalStackLayout
 						Grid.Column="1"
-						Spacing="2">
+						Spacing="1"
+						VerticalOptions="Center">
 
 						<Label
-							x:Name="TitleLabel"
 							FontFamily="{DynamicResource FontSemibold}"
-							FontSize="22"
-							Text="{localization:Tr Journey.ShareTitle}"
-							TextColor="{DynamicResource Ink}" />
+							Text="{localization:Tr Journey.ShareAsText}" />
 
 						<Label
-							x:Name="SubtitleLabel"
+							StyleClass="Caption"
+							Text="{localization:Tr Journey.ShareTextDescription}" />
+					</VerticalStackLayout>
+
+					<controls:Icon
+						Grid.Column="2"
+						Glyph="ChevronRight"
+						Size="20"
+						VerticalOptions="Center"
+						Color="{DynamicResource InkMuted}" />
+
+					<Grid.GestureRecognizers>
+						<TapGestureRecognizer Tapped="TextTapped" />
+					</Grid.GestureRecognizers>
+				</Grid>
+
+					<BoxView StyleClass="Divider" />
+
+				<Grid
+					support:Dense.MinHeight="{StaticResource HitRow}"
+					support:Dense.Padding="12,8"
+					support:Motion.Feedback="True"
+					ColumnDefinitions="Auto,*,Auto"
+					ColumnSpacing="{StaticResource SpaceM}"
+					SemanticProperties.Description="{localization:Tr Journey.ShareAsImage}">
+
+					<Border
+						support:Dense.MinHeight="{StaticResource HitIconTight}"
+						support:Dense.MinWidth="{StaticResource HitIconTight}"
+						BackgroundColor="{DynamicResource Raised}"
+						StrokeThickness="0"
+						VerticalOptions="Center">
+
+						<Border.StrokeShape>
+							<RoundRectangle CornerRadius="{StaticResource CornerControl}" />
+						</Border.StrokeShape>
+
+						<controls:Icon
+							Glyph="Image"
+							HorizontalOptions="Center"
+							Size="20"
+							VerticalOptions="Center"
+							Color="{DynamicResource Accent}" />
+					</Border>
+
+					<VerticalStackLayout
+						Grid.Column="1"
+						Spacing="1"
+						VerticalOptions="Center">
+
+						<Label
+							FontFamily="{DynamicResource FontSemibold}"
+							Text="{localization:Tr Journey.ShareAsImage}" />
+
+						<Label
+							StyleClass="Caption"
+							Text="{localization:Tr Journey.ShareImageDescription}" />
+					</VerticalStackLayout>
+
+					<controls:Icon
+						Grid.Column="2"
+						Glyph="ChevronRight"
+						Size="20"
+						VerticalOptions="Center"
+						Color="{DynamicResource InkMuted}" />
+
+					<Grid.GestureRecognizers>
+						<TapGestureRecognizer Tapped="ImageTapped" />
+					</Grid.GestureRecognizers>
+				</Grid>
+
+					<BoxView StyleClass="Divider" />
+
+					<!-- Footer -->
+					<Grid
+						support:Dense.Padding="12,8"
+						ColumnDefinitions="*,Auto"
+						ColumnSpacing="{StaticResource SpaceM}">
+
+						<Label
 							LineBreakMode="WordWrap"
 							StyleClass="Caption"
-							Text="{localization:Tr Journey.ShareSubtitle}"
-							TextColor="{DynamicResource InkMuted}" />
-					</VerticalStackLayout>
-				</Grid>
+							Text="{localization:Tr Journey.ShareChooseFormat}"
+							VerticalOptions="Center" />
 
-				<!-- Share options -->
-				<Grid
-					x:Name="OptionsGrid"
-					ColumnDefinitions="*,*"
-					ColumnSpacing="12"
-					RowDefinitions="Auto"
-					RowSpacing="12">
-
-					<!-- Text -->
-					<Border
-						x:Name="TextCard"
-						Grid.Row="0"
-						Grid.Column="0"
-						Padding="16"
-						HorizontalOptions="Fill"
-						StyleClass="Card">
-
-						<Border.StrokeShape>
-							<RoundRectangle CornerRadius="20" />
-						</Border.StrokeShape>
-
-						<Border.GestureRecognizers>
-							<TapGestureRecognizer Tapped="TextTapped" />
-						</Border.GestureRecognizers>
-
-						<Grid
-							ColumnDefinitions="Auto,*"
-							ColumnSpacing="12">
-
-							<Border
-								Padding="12"
-								BackgroundColor="{DynamicResource Raised}"
-								VerticalOptions="Start">
-
-								<Border.StrokeShape>
-									<RoundRectangle CornerRadius="14" />
-								</Border.StrokeShape>
-
-								<controls:Icon
-									Glyph="Document"
-									HorizontalOptions="Center"
-									Size="22"
-									VerticalOptions="Center"
-									Color="{DynamicResource Accent}" />
-							</Border>
-
-							<VerticalStackLayout
-								Grid.Column="1"
-								Spacing="4">
-
-								<Label
-									x:Name="TextOptionLabel"
-									FontFamily="{DynamicResource FontSemibold}"
-									FontSize="18"
-									Text="{localization:Tr Journey.ShareAsText}"
-									TextColor="{DynamicResource Ink}" />
-
-								<Label
-									LineBreakMode="WordWrap"
-									StyleClass="Caption"
-									Text="{localization:Tr Journey.ShareTextDescription}"
-									TextColor="{DynamicResource InkMuted}" />
-							</VerticalStackLayout>
-						</Grid>
-					</Border>
-
-					<!-- Image -->
-					<Border
-						x:Name="ImageCard"
-						Grid.Row="0"
-						Grid.Column="1"
-						Padding="16"
-						HorizontalOptions="Fill"
-						StyleClass="Card">
-
-						<Border.StrokeShape>
-							<RoundRectangle CornerRadius="20" />
-						</Border.StrokeShape>
-
-						<Border.GestureRecognizers>
-							<TapGestureRecognizer Tapped="ImageTapped" />
-						</Border.GestureRecognizers>
-
-						<Grid
-							ColumnDefinitions="Auto,*"
-							ColumnSpacing="12">
-
-							<Border
-								Padding="12"
-								BackgroundColor="{DynamicResource Raised}"
-								VerticalOptions="Start">
-
-								<Border.StrokeShape>
-									<RoundRectangle CornerRadius="14" />
-								</Border.StrokeShape>
-
-								<controls:Icon
-									Glyph="Image"
-									HorizontalOptions="Center"
-									Size="22"
-									VerticalOptions="Center"
-									Color="{DynamicResource Accent}" />
-							</Border>
-
-							<VerticalStackLayout
-								Grid.Column="1"
-								Spacing="4">
-
-								<Label
-									x:Name="ImageOptionLabel"
-									FontFamily="{DynamicResource FontSemibold}"
-									FontSize="18"
-									Text="{localization:Tr Journey.ShareAsImage}"
-									TextColor="{DynamicResource Ink}" />
-
-								<Label
-									LineBreakMode="WordWrap"
-									StyleClass="Caption"
-									Text="{localization:Tr Journey.ShareImageDescription}"
-									TextColor="{DynamicResource InkMuted}" />
-							</VerticalStackLayout>
-						</Grid>
-					</Border>
-				</Grid>
-
-				<!-- Footer -->
-				<Grid
-					ColumnDefinitions="*,Auto"
-					ColumnSpacing="12"
-					VerticalOptions="Center">
-
-					<Label
-						StyleClass="Caption"
-						Text="{localization:Tr Journey.ShareChooseFormat}"
-						TextColor="{DynamicResource InkMuted}"
-						VerticalOptions="Center" />
-
-					<Button
-						x:Name="CancelButton"
-						Grid.Column="1"
-						Clicked="CancelClicked"
-						StyleClass="Tonal"
-						Text="{localization:Tr Common.Cancel}" />
-				</Grid>
-			</VerticalStackLayout>
+						<Button
+							Grid.Column="1"
+							support:Dense.MinHeight="{StaticResource HitButton}"
+							Clicked="CancelClicked"
+							StyleClass="Tonal"
+							Text="{localization:Tr Common.Cancel}"
+							VerticalOptions="Center" />
+					</Grid>
+				</VerticalStackLayout>
+			</Border>
 		</Border>
 	</Grid>
 </ContentView>

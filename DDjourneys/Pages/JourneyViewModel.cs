@@ -201,11 +201,14 @@ public sealed partial class JourneyViewModel :
 	/// <summary>Opens the printable version of the journey (tr/trippdf).</summary>
 	public AsyncCommand OpenDocumentCommand { get; }
 
-	/// <summary>The provider can swap a single ride and this journey carries what it needs.</summary>
+	/// <summary>
+	/// A single ride can be swapped for the previous or next one: by the provider's own continuation when it has one,
+	/// otherwise by searching again (every provider), so the buttons are there for every journey with a ride.
+	/// </summary>
 	public bool HasLegAlternatives =>
 		_query is not null
-		&& _journey is { Context.Length: > 0 }
-		&& _providers.Supports(ProviderCapabilities.JourneyExtras);
+		&& _journey is { } journey
+		&& journey.Legs.Any(leg => leg.IsRide);
 
 	/// <summary>The journey's actions as icons for its overview card.</summary>
 	public JourneyActions Actions { get; }
@@ -789,20 +792,34 @@ public sealed partial class JourneyViewModel :
 			return;
 		}
 
-		int index = journey.Legs.ToList().IndexOf(leg);
+		int index = -1;
+
+		for (int i = 0; i < journey.Legs.Count; i++)
+		{
+			if (ReferenceEquals(journey.Legs[i], leg))
+			{
+				index = i;
+
+				break;
+			}
+		}
 
 		if (index < 0)
 		{
 			return;
 		}
 
-		_alternative?.Cancel();
+		CancellationTokenSource? earlier = _alternative;
+
+		earlier?.Cancel();
 
 		var cts = new CancellationTokenSource();
 		_alternative = cts;
 
 		JourneyStrings strings =
 			_localization.CurrentStrings.Journey;
+
+		AlternativeStatus = strings.LegSearching;
 
 		try
 		{
@@ -819,12 +836,16 @@ public sealed partial class JourneyViewModel :
 				return;
 			}
 
-			Journey? next =
-				result.Journeys.FirstOrDefault(
-					candidate => candidate.Id == journey.Id)
-				?? (result.Journeys.Count > 0 ? result.Journeys[0] : null);
+			if (result.Outcome == JourneyOutcome.Failed)
+			{
+				DiagnosticLog.Write($"[Leg alternative] failed: {result.ErrorMessage} {result.ErrorDetail}");
+			}
 
-			if (next is null)
+			// The one journey that was asked for; a journey that is the same as the one on screen is no answer.
+			Journey? next = result.Journeys.Count > 0 ? result.Journeys[0] : null;
+
+			if (next is null
+				|| ReferenceEquals(next, journey))
 			{
 				AlternativeStatus = strings.LegNone;
 
@@ -844,6 +865,16 @@ public sealed partial class JourneyViewModel :
 			DiagnosticLog.Write($"Leg alternative failed: {ex}");
 
 			AlternativeStatus = ex.Message;
+		}
+		finally
+		{
+			// Only the request that is still the current one frees the slot; each one disposes its own source.
+			if (ReferenceEquals(_alternative, cts))
+			{
+				_alternative = null;
+			}
+
+			cts.Dispose();
 		}
 	}
 

@@ -292,6 +292,7 @@ public sealed class GermanUiStrings : IUiStrings
 		LegEarlierHint = "Frühere Alternative für diese Fahrt suchen",
 		LegLaterHint = "Spätere Alternative für diese Fahrt suchen",
 		LegNone = "Keine Alternative für diese Fahrt gefunden.",
+		LegSearching = "Suche nach einer anderen Fahrt…",
 		OpenPdf = "Als PDF öffnen",
 		AlternativeShown = "Eine alternative Verbindung wird angezeigt. Neu suchen, um zurückzukehren.",
 		Title = "Verbindung",

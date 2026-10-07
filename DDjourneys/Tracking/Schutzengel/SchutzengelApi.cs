@@ -359,7 +359,22 @@ internal sealed class SchutzengelApi
 
 		if (result.Status == HttpStatusCode.Unauthorized)
 		{
-			Log("Authentication rejected (401); replacing the token once.");
+			// A replaced token means a new, empty account: every followed journey of the old one would be lost. So the
+			// same token gets a second chance first (a server that answers 401 once in a while is not the same as a
+			// token that is refused).
+			Log("Authentication rejected (401); asking again with the same token.");
+
+			await Task.Delay(TimeSpan.FromMilliseconds(800), cancellationToken).ConfigureAwait(false);
+
+			result =
+				await SendAuthenticatedAsync(
+					method, path, body, token,
+					planId, tripId, dataVersion, notificationCount, cancellationToken).ConfigureAwait(false);
+		}
+
+		if (result.Status == HttpStatusCode.Unauthorized)
+		{
+			Log("Authentication rejected (401) twice; replacing the token once.");
 
 			await RefreshAfterAuthenticationFailureAsync(token, cancellationToken).ConfigureAwait(false);
 

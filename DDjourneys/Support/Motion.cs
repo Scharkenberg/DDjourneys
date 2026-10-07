@@ -215,6 +215,9 @@ public static class Motion
 		pointer.PointerEntered += (_, _) => _ = HoverAsync(view, true);
 		pointer.PointerExited += (_, _) => _ = HoverAsync(view, false);
 		view.GestureRecognizers.Add(pointer);
+
+		// The mouse also shines a soft light on what can be pressed (desktop only).
+		PointerLight.SetEnabled(view, true);
 	}
 
 	private static void OnEnterChanged(BindableObject bindable, object oldValue, object newValue)
