@@ -312,7 +312,17 @@ public static class Theme
 		{
 			if (RegistrationsField?.GetValue(element) is IDictionary map && map.Count > 0)
 			{
-				foreach (DictionaryEntry entry in map.Cast<DictionaryEntry>().ToArray())
+				// A copy: registering again changes the dictionary. The generic dictionary yields key/value pairs
+				// through the non-generic interface's enumerator, so read it through IDictionaryEnumerator.
+				List<DictionaryEntry> entries = [];
+				IDictionaryEnumerator cursor = map.GetEnumerator();
+
+				while (cursor.MoveNext())
+				{
+					entries.Add(cursor.Entry);
+				}
+
+				foreach (DictionaryEntry entry in entries)
 				{
 					if (entry.Key is BindableProperty property
 						&& entry.Value is ITuple { Length: > 0 } pair
