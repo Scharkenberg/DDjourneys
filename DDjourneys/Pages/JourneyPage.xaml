@@ -11,6 +11,9 @@
 
 	<support:PanePage.ToolbarItems>
 		<ToolbarItem
+			Command="{Binding RefreshCommand}"
+			Text="{localization:Tr Journey.Refresh}" />
+		<ToolbarItem
 			x:Name="ExpertItem"
 			Command="{Binding OpenExpertCommand}"
 			Order="Secondary"
@@ -628,6 +631,7 @@
 	</support:PanePage.Resources>
 
 
+	<RefreshView Command="{Binding RefreshCommand}" IsRefreshing="{Binding IsRefreshing, Mode=OneWay}">
 	<ScrollView x:Name="PageScroll">
 		<VerticalStackLayout Padding="{DynamicResource PadPage}" Spacing="{DynamicResource SpaceM}">
 
@@ -843,5 +847,6 @@
 
 		</VerticalStackLayout>
 	</ScrollView>
+	</RefreshView>
 
 </support:PanePage>
