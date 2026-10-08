@@ -75,6 +75,24 @@
 		<Setter Property="support:Motion.OnShow" Value="True" />
 		<Setter Property="support:PointerLight.Enabled" Value="True" />
 	</Style>
+	<Style TargetType="Grid">
+		<Setter Property="support:PointerLight.Enabled" Value="True" />
+	</Style>
+	<Style TargetType="ContentView">
+		<Setter Property="support:PointerLight.Enabled" Value="True" />
+	</Style>
+	<Style TargetType="VerticalStackLayout">
+		<Setter Property="support:PointerLight.Enabled" Value="True" />
+	</Style>
+	<Style TargetType="HorizontalStackLayout">
+		<Setter Property="support:PointerLight.Enabled" Value="True" />
+	</Style>
+	<Style TargetType="FlexLayout">
+		<Setter Property="support:PointerLight.Enabled" Value="True" />
+	</Style>
+	<Style TargetType="StackLayout">
+		<Setter Property="support:PointerLight.Enabled" Value="True" />
+	</Style>
 	<Style Class="Chip" TargetType="Border">
 		<Setter Property="BackgroundColor" Value="{DynamicResource Raised}" />
 		<Setter Property="StrokeThickness" Value="0" />

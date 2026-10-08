@@ -1,39 +1,42 @@
 using DDjourneys.Core.Diagnostics;
 using System.Runtime.CompilerServices;
+using Microsoft.Maui.Controls;
+using Microsoft.Maui.Devices;
+using Microsoft.Maui.Graphics;
 
 namespace DDjourneys.Support;
 
 /// <summary>
-/// A soft light under the mouse pointer on desktop: the surface under the pointer brightens around it and falls off
-/// towards the edges, as the "reveal" highlight of Fluent did. The light is the element's own background colour with
-/// a radial gradient laid in (so it works on a card as well as on a transparent row, and under a window material, where
-/// the colour is translucent). Nothing happens on touch devices, and not while animations are switched off.
+/// Soft pointer glow for desktop surfaces.
 /// <para>
-/// <c>support:PointerLight.Enabled="True"</c> on any view. Cards get it from their style. Elements with
-/// <c>support:Motion.Feedback</c> get it with their hover lift.
+/// This stays in MAUI so it compiles on the current app stack. The glow is softer, less saturated,
+/// and it applies to any enabled view, not only clickable ones.
+/// </para>
+/// <para>
+/// Apply with <c>support:PointerLight.Enabled="True"</c> on any view.
 /// </para>
 /// </summary>
 public static class PointerLight
 {
-	/// <summary>Light on a surface (a card) is softer than on something that can be pressed.</summary>
-	private const double SurfaceStrength = 0.08;
+	private const double SurfaceStrength = 0.045;
+	private const double ControlStrength = 0.075;
+	private const long MinimumStepMilliseconds = 16;
 
-	private const double ControlStrength = 0.16;
-
-	private const long MinimumStepMilliseconds = 24;
-
-	private static readonly ConditionalWeakTable<View, LightState> States = [];
+	private static readonly ConditionalWeakTable<View, LightState> States = new();
 
 	public static readonly BindableProperty EnabledProperty =
-		BindableProperty.CreateAttached("Enabled", typeof(bool), typeof(PointerLight), false, propertyChanged: OnEnabledChanged);
+		BindableProperty.CreateAttached(
+			"Enabled",
+			typeof(bool),
+			typeof(PointerLight),
+			false,
+			propertyChanged: OnEnabledChanged);
 
 	public static bool GetEnabled(BindableObject view) => (bool)view.GetValue(EnabledProperty);
 
 	public static void SetEnabled(BindableObject view, bool value) => view.SetValue(EnabledProperty, value);
 
-	/// <summary>Where a pointer exists at all (Windows, Mac Catalyst); touch-only devices skip the whole thing.</summary>
-	private static bool HasPointer =>
-		DeviceInfo.Idiom == DeviceIdiom.Desktop;
+	private static bool HasPointer => DeviceInfo.Idiom == DeviceIdiom.Desktop;
 
 	private static void OnEnabledChanged(BindableObject bindable, object oldValue, object newValue)
 	{
@@ -46,8 +49,7 @@ public static class PointerLight
 			return;
 		}
 
-		double strength = view is Border ? SurfaceStrength : ControlStrength;
-		var state = new LightState(strength);
+		LightState state = new(view is Border ? SurfaceStrength : ControlStrength);
 		var pointer = new PointerGestureRecognizer();
 
 		pointer.PointerEntered += (_, args) => Shine(view, state, args);
@@ -77,44 +79,41 @@ public static class PointerLight
 
 		try
 		{
-			// Whatever brush the element has on its own is left alone: only the colour-driven background is lit.
+			state.LastTicks = now;
+
 			if (!state.Lit)
 			{
-				if (view.Background is { } own && !Brush.IsNullOrEmpty(own))
-				{
-					return;
-				}
-
+				state.OriginalBackground ??= view.Background;
 				state.Lit = true;
 			}
 
-			state.LastTicks = now;
-
-			Color baseColor = view.BackgroundColor ?? Colors.Transparent;
-			Color lightColor = Theme.IsDark ? Colors.White : Theme.ColorOf("Accent", Colors.White);
+			Color baseColor = view.BackgroundColor;
+			Color glowColor = Theme.IsDark ? Colors.White : Theme.ColorOf("Accent", Colors.White);
 
 			double x = Math.Clamp(position.X / view.Width, 0, 1);
 			double y = Math.Clamp(position.Y / view.Height, 0, 1);
 
-			// The centre is the base colour with the light laid over it; the rim is the base colour itself.
-			float alpha = baseColor.Alpha + (float)(state.Strength * (1 - baseColor.Alpha));
-			float share = alpha <= 0 ? 0 : (float)state.Strength / alpha;
+			float strength = (float)Math.Clamp(state.Strength, 0.03, 0.10);
 
 			Color centre =
-				new(
-					baseColor.Red + ((lightColor.Red - baseColor.Red) * share),
-					baseColor.Green + ((lightColor.Green - baseColor.Green) * share),
-					baseColor.Blue + ((lightColor.Blue - baseColor.Blue) * share),
-					alpha);
+				Blend(baseColor, glowColor, strength * 0.65f)
+					.WithAlpha(MathF.Min(1f, MathF.Max(baseColor.Alpha, 0.14f + strength)));
 
-			// A transparent base has no colour of its own: fade the light out to itself, not through grey.
-			Color rim = baseColor.Alpha <= 0 ? lightColor.WithAlpha(0) : baseColor;
+			Color mid =
+				Blend(baseColor, glowColor, strength * 0.35f)
+					.WithAlpha(MathF.Max(baseColor.Alpha, 0.06f + (strength * 0.30f)));
+
+			Color rim = baseColor.Alpha <= 0 ? baseColor.WithAlpha(0) : baseColor;
 
 			view.Background =
 				new RadialGradientBrush(
-					[new GradientStop(centre, 0f), new GradientStop(rim, 1f)],
+					[
+						new GradientStop(centre, 0f),
+						new GradientStop(mid, 0.55f),
+						new GradientStop(rim, 1f)
+					],
 					new Point(x, y),
-					0.7);
+					0.95);
 		}
 		catch (Exception ex)
 		{
@@ -133,8 +132,8 @@ public static class PointerLight
 
 		try
 		{
-			// The colour set as BackgroundColor (a dynamic resource) paints again.
-			view.ClearValue(VisualElement.BackgroundProperty);
+			view.Background = state.OriginalBackground;
+			state.OriginalBackground = null;
 		}
 		catch (Exception ex)
 		{
@@ -142,12 +141,22 @@ public static class PointerLight
 		}
 	}
 
+	private static Color Blend(Color from, Color to, float t)
+	{
+		t = Math.Clamp(t, 0f, 1f);
+
+		return new Color(
+			from.Red + ((to.Red - from.Red) * t),
+			from.Green + ((to.Green - from.Green) * t),
+			from.Blue + ((to.Blue - from.Blue) * t),
+			from.Alpha + ((to.Alpha - from.Alpha) * t));
+	}
+
 	private sealed class LightState(double strength)
 	{
 		public double Strength { get; } = strength;
-
+		public Brush? OriginalBackground { get; set; }
 		public bool Lit { get; set; }
-
 		public long LastTicks { get; set; }
 	}
 }
