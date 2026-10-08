@@ -201,12 +201,12 @@
 
 			</Grid>
 
-					<!--  Cannot take place: own row, so a long reason can wrap  -->
-					<Label
-						IsVisible="{Binding IsCancelled}"
-						LineBreakMode="WordWrap"
-						StyleClass="Cancelled"
-						Text="{Binding BlockText}" />
+			<!--  Cannot take place: own row, so a long reason can wrap  -->
+			<Label
+				IsVisible="{Binding IsCancelled}"
+				LineBreakMode="WordWrap"
+				StyleClass="Cancelled"
+				Text="{Binding BlockText}" />
 
 			<!--  State  -->
 			<HorizontalStackLayout IsVisible="{Binding HasStatusRow}" Spacing="{DynamicResource SpaceM}">
@@ -216,19 +216,6 @@
 					</Label.Text>
 				</Label>
 			</HorizontalStackLayout>
-
-				</VerticalStackLayout>
-
-				<controls:IconButton
-					Grid.Column="1"
-					Command="{Binding MapCommand}"
-					Glyph="Map"
-					HorizontalOptions="End"
-					IsVisible="{Binding HasMap}"
-					SemanticProperties.Description="{localization:Tr Extras.MapShow}"
-					VerticalOptions="End" />
-
-			</Grid>
 
 		</VerticalStackLayout>
 	</Border>
