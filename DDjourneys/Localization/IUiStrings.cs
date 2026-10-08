@@ -660,6 +660,7 @@ public sealed class ExtrasStrings
 	public required string MapJourneyTitle { get; init; }
 	public required string MapStopTitle { get; init; }
 	public required string MapNoData { get; init; }
+	public required string JourneyRefreshFailed { get; init; }
 	public required string MapStart { get; init; }
 	public required string MapEnd { get; init; }
 	public required string RunDeparted { get; init; }

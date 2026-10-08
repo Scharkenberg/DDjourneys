@@ -1008,7 +1008,7 @@ public sealed partial class JourneyViewModel :
 
 			if (fresh is null)
 			{
-				AlternativeStatus = _localization.CurrentStrings.Extras.RefreshFailed;
+				AlternativeStatus = _localization.CurrentStrings.Extras.JourneyRefreshFailed;
 
 				return;
 			}

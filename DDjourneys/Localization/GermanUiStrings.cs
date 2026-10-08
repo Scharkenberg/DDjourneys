@@ -223,6 +223,7 @@ public sealed class GermanUiStrings : IUiStrings
 		MapJourneyTitle = "Karte der Verbindung",
 		MapStopTitle = "Haltestellen in der Nähe",
 		MapNoData = "Dafür liegen keine Positionen für eine Karte vor.",
+		JourneyRefreshFailed = "Diese Verbindung wird nicht mehr angeboten, nichts zu aktualisieren.",
 		MapStart = "Start",
 		MapEnd = "Ziel",
 		RunDeparted = "Dieses Fahrzeug ist bereits abgefahren; der Verlauf ist nicht mehr verfügbar.",
