@@ -32,7 +32,7 @@ public sealed class JourneyCalendarTests
 		Assert.NotNull(file);
 		Assert.Contains("DTSTART:20261005T080000Z\r\n", file);
 		Assert.Contains("DTEND:20261005T082000Z\r\n", file);
-		Assert.Contains("SUMMARY:Alpha → Beta\\, now\; later\r\n", file);
+		Assert.Contains("SUMMARY:Alpha → Beta\\, now\\; later\r\n", file);
 		Assert.Contains("DESCRIPTION:Line 1\\nLine 2\r\n", file);
 		Assert.Contains("TRIGGER:-PT5M\r\n", file);
 	}
