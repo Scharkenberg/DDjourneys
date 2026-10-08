@@ -389,6 +389,31 @@ public sealed class JourneyService
 	}
 
 
+	/// <summary>Downloads the printable version of the journey; null when it is not available.</summary>
+	public async Task<JourneyDocument?> GetJourneyDocumentAsync(
+		JourneyQuery query,
+		Journey journey,
+		CancellationToken cancellationToken = default)
+	{
+		ArgumentNullException.ThrowIfNull(query);
+		ArgumentNullException.ThrowIfNull(journey);
+
+		IJourneyExtrasProvider? provider =
+			_all
+				.OfType<IJourneyExtrasProvider>()
+				.FirstOrDefault(
+					candidate => candidate is IJourneyProvider journeyProvider
+						&& (_registry?.IsSelected(journeyProvider) ?? true)
+						&& IsSuitable(journeyProvider, journey));
+
+		return provider is null
+			? null
+			: await provider
+				.GetJourneyDocumentAsync(query, journey, cancellationToken)
+				.ConfigureAwait(false);
+	}
+
+
 	/// <summary>Address of a printable version of the journey, or null when its provider has none.</summary>
 	public Uri? GetJourneyDocumentUri(
 		JourneyQuery query,
