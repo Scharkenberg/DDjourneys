@@ -250,46 +250,6 @@ public sealed partial class JourneyViewModel :
 			? SetPausedAsync(!IsPaused)
 			: Task.CompletedTask;
 
-	/// <summary>The journey's actions as icons for its overview card.</summary>
-	public JourneyActions Actions { get; }
-
-	/// <summary>Set by the page: brings the notices into view (the badge in the card).</summary>
-	public Action? ScrollToNotices { get; set; }
-
-	/// <summary>Following failed or is unavailable: the message stands alone (a followed journey shows it in its strip).</summary>
-	public bool ShowTrackingProblem =>
-		!IsFollowed && !string.IsNullOrWhiteSpace(TrackingStatus);
-
-	private void RefreshActions()
-	{
-		JourneyStrings journey = _localization.CurrentStrings.Journey;
-		TrackingStrings tracking = _localization.CurrentStrings.Tracking;
-
-		Actions.HasPdf = HasDocument;
-		Actions.HasHandOff = IsHandOffAvailable;
-		Actions.CanFollow = IsTrackingAvailable;
-		Actions.IsFollowed = IsFollowed;
-		Actions.CanPause = CanPause;
-		Actions.IsPaused = IsPaused;
-
-		Actions.PdfDescription = journey.OpenPdf;
-		Actions.HandOffDescription = journey.HandOff;
-		Actions.FollowDescription = IsFollowed ? tracking.StopFollowing : journey.FollowJourney;
-		Actions.PauseDescription = IsPaused ? tracking.Resume : journey.DeactivateTracking;
-
-		Actions.Touch();
-	}
-
-	private Task ToggleFollowAsync() =>
-		IsFollowed
-			? StopFollowingAsync()
-			: FollowJourneyAsync();
-
-	private Task TogglePauseAsync() =>
-		IsPaused || CanPause
-			? SetPausedAsync(!IsPaused)
-			: Task.CompletedTask;
-
 	public bool HasDocument =>
 		_query is not null
 		&& _journey is not null
@@ -560,8 +520,9 @@ public sealed partial class JourneyViewModel :
 					[Routes.JourneyData] = _journey
 				});
 
-	private static Task OpenFollowedAsync() =>
-		Shell.Current.GoToAsync(Routes.Tracked);
+	// Beside the journey as a pane in a wide window (see Panes).
+	private Task OpenFollowedAsync() =>
+		Panes.GoToAsync(Routes.Tracked, [], this);
 
 	private void ShowTrackingError(Exception ex) =>
 		TrackingStatus =
@@ -978,9 +939,11 @@ public sealed partial class JourneyViewModel :
 				}
 			}
 
-			await Shell.Current.GoToAsync(
+			// Beside this page as a pane in a wide window (see Panes).
+			await Panes.GoToAsync(
 				Routes.Vehicles,
-				parameters);
+				parameters,
+				this);
 		}
 		catch (Exception ex)
 		{
@@ -1002,7 +965,8 @@ public sealed partial class JourneyViewModel :
 
 			if (!await MapScenes.OpenAsync(
 					MapScenes.FromJourney(journey),
-					strings.MapJourneyTitle))
+					strings.MapJourneyTitle,
+					this))
 			{
 				AlternativeStatus = strings.MapNoData;
 			}

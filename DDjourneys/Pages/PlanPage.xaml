@@ -1,4 +1,4 @@
-<ContentPage
+<support:PanePage
 	x:Class="DDjourneys.Pages.PlanPage"
 	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
 	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
@@ -11,9 +11,9 @@
 	x:DataType="local:PlanViewModel"
 	Shell.NavBarIsVisible="False">
 
-	<ContentPage.Resources>
+	<support:PanePage.Resources>
 		<toolkit:IsStringNotNullOrWhiteSpaceConverter x:Key="HasText" />
-	</ContentPage.Resources>
+	</support:PanePage.Resources>
 
 	<ScrollView>
 		<VerticalStackLayout Padding="{DynamicResource PadPage}" Spacing="{DynamicResource SpaceM}">
@@ -69,7 +69,9 @@
 							<Label StyleClass="Caption" Text="{localization:Tr Plan.FromPlaceholder}" />
 
 							<controls:StopNameView
+								x:Name="FromStop"
 								Muted="{Binding NoFrom}"
+								SingleLine="True"
 								Place="{Binding FromPlace}"
 								Stop="{Binding FromName}" />
 
@@ -80,25 +82,25 @@
 
 						<controls:IconButton
 							Grid.Column="1"
+							Command="{Binding ToggleFromFavouriteCommand}"
+							Glyph="{Binding FromStar}"
+							InputTransparent="{Binding NoFrom}"
+							Opacity="{Binding StarOpacityFrom}"
+							SemanticProperties.Description="{localization:Tr Plan.ToggleFavouriteFrom}"
+							TargetSize="{StaticResource HitIconTight}" />
+						
+						<controls:IconButton
+							Grid.Column="2"
 							Command="{Binding UseLocationFromCommand}"
 							Glyph="Locate"
 							SemanticProperties.Description="{localization:Tr Plan.UseLocationFrom}"
 							TargetSize="{StaticResource HitIconTight}" />
 
 						<controls:IconButton
-							Grid.Column="2"
+							Grid.Column="3"
 							Clicked="FromMapClicked"
 							Glyph="Map"
 							SemanticProperties.Description="{localization:Tr Extras.MapPickOnMap}"
-							TargetSize="{StaticResource HitIconTight}" />
-
-						<controls:IconButton
-							Grid.Column="3"
-							Command="{Binding ToggleFromFavouriteCommand}"
-							Glyph="{Binding FromStar}"
-							InputTransparent="{Binding NoFrom}"
-							Opacity="{Binding StarOpacityFrom}"
-							SemanticProperties.Description="{localization:Tr Plan.ToggleFavouriteFrom}"
 							TargetSize="{StaticResource HitIconTight}" />
 					</Grid>
 
@@ -119,7 +121,9 @@
 							<Label StyleClass="Caption" Text="{localization:Tr Plan.ToPlaceholder}" />
 
 							<controls:StopNameView
+								x:Name="ToStop"
 								Muted="{Binding NoTo}"
+								SingleLine="True"
 								Place="{Binding ToPlace}"
 								Stop="{Binding ToName}" />
 
@@ -130,25 +134,25 @@
 
 						<controls:IconButton
 							Grid.Column="1"
+							Command="{Binding ToggleToFavouriteCommand}"
+							Glyph="{Binding ToStar}"
+							InputTransparent="{Binding NoTo}"
+							Opacity="{Binding StarOpacityTo}"
+							SemanticProperties.Description="{localization:Tr Plan.ToggleFavouriteTo}"
+							TargetSize="{StaticResource HitIconTight}" />
+
+						<controls:IconButton
+							Grid.Column="2"
 							Command="{Binding UseLocationToCommand}"
 							Glyph="Locate"
 							SemanticProperties.Description="{localization:Tr Plan.UseLocationTo}"
 							TargetSize="{StaticResource HitIconTight}" />
 
 						<controls:IconButton
-							Grid.Column="2"
+							Grid.Column="3"
 							Clicked="ToMapClicked"
 							Glyph="Map"
 							SemanticProperties.Description="{localization:Tr Extras.MapPickOnMap}"
-							TargetSize="{StaticResource HitIconTight}" />
-
-						<controls:IconButton
-							Grid.Column="3"
-							Command="{Binding ToggleToFavouriteCommand}"
-							Glyph="{Binding ToStar}"
-							InputTransparent="{Binding NoTo}"
-							Opacity="{Binding StarOpacityTo}"
-							SemanticProperties.Description="{localization:Tr Plan.ToggleFavouriteTo}"
 							TargetSize="{StaticResource HitIconTight}" />
 					</Grid>
 
@@ -215,7 +219,11 @@
 						VerticalOptions="Center">
 						<Label StyleClass="Caption" Text="{localization:Tr Plan.Via}" />
 
-						<controls:StopNameView Place="{Binding ViaPlace}" Stop="{Binding ViaName}" />
+						<controls:StopNameView
+							x:Name="ViaStop"
+							Place="{Binding ViaPlace}"
+							SingleLine="True"
+							Stop="{Binding ViaName}" />
 
 						<VerticalStackLayout.GestureRecognizers>
 							<TapGestureRecognizer Command="{Binding PickViaCommand}" />
@@ -537,4 +545,4 @@
 		</VerticalStackLayout>
 	</ScrollView>
 
-</ContentPage>
+</support:PanePage>

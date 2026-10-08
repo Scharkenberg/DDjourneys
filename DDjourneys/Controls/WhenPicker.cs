@@ -1,22 +1,27 @@
+using System.Globalization;
 using DDjourneys.Localization;
 using DDjourneys.Support;
 
 namespace DDjourneys.Controls;
 
 /// <summary>
-/// Date and time, each with its caption. They share one row as long as both controls fit naturally; the layout does
-/// not reserve half the available width for each picker. Instead it uses a left cell, a flexible spacer, and a right
-/// cell. When the window becomes too narrow, the time moves to a row of its own instead of being cut off.
+/// Date and time. A strip of day chips (today, tomorrow and the five days after; swipe for more) picks the usual
+/// days with one tap; below it the native date picker (any day) and the native time picker, each with its icon.
+/// The two pickers share a row while they fit and wrap otherwise (FlexLayout measures; no code reacts to sizes,
+/// so nothing is rebuilt while the card is laid out and nothing can end up outside the card).
 /// </summary>
 public sealed partial class WhenPicker : ContentView
 {
+	private const int StripDays = 7;
+
 	public static readonly BindableProperty DateProperty =
 		BindableProperty.Create(
 			nameof(Date),
 			typeof(DateTime),
 			typeof(WhenPicker),
 			DateTime.Today,
-			BindingMode.TwoWay);
+			BindingMode.TwoWay,
+			propertyChanged: (bindable, _, _) => ((WhenPicker)bindable).MarkSelection());
 
 	public static readonly BindableProperty TimeProperty =
 		BindableProperty.Create(
@@ -31,74 +36,95 @@ public sealed partial class WhenPicker : ContentView
 			nameof(MinimumDate),
 			typeof(DateTime),
 			typeof(WhenPicker),
-			new DateTime(1900, 1, 1));
+			new DateTime(1900, 1, 1),
+			propertyChanged: (bindable, _, _) => ((WhenPicker)bindable).BuildStrip());
 
 	public static readonly BindableProperty MaximumDateProperty =
 		BindableProperty.Create(
 			nameof(MaximumDate),
 			typeof(DateTime),
 			typeof(WhenPicker),
-			new DateTime(2100, 12, 31));
+			new DateTime(2100, 12, 31),
+			propertyChanged: (bindable, _, _) => ((WhenPicker)bindable).BuildStrip());
 
-	private readonly Grid _grid;
-	private readonly VerticalStackLayout _dateCell;
-	private readonly VerticalStackLayout _timeCell;
-	private readonly DatePicker _date;
-	private readonly TimePicker _time;
-	private bool? _stacked;
+	private readonly HorizontalStackLayout _strip;
+	private readonly List<(DateTime Day, Border Chip, Label Text)> _chips = [];
+	private DateTime _stripStart;
 
 	public WhenPicker()
 	{
-		_date =
+		var date =
 			new DatePicker
 			{
 				Format = "ddd, d MMM",
-				HorizontalOptions = LayoutOptions.Start
+				VerticalOptions = LayoutOptions.Center
 			};
+		date.SetBinding(DatePicker.DateProperty, static (WhenPicker w) => w.Date, BindingMode.TwoWay, source: this);
+		date.SetBinding(DatePicker.MinimumDateProperty, static (WhenPicker w) => w.MinimumDate, source: this);
+		date.SetBinding(DatePicker.MaximumDateProperty, static (WhenPicker w) => w.MaximumDate, source: this);
+		date.SetBinding(SemanticProperties.DescriptionProperty, static (LocalizationService l) => l.CurrentStrings.Plan.Date, source: LocalizationService.Current);
 
-		_date.SetBinding(DatePicker.DateProperty, new Binding(nameof(Date), BindingMode.TwoWay, source: this));
-		_date.SetBinding(DatePicker.MinimumDateProperty, new Binding(nameof(MinimumDate), source: this));
-		_date.SetBinding(DatePicker.MaximumDateProperty, new Binding(nameof(MaximumDate), source: this));
-
-		_time =
+		var time =
 			new TimePicker
 			{
 				Format = "HH:mm",
-				HorizontalOptions = LayoutOptions.End
+				VerticalOptions = LayoutOptions.Center
+			};
+		time.SetBinding(TimePicker.TimeProperty, static (WhenPicker w) => w.Time, BindingMode.TwoWay, source: this);
+		time.SetBinding(SemanticProperties.DescriptionProperty, static (LocalizationService l) => l.CurrentStrings.Plan.Time, source: LocalizationService.Current);
+
+		_strip = new HorizontalStackLayout { Spacing = 6 };
+
+		var strip =
+			new ScrollView
+			{
+				Orientation = ScrollOrientation.Horizontal,
+				HorizontalScrollBarVisibility = ScrollBarVisibility.Never,
+				Padding = new Thickness(12, 8, 12, 2),
+				Content = _strip
 			};
 
-		_time.SetBinding(TimePicker.TimeProperty, new Binding(nameof(Time), BindingMode.TwoWay, source: this));
-
-		_dateCell = Cell("CurrentStrings.Plan.Date", _date);
-		_timeCell = Cell("CurrentStrings.Plan.Time", _time);
-
-		_grid =
-			new Grid
+		var pickers =
+			new FlexLayout
 			{
-				ColumnSpacing = 12,
-				ColumnDefinitions =
-				[
-					new ColumnDefinition(GridLength.Auto),
-					new ColumnDefinition(GridLength.Star),
-					new ColumnDefinition(GridLength.Auto)
-				],
+				Wrap = Microsoft.Maui.Layouts.FlexWrap.Wrap,
+				JustifyContent = Microsoft.Maui.Layouts.FlexJustify.SpaceBetween,
+				AlignItems = Microsoft.Maui.Layouts.FlexAlignItems.Center,
+				AlignContent = Microsoft.Maui.Layouts.FlexAlignContent.Start,
+				Padding = new Thickness(12, 2, 8, 4),
 				Children =
 				{
-					_dateCell,
-					_timeCell
+					Labelled(IconGlyph.Calendar, date),
+					Labelled(IconGlyph.Clock, time)
 				}
 			};
 
-		Grid.SetColumn(_dateCell, 0);
-		Grid.SetColumn(_timeCell, 2);
+		Content =
+			new VerticalStackLayout
+			{
+				Spacing = 0,
+				Children = { strip, pickers }
+			};
 
-		Dense.SetPadding(_grid, new Thickness(12, 3));
-		Dense.SetMinHeight(_grid, 52);
+		BuildStrip();
 
-		_grid.SizeChanged += OnSizeChanged;
+		// Past midnight "today" moves on; the chips follow the language while the control is on screen.
+		Loaded += (_, _) =>
+		{
+			LocalizationService.Current.PropertyChanged -= OnLanguageChanged;
+			LocalizationService.Current.PropertyChanged += OnLanguageChanged;
 
-		Content = _grid;
+			if (_stripStart != DateTime.Today)
+			{
+				BuildStrip();
+			}
+		};
+
+		Unloaded += (_, _) => LocalizationService.Current.PropertyChanged -= OnLanguageChanged;
 	}
+
+	private void OnLanguageChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e) =>
+		BuildStrip();
 
 	public DateTime Date
 	{
@@ -124,81 +150,98 @@ public sealed partial class WhenPicker : ContentView
 		set => SetValue(MaximumDateProperty, value);
 	}
 
-	private static VerticalStackLayout Cell(string captionPath, View picker)
+	/// <summary>A picker with its (decorative) icon; the picker carries the description.</summary>
+	private static HorizontalStackLayout Labelled(IconGlyph glyph, View picker)
 	{
-		// Bound to the localization service, so the caption follows a change of language.
-		var caption = new Label { StyleClass = ["Caption"] };
-		caption.SetBinding(Label.TextProperty, new Binding(captionPath, source: LocalizationService.Current));
+		var icon =
+			new Icon
+			{
+				Glyph = glyph,
+				Size = 20,
+				VerticalOptions = LayoutOptions.Center
+			};
+		icon.SetDynamicResource(Icon.ColorProperty, "InkMuted");
 
 		return
-			new VerticalStackLayout
+			new HorizontalStackLayout
 			{
-				Spacing = 0,
-				VerticalOptions = LayoutOptions.Center,
-				HorizontalOptions = LayoutOptions.Fill,
-				Children = { caption, picker }
+				Spacing = 4,
+				Margin = new Thickness(0, 2, 4, 2),
+				Children = { icon, picker }
 			};
 	}
 
-	private void OnSizeChanged(object? sender, EventArgs e)
+	/// <summary>Rectangular chips (they are tappable, so never pills): today, tomorrow, then weekday and day.</summary>
+	private void BuildStrip()
 	{
-		if (_grid.Width <= 0)
+		if (_strip is null)
 		{
 			return;
 		}
 
-		double dateWidth = _dateCell.Measure(double.PositiveInfinity, double.PositiveInfinity).Width;
-		double timeWidth = _timeCell.Measure(double.PositiveInfinity, double.PositiveInfinity).Width;
+		_strip.Clear();
+		_chips.Clear();
+		_stripStart = DateTime.Today;
 
-		if (dateWidth <= 0 || timeWidth <= 0)
+		CommonStrings strings = LocalizationService.Current.CurrentStrings.Common;
+
+		for (int i = 0; i < StripDays; i++)
 		{
-			return;
+			DateTime day = _stripStart.AddDays(i);
+
+			if (day < MinimumDate.Date || day > MaximumDate.Date)
+			{
+				continue;
+			}
+
+			string text =
+				i switch
+				{
+					0 => strings.Today,
+					1 => strings.Tomorrow,
+					_ => day.ToString("ddd d", CultureInfo.CurrentCulture)
+				};
+
+			var label =
+				new Label
+				{
+					Text = text,
+					LineBreakMode = LineBreakMode.NoWrap,
+					VerticalTextAlignment = TextAlignment.Center
+				};
+			label.SetDynamicResource(Label.FontFamilyProperty, "FontSemibold");
+			label.SetDynamicResource(Label.FontSizeProperty, "FontCaption");
+
+			var chip =
+				new Border
+				{
+					Content = label,
+					StrokeThickness = 0,
+					StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 4 },
+					Padding = new Thickness(12, 0)
+				};
+			chip.SetDynamicResource(Dense.MinHeightProperty, "HitButton");
+			SemanticProperties.SetDescription(chip, day.ToString("D", CultureInfo.CurrentCulture));
+
+			var tap = new TapGestureRecognizer();
+			tap.Tapped += (_, _) => Date = day + (Date - Date.Date);
+			chip.GestureRecognizers.Add(tap);
+
+			_chips.Add((day, chip, label));
+			_strip.Add(chip);
 		}
 
-		double available =
-			_grid.Width
-			- _grid.Padding.HorizontalThickness
-			- (_grid.ColumnSpacing * 2);
+		MarkSelection();
+	}
 
-		double required = dateWidth + timeWidth;
-
-		bool stacked = required > available;
-
-		if (_stacked == stacked)
+	private void MarkSelection()
+	{
+		foreach ((DateTime day, Border chip, Label label) in _chips)
 		{
-			return;
-		}
+			bool on = day == Date.Date;
 
-		_stacked = stacked;
-
-		if (stacked)
-		{
-			_grid.RowDefinitions = [new RowDefinition(GridLength.Auto), new RowDefinition(GridLength.Auto)];
-			_grid.ColumnDefinitions = [new ColumnDefinition(GridLength.Star)];
-			_grid.RowSpacing = 4;
-
-			Grid.SetRow(_dateCell, 0);
-			Grid.SetColumn(_dateCell, 0);
-
-			Grid.SetRow(_timeCell, 1);
-			Grid.SetColumn(_timeCell, 0);
-		}
-		else
-		{
-			_grid.RowDefinitions = [];
-			_grid.ColumnDefinitions =
-			[
-				new ColumnDefinition(GridLength.Auto),
-				new ColumnDefinition(GridLength.Star),
-				new ColumnDefinition(GridLength.Auto)
-			];
-			_grid.RowSpacing = 0;
-
-			Grid.SetRow(_dateCell, 0);
-			Grid.SetColumn(_dateCell, 0);
-
-			Grid.SetRow(_timeCell, 0);
-			Grid.SetColumn(_timeCell, 2);
+			chip.SetDynamicResource(BackgroundColorProperty, on ? "Accent" : "Raised");
+			label.SetDynamicResource(Label.TextColorProperty, on ? "OnAccent" : "Ink");
 		}
 	}
 }

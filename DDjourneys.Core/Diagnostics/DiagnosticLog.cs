@@ -9,7 +9,7 @@ namespace DDjourneys.Core.Diagnostics;
 /// </summary>
 public static class DiagnosticLog
 {
-	public const long MaxBytes = 512 * 1024;
+	public const long MaxBytes = 1024 * 1024;
 
 	/// <summary>Longest slice of an API body that is logged.</summary>
 	public const int MaxBodyChars = 2000;

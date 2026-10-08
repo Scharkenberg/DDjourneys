@@ -80,6 +80,22 @@ public sealed class TrackedRow
 	public required string PlanId { get; init; }
 	public required string Title { get; init; }
 	public required string Subtitle { get; init; }
+
+	/// <summary>Times and ends for the card header (same look as the journey card).</summary>
+	public string DepartureTime { get; init; } = string.Empty;
+
+	public string ArrivalTime { get; init; } = string.Empty;
+
+	public string DayText { get; init; } = string.Empty;
+
+	public string FromName { get; init; } = string.Empty;
+
+	public string? FromPlace { get; init; }
+
+	public string ToName { get; init; } = string.Empty;
+
+	public string? ToPlace { get; init; }
+
 	public required string LinesText { get; init; }
 
 	/// <summary>The rides as chips (a line, or the mark of a guaranteed change), in travel order.</summary>
@@ -609,8 +625,20 @@ public sealed partial class TrackedJourneysViewModel : DisposableViewModel, IQue
 				(WatchStatus.Recent, strings.SectionRecent)
 			})
 			{
-				List<TrackedRow> rows =
-					[.. journeys.Where(item => item.Status == status).Select(item => CreateRow(item, strings))];
+				// One journey that cannot be shown must not hide the others (nor the whole page, as an empty list would).
+				var rows = new List<TrackedRow>();
+
+				foreach (WatchedJourney item in journeys.Where(item => item.Status == status))
+				{
+					try
+					{
+						rows.Add(CreateRow(item, strings));
+					}
+					catch (Exception ex)
+					{
+						DiagnosticLog.Write($"Followed journey {item.PlanId} not shown: {ex}");
+					}
+				}
 
 				if (rows.Count > 0)
 				{
@@ -619,13 +647,98 @@ public sealed partial class TrackedJourneysViewModel : DisposableViewModel, IQue
 			}
 
 			Sections = sections;
-			HasItems = journeys.Count > 0;
-			LiveOptions = CreateLiveOptions(journeys, strings);
+			HasItems = sections.Count > 0;
+
+			DiagnosticLog.Write($"[Followed] {journeys.Count} journey(s) from the tracker, {sections.Count} section(s) shown");
+
+			try
+			{
+				LiveOptions = CreateLiveOptions(journeys, strings);
+			}
+			catch (Exception ex)
+			{
+				DiagnosticLog.Write($"Live options not built: {ex.Message}");
+			}
 		}
 		catch (Exception ex)
 		{
 			DiagnosticLog.Write($"Followed journeys display failed:\n{ex}");
 		}
+	}
+
+	/// <summary>The same as chips: a line each, the mark of a guaranteed change between; the line under way is highlighted.</summary>
+	private static List<LinePart> LinePartsOf(WatchedJourney journey, TrackingStrings strings)
+	{
+		string[] lines = [.. journey.Lines.Where(item => !string.IsNullOrWhiteSpace(item))];
+
+		bool marks =
+			journey.EnsuredChanges is { } ensured
+			&& ensured.Count == lines.Length - 1;
+
+		bool underWay = journey.Phase == TrackingPhase.InProgress;
+		bool found = false;
+		var parts = new List<LinePart>(lines.Length * 2);
+
+		for (int i = 0; i < lines.Length; i++)
+		{
+			bool current = underWay && !found && lines[i] == journey.CurrentLine;
+
+			found |= current;
+
+			parts.Add(new LinePart(lines[i], false, current));
+
+			if (marks && i < journey.EnsuredChanges!.Count && journey.EnsuredChanges[i])
+			{
+				parts.Add(new LinePart(strings.GuaranteedChange, true, false));
+			}
+		}
+
+		return parts;
+	}
+
+	/// <summary>Looks up the vehicles of the rides still to come and opens the live page following all of them.</summary>
+	private async Task OpenMapAsync(WatchedJourney journey)
+	{
+		IReadOnlyList<FollowedRide> rides = FollowedRides.Load(journey.PlanId);
+
+		DateTimeOffset limit = DateTimeOffset.UtcNow - TimeSpan.FromMinutes(3);
+
+		// Rides that are over have no vehicle to look for; when all are, show them anyway.
+		List<FollowedRide> pending =
+			[.. rides.Where(ride => ride.Arrival is null || ride.Arrival > limit)];
+
+		var targets = new List<TrackTarget>();
+
+		foreach (FollowedRide ride in pending.Count > 0 ? pending : rides)
+		{
+			try
+			{
+				if (await _runs.ResolveAsync(ride.ToLeg(), ride.Line, _settings.TimeoutSeconds) is { } target)
+				{
+					targets.Add(target);
+				}
+			}
+			catch (Exception ex) when (ex is not OperationCanceledException)
+			{
+				DiagnosticLog.Write($"Looking up the run of line {ride.Line} failed: {ex.Message}");
+			}
+		}
+
+		if (targets.Count == 0)
+		{
+			ErrorText = _localization.CurrentStrings.Extras.TrackNoCourse;
+
+			return;
+		}
+
+		ErrorText = null;
+
+		await Shell.Current.GoToAsync(
+			Routes.Vehicles,
+			new ShellNavigationQueryParameters
+			{
+				[Routes.TrackSet] = (IReadOnlyList<TrackTarget>)targets
+			});
 	}
 
 	/// <summary>The same as chips: a line each, the mark of a guaranteed change between; the line under way is highlighted.</summary>
@@ -855,6 +968,15 @@ public sealed partial class TrackedJourneysViewModel : DisposableViewModel, IQue
 			PlanId = journey.PlanId,
 			Title = route,
 			Subtitle = subtitle,
+			DepartureTime = Format.TimeOrDash(journey.Departure),
+			ArrivalTime = Format.TimeOrDash(journey.Arrival),
+			DayText =
+				(journey.Departure is { } day ? Format.DayLabel(Format.ToWall(day).Date) : string.Empty)
+				+ (journey.IsPeriodic ? $" · {strings.Periodic}" : string.Empty),
+			FromName = StopLabel.NameFor(journey.Origin, null),
+			FromPlace = StopLabel.PlaceFor(journey.Origin, null),
+			ToName = StopLabel.NameFor(journey.Destination, null),
+			ToPlace = StopLabel.PlaceFor(journey.Destination, null),
 			LinesText = LinesOf(journey, strings),
 			LineParts = LinePartsOf(journey, strings),
 			HasMap = FollowedRides.Has(journey.PlanId),

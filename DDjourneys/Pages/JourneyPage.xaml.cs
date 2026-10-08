@@ -6,7 +6,7 @@ using DDjourneys.Support;
 
 namespace DDjourneys.Pages;
 
-public partial class JourneyPage : ContentPage
+public partial class JourneyPage : PanePage
 {
 	private readonly JourneyViewModel _vm;
 	private IDispatcherTimer? _clock;
@@ -20,7 +20,7 @@ public partial class JourneyPage : ContentPage
 		// The notice badge in the card: bring the notices into view.
 		vm.ScrollToNotices = () => _ = PageScroll.ScrollToAsync(NoticesBlock, ScrollToPosition.Start, true);
 
-		vm.ChooseShareFormat = (title, cancel, options) => ShowSharePopupAsync(this, options);
+		vm.ChooseShareFormat = (title, cancel, options) => ShowSharePopupAsync(DialogPage, options);
 
 	}
 
@@ -29,7 +29,7 @@ public partial class JourneyPage : ContentPage
 	{
 		base.OnNavigatedFrom(args);
 
-		PageTeardown.DisposeIfLeft(args, BindingContext);
+		LeaveIfGone(args);
 	}
 
 	protected override void OnAppearing()

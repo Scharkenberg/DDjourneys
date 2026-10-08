@@ -1,4 +1,4 @@
-<ContentPage
+<support:PanePage
 	x:Class="DDjourneys.Pages.TrackedJourneysPage"
 	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
 	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
@@ -128,24 +128,45 @@
 													<!--  Header: the route, and the card's actions (live badge, map, expand) in one row of equal icon targets  -->
 													<Grid ColumnDefinitions="*,Auto" ColumnSpacing="4">
 
-														<VerticalStackLayout
+														<!--  Times with their ends right under them, the day between (as on the journey card)  -->
+														<Grid
 															support:Motion.Feedback="True"
-															Spacing="2"
+															ColumnDefinitions="*,Auto,*"
+															ColumnSpacing="{DynamicResource SpaceM}"
 															VerticalOptions="Center">
 
-															<!--  The title may wrap to two lines  -->
+															<VerticalStackLayout Spacing="2">
+																<Label StyleClass="Time" Text="{Binding DepartureTime}" />
+																<controls:StopNameView
+																	Compact="True"
+																	Place="{Binding FromPlace}"
+																	Stop="{Binding FromName}" />
+															</VerticalStackLayout>
+
 															<Label
-																FontFamily="{DynamicResource FontSemibold}"
-																LineBreakMode="TailTruncation"
-																MaxLines="2"
-																Text="{Binding Title}" />
+																Grid.Column="1"
+																Margin="0,4,0,0"
+																HorizontalTextAlignment="Center"
+																StyleClass="Caption"
+																Text="{Binding DayText}"
+																VerticalOptions="Start" />
 
-															<Label StyleClass="Caption" Text="{Binding Subtitle}" />
+															<VerticalStackLayout Grid.Column="2" Spacing="2">
+																<Label
+																	HorizontalTextAlignment="End"
+																	StyleClass="Time"
+																	Text="{Binding ArrivalTime}" />
+																<controls:StopNameView
+																	Alignment="End"
+																	Compact="True"
+																	Place="{Binding ToPlace}"
+																	Stop="{Binding ToName}" />
+															</VerticalStackLayout>
 
-															<VerticalStackLayout.GestureRecognizers>
+															<Grid.GestureRecognizers>
 																<TapGestureRecognizer Command="{Binding ToggleExpandedCommand}" />
-															</VerticalStackLayout.GestureRecognizers>
-														</VerticalStackLayout>
+															</Grid.GestureRecognizers>
+														</Grid>
 
 														<HorizontalStackLayout
 															Grid.Column="1"
@@ -260,7 +281,7 @@
 														Text="{Binding NextText}" />
 
 													<!--  Only the current notice; outdated or superseded ones are removed by the tracker, the rest can be swiped away  -->
-													<SwipeView IsVisible="{Binding HasNotice}">
+													<SwipeView IsVisible="{Binding HasNotice}" VerticalOptions="Start">
 														<SwipeView.LeftItems>
 															<SwipeItems Mode="Execute" SwipeBehaviorOnInvoked="Close">
 																<SwipeItem
@@ -281,9 +302,10 @@
 														<Border
 															support:Dense.Padding="12,8"
 															BackgroundColor="{DynamicResource Raised}"
-															StrokeShape="RoundRectangle 10"
+															StrokeShape="RoundRectangle 6"
 															StrokeThickness="0">
-															<Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+															<!--  The box is as tall as its text: the close button is a small target here, not a 40 dp row  -->
+															<Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" VerticalOptions="Center">
 																<controls:Icon
 																	Glyph="Info"
 																	IsVisible="{Binding NoticeIsInfo}"
@@ -300,13 +322,15 @@
 																	Grid.Column="1"
 																	LineBreakMode="WordWrap"
 																	StyleClass="Caption"
-																	Text="{Binding NoticeText}" />
+																	Text="{Binding NoticeText}"
+																	VerticalOptions="Center" />
 																<controls:IconButton
 																	Grid.Column="2"
 																	Command="{Binding DismissNoticeCommand}"
 																	Glyph="Close"
 																	SemanticProperties.Description="{Binding DismissNoticeText}"
 																	Size="14"
+																	TargetSize="24"
 																	VerticalOptions="Start"
 																	Color="{DynamicResource InkMuted}" />
 															</Grid>
@@ -645,4 +669,4 @@
 			</VerticalStackLayout>
 		</ScrollView>
 	</RefreshView>
-</ContentPage>
+</support:PanePage>

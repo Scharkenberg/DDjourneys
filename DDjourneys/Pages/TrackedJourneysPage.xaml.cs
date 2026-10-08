@@ -4,7 +4,7 @@ using DDjourneys.Support;
 
 namespace DDjourneys.Pages;
 
-public partial class TrackedJourneysPage : ContentPage
+public partial class TrackedJourneysPage : PanePage
 {
 	private static readonly TimeSpan ScrollDelay = TimeSpan.FromMilliseconds(350);
 	private static readonly int MaxScrollAttempts = 20;
@@ -55,12 +55,21 @@ public partial class TrackedJourneysPage : ContentPage
 	{
 		base.OnNavigatedFrom(args);
 
-		if (PageTeardown.IsLeavingForGood(args))
-		{
-			_vm.FocusRequested -= OnFocusRequested;
-		}
+		LeaveIfGone(args);
+	}
 
-		PageTeardown.DisposeIfLeft(args, BindingContext);
+	protected override void OnLeftForGood()
+	{
+		_vm.FocusRequested -= OnFocusRequested;
+
+		base.OnLeftForGood();
+	}
+
+	/// <summary>A new instance took over the view model: this page stops listening, the view model lives on.</summary>
+	protected override void OnRetired()
+	{
+		_vm.FocusRequested -= OnFocusRequested;
+		_vm.Confirm = null;
 	}
 
 	protected override void OnAppearing()

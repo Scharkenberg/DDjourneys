@@ -16,7 +16,9 @@
 				<VerticalStackLayout Grid.Column="0" Spacing="2">
 					<Label StyleClass="Time" Text="{Binding DepartureTime}" />
 					<controls:StopNameView
+						x:Name="FromStop"
 						Compact="True"
+						SingleLine="True"
 						IsVisible="{Binding ShowEndpoints}"
 						Place="{Binding FromPlace}"
 						Stop="{Binding FromName}" />
@@ -76,7 +78,9 @@
 						StyleClass="Time"
 						Text="{Binding ArrivalTime}" />
 					<controls:StopNameView
+						x:Name="ToStop"
 						Alignment="End"
+						SingleLine="True"
 						Compact="True"
 						IsVisible="{Binding ShowEndpoints}"
 						Place="{Binding ToPlace}"
@@ -197,12 +201,12 @@
 
 			</Grid>
 
-			<!--  Cannot take place: own row, so a long reason can wrap  -->
-			<Label
-				IsVisible="{Binding IsCancelled}"
-				LineBreakMode="WordWrap"
-				StyleClass="Cancelled"
-				Text="{Binding BlockText}" />
+					<!--  Cannot take place: own row, so a long reason can wrap  -->
+					<Label
+						IsVisible="{Binding IsCancelled}"
+						LineBreakMode="WordWrap"
+						StyleClass="Cancelled"
+						Text="{Binding BlockText}" />
 
 			<!--  State  -->
 			<HorizontalStackLayout IsVisible="{Binding HasStatusRow}" Spacing="{DynamicResource SpaceM}">
@@ -212,6 +216,19 @@
 					</Label.Text>
 				</Label>
 			</HorizontalStackLayout>
+
+				</VerticalStackLayout>
+
+				<controls:IconButton
+					Grid.Column="1"
+					Command="{Binding MapCommand}"
+					Glyph="Map"
+					HorizontalOptions="End"
+					IsVisible="{Binding HasMap}"
+					SemanticProperties.Description="{localization:Tr Extras.MapShow}"
+					VerticalOptions="End" />
+
+			</Grid>
 
 		</VerticalStackLayout>
 	</Border>

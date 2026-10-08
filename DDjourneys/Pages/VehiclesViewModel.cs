@@ -341,6 +341,10 @@ public sealed partial class VehiclesViewModel : DisposableViewModel, IQueryAttri
 		}
 	}
 
+	/// <summary>A new page shows the map: the next tick publishes the scene again.</summary>
+	public void RequestScene() =>
+		_dirty = true;
+
 	/// <summary>Called by the page's timer: texts move on, the map gets the newest positions.</summary>
 	public void Tick()
 	{

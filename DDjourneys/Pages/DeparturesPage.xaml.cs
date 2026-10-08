@@ -6,7 +6,7 @@ using Location = DDjourneys.Core.Models.Location;
 
 namespace DDjourneys.Pages;
 
-public partial class DeparturesPage : ContentPage, IQueryAttributable
+public partial class DeparturesPage : PanePage, IQueryAttributable
 {
 	private static readonly TimeSpan RefreshInterval = TimeSpan.FromSeconds(30);
 
@@ -27,6 +27,9 @@ public partial class DeparturesPage : ContentPage, IQueryAttributable
 				() => _ = NavigateAsync(
 					Routes.Vehicles,
 					[]));
+
+		// The stop name scrolls sideways; on Android the scroller keeps the tap from the row, so it is forwarded.
+		StopLine.Tapped += (_, _) => vm.PickStopCommand.Execute(null);
 
 		vm.OpenPlaceSearch = () =>
 			NavigateAsync(
@@ -130,7 +133,7 @@ public partial class DeparturesPage : ContentPage, IQueryAttributable
 	{
 		base.OnNavigatedFrom(args);
 
-		PageTeardown.DisposeIfLeft(args, BindingContext);
+		LeaveIfGone(args);
 	}
 
 	private IDispatcherTimer CreateTimer()
@@ -154,9 +157,11 @@ public partial class DeparturesPage : ContentPage, IQueryAttributable
 	{
 		try
 		{
-			await Shell.Current.GoToAsync(
+			// A page that may stand beside this one opens as a pane in a wide window (see Panes).
+			await Panes.GoToAsync(
 				route,
-				parameters);
+				parameters,
+				this);
 		}
 		catch (Exception ex)
 		{
