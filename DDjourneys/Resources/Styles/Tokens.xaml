@@ -39,6 +39,7 @@
 	<x:Double x:Key="RadiusCard">6</x:Double>
 	<x:Double x:Key="RadiusSheet">8</x:Double>
 	<CornerRadius x:Key="CornerControl">4</CornerRadius>
+	<CornerRadius x:Key="CornerSheet">8</CornerRadius>
 
 	<!-- Type scale (Major-second-ish, compact) -->
 	<x:Double x:Key="FontMicro">12</x:Double>

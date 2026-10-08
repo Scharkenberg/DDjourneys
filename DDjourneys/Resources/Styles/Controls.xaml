@@ -73,6 +73,25 @@
 		<Setter Property="Padding" Value="{DynamicResource PadCard}" />
 		<Setter Property="support:Motion.Enter" Value="Rise" />
 		<Setter Property="support:Motion.OnShow" Value="True" />
+		<Setter Property="support:PointerLight.Enabled" Value="True" />
+	</Style>
+	<Style TargetType="Grid">
+		<Setter Property="support:PointerLight.Enabled" Value="True" />
+	</Style>
+	<Style TargetType="ContentView">
+		<Setter Property="support:PointerLight.Enabled" Value="True" />
+	</Style>
+	<Style TargetType="VerticalStackLayout">
+		<Setter Property="support:PointerLight.Enabled" Value="True" />
+	</Style>
+	<Style TargetType="HorizontalStackLayout">
+		<Setter Property="support:PointerLight.Enabled" Value="True" />
+	</Style>
+	<Style TargetType="FlexLayout">
+		<Setter Property="support:PointerLight.Enabled" Value="True" />
+	</Style>
+	<Style TargetType="StackLayout">
+		<Setter Property="support:PointerLight.Enabled" Value="True" />
 	</Style>
 	<Style Class="Chip" TargetType="Border">
 		<Setter Property="BackgroundColor" Value="{DynamicResource Raised}" />
@@ -93,8 +112,10 @@
 	</Style>
 
 	<!--  Buttons. Default filled; class Tonal for secondary actions.  -->
-	<!--  Colours go through support:Themed (local dynamic resources); see Themed.cs for why
-	      DynamicResource setters must not be used in VisualStates or Triggers here.  -->
+	<!--
+		Colours go through support:Themed (local dynamic resources); see Themed.cs for why
+		DynamicResource setters must not be used in VisualStates or Triggers here.
+	-->
 	<Style TargetType="Button">
 		<Setter Property="support:Themed.Background" Value="Accent" />
 		<Setter Property="support:Themed.Text" Value="OnAccent" />

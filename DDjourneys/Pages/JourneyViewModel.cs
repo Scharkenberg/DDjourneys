@@ -201,11 +201,54 @@ public sealed partial class JourneyViewModel :
 	/// <summary>Opens the printable version of the journey (tr/trippdf).</summary>
 	public AsyncCommand OpenDocumentCommand { get; }
 
-	/// <summary>The provider can swap a single ride and this journey carries what it needs.</summary>
+	/// <summary>
+	/// A single ride can be swapped for the previous or next one: by the provider's own continuation when it has one,
+	/// otherwise by searching again (every provider), so the buttons are there for every journey with a ride.
+	/// </summary>
 	public bool HasLegAlternatives =>
 		_query is not null
-		&& _journey is { Context.Length: > 0 }
-		&& _providers.Supports(ProviderCapabilities.JourneyExtras);
+		&& _journey is { } journey
+		&& journey.Legs.Any(leg => leg.IsRide);
+
+	/// <summary>The journey's actions as icons for its overview card.</summary>
+	public JourneyActions Actions { get; }
+
+	/// <summary>Set by the page: brings the notices into view (the badge in the card).</summary>
+	public Action? ScrollToNotices { get; set; }
+
+	/// <summary>Following failed or is unavailable: the message stands alone (a followed journey shows it in its strip).</summary>
+	public bool ShowTrackingProblem =>
+		!IsFollowed && !string.IsNullOrWhiteSpace(TrackingStatus);
+
+	private void RefreshActions()
+	{
+		JourneyStrings journey = _localization.CurrentStrings.Journey;
+		TrackingStrings tracking = _localization.CurrentStrings.Tracking;
+
+		Actions.HasPdf = HasDocument;
+		Actions.HasHandOff = IsHandOffAvailable;
+		Actions.CanFollow = IsTrackingAvailable;
+		Actions.IsFollowed = IsFollowed;
+		Actions.CanPause = CanPause;
+		Actions.IsPaused = IsPaused;
+
+		Actions.PdfDescription = journey.OpenPdf;
+		Actions.HandOffDescription = journey.HandOff;
+		Actions.FollowDescription = IsFollowed ? tracking.StopFollowing : journey.FollowJourney;
+		Actions.PauseDescription = IsPaused ? tracking.Resume : journey.DeactivateTracking;
+
+		Actions.Touch();
+	}
+
+	private Task ToggleFollowAsync() =>
+		IsFollowed
+			? StopFollowingAsync()
+			: FollowJourneyAsync();
+
+	private Task TogglePauseAsync() =>
+		IsPaused || CanPause
+			? SetPausedAsync(!IsPaused)
+			: Task.CompletedTask;
 
 	/// <summary>The journey's actions as icons for its overview card.</summary>
 	public JourneyActions Actions { get; }
@@ -789,20 +832,34 @@ public sealed partial class JourneyViewModel :
 			return;
 		}
 
-		int index = journey.Legs.ToList().IndexOf(leg);
+		int index = -1;
+
+		for (int i = 0; i < journey.Legs.Count; i++)
+		{
+			if (ReferenceEquals(journey.Legs[i], leg))
+			{
+				index = i;
+
+				break;
+			}
+		}
 
 		if (index < 0)
 		{
 			return;
 		}
 
-		_alternative?.Cancel();
+		CancellationTokenSource? earlier = _alternative;
+
+		earlier?.Cancel();
 
 		var cts = new CancellationTokenSource();
 		_alternative = cts;
 
 		JourneyStrings strings =
 			_localization.CurrentStrings.Journey;
+
+		AlternativeStatus = strings.LegSearching;
 
 		try
 		{
@@ -819,12 +876,16 @@ public sealed partial class JourneyViewModel :
 				return;
 			}
 
-			Journey? next =
-				result.Journeys.FirstOrDefault(
-					candidate => candidate.Id == journey.Id)
-				?? (result.Journeys.Count > 0 ? result.Journeys[0] : null);
+			if (result.Outcome == JourneyOutcome.Failed)
+			{
+				DiagnosticLog.Write($"[Leg alternative] failed: {result.ErrorMessage} {result.ErrorDetail}");
+			}
 
-			if (next is null)
+			// The one journey that was asked for; a journey that is the same as the one on screen is no answer.
+			Journey? next = result.Journeys.Count > 0 ? result.Journeys[0] : null;
+
+			if (next is null
+				|| ReferenceEquals(next, journey))
 			{
 				AlternativeStatus = strings.LegNone;
 
@@ -844,6 +905,16 @@ public sealed partial class JourneyViewModel :
 			DiagnosticLog.Write($"Leg alternative failed: {ex}");
 
 			AlternativeStatus = ex.Message;
+		}
+		finally
+		{
+			// Only the request that is still the current one frees the slot; each one disposes its own source.
+			if (ReferenceEquals(_alternative, cts))
+			{
+				_alternative = null;
+			}
+
+			cts.Dispose();
 		}
 	}
 
@@ -1455,7 +1526,7 @@ public sealed partial class JourneyViewModel :
 					: await ChooseShareFormat(
 						text.ShareTitle,
 						strings.Common.Cancel,
-						[text.ShareAsText, text.ShareAsImage]);
+						[text.ShareAsText, text.ShareAsImage, text.ShareAsCalendar]);
 
 			if (choice == text.ShareAsImage)
 			{
@@ -1466,6 +1537,34 @@ public sealed partial class JourneyViewModel :
 					{
 						Title = text.ShareTitle,
 						File = new ShareFile(path, "image/png")
+					});
+			}
+			else if (choice == text.ShareAsCalendar)
+			{
+				string? file =
+					JourneyCalendar.Build(
+						_journey,
+						$"{model.Origin} \u2192 {model.Destination}",
+						JourneyShareText.Build(model, strings),
+						_settings.DefaultLeadMinutes,
+						DateTimeOffset.UtcNow);
+
+				if (file is null)
+				{
+					AlternativeStatus = text.CalendarUnavailable;
+
+					return;
+				}
+
+				string path = Path.Combine(FileSystem.CacheDirectory, "journey.ics");
+
+				await File.WriteAllTextAsync(path, file, new System.Text.UTF8Encoding(false));
+
+				await Share.Default.RequestAsync(
+					new ShareFileRequest
+					{
+						Title = text.ShareAsCalendar,
+						File = new ShareFile(path, JourneyCalendar.MediaType)
 					});
 			}
 			else if (choice == text.ShareAsText)

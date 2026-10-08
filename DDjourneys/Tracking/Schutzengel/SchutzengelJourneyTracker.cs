@@ -40,6 +40,15 @@ internal sealed partial class SchutzengelJourneyTracker : IJourneyTracker, ITrac
 	private static readonly TimeSpan RenderInterval = TimeSpan.FromSeconds(10);
 	private static readonly TimeSpan PlanListInterval = TimeSpan.FromMinutes(5);
 	private static readonly TimeSpan ClockInterval = TimeSpan.FromMinutes(10);
+	/// <summary>
+	/// A plan that the list of the service no longer shows is forgotten only after this many lists in a row have missed
+	/// it, at least <see cref="VanishGrace"/> after it was last listed, and while a direct question about it is answered
+	/// with "no such plan". The list alone is not trusted: a plan that is still being watched (and notified) must never
+	/// vanish from the overview because one answer was incomplete.
+	/// </summary>
+	private const int MissingPlanConfirmations = 3;
+
+	private static readonly TimeSpan VanishGrace = TimeSpan.FromMinutes(10);
 
 	/// <summary>
 	/// A journey is watched in the background from this long before its alert lead time on.
@@ -59,6 +68,8 @@ internal sealed partial class SchutzengelJourneyTracker : IJourneyTracker, ITrac
 
 	private readonly SemaphoreSlim _gate = new(1, 1);
 	private readonly Dictionary<string, WatchEntry> _entries = new(StringComparer.Ordinal);
+	private readonly Dictionary<string, int> _missingPlanCounts = new(StringComparer.Ordinal);
+	private readonly Dictionary<string, DateTimeOffset> _lastListed = new(StringComparer.Ordinal);
 	private readonly Dictionary<string, string> _dismissed = new(StringComparer.Ordinal);
 
 	/// <summary>Per plan: the notice (time and text) the user swiped away.</summary>
@@ -536,8 +547,9 @@ internal sealed partial class SchutzengelJourneyTracker : IJourneyTracker, ITrac
 	{
 		if (!await _api.HasAccountAsync(cancellationToken).ConfigureAwait(false))
 		{
-			_entries.Clear();
-
+			// No token (yet, or the store could not be read just now): nothing can be asked, but what is known stays.
+			// Plans of an account that really is gone are dropped once a new account's list and the direct question
+			// say so (see SyncPlanListAsync).
 			return Recompute();
 		}
 
@@ -588,6 +600,10 @@ internal sealed partial class SchutzengelJourneyTracker : IJourneyTracker, ITrac
 		using JsonDocument document = await _api.GetAllPlansAsync(cancellationToken).ConfigureAwait(false);
 
 		IReadOnlyList<SchutzengelPlanInfo> plans = SchutzengelPlanList.Parse(document.RootElement);
+		if (!SchutzengelPlanList.HasValidShape(document.RootElement))
+		{
+			throw new InvalidDataException("Schutzengel returned an invalid plan-list response.");
+		}
 
 		_planListSyncedAt = localNow;
 
@@ -595,11 +611,38 @@ internal sealed partial class SchutzengelJourneyTracker : IJourneyTracker, ITrac
 
 		foreach (string vanished in _entries.Keys.Where(id => !known.Contains(id)).ToList())
 		{
-			Forget(vanished);
+			if (!await IsGoneAsync(vanished, cancellationToken).ConfigureAwait(false))
+			{
+				// The service still answers for it (or cannot be asked): the list was incomplete, the plan stays.
+				_missingPlanCounts.Remove(vanished);
+
+				Log($"Plan {vanished} is missing from the list but still known; kept.");
+
+				continue;
+			}
+
+			int missing = _missingPlanCounts.TryGetValue(vanished, out int count) ? count + 1 : 1;
+			bool listedLongAgo =
+				!_lastListed.TryGetValue(vanished, out DateTimeOffset seen)
+				|| localNow - seen >= VanishGrace;
+
+			if (missing >= MissingPlanConfirmations
+				&& listedLongAgo)
+			{
+				_missingPlanCounts.Remove(vanished);
+				_lastListed.Remove(vanished);
+				Forget(vanished);
+			}
+			else
+			{
+				_missingPlanCounts[vanished] = missing;
+			}
 		}
 
 		foreach (SchutzengelPlanInfo plan in plans)
 		{
+			_missingPlanCounts.Remove(plan.PlanId);
+			_lastListed[plan.PlanId] = localNow;
 			if (_entries.TryGetValue(plan.PlanId, out WatchEntry? entry))
 			{
 				entry.Info = plan;
@@ -608,6 +651,38 @@ internal sealed partial class SchutzengelJourneyTracker : IJourneyTracker, ITrac
 			{
 				_entries[plan.PlanId] = new WatchEntry(plan);
 			}
+		}
+	}
+
+	/// <summary>
+	/// Asks the service directly about a plan the list did not show. True only when it says that the plan does not exist
+	/// (not found, gone, refused, or an empty answer); a network failure, a server error or any answer with content
+	/// means "not known to be gone".
+	/// </summary>
+	private async Task<bool> IsGoneAsync(string planId, CancellationToken cancellationToken)
+	{
+		try
+		{
+			using JsonDocument document = await _api.GetPlanAsync(planId, cancellationToken).ConfigureAwait(false);
+
+			JsonElement root = document.RootElement;
+
+			return root.ValueKind == JsonValueKind.Null
+				|| (root.ValueKind == JsonValueKind.Object && !root.EnumerateObject().Any())
+				|| (root.ValueKind == JsonValueKind.Array && root.GetArrayLength() == 0);
+		}
+		catch (HttpRequestException ex)
+			when (ex.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.Gone or HttpStatusCode.BadRequest or HttpStatusCode.Forbidden)
+		{
+			Log($"Plan {planId}: the service says it does not exist ({(int)ex.StatusCode.Value}).");
+
+			return true;
+		}
+		catch (Exception ex) when (ex is not OperationCanceledException)
+		{
+			Log($"Plan {planId}: could not be asked about ({ex.Message}).");
+
+			return false;
 		}
 	}
 
@@ -749,17 +824,28 @@ internal sealed partial class SchutzengelJourneyTracker : IJourneyTracker, ITrac
 
 		// The reference client lists a plan only while no other plan replaces it (trip_reference); finished
 		// plans always stay in the history.
-		var replaced =
-			_entries.Values
-				.Select(item => item.Info.TripReference)
-				.OfType<string>()
-				.ToHashSet(StringComparer.Ordinal);
+		// A plan counts as replaced only by ANOTHER plan that names its trip, never by itself.
+		var replacedBy = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+
+		foreach (WatchEntry candidate in _entries.Values)
+		{
+			if (candidate.Info.TripReference is { Length: > 0 } reference)
+			{
+				if (!replacedBy.TryGetValue(reference, out List<string>? owners))
+				{
+					replacedBy[reference] = owners = [];
+				}
+
+				owners.Add(candidate.Info.PlanId);
+			}
+		}
 
 		foreach (WatchEntry entry in _entries.Values)
 		{
 			if (entry.Status != WatchStatus.Recent
 				&& entry.Info.ActiveTripId is { } tripId
-				&& replaced.Contains(tripId))
+				&& replacedBy.TryGetValue(tripId, out List<string>? replacers)
+				&& replacers.Any(owner => !string.Equals(owner, entry.Info.PlanId, StringComparison.Ordinal)))
 			{
 				continue;
 			}

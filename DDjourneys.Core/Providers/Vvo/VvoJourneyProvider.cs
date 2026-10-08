@@ -52,6 +52,12 @@ public sealed partial class VvoJourneyProvider :
 			return unsuitable;
 		}
 
+		Location? viaStop = await ResolveViaStopAsync(query, cancellationToken).ConfigureAwait(false);
+		if (query.Via is not null && viaStop is null)
+		{
+			return JourneyResult.NotSuitable("vvo_via_stop_unavailable");
+		}
+
 
 		var request =
 			new VvoTripRequest
@@ -70,8 +76,7 @@ public sealed partial class VvoJourneyProvider :
 
 				ShortTermChanges = true,
 
-				Via =
-					query.Via?.Id,
+				Via = viaStop?.Id,
 
 				StandardSettings =
 					CreateStandardSettings(query.Routing),
@@ -143,6 +148,47 @@ public sealed partial class VvoJourneyProvider :
 			return JourneyResult.Failure(
 				"vvo_response_unreadable",
 				ex.Message);
+		}
+	}
+
+	private async Task<Location?> ResolveViaStopAsync(JourneyQuery query, CancellationToken cancellationToken)
+	{
+		if (query.Via is not { } via)
+		{
+			return null;
+		}
+
+		if (via.IsStation)
+		{
+			return via;
+		}
+
+		if (via.Latitude is not { } latitude || via.Longitude is not { } longitude
+			|| !VvoCoordinateConverter.TryToGk4(latitude, longitude, out (double Easting, double Northing) gk4))
+		{
+			return null;
+		}
+
+		try
+		{
+			VvoPointResponse? points = await _apiClient.FindPointsByCoordinatesAsync(
+				gk4.Easting, gk4.Northing,
+				TimeSpan.FromSeconds(Math.Clamp(query.TimeoutSeconds, 5, 60)),
+				cancellationToken).ConfigureAwait(false);
+
+			return points?.Points
+				.Where(point => point.Kind == PlaceKind.Stop && point.IsStop && !string.IsNullOrWhiteSpace(point.Id))
+				.Select(VvoLocationProvider.Map)
+				.FirstOrDefault();
+		}
+		catch (OperationCanceledException)
+		{
+			throw;
+		}
+		catch (Exception ex)
+		{
+			DiagnosticLog.Write($"VVO via stop lookup failed: {ex.Message}");
+			return null;
 		}
 	}
 
@@ -366,7 +412,7 @@ public sealed partial class VvoJourneyProvider :
 		if (CheckEndpoints(
 			query.From,
 			query.To,
-			query.Via) is { } unsuitable)
+			query.Via is { IsStation: false } ? null : query.Via) is { } unsuitable)
 		{
 			return unsuitable;
 		}
@@ -417,8 +463,7 @@ public sealed partial class VvoJourneyProvider :
 
 				ShortTermChanges = true,
 
-				Via =
-					query.Via?.Id,
+				Via = query.Via?.Id,
 
 				StandardSettings =
 					CreateStandardSettings(query.Routing),
@@ -548,7 +593,7 @@ public sealed partial class VvoJourneyProvider :
 				RouteId = journey.Id,
 				PartialRouteId = journey.Legs[legIndex].Id!,
 				Time = query.DateTime,
-				Via = query.Via?.Id,
+				Via = query.Via is { IsStation: true } ? query.Via.Id : null,
 				StandardSettings = CreateStandardSettings(query.Routing),
 				MobilitySettings = CreateMobilitySettings(query.Routing),
 				Previous = previous
@@ -725,8 +770,8 @@ public sealed partial class VvoJourneyProvider :
 
 	/// <summary>
 	/// The provider only answers for places it issued. A place without a provider id (stored before
-	/// ids existed, or built by hand) is not held against it, but it needs a stop id: VVO routes
-	/// between stops only.
+	/// ids existed, or built by hand) is not held against it. VVO's PointFinder ids can identify
+	/// stops, addresses, POIs or coordinate points.
 	/// </summary>
 	private static JourneyResult? CheckEndpoints(
 		Location from,
@@ -741,7 +786,7 @@ public sealed partial class VvoJourneyProvider :
 					"vvo_endpoint_other_provider");
 			}
 
-			if (string.IsNullOrWhiteSpace(via.Id))
+			if (!via.IsRoutable || string.IsNullOrWhiteSpace(via.Id))
 			{
 				return JourneyResult.NotSuitable(
 					"vvo_via_missing_id");
@@ -755,13 +800,13 @@ public sealed partial class VvoJourneyProvider :
 				"vvo_endpoint_other_provider");
 		}
 
-		if (string.IsNullOrWhiteSpace(from.Id))
+		if (!from.IsRoutable || string.IsNullOrWhiteSpace(from.Id))
 		{
 			return JourneyResult.NotSuitable(
 				"vvo_origin_missing_id");
 		}
 
-		if (string.IsNullOrWhiteSpace(to.Id))
+		if (!to.IsRoutable || string.IsNullOrWhiteSpace(to.Id))
 		{
 			return JourneyResult.NotSuitable(
 				"vvo_destination_missing_id");

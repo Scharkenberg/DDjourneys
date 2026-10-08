@@ -166,6 +166,7 @@ public sealed class JourneyStrings
 	public required string LegEarlierHint { get; init; }
 	public required string LegLaterHint { get; init; }
 	public required string LegNone { get; init; }
+	public required string LegSearching { get; init; }
 	public required string OpenPdf { get; init; }
 	public required string AlternativeShown { get; init; }
 	public required string Title { get; init; }
@@ -184,6 +185,13 @@ public sealed class JourneyStrings
 	public required string ShareTitle { get; init; }
 	public required string ShareAsText { get; init; }
 	public required string ShareAsImage { get; init; }
+	public required string ShareSubtitle { get; init; }
+	public required string ShareTextDescription { get; init; }
+	public required string ShareImageDescription { get; init; }
+	public required string ShareAsCalendar { get; init; }
+	public required string CalendarUnavailable { get; init; }
+	public required string ShareCalendarDescription { get; init; }
+	public required string ShareChooseFormat { get; init; }
 	public required string HandOff { get; init; }
 	public required string HandOffFailed { get; init; }
 	public required string Direct { get; init; }

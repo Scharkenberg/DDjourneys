@@ -4,10 +4,9 @@ using DDjourneys.Support;
 namespace DDjourneys.Controls;
 
 /// <summary>
-/// Date and time, each with its caption. They share one row while both pickers fit their half of it; when the window
-/// is too narrow (the Windows time picker has a wide built-in minimum that cannot be narrowed safely) the time moves
-/// to a row of its own instead of being cut off. The journey planner and the departure board use this one control,
-/// so both adapt in exactly the same way.
+/// Date and time, each with its caption. They share one row as long as both controls fit naturally; the layout does
+/// not reserve half the available width for each picker. Instead it uses a left cell, a flexible spacer, and a right
+/// cell. When the window becomes too narrow, the time moves to a row of its own instead of being cut off.
 /// </summary>
 public sealed partial class WhenPicker : ContentView
 {
@@ -42,6 +41,7 @@ public sealed partial class WhenPicker : ContentView
 			new DateTime(2100, 12, 31));
 
 	private readonly Grid _grid;
+	private readonly VerticalStackLayout _dateCell;
 	private readonly VerticalStackLayout _timeCell;
 	private readonly DatePicker _date;
 	private readonly TimePicker _time;
@@ -64,12 +64,12 @@ public sealed partial class WhenPicker : ContentView
 			new TimePicker
 			{
 				Format = "HH:mm",
-				HorizontalOptions = LayoutOptions.Start
+				HorizontalOptions = LayoutOptions.End
 			};
 
 		_time.SetBinding(TimePicker.TimeProperty, new Binding(nameof(Time), BindingMode.TwoWay, source: this));
 
-		var dateCell = Cell("CurrentStrings.Plan.Date", _date);
+		_dateCell = Cell("CurrentStrings.Plan.Date", _date);
 		_timeCell = Cell("CurrentStrings.Plan.Time", _time);
 
 		_grid =
@@ -78,17 +78,19 @@ public sealed partial class WhenPicker : ContentView
 				ColumnSpacing = 12,
 				ColumnDefinitions =
 				[
+					new ColumnDefinition(GridLength.Auto),
 					new ColumnDefinition(GridLength.Star),
-					new ColumnDefinition(GridLength.Star)
+					new ColumnDefinition(GridLength.Auto)
 				],
 				Children =
 				{
-					dateCell,
+					_dateCell,
 					_timeCell
 				}
 			};
 
-		Grid.SetColumn(_timeCell, 1);
+		Grid.SetColumn(_dateCell, 0);
+		Grid.SetColumn(_timeCell, 2);
 
 		Dense.SetPadding(_grid, new Thickness(12, 3));
 		Dense.SetMinHeight(_grid, 52);
@@ -125,15 +127,16 @@ public sealed partial class WhenPicker : ContentView
 	private static VerticalStackLayout Cell(string captionPath, View picker)
 	{
 		// Bound to the localization service, so the caption follows a change of language.
-		var caption1 = new Label { StyleClass = ["Caption"] };
-		caption1.SetBinding(Label.TextProperty, new Binding(captionPath, source: LocalizationService.Current));
+		var caption = new Label { StyleClass = ["Caption"] };
+		caption.SetBinding(Label.TextProperty, new Binding(captionPath, source: LocalizationService.Current));
 
 		return
 			new VerticalStackLayout
 			{
 				Spacing = 0,
 				VerticalOptions = LayoutOptions.Center,
-				Children = { caption1, picker }
+				HorizontalOptions = LayoutOptions.Fill,
+				Children = { caption, picker }
 			};
 	}
 
@@ -144,18 +147,22 @@ public sealed partial class WhenPicker : ContentView
 			return;
 		}
 
-		double required =
-			Math.Max(
-				_date.Measure(double.PositiveInfinity, double.PositiveInfinity).Width,
-				_time.Measure(double.PositiveInfinity, double.PositiveInfinity).Width);
+		double dateWidth = _dateCell.Measure(double.PositiveInfinity, double.PositiveInfinity).Width;
+		double timeWidth = _timeCell.Measure(double.PositiveInfinity, double.PositiveInfinity).Width;
 
-		if (required <= 0)
+		if (dateWidth <= 0 || timeWidth <= 0)
 		{
 			return;
 		}
 
-		double half = (_grid.Width - _grid.Padding.HorizontalThickness - _grid.ColumnSpacing) / 2;
-		bool stacked = half < required;
+		double available =
+			_grid.Width
+			- _grid.Padding.HorizontalThickness
+			- (_grid.ColumnSpacing * 2);
+
+		double required = dateWidth + timeWidth;
+
+		bool stacked = required > available;
 
 		if (_stacked == stacked)
 		{
@@ -166,19 +173,32 @@ public sealed partial class WhenPicker : ContentView
 
 		if (stacked)
 		{
-			_grid.ColumnDefinitions = [new ColumnDefinition(GridLength.Star)];
 			_grid.RowDefinitions = [new RowDefinition(GridLength.Auto), new RowDefinition(GridLength.Auto)];
+			_grid.ColumnDefinitions = [new ColumnDefinition(GridLength.Star)];
 			_grid.RowSpacing = 4;
+
+			Grid.SetRow(_dateCell, 0);
+			Grid.SetColumn(_dateCell, 0);
+
 			Grid.SetRow(_timeCell, 1);
 			Grid.SetColumn(_timeCell, 0);
 		}
 		else
 		{
 			_grid.RowDefinitions = [];
-			_grid.ColumnDefinitions = [new ColumnDefinition(GridLength.Star), new ColumnDefinition(GridLength.Star)];
+			_grid.ColumnDefinitions =
+			[
+				new ColumnDefinition(GridLength.Auto),
+				new ColumnDefinition(GridLength.Star),
+				new ColumnDefinition(GridLength.Auto)
+			];
 			_grid.RowSpacing = 0;
+
+			Grid.SetRow(_dateCell, 0);
+			Grid.SetColumn(_dateCell, 0);
+
 			Grid.SetRow(_timeCell, 0);
-			Grid.SetColumn(_timeCell, 1);
+			Grid.SetColumn(_timeCell, 2);
 		}
 	}
 }
