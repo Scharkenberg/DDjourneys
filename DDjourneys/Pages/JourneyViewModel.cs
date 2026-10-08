@@ -921,9 +921,16 @@ public sealed partial class JourneyViewModel :
 					DiagnosticLog.Write($"Looking up the run of line {row.LineNumber} failed: {ex.Message}");
 				}
 
+				bool fromRun = target is not null;
+
 				target ??= TrackTargets.FromLeg(leg, row.LineNumber);
 
 				AlternativeStatus = string.Empty;
+
+				DiagnosticLog.Write(
+					$"[Live] leg {(_journey is { } shown ? shown.Legs.ToList().FindIndex(item => ReferenceEquals(item, leg)) : -1)}: line {row.LineNumber} "
+					+ $"{leg.From.Name} {leg.ScheduledDeparture:HH:mm} -> {leg.To.Name}, course from {(fromRun ? "the run of the departure" : "the leg")}: "
+					+ $"{(target is { Course.Count: > 0 } ? $"{target.Course[0].Name} -> {target.Course[^1].Name} ({target.Course.Count} points)" : "none")}");
 
 				if (target is not null)
 				{
