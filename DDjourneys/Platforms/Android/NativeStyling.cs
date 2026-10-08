@@ -34,6 +34,62 @@ internal static class NativeStyling
 	}
 
 	/// <summary>
+	/// Every layout pass of the activity's window looks for text layouts that have a frame again and clears them. The
+	/// handler mappers above can be bypassed (Material 3 builds its fields in its own way and applies its outline after
+	/// them), a pass over the window cannot: nothing the app shows keeps a native frame, whoever created it.
+	/// </summary>
+	public static void Watch(global::Android.App.Activity activity)
+	{
+		global::Android.Views.View? decor = activity.Window?.DecorView;
+
+		if (decor?.ViewTreeObserver is not { IsAlive: true } observer)
+		{
+			return;
+		}
+
+		_sweeper ??= new FrameSweeper();
+		observer.RemoveOnGlobalLayoutListener(_sweeper);
+		observer.AddOnGlobalLayoutListener(_sweeper);
+		_sweeper.Root = decor;
+
+		FrameSweeper.Sweep(decor);
+	}
+
+	private static FrameSweeper? _sweeper;
+
+	private sealed class FrameSweeper : Java.Lang.Object, global::Android.Views.ViewTreeObserver.IOnGlobalLayoutListener
+	{
+		public global::Android.Views.View? Root { get; set; }
+
+		public void OnGlobalLayout()
+		{
+			if (Root is { } root)
+			{
+				Sweep(root);
+			}
+		}
+
+		public static void Sweep(global::Android.Views.View view)
+		{
+			if (view is TextInputLayout layout)
+			{
+				Strip(layout);
+			}
+
+			if (view is global::Android.Views.ViewGroup group)
+			{
+				for (int i = 0; i < group.ChildCount; i++)
+				{
+					if (group.GetChildAt(i) is { } child)
+					{
+						Sweep(child);
+					}
+				}
+			}
+		}
+	}
+
+	/// <summary>
 	/// An entry has no frame of its own here: the card around it draws the only contour. Besides the underline this clears
 	/// the outlined box that Material 3 puts around an entry (a <see cref="TextInputLayout"/>). With Material 3 the native
 	/// view can be the layout itself, sit inside it, or hold it, and the layout may attach after the mapping ran, so every
@@ -110,6 +166,8 @@ internal static class NativeStyling
 		{
 			return;
 		}
+
+		global::DDjourneys.Core.Diagnostics.DiagnosticLog.Write($"[UI] entry frame removed (box mode {layout.BoxBackgroundMode}, edit text background {edit?.Background?.GetType().Name ?? "none"})");
 
 		layout.BoxBackgroundMode = TextInputLayout.BoxBackgroundNone;
 		layout.BoxStrokeWidth = 0;

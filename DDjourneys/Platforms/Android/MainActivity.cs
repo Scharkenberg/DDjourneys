@@ -38,6 +38,9 @@ public class MainActivity : MauiAppCompatActivity
 
 		SystemBars.Apply(this, Support.Theme.IsDark);
 
+		// Whatever handler builds the text fields, none keeps a frame of its own.
+		NativeStyling.Watch(this);
+
 		// A cold start from a notification: the request waits until the shell is ready.
 		// Not when the activity is recreated (rotation, theme): that intent was handled already.
 		if (savedInstanceState is null)
