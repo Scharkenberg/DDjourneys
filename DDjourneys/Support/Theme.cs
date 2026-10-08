@@ -54,7 +54,7 @@ public static class Theme
 
 	public static bool PureBlack { get; private set; } = true;
 
-	public static string Font { get; private set; } = FontCatalog.OpenSansId;
+	public static string Font { get; private set; } = FontCatalog.SystemId;
 
 	public static void Initialize(Application app, AppSettings settings)
 	{

@@ -3,7 +3,7 @@ using DDjourneys.Support;
 
 namespace DDjourneys.Pages;
 
-public partial class VehiclesPage : ContentPage
+public partial class VehiclesPage : PanePage
 {
 	private readonly VehiclesViewModel _vm;
 	private IDispatcherTimer? _timer;
@@ -17,6 +17,15 @@ public partial class VehiclesPage : ContentPage
 
 		_vm.SceneChanged += OnSceneChanged;
 		_vm.FocusRequested += OnFocusRequested;
+
+		// A new instance on a running view model (window width changed): its map gets the scene with the next tick.
+		_vm.RequestScene();
+	}
+
+	protected override void OnRetired()
+	{
+		_vm.SceneChanged -= OnSceneChanged;
+		_vm.FocusRequested -= OnFocusRequested;
 	}
 
 	private void OnSceneChanged(object? sender, MapScene scene) =>
@@ -55,7 +64,7 @@ public partial class VehiclesPage : ContentPage
 	{
 		base.OnNavigatedFrom(args);
 
-		PageTeardown.DisposeIfLeft(args, BindingContext);
+		LeaveIfGone(args);
 	}
 
 	private void FilterCompleted(object? sender, EventArgs e) =>

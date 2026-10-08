@@ -80,7 +80,7 @@ public sealed class AppSettings
 	/// <summary>Font face id from <see cref="FontCatalog"/>.</summary>
 	public string FontFace
 	{
-		get => Read("fontFace", FontCatalog.OpenSansId);
+		get => Read("fontFace", FontCatalog.SystemId);
 		set => Write("fontFace", value);
 	}
 

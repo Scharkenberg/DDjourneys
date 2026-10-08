@@ -938,9 +938,11 @@ public sealed partial class JourneyViewModel :
 				}
 			}
 
-			await Shell.Current.GoToAsync(
+			// Beside this page as a pane in a wide window (see Panes).
+			await Panes.GoToAsync(
 				Routes.Vehicles,
-				parameters);
+				parameters,
+				this);
 		}
 		catch (Exception ex)
 		{
@@ -962,7 +964,8 @@ public sealed partial class JourneyViewModel :
 
 			if (!await MapScenes.OpenAsync(
 					MapScenes.FromJourney(journey),
-					strings.MapJourneyTitle))
+					strings.MapJourneyTitle,
+					this))
 			{
 				AlternativeStatus = strings.MapNoData;
 			}

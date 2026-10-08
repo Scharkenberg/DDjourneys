@@ -25,6 +25,7 @@ public sealed class CommonStrings
 	public required string Cancel { get; init; }
 	public required string Retry { get; init; }
 	public required string Close { get; init; }
+	public required string Back { get; init; }
 	public required string Loading { get; init; }
 	public required string Searching { get; init; }
 	public required string Today { get; init; }

@@ -33,6 +33,9 @@ public partial class AppShell : Shell
 		Routing.RegisterRoute(Routes.Map, typeof(MapPage));
 
 		Navigating += OnNavigating;
+
+		// Whether Back closes a pane depends on the page in front (Android's back callback follows it).
+		Navigated += (_, _) => Panes.NotifyBackChanged();
 	}
 
 	private void OnFirstNavigated(object? sender, ShellNavigatedEventArgs e)
@@ -49,6 +52,12 @@ public partial class AppShell : Shell
 	/// </summary>
 	private void OnNavigating(object? sender, ShellNavigatingEventArgs e)
 	{
+		// Pages moving between the Shell stack and panes (the window width changed) are no navigation the user made.
+		if (Panes.IsRearranging)
+		{
+			return;
+		}
+
 		try
 		{
 			bool back = e.Source is ShellNavigationSource.Pop or ShellNavigationSource.PopToRoot;

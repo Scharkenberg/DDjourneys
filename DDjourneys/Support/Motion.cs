@@ -237,7 +237,7 @@ public static class Motion
 
 	private static void EnterLoaded(object? sender, EventArgs e)
 	{
-		if (!Enabled || sender is not VisualElement view || !Seen.TryAdd(view, Marker))
+		if (!Enabled || sender is not VisualElement view || !Seen.TryAdd(view, Marker) || IsQuiet)
 		{
 			return;
 		}
@@ -480,9 +480,23 @@ public static class Motion
 	}
 
 	/// <summary>Fades and lifts a view into place. Always leaves the view fully visible, whatever happens.</summary>
+	/// <summary>Until then, elements that appear do not play their entrance (a larger motion, the panes, is running).</summary>
+	private static long _quietUntil;
+
+	private static bool IsQuiet => Environment.TickCount64 < _quietUntil;
+
+	/// <summary>Entrances of elements that appear in the next <paramref name="milliseconds"/> are skipped (they appear in place).</summary>
+	public static void QuietEntrances(uint milliseconds) =>
+		_quietUntil = Math.Max(_quietUntil, Environment.TickCount64 + milliseconds);
+
 	public static Task RevealAsync(VisualElement view, int delayMs = 0, uint duration = 240, double rise = 10)
 	{
 		ArgumentNullException.ThrowIfNull(view);
+
+		if (IsQuiet)
+		{
+			return Task.CompletedTask;
+		}
 
 		return PlayAsync(view, 0, rise, 0.985, delayMs, duration, Curves.Decelerate);
 	}
@@ -653,9 +667,14 @@ public static class Motion
 			return;
 		}
 
+		// Hover never scales: a larger element pushes its text past the clipping edge of its pane or card.
+		// The highlight comes from the pointer light; a view left scaled by an older build returns to 1.
 		try
 		{
-			await view.ScaleToAsync(over ? 1.012 : 1, 160, Curves.Emphasized);
+			if (!over && view.Scale != 1)
+			{
+				await view.ScaleToAsync(1, 120, Curves.Emphasized);
+			}
 		}
 		catch (Exception ex)
 		{

@@ -4,7 +4,7 @@ using DDjourneys.Support;
 
 namespace DDjourneys.Pages;
 
-public partial class ResultsPage : ContentPage
+public partial class ResultsPage : PanePage
 {
 	private readonly ResultsViewModel _vm;
 	private readonly LocalizationService _localization;
@@ -30,9 +30,10 @@ public partial class ResultsPage : ContentPage
 				parameters[Routes.Query] = query;
 			}
 
-			return Shell.Current.GoToAsync(
+			return Panes.GoToAsync(
 				Routes.Journey,
-				parameters);
+				parameters,
+				this);
 		};
 
 		vm.ShowError = message =>
@@ -53,12 +54,12 @@ public partial class ResultsPage : ContentPage
 	{
 		base.OnNavigatedFrom(args);
 
-		if (args.DestinationPage is not JourneyPage)
+		if (args.DestinationPage is not JourneyPage && !Panes.IsRearranging)
 		{
 			_vm.Cancel();
 		}
 
-		PageTeardown.DisposeIfLeft(args, BindingContext);
+		LeaveIfGone(args);
 	}
 
 	private void CardLoaded(

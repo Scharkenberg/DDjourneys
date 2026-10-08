@@ -8,6 +8,7 @@ public sealed class EnglishUiStrings : IUiStrings
 		Cancel = "Cancel",
 		Retry = "Try again",
 		Close = "Close",
+		Back = "Back",
 		Loading = "Loading",
 		Searching = "Searching",
 		Today = "Today",

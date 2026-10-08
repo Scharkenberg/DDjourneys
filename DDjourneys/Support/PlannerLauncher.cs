@@ -87,7 +87,7 @@ public sealed class PlannerLauncher(
 			return;
 		}
 
-		await shell.GoToAsync($"//{Routes.Plan}");
+		await Panes.ToStartAsync(shell);
 
 		if (shell.CurrentPage is not PlanPage page)
 		{

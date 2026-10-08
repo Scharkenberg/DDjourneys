@@ -89,6 +89,16 @@ public sealed partial class IconButton : ContentView
 		tap.Tapped += OnTapped;
 		_surface.GestureRecognizers.Add(tap);
 
+		// Mouse hover: a soft accent fill behind the icon (nothing moves).
+		var pointer = new PointerGestureRecognizer();
+		pointer.PointerEntered += (_, _) => _surface.SetDynamicResource(BackgroundColorProperty, "AccentSoft");
+		pointer.PointerExited += (_, _) =>
+		{
+			_surface.RemoveDynamicResource(BackgroundColorProperty);
+			_surface.BackgroundColor = Colors.Transparent;
+		};
+		_surface.GestureRecognizers.Add(pointer);
+
 		Dense.SetMinHeight(_surface, 40);
 		Dense.SetMinWidth(_surface, 40);
 

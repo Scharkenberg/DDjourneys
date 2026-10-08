@@ -6,7 +6,7 @@ using Location = DDjourneys.Core.Models.Location;
 
 namespace DDjourneys.Pages;
 
-public partial class PlanPage : ContentPage, IQueryAttributable
+public partial class PlanPage : PanePage, IQueryAttributable
 {
 	private readonly PlanViewModel _vm;
 	private readonly AppSettings _settings;
@@ -56,6 +56,11 @@ public partial class PlanPage : ContentPage, IQueryAttributable
 				{
 					[Routes.Query] = query
 				});
+
+		// The names scroll sideways; on Android the scroller keeps the tap from the row, so it is forwarded.
+		FromStop.Tapped += (_, _) => FromTapped(FromStop, new TappedEventArgs(null));
+		ToStop.Tapped += (_, _) => ToTapped(ToStop, new TappedEventArgs(null));
+		ViaStop.Tapped += (_, _) => vm.PickViaCommand.Execute(null);
 
 		vm.ShowError = message =>
 			DisplayAlertAsync(
@@ -209,9 +214,11 @@ public partial class PlanPage : ContentPage, IQueryAttributable
 	{
 		try
 		{
-			await Shell.Current.GoToAsync(
+			// A page that may stand beside this one opens as a pane in a wide window (see Panes).
+			await Panes.GoToAsync(
 				route,
-				parameters);
+				parameters,
+				this);
 		}
 		catch (Exception ex)
 		{

@@ -2,7 +2,7 @@ using DDjourneys.Support;
 
 namespace DDjourneys.Pages;
 
-public partial class RunPage : ContentPage
+public partial class RunPage : PanePage
 {
 	// Shell hands the navigation query to the BindingContext (IQueryAttributable).
 	public RunPage(RunViewModel vm)
@@ -23,6 +23,6 @@ public partial class RunPage : ContentPage
 	{
 		base.OnNavigatedFrom(args);
 
-		PageTeardown.DisposeIfLeft(args, BindingContext);
+		LeaveIfGone(args);
 	}
 }
