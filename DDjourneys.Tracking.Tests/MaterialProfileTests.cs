@@ -83,6 +83,26 @@ public sealed class MaterialProfileTests
 		}
 	}
 
+	[Fact]
+	public void Mica_is_the_calmer_of_the_two_and_both_stay_close()
+	{
+		foreach (string coverage in MaterialProfile.Coverages)
+		{
+			foreach (bool dark in new[] { false, true })
+			{
+				BackdropLook mica = MaterialProfile.Look(MaterialProfile.Mica, coverage, dark);
+				BackdropLook alt = MaterialProfile.Look(MaterialProfile.MicaAlt, coverage, dark);
+
+				Assert.True(mica.AccentMix < alt.AccentMix);
+				Assert.True(mica.TintOpacity > alt.TintOpacity);
+
+				// A finer difference, not another level.
+				Assert.True(alt.AccentMix - mica.AccentMix < 0.15);
+				Assert.True(mica.TintOpacity - alt.TintOpacity < 0.2);
+			}
+		}
+	}
+
 	[Theory]
 	[InlineData(null, MaterialProfile.Mica)]
 	[InlineData("MICAALT", MaterialProfile.MicaAlt)]

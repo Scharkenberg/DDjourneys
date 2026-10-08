@@ -74,18 +74,33 @@ public static class MaterialProfile
 	/// </summary>
 	public static BackdropLook Look(string material, string coverage, bool dark)
 	{
-		bool acrylic = NormalizeMaterial(material) == Acrylic;
+		string kind = NormalizeMaterial(material);
+		bool acrylic = kind == Acrylic;
 
-		return (NormalizeCoverage(coverage), acrylic) switch
+		BackdropLook look =
+			(NormalizeCoverage(coverage), acrylic) switch
+			{
+				(Backdrop, false) => new(dark ? 0.62 : 0.46, 1.00, 0.06),
+				(Layered, false) => new(dark ? 0.44 : 0.30, 0.92, 0.12),
+				(Immersive, false) => new(dark ? 0.26 : 0.16, 0.80, 0.20),
+				(Backdrop, true) => new(dark ? 0.52 : 0.40, 0.78, 0.08),
+				(Layered, true) => new(dark ? 0.36 : 0.26, 0.58, 0.16),
+				_ => new(dark ? 0.22 : 0.14, 0.38, 0.26)
+			};
+
+		// Mica and Mica Alt are two different strengths of the same idea, and the names say which: Mica is the calm base
+		// (the palette's own colour, only a hint of the accent and of the wallpaper), Mica Alt the pronounced one (more
+		// of the accent in the tint, the tint thinner so that the wallpaper's colour reaches further). The steps are
+		// small on purpose: the coverage level stays the main control, this is the finer one.
+		return kind switch
 		{
-			(Backdrop, false) => new(dark ? 0.62 : 0.46, 1.00, 0.06),
-			(Layered, false) => new(dark ? 0.44 : 0.30, 0.92, 0.12),
-			(Immersive, false) => new(dark ? 0.26 : 0.16, 0.80, 0.20),
-			(Backdrop, true) => new(dark ? 0.52 : 0.40, 0.78, 0.08),
-			(Layered, true) => new(dark ? 0.36 : 0.26, 0.58, 0.16),
-			_ => new(dark ? 0.22 : 0.14, 0.38, 0.26)
+			Mica => new(Clamp(look.TintOpacity * 1.10), look.LuminosityOpacity, look.AccentMix * 0.60),
+			MicaAlt => new(Clamp(look.TintOpacity * 0.90), Clamp(look.LuminosityOpacity * 0.94), Clamp(look.AccentMix * 1.15)),
+			_ => look
 		};
 	}
+
+	private static double Clamp(double value) => Math.Clamp(value, 0, 1);
 }
 
 /// <summary>Opacity of the tint (0..1), opacity of the luminosity layer (0..1) and the share of the accent colour in the tint (0..1).</summary>

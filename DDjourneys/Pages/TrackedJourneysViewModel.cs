@@ -69,10 +69,9 @@ public sealed record TrackedSection(string Title, IReadOnlyList<TrackedRow> Item
 
 /// <summary>Display model of one followed journey. Immutable; the list is rebuilt on every change.</summary>
 /// <summary>One chip of the lines of a followed journey.</summary>
-public sealed record LinePart(string Text, bool IsMark, bool IsCurrent)
+public sealed record LinePart(string Text, bool IsMark, bool IsCurrent, ChipLook? Look = null)
 {
 	public bool IsLine => !IsMark;
-	public bool IsLineIdle => !IsMark && !IsCurrent;
 }
 
 public sealed class TrackedRow
@@ -679,13 +678,24 @@ public sealed partial class TrackedJourneysViewModel : DisposableViewModel, IQue
 		bool found = false;
 		var parts = new List<LinePart>(lines.Length * 2);
 
+		// The chips look as they do on the journey card: the mode of each ride, from what was stored when the journey was
+		// followed, else guessed from the line's name.
+		Dictionary<string, TransitMode> modes = [];
+
+		foreach (FollowedRide ride in FollowedRides.Load(journey.PlanId))
+		{
+			modes.TryAdd(ride.Line, ride.Mode);
+		}
+
 		for (int i = 0; i < lines.Length; i++)
 		{
 			bool current = underWay && !found && lines[i] == journey.CurrentLine;
 
 			found |= current;
 
-			parts.Add(new LinePart(lines[i], false, current));
+			TransitMode mode = modes.TryGetValue(lines[i], out TransitMode known) ? known : ModeGuess.OfLine(lines[i]);
+
+			parts.Add(new LinePart(lines[i], false, current, current ? ModeChips.Marked(mode) : ModeChips.For(mode)));
 
 			if (marks && i < journey.EnsuredChanges!.Count && journey.EnsuredChanges[i])
 			{

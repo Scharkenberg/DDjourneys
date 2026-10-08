@@ -134,6 +134,20 @@ public static class ModeChips
 		};
 	}
 
+	/// <summary>The same chip with the accent as its outline: the ride that is under way.</summary>
+	public static ChipLook Marked(TransitMode mode)
+	{
+		ChipLook look = For(mode);
+
+		return new ChipLook(
+			look.Fill == Colors.Transparent ? Colors.Transparent : look.Fill,
+			look.Text,
+			Application.Current?.Resources.TryGetValue("Accent", out object? accent) == true && accent is Color accentColor ? accentColor : Colors.White,
+			Math.Max(2.5, look.StrokeThickness),
+			look.Corners,
+			false);
+	}
+
 	private static ChipLook Solid(Color fill, CornerRadius corners) =>
 		new(fill, Colors.White, Colors.Transparent, 0, corners, false);
 }

@@ -98,7 +98,10 @@
 			</Grid>
 
 			<!--  Legs: one line, centered, and swipeable when it is too long for the card; the actions sit beside it  -->
-			<Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource SpaceS}">
+			<Grid
+				support:Dense.MinHeight="{StaticResource HitIconTight}"
+				ColumnDefinitions="*,Auto"
+				ColumnSpacing="{DynamicResource SpaceS}">
 
 				<!--  The scroller keeps the tap from the card on Android: the legs line forwards it itself  -->
 				<ScrollView

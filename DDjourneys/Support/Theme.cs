@@ -36,6 +36,10 @@ public static class Theme
 	// not shown, popups). The in-place update of Application.Resources notifies only what hangs under a window.
 	private static readonly List<WeakReference<VisualElement>> Tracked = [];
 
+	// Values every key had before: only an element that still shows one of them is stale. An element whose value comes
+	// from somewhere else (a binding, a local value: the colours of a line chip) is none of the repaint's business.
+	private static readonly Dictionary<string, HashSet<object>> Retired = [];
+
 	// Keys whose value changed in the latest Apply: all a sweep has to announce.
 	private static readonly HashSet<string> ChangedKeys = [];
 
@@ -328,7 +332,11 @@ public static class Theme
 						&& entry.Value is ITuple { Length: > 0 } pair
 						&& pair[0] is string key
 						&& Current.TryGetValue(key, out object? wanted)
-						&& !IsCurrent(element.GetValue(property), wanted))
+						&& element.GetValue(property) is { } shown
+						&& !IsCurrent(shown, wanted)
+						&& Retired.TryGetValue(key, out HashSet<object>? old)
+						&& Normalize(shown) is { } plain
+						&& old.Contains(plain))
 					{
 						element.SetDynamicResource(property, key);
 						repaired++;
@@ -354,6 +362,29 @@ public static class Theme
 
 		return repaired;
 	}
+
+	private static void Retire(string key, object? old)
+	{
+		if (Normalize(old) is not { } value)
+		{
+			return;
+		}
+
+		if (!Retired.TryGetValue(key, out HashSet<object>? set))
+		{
+			Retired[key] = set = [];
+		}
+
+		if (set.Count > 48)
+		{
+			set.Clear();
+		}
+
+		set.Add(value);
+	}
+
+	private static object? Normalize(object? value) =>
+		value is SolidColorBrush brush ? brush.Color : value;
 
 	private static bool IsCurrent(object? now, object wanted) =>
 		Equals(now, wanted)
@@ -525,12 +556,14 @@ public static class Theme
 
 				changed = true;
 				ChangedKeys.Add(key);
+				Retire(key, old);
 				Current[key] = color;
 				resources[key] = color;
 
 				if (BrushKeys.Contains(key))
 				{
 					var brush = new SolidColorBrush(color);
+					Retire(key + "Brush", old is Color before ? new SolidColorBrush(before) : null);
 					Current[key + "Brush"] = brush;
 					ChangedKeys.Add(key + "Brush");
 					resources[key + "Brush"] = brush;
@@ -597,6 +630,7 @@ public static class Theme
 			return false;
 		}
 
+		Retire(key, old);
 		Current[key] = value;
 		ChangedKeys.Add(key);
 		resources[key] = value;
