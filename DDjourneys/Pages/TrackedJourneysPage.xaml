@@ -281,7 +281,7 @@
 														Text="{Binding NextText}" />
 
 													<!--  Only the current notice; outdated or superseded ones are removed by the tracker, the rest can be swiped away  -->
-													<SwipeView IsVisible="{Binding HasNotice}">
+													<SwipeView IsVisible="{Binding HasNotice}" VerticalOptions="Start">
 														<SwipeView.LeftItems>
 															<SwipeItems Mode="Execute" SwipeBehaviorOnInvoked="Close">
 																<SwipeItem
@@ -302,9 +302,10 @@
 														<Border
 															support:Dense.Padding="12,8"
 															BackgroundColor="{DynamicResource Raised}"
-															StrokeShape="RoundRectangle 10"
+															StrokeShape="RoundRectangle 6"
 															StrokeThickness="0">
-															<Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+															<!--  The box is as tall as its text: the close button is a small target here, not a 40 dp row  -->
+															<Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" VerticalOptions="Center">
 																<controls:Icon
 																	Glyph="Info"
 																	IsVisible="{Binding NoticeIsInfo}"
@@ -321,13 +322,15 @@
 																	Grid.Column="1"
 																	LineBreakMode="WordWrap"
 																	StyleClass="Caption"
-																	Text="{Binding NoticeText}" />
+																	Text="{Binding NoticeText}"
+																	VerticalOptions="Center" />
 																<controls:IconButton
 																	Grid.Column="2"
 																	Command="{Binding DismissNoticeCommand}"
 																	Glyph="Close"
 																	SemanticProperties.Description="{Binding DismissNoticeText}"
 																	Size="14"
+																	TargetSize="24"
 																	VerticalOptions="Start"
 																	Color="{DynamicResource InkMuted}" />
 															</Grid>
