@@ -277,6 +277,12 @@ public static class UiDiagnostics
 			var text = new StringBuilder($"native {native.GetType().Name}, font: {Native(entry)}");
 
 #if ANDROID
+			if (native is Google.Android.Material.TextField.TextInputLayout self)
+			{
+				text.Append($"; SELF layout box mode {self.BoxBackgroundMode}, stroke {self.BoxStrokeWidth}/{self.BoxStrokeWidthFocused}, layout background {self.Background?.GetType().Name ?? "none"}, "
+					+ $"edit text {self.EditText?.GetType().Name ?? "none"} background {self.EditText?.Background?.GetType().Name ?? "none"}");
+			}
+
 			if (native is global::Android.Views.View view)
 			{
 				text.Append($"; background {view.Background?.GetType().Name ?? "none"}; parents");

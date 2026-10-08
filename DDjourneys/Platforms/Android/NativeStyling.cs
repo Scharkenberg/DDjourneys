@@ -16,13 +16,21 @@ internal static class NativeStyling
 			"DDjourneysNoUnderline",
 			(handler, _) => ClearFrame(handler.PlatformView));
 
+		EditorHandler.Mapper.AppendToMapping(
+			"DDjourneysNoUnderline",
+			(handler, _) => ClearFrame(handler.PlatformView));
+
 		DatePickerHandler.Mapper.AppendToMapping(
 			"DDjourneysNoUnderline",
-			(handler, _) => ClearUnderline(handler.PlatformView));
+			(handler, _) => ClearFrame(handler.PlatformView));
 
 		TimePickerHandler.Mapper.AppendToMapping(
 			"DDjourneysNoUnderline",
-			(handler, _) => ClearUnderline(handler.PlatformView));
+			(handler, _) => ClearFrame(handler.PlatformView));
+
+		PickerHandler.Mapper.AppendToMapping(
+			"DDjourneysNoUnderline",
+			(handler, _) => ClearFrame(handler.PlatformView));
 	}
 
 	/// <summary>
@@ -88,11 +96,17 @@ internal static class NativeStyling
 
 	private static void Strip(TextInputLayout layout)
 	{
+		// The text layout draws the box by giving its EditText the box drawable as background (TextInputLayout
+		// assigns it when the box mode is set, and switching the mode to none does not take it away again), so the
+		// frame survives unless the EditText itself is cleared as well.
+		global::Android.Widget.EditText? edit = layout.EditText;
+
 		// Only when something is left to remove: LayoutChange fires often, and changing a view there asks for a new layout.
 		if (layout.BoxBackgroundMode == TextInputLayout.BoxBackgroundNone
 			&& layout.BoxStrokeWidth == 0
 			&& layout.BoxStrokeWidthFocused == 0
-			&& layout.Background is null)
+			&& layout.Background is null
+			&& edit?.Background is null)
 		{
 			return;
 		}
@@ -102,6 +116,11 @@ internal static class NativeStyling
 		layout.BoxStrokeWidthFocused = 0;
 		layout.SetBoxStrokeColorStateList(ColorStateList.ValueOf(global::Android.Graphics.Color.Transparent));
 		layout.Background = null;
+
+		if (edit is not null)
+		{
+			edit.Background = null;
+		}
 	}
 
 	private static void ClearUnderline(global::Android.Views.View? view)
