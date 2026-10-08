@@ -29,6 +29,13 @@ public static class Theme
 	private static readonly Dictionary<string, Color> Solid = [];
 	private static readonly ConditionalWeakTable<Element, StampBox> Stamps = [];
 
+	// Roots of view trees that the window's own tree does not reach (lent pages' slots, pages that were built but are
+	// not shown, popups). The in-place update of Application.Resources notifies only what hangs under a window.
+	private static readonly List<WeakReference<VisualElement>> Tracked = [];
+
+	// Keys whose value changed in the latest Apply: all a sweep has to announce.
+	private static readonly HashSet<string> ChangedKeys = [];
+
 	private static Application? _app;
 	private static AppSettings? _settings;
 	private static int _version;
@@ -173,21 +180,124 @@ public static class Theme
 	public static void Refresh() => Apply();
 
 	/// <summary>
-	/// Makes sure a page that is about to be shown reflects the current theme, even if it was not reached
-	/// when the theme changed. Call from OnAppearing.
+	/// Registers the root of a view tree that can be outside the window's own tree (a lent page's slot, a popup, a page
+	/// that is built but not shown). Every theme change then announces the new values to it directly.
 	/// </summary>
-	public static void Revalidate(Page page)
+	public static void Track(VisualElement root)
 	{
-		ArgumentNullException.ThrowIfNull(page);
+		ArgumentNullException.ThrowIfNull(root);
 
-		if (Stamps.TryGetValue(page, out StampBox? box) && box.Version == _version)
+		lock (Tracked)
+		{
+			Tracked.RemoveAll(item => !item.TryGetTarget(out VisualElement? live) || ReferenceEquals(live, root));
+			Tracked.Add(new WeakReference<VisualElement>(root));
+		}
+	}
+
+	/// <summary>
+	/// Makes sure a tree that is about to be shown reflects the current theme, even if it was not reached when the theme
+	/// changed. Call from OnAppearing (pages) or when a lent slot is built. Cheap when it is up to date.
+	/// </summary>
+	public static void Revalidate(VisualElement root)
+	{
+		ArgumentNullException.ThrowIfNull(root);
+
+		Track(root);
+
+		if (Stamps.TryGetValue(root, out StampBox? box) && box.Version == _version)
 		{
 			return;
 		}
 
-		Stamps.Remove(page);
-		Stamps.Add(page, new StampBox(_version));
+		Stamps.Remove(root);
+		Stamps.Add(root, new StampBox(_version));
 
+		Announce(root, Current.Keys);
+	}
+
+	/// <summary>
+	/// After a change: every tree this app owns hears the keys that changed, whether or not the window's tree reaches it
+	/// (shell, pages on the stack, modal pages, lent slots, popups).
+	/// </summary>
+	private static void Sweep()
+	{
+		if (_app is null)
+		{
+			ChangedKeys.Clear();
+
+			return;
+		}
+
+		string[] keys = [.. ChangedKeys];
+		ChangedKeys.Clear();
+
+		if (keys.Length == 0)
+		{
+			return;
+		}
+
+		var roots = new List<VisualElement>();
+
+		foreach (Window window in _app.Windows)
+		{
+			if (window.Page is not { } root)
+			{
+				continue;
+			}
+
+			roots.Add(root);
+
+			if (root is Shell shell)
+			{
+				AddPages(roots, shell.Navigation.NavigationStack);
+				AddPages(roots, shell.Navigation.ModalStack);
+			}
+			else if (root.Navigation is { } navigation)
+			{
+				AddPages(roots, navigation.NavigationStack);
+				AddPages(roots, navigation.ModalStack);
+			}
+		}
+
+		lock (Tracked)
+		{
+			Tracked.RemoveAll(item => !item.TryGetTarget(out _));
+
+			foreach (WeakReference<VisualElement> item in Tracked)
+			{
+				if (item.TryGetTarget(out VisualElement? live))
+				{
+					roots.Add(live);
+				}
+			}
+		}
+
+		foreach (VisualElement root in roots.Distinct())
+		{
+			Stamps.Remove(root);
+			Stamps.Add(root, new StampBox(_version));
+
+			Announce(root, keys);
+		}
+	}
+
+	private static void AddPages(List<VisualElement> roots, IEnumerable<Page?> pages)
+	{
+		foreach (Page? page in pages)
+		{
+			if (page is not null)
+			{
+				roots.Add(page);
+			}
+		}
+	}
+
+	/// <summary>
+	/// Writing a key into the root's own dictionary notifies every DynamicResource below it; removing it again lets the
+	/// tree keep following the application-level value afterwards. A key the root defines itself is left alone.
+	/// </summary>
+	private static void Announce(VisualElement root, IEnumerable<string> keys)
+	{
 		if (Current.Count == 0)
 		{
 			return;
@@ -195,24 +305,26 @@ public static class Theme
 
 		try
 		{
-			// Writing a key into the page's own dictionary notifies every DynamicResource below the page;
-			// removing it again lets the page keep following the application-level value afterwards.
-			ResourceDictionary resources = page.Resources;
+			ResourceDictionary resources = root.Resources;
+			List<string> written = [];
 
-			foreach ((string key, object value) in Current)
+			foreach (string key in keys)
 			{
-				resources[key] = value;
+				if (Current.TryGetValue(key, out object? value) && !resources.ContainsKey(key))
+				{
+					resources[key] = value;
+					written.Add(key);
+				}
 			}
 
-			foreach (string key in Current.Keys)
+			foreach (string key in written)
 			{
 				resources.Remove(key);
 			}
-
 		}
 		catch (Exception ex)
 		{
-			DiagnosticLog.Write($"Theme revalidate failed: {ex.Message}");
+			DiagnosticLog.Write($"Theme announce failed: {ex.Message}");
 		}
 	}
 
@@ -329,6 +441,7 @@ public static class Theme
 				}
 
 				changed = true;
+				ChangedKeys.Add(key);
 				Current[key] = color;
 				resources[key] = color;
 
@@ -336,6 +449,7 @@ public static class Theme
 				{
 					var brush = new SolidColorBrush(color);
 					Current[key + "Brush"] = brush;
+					ChangedKeys.Add(key + "Brush");
 					resources[key + "Brush"] = brush;
 				}
 			}
@@ -378,6 +492,8 @@ public static class Theme
 				}
 			}
 
+			Sweep();
+
 			Changed?.Invoke(null, EventArgs.Empty);
 		}
 		catch (Exception ex)
@@ -398,6 +514,7 @@ public static class Theme
 		}
 
 		Current[key] = value;
+		ChangedKeys.Add(key);
 		resources[key] = value;
 
 		return true;

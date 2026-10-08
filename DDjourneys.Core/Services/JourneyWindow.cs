@@ -225,6 +225,51 @@ public static class JourneyWindow
 		return new PageResult(page, page.Count == 0 ? failure : null);
 	}
 
+	/// <summary>
+	/// The candidates that are new for the list on the wanted side: not shown yet and not before (earlier) or after
+	/// (later) the list's own edge, ordered like the list. Providers' continuations are checked with this.
+	/// </summary>
+	public static List<Journey> Beyond(
+		IReadOnlyList<Journey> shown,
+		IEnumerable<Journey> candidates,
+		JourneySearchMode mode,
+		bool previous)
+	{
+		ArgumentNullException.ThrowIfNull(shown);
+		ArgumentNullException.ThrowIfNull(candidates);
+
+		List<Journey> ordered = Order(shown, mode);
+
+		DateTimeOffset? boundary =
+			ordered.Count == 0
+				? null
+				: SortKey(previous ? ordered[0] : ordered[^1], mode);
+
+		var seen = new HashSet<string>(shown.Select(IdentityOf), StringComparer.Ordinal);
+
+		return Order(
+			Distinct(candidates).Where(
+				journey => SortKey(journey, mode) is { } key
+					&& (boundary is not { } edge || (previous ? key <= edge : key >= edge))
+					&& !seen.Contains(IdentityOf(journey))),
+			mode);
+	}
+
+	/// <summary>The <paramref name="count"/> journeys of a page that lie closest to the list.</summary>
+	public static IReadOnlyList<Journey> Nearest(
+		IEnumerable<Journey> page,
+		JourneySearchMode mode,
+		bool previous,
+		int count)
+	{
+		List<Journey> ordered = Order(Distinct(page), mode);
+		count = Math.Max(1, count);
+
+		return previous
+			? [.. ordered.Skip(Math.Max(0, ordered.Count - count))]
+			: [.. ordered.Take(count)];
+	}
+
 	private static List<Journey> Trim(
 		List<Journey> ordered,
 		JourneySearchMode mode,

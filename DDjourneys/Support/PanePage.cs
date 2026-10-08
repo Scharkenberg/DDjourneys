@@ -44,6 +44,8 @@ public class PanePage : ContentPage
 		_frame.FoldChanged += (_, _) => QueueEvaluation();
 
 		SetFrame();
+
+		Theme.Track(this);
 	}
 
 	/// <summary>The route the page stands for; pairs are decided by route.</summary>
