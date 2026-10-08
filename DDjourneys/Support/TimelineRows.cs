@@ -32,7 +32,7 @@ public abstract class TimelineRow : ObservableObject
 /// <summary>
 /// A stop where a leg starts or ends (or the journey's walking start/end).
 /// </summary>
-public sealed class StopRow : TimelineRow
+public sealed partial class StopRow : TimelineRow
 {
 	public required string Time { get; init; }
 
@@ -73,7 +73,7 @@ public sealed class StopRow : TimelineRow
 /// <summary>
 /// A stop between departure and arrival, shown when a leg is expanded.
 /// </summary>
-public sealed class IntermediateRow : TimelineRow
+public sealed partial class IntermediateRow : TimelineRow
 {
 	public required string Time { get; init; }
 
@@ -101,7 +101,7 @@ public sealed class IntermediateRow : TimelineRow
 /// <summary>
 /// Line, direction and duration of a ride, with the expand toggle.
 /// </summary>
-public sealed class LegRow : TimelineRow
+public sealed partial class LegRow : TimelineRow
 {
 	public required string LineText { get; init; }
 
@@ -132,7 +132,43 @@ public sealed class LegRow : TimelineRow
 
 	public bool IsCancelled { get; init; }
 
-	public bool IsActive { get; init; }
+	/// <summary>When the vehicle is under way (real-time times); the ride is "in progress" only between them.</summary>
+	public DateTimeOffset? ActiveFrom { get; init; }
+
+	public DateTimeOffset? ActiveUntil { get; init; }
+
+	/// <summary>True while the ride is under way. Evaluated against the clock, so it ends when the ride does.</summary>
+	public bool IsActive
+	{
+		get
+		{
+			DateTimeOffset now =
+				Format.Now();
+
+			return !IsCancelled
+				&& ActiveFrom is { } from
+				&& ActiveUntil is { } until
+				&& now >= from
+				&& now <= until;
+		}
+	}
+
+	/// <summary>Called by the page's clock: tells the view when "in progress" starts or ends.</summary>
+	public void RefreshActive()
+	{
+		bool active =
+			IsActive;
+
+		if (active != _wasActive)
+		{
+			_wasActive = active;
+
+			OnPropertyChanged(
+				nameof(IsActive));
+		}
+	}
+
+	private bool _wasActive;
 
 	public IReadOnlyList<IntermediateRow> Intermediates { get; init; } =
 		[];
@@ -140,6 +176,23 @@ public sealed class LegRow : TimelineRow
 
 	public bool HasDirection =>
 		Direction is not null;
+
+	/// <summary>The provider can swap this ride for an earlier or later one (set by the journey page).</summary>
+	public bool CanSwapRide
+	{
+		get;
+		set
+		{
+			if (SetProperty(ref field, value))
+			{
+				OnPropertyChanged(nameof(HasActions));
+			}
+		}
+	}
+
+	/// <summary>Anything to show in the action row below the line.</summary>
+	public bool HasActions =>
+		CanShowLive || CanSwapRide;
 
 	/// <summary>The line is a plain number, so its vehicles can be looked up on the live page.</summary>
 	public bool CanShowLive =>
@@ -164,7 +217,7 @@ public sealed class LegRow : TimelineRow
 
 	public bool IsExpanded
 	{
-		get => field;
+		get;
 		set
 		{
 			if (SetProperty(
@@ -209,7 +262,7 @@ public sealed class LegRow : TimelineRow
 }
 
 
-public sealed class WalkRow : TimelineRow
+public sealed partial class WalkRow : TimelineRow
 {
 	public required string Text { get; init; }
 
@@ -232,7 +285,7 @@ public sealed class WalkRow : TimelineRow
 /// <summary>
 /// Arrival of one ride and departure of the next, at the same place.
 /// </summary>
-public sealed class InterchangeRow : TimelineRow
+public sealed partial class InterchangeRow : TimelineRow
 {
 	public required string ArrivalTime { get; init; }
 
@@ -309,7 +362,7 @@ public sealed class InterchangeRow : TimelineRow
 /// <summary>
 /// A message from the provider (leg notice, or a note on a boundary).
 /// </summary>
-public sealed class NoticeRow : TimelineRow
+public sealed partial class NoticeRow : TimelineRow
 {
 	public required string Text { get; init; }
 
@@ -611,7 +664,7 @@ public static class TimelineRowFactory
 
 			OccupancyLevel stopOccupancy =
 				OccupancyAt(
-					leg.Stops.FirstOrDefault(),
+					leg.Stops.Count > 0 ? leg.Stops[0] : null,
 					options);
 
 
@@ -685,10 +738,6 @@ public static class TimelineRowFactory
 		}
 
 
-		DateTimeOffset now =
-			Format.Now();
-
-
 		var legRow =
 			new LegRow
 			{
@@ -736,15 +785,15 @@ public static class TimelineRowFactory
 				IsCancelled =
 					leg.IsCancelled,
 
-				IsActive =
-					!leg.IsCancelled
-					&& leg.EffectiveDeparture is { } start
-					&& leg.EffectiveArrival is { } end
-					&& now >= start
-					&& now <= end,
+				ActiveFrom =
+					leg.EffectiveDeparture,
+
+				ActiveUntil =
+					leg.EffectiveArrival,
 
 				Intermediates =
-					leg.Stops
+					(List<IntermediateRow>)
+					[.. leg.Stops
 						.Skip(1)
 						.Take(
 							Math.Max(
@@ -799,8 +848,7 @@ public static class TimelineRowFactory
 													stop,
 													options),
 											null)
-								})
-						.ToList(),
+								})],
 
 				RailBottom =
 					color,
@@ -861,7 +909,7 @@ public static class TimelineRowFactory
 
 			OccupancyLevel lastStopOccupancy =
 				OccupancyAt(
-					leg.Stops.LastOrDefault(),
+					leg.Stops.Count > 0 ? leg.Stops[^1] : null,
 					options);
 
 
@@ -1004,13 +1052,13 @@ public static class TimelineRowFactory
 
 			OccupancyLevel arrivalOccupancy =
 				OccupancyAt(
-					from.Stops.LastOrDefault(),
+					from.Stops.Count > 0 ? from.Stops[^1] : null,
 					options);
 
 
 			OccupancyLevel departureOccupancy =
 				OccupancyAt(
-					to.Stops.FirstOrDefault(),
+					to.Stops.Count > 0 ? to.Stops[0] : null,
 					options);
 
 
@@ -1310,10 +1358,9 @@ public static class TimelineRowFactory
 		params string?[] values)
 	{
 		string[] parts =
-	values
+	[.. values
 		.Where(value => !string.IsNullOrWhiteSpace(value))
-		.Select(value => value!)
-		.ToArray();
+		.Select(value => value!)];
 
 
 		return parts.Length == 0

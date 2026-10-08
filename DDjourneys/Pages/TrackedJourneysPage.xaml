@@ -1,4 +1,4 @@
-<ContentPage
+<support:PanePage
 	x:Class="DDjourneys.Pages.TrackedJourneysPage"
 	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
 	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
@@ -39,10 +39,10 @@
 							<BindableLayout.ItemTemplate>
 								<DataTemplate x:DataType="local:LiveOption">
 									<Grid support:Motion.Feedback="True"
-										support:Dense.Padding="12,10"
+										support:Dense.Padding="12,8"
 										ColumnDefinitions="*,Auto"
 										ColumnSpacing="10"
-										support:Dense.MinHeight="52"
+										support:Dense.MinHeight="{StaticResource HitRow}"
 										SemanticProperties.Description="{Binding Title}">
 
 										<VerticalStackLayout Spacing="1" VerticalOptions="Center">
@@ -125,64 +125,138 @@
 
 												<VerticalStackLayout Spacing="8">
 
-													<Grid support:Motion.Feedback="True" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+													<!--  Header: the route, and the card's actions (live badge, map, expand) in one row of equal icon targets  -->
+													<Grid ColumnDefinitions="*,Auto" ColumnSpacing="4">
 
-														<VerticalStackLayout Spacing="2">
+														<!--  Times with their ends right under them, the day between (as on the journey card)  -->
+														<Grid
+															support:Motion.Feedback="True"
+															ColumnDefinitions="*,Auto,*"
+															ColumnSpacing="{DynamicResource SpaceM}"
+															VerticalOptions="Center">
 
-															<!--  The title may wrap to two lines; pill and chevron keep their place in their own columns  -->
+															<VerticalStackLayout Spacing="2">
+																<Label StyleClass="Time" Text="{Binding DepartureTime}" />
+																<controls:StopNameView
+																	Compact="True"
+																	Place="{Binding FromPlace}"
+																	Stop="{Binding FromName}" />
+															</VerticalStackLayout>
+
 															<Label
-																FontFamily="{DynamicResource FontSemibold}"
-																LineBreakMode="TailTruncation"
-																MaxLines="2"
-																Text="{Binding Title}" />
+																Grid.Column="1"
+																Margin="0,4,0,0"
+																HorizontalTextAlignment="Center"
+																StyleClass="Caption"
+																Text="{Binding DayText}"
+																VerticalOptions="Start" />
 
-															<Label StyleClass="Caption" Text="{Binding Subtitle}" />
-
-															<Label
-																IsVisible="{Binding HasLines}"
-																StyleClass="Faint"
-																Text="{Binding LinesText}" />
-														</VerticalStackLayout>
-
-														<!--  This journey drives the live notification  -->
-														<Border
-															Grid.Column="1"
-															Padding="8,2"
-															BackgroundColor="{DynamicResource Accent}"
-															IsVisible="{Binding IsLive}"
-															StrokeShape="RoundRectangle 100"
-															StrokeThickness="0"
-															VerticalOptions="Start">
-															<HorizontalStackLayout Spacing="5">
-																<Ellipse
-																	Fill="{DynamicResource OnAccentBrush}"
-																	HeightRequest="6"
-																	VerticalOptions="Center"
-																	WidthRequest="6" />
+															<VerticalStackLayout Grid.Column="2" Spacing="2">
 																<Label
-																	FontFamily="{DynamicResource FontSemibold}"
-																	FontSize="{StaticResource FontCaption}"
-																	Text="{Binding LiveBadgeText}"
-																	TextColor="{DynamicResource OnAccent}" />
-															</HorizontalStackLayout>
-														</Border>
+																	HorizontalTextAlignment="End"
+																	StyleClass="Time"
+																	Text="{Binding ArrivalTime}" />
+																<controls:StopNameView
+																	Alignment="End"
+																	Compact="True"
+																	Place="{Binding ToPlace}"
+																	Stop="{Binding ToName}" />
+															</VerticalStackLayout>
 
-														<controls:Icon
-															Grid.Column="2"
-															Glyph="{Binding ExpandIcon}"
-															Size="18"
-															VerticalOptions="Start"
-															Color="{DynamicResource InkMuted}" />
+															<Grid.GestureRecognizers>
+																<TapGestureRecognizer Command="{Binding ToggleExpandedCommand}" />
+															</Grid.GestureRecognizers>
+														</Grid>
 
-														<Grid.GestureRecognizers>
-															<TapGestureRecognizer Command="{Binding ToggleExpandedCommand}" />
-														</Grid.GestureRecognizers>
+														<HorizontalStackLayout
+															Grid.Column="1"
+															Spacing="0"
+															VerticalOptions="Start">
+
+															<!--  This journey drives the live notification (not interactive: a pill)  -->
+															<Border
+																Margin="0,0,6,0"
+																Padding="8,2"
+																BackgroundColor="{DynamicResource Accent}"
+																IsVisible="{Binding IsLive}"
+																StrokeShape="RoundRectangle 100"
+																StrokeThickness="0"
+																VerticalOptions="Center">
+																<HorizontalStackLayout Spacing="5">
+																	<Ellipse
+																		Fill="{DynamicResource OnAccentBrush}"
+																		HeightRequest="6"
+																		VerticalOptions="Center"
+																		WidthRequest="6" />
+																	<Label
+																		FontFamily="{DynamicResource FontSemibold}"
+																		FontSize="{StaticResource FontCaption}"
+																		Text="{Binding LiveBadgeText}"
+																		TextColor="{DynamicResource OnAccent}" />
+																</HorizontalStackLayout>
+															</Border>
+
+															<controls:IconButton
+																Command="{Binding MapCommand}"
+																Glyph="MapPin"
+																IsVisible="{Binding HasMap}"
+																SemanticProperties.Description="{localization:Tr Tracking.ShowOnMap}"
+																TargetSize="{StaticResource HitIconTight}" />
+
+															<controls:IconButton
+																Command="{Binding ToggleExpandedCommand}"
+																Glyph="{Binding ExpandIcon}"
+																SemanticProperties.Description="{localization:Tr Tracking.ToggleDetails}"
+																TargetSize="{StaticResource HitIconTight}" />
+														</HorizontalStackLayout>
 													</Grid>
+
+													<!--  The rides: one line, swipeable when it is longer than the card; the line under way is filled  -->
+													<ScrollView
+														HorizontalScrollBarVisibility="Never"
+														IsVisible="{Binding HasLines}"
+														Orientation="Horizontal">
+														<HorizontalStackLayout BindableLayout.ItemsSource="{Binding LineParts}" Spacing="6">
+															<BindableLayout.ItemTemplate>
+																<DataTemplate x:DataType="local:LinePart">
+																	<Grid VerticalOptions="Center">
+																		<Border IsVisible="{Binding IsLineIdle}" StyleClass="Chip">
+																			<Label
+																				FontFamily="{DynamicResource FontSemibold}"
+																				FontSize="{StaticResource FontCaption}"
+																				LineBreakMode="NoWrap"
+																				StyleClass="ChipLabel"
+																				Text="{Binding Text}" />
+																		</Border>
+																		<Border
+																			BackgroundColor="{DynamicResource Accent}"
+																			IsVisible="{Binding IsCurrent}"
+																			StyleClass="Chip">
+																			<Label
+																				FontFamily="{DynamicResource FontSemibold}"
+																				FontSize="{StaticResource FontCaption}"
+																				LineBreakMode="NoWrap"
+																				StyleClass="ChipLabel"
+																				Text="{Binding Text}"
+																				TextColor="{DynamicResource OnAccent}" />
+																		</Border>
+																		<Label
+																			FontSize="{StaticResource FontCaption}"
+																			IsVisible="{Binding IsMark}"
+																			LineBreakMode="NoWrap"
+																			StyleClass="Faint"
+																			Text="{Binding Text}"
+																			VerticalOptions="Center" />
+																	</Grid>
+																</DataTemplate>
+															</BindableLayout.ItemTemplate>
+														</HorizontalStackLayout>
+													</ScrollView>
 
 													<Label
 														FontFamily="{DynamicResource FontSemibold}"
 														FontSize="{StaticResource FontCaption}"
-														IsVisible="{Binding IsNormalStatus}"
+														IsVisible="{Binding ShowNormalStatus}"
 														Text="{Binding StatusText}"
 														TextColor="{DynamicResource Accent}" />
 
@@ -207,7 +281,7 @@
 														Text="{Binding NextText}" />
 
 													<!--  Only the current notice; outdated or superseded ones are removed by the tracker, the rest can be swiped away  -->
-													<SwipeView IsVisible="{Binding HasNotice}">
+													<SwipeView IsVisible="{Binding HasNotice}" VerticalOptions="Start">
 														<SwipeView.LeftItems>
 															<SwipeItems Mode="Execute" SwipeBehaviorOnInvoked="Close">
 																<SwipeItem
@@ -226,11 +300,12 @@
 														</SwipeView.RightItems>
 
 														<Border
-															support:Dense.Padding="10,8"
+															support:Dense.Padding="12,8"
 															BackgroundColor="{DynamicResource Raised}"
-															StrokeShape="RoundRectangle 10"
+															StrokeShape="RoundRectangle 6"
 															StrokeThickness="0">
-															<Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+															<!--  The box is as tall as its text: the close button is a small target here, not a 40 dp row  -->
+															<Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" VerticalOptions="Center">
 																<controls:Icon
 																	Glyph="Info"
 																	IsVisible="{Binding NoticeIsInfo}"
@@ -247,13 +322,15 @@
 																	Grid.Column="1"
 																	LineBreakMode="WordWrap"
 																	StyleClass="Caption"
-																	Text="{Binding NoticeText}" />
+																	Text="{Binding NoticeText}"
+																	VerticalOptions="Center" />
 																<controls:IconButton
 																	Grid.Column="2"
 																	Command="{Binding DismissNoticeCommand}"
 																	Glyph="Close"
 																	SemanticProperties.Description="{Binding DismissNoticeText}"
 																	Size="14"
+																	TargetSize="24"
 																	VerticalOptions="Start"
 																	Color="{DynamicResource InkMuted}" />
 															</Grid>
@@ -281,7 +358,7 @@
 															<DataTemplate x:DataType="local:CourseRow">
 																<Grid
 																	ColumnDefinitions="52,22,*"
-																	support:Dense.MinHeight="30"
+																	support:Dense.MinHeight="{StaticResource HitButton}"
 																	Opacity="{Binding Fade}">
 
 																	<!--  Rail: accent where the journey has been, outline where it still goes  -->
@@ -592,4 +669,4 @@
 			</VerticalStackLayout>
 		</ScrollView>
 	</RefreshView>
-</ContentPage>
+</support:PanePage>

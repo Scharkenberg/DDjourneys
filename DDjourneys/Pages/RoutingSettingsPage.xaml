@@ -25,7 +25,7 @@
 									support:Dense.Padding="12,8"
 									ColumnDefinitions="*,Auto"
 									ColumnSpacing="12"
-									support:Dense.MinHeight="52">
+									support:Dense.MinHeight="{StaticResource HitRow}">
 
 									<VerticalStackLayout Spacing="1" VerticalOptions="Center">
 										<Label FontFamily="{DynamicResource FontSemibold}" Text="{Binding Title}" />
@@ -55,9 +55,9 @@
 						<BindableLayout.ItemTemplate>
 							<DataTemplate x:DataType="support:ChoiceOption">
 								<Grid support:Motion.Feedback="True"
-									support:Dense.Padding="12,10"
+									support:Dense.Padding="12,8"
 									ColumnDefinitions="*,Auto"
-									support:Dense.MinHeight="48">
+									support:Dense.MinHeight="{StaticResource HitRow}">
 
 									<Label
 										FontFamily="{DynamicResource FontSemibold}"
@@ -90,9 +90,9 @@
 						<BindableLayout.ItemTemplate>
 							<DataTemplate x:DataType="support:ChoiceOption">
 								<Grid support:Motion.Feedback="True"
-									support:Dense.Padding="12,10"
+									support:Dense.Padding="12,8"
 									ColumnDefinitions="*,Auto"
-									support:Dense.MinHeight="48">
+									support:Dense.MinHeight="{StaticResource HitRow}">
 
 									<Label
 										FontFamily="{DynamicResource FontSemibold}"
@@ -114,44 +114,46 @@
 							</DataTemplate>
 						</BindableLayout.ItemTemplate>
 					</VerticalStackLayout>
-					<BoxView StyleClass="Divider" />
-					<VerticalStackLayout support:Dense.Padding="12,10" Spacing="4">
-						<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Routing.Footpath}" />
+					<VerticalStackLayout IsVisible="{Binding ShowWalkToStops}">
+						<BoxView StyleClass="Divider" />
+						<VerticalStackLayout support:Dense.Padding="12,8" Spacing="4">
+							<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Routing.Footpath}" />
 
-						<Label StyleClass="Caption" Text="{Binding FootpathText}" />
+							<Label StyleClass="Caption" Text="{Binding FootpathText}" />
 
-						<Slider
-							Maximum="{Binding MaxFootpath}"
-							Minimum="0"
-							SemanticProperties.Description="{localization:Tr Routing.Footpath}"
-							Value="{Binding FootpathMinutes}" />
-					</VerticalStackLayout>
-					<BoxView StyleClass="Divider" />
-					<VerticalStackLayout BindableLayout.ItemsSource="{Binding Walking}">
-						<BindableLayout.ItemTemplate>
-							<DataTemplate x:DataType="support:ToggleOption">
-								<Grid
-									support:Dense.Padding="12,8"
-									ColumnDefinitions="*,Auto"
-									ColumnSpacing="12"
-									support:Dense.MinHeight="52">
+							<Slider
+								Maximum="{x:Static local:RoutingSettingsViewModel.MaxFootpath}"
+								Minimum="0"
+								SemanticProperties.Description="{localization:Tr Routing.Footpath}"
+								Value="{Binding FootpathMinutes}" />
+						</VerticalStackLayout>
+						<BoxView StyleClass="Divider" />
+						<VerticalStackLayout BindableLayout.ItemsSource="{Binding Walking}">
+							<BindableLayout.ItemTemplate>
+								<DataTemplate x:DataType="support:ToggleOption">
+									<Grid
+										support:Dense.Padding="12,8"
+										ColumnDefinitions="*,Auto"
+										ColumnSpacing="12"
+										support:Dense.MinHeight="{StaticResource HitRow}">
 
-									<VerticalStackLayout Spacing="1" VerticalOptions="Center">
-										<Label FontFamily="{DynamicResource FontSemibold}" Text="{Binding Title}" />
-										<Label
-											IsVisible="{Binding HasDescription}"
-											StyleClass="Caption"
-											Text="{Binding Description}" />
-									</VerticalStackLayout>
+										<VerticalStackLayout Spacing="1" VerticalOptions="Center">
+											<Label FontFamily="{DynamicResource FontSemibold}" Text="{Binding Title}" />
+											<Label
+												IsVisible="{Binding HasDescription}"
+												StyleClass="Caption"
+												Text="{Binding Description}" />
+										</VerticalStackLayout>
 
-									<Switch
-										Grid.Column="1"
-										IsToggled="{Binding IsOn}"
-										SemanticProperties.Description="{Binding Title}"
-										VerticalOptions="Center" />
-								</Grid>
-							</DataTemplate>
-						</BindableLayout.ItemTemplate>
+										<Switch
+											Grid.Column="1"
+											IsToggled="{Binding IsOn}"
+											SemanticProperties.Description="{Binding Title}"
+											VerticalOptions="Center" />
+									</Grid>
+								</DataTemplate>
+							</BindableLayout.ItemTemplate>
+						</VerticalStackLayout>
 					</VerticalStackLayout>
 				</VerticalStackLayout>
 			</Border>
@@ -164,9 +166,9 @@
 						<BindableLayout.ItemTemplate>
 							<DataTemplate x:DataType="support:ChoiceOption">
 								<Grid support:Motion.Feedback="True"
-									support:Dense.Padding="12,10"
+									support:Dense.Padding="12,8"
 									ColumnDefinitions="*,Auto"
-									support:Dense.MinHeight="48">
+									support:Dense.MinHeight="{StaticResource HitRow}">
 
 									<Label
 										FontFamily="{DynamicResource FontSemibold}"
@@ -199,9 +201,9 @@
 						<BindableLayout.ItemTemplate>
 							<DataTemplate x:DataType="support:ChoiceOption">
 								<Grid support:Motion.Feedback="True"
-									support:Dense.Padding="12,10"
+									support:Dense.Padding="12,8"
 									ColumnDefinitions="*,Auto"
-									support:Dense.MinHeight="48">
+									support:Dense.MinHeight="{StaticResource HitRow}">
 
 									<Label
 										FontFamily="{DynamicResource FontSemibold}"
@@ -226,111 +228,117 @@
 				</VerticalStackLayout>
 			</Border>
 
-			<Label StyleClass="Section" Text="{localization:Tr Routing.SectionTickets}" />
+			<VerticalStackLayout IsVisible="{Binding ShowPassenger}" Spacing="{DynamicResource SpaceS}">
+				<Label StyleClass="Section" Text="{localization:Tr Routing.SectionTickets}" />
 
-			<Border Padding="0" StyleClass="Card">
-				<VerticalStackLayout>
-					<VerticalStackLayout BindableLayout.ItemsSource="{Binding Passenger.Options}">
-						<BindableLayout.ItemTemplate>
-							<DataTemplate x:DataType="support:ChoiceOption">
-								<Grid support:Motion.Feedback="True"
-									support:Dense.Padding="12,10"
-									ColumnDefinitions="*,Auto"
-									support:Dense.MinHeight="48">
+				<Border Padding="0" StyleClass="Card">
+					<VerticalStackLayout>
+						<VerticalStackLayout BindableLayout.ItemsSource="{Binding Passenger.Options}">
+							<BindableLayout.ItemTemplate>
+								<DataTemplate x:DataType="support:ChoiceOption">
+									<Grid support:Motion.Feedback="True"
+										support:Dense.Padding="12,8"
+										ColumnDefinitions="*,Auto"
+										support:Dense.MinHeight="{StaticResource HitRow}">
 
-									<Label
-										FontFamily="{DynamicResource FontSemibold}"
-										Text="{Binding Title}"
-										VerticalOptions="Center" />
+										<Label
+											FontFamily="{DynamicResource FontSemibold}"
+											Text="{Binding Title}"
+											VerticalOptions="Center" />
 
-									<controls:Icon
-										Grid.Column="1"
-										Glyph="Check"
-										IsVisible="{Binding IsSelected}"
-										Size="20"
-										VerticalOptions="Center"
-										Color="{DynamicResource Accent}" />
+										<controls:Icon
+											Grid.Column="1"
+											Glyph="Check"
+											IsVisible="{Binding IsSelected}"
+											Size="20"
+											VerticalOptions="Center"
+											Color="{DynamicResource Accent}" />
 
-									<Grid.GestureRecognizers>
-										<TapGestureRecognizer Command="{Binding SelectCommand}" />
-									</Grid.GestureRecognizers>
-								</Grid>
-							</DataTemplate>
-						</BindableLayout.ItemTemplate>
+										<Grid.GestureRecognizers>
+											<TapGestureRecognizer Command="{Binding SelectCommand}" />
+										</Grid.GestureRecognizers>
+									</Grid>
+								</DataTemplate>
+							</BindableLayout.ItemTemplate>
+						</VerticalStackLayout>
 					</VerticalStackLayout>
-				</VerticalStackLayout>
-			</Border>
+				</Border>
+			</VerticalStackLayout>
 
-			<Label StyleClass="Section" Text="{localization:Tr Extras.OptSection}" />
+			<VerticalStackLayout IsVisible="{Binding ShowOptimisation}" Spacing="{DynamicResource SpaceS}">
+				<Label StyleClass="Section" Text="{localization:Tr Extras.OptSection}" />
 
-			<Border Padding="0" StyleClass="Card">
-				<VerticalStackLayout>
-					<VerticalStackLayout BindableLayout.ItemsSource="{Binding Optimisation.Options}">
-						<BindableLayout.ItemTemplate>
-							<DataTemplate x:DataType="support:ChoiceOption">
-								<Grid support:Motion.Feedback="True"
-									support:Dense.Padding="12,10"
-									ColumnDefinitions="*,Auto"
-									support:Dense.MinHeight="48">
+				<Border Padding="0" StyleClass="Card">
+					<VerticalStackLayout>
+						<VerticalStackLayout BindableLayout.ItemsSource="{Binding Optimisation.Options}">
+							<BindableLayout.ItemTemplate>
+								<DataTemplate x:DataType="support:ChoiceOption">
+									<Grid support:Motion.Feedback="True"
+										support:Dense.Padding="12,8"
+										ColumnDefinitions="*,Auto"
+										support:Dense.MinHeight="{StaticResource HitRow}">
 
-									<Label
-										FontFamily="{DynamicResource FontSemibold}"
-										Text="{Binding Title}"
-										VerticalOptions="Center" />
+										<Label
+											FontFamily="{DynamicResource FontSemibold}"
+											Text="{Binding Title}"
+											VerticalOptions="Center" />
 
-									<controls:Icon
-										Grid.Column="1"
-										Glyph="Check"
-										IsVisible="{Binding IsSelected}"
-										Size="20"
-										VerticalOptions="Center"
-										Color="{DynamicResource Accent}" />
+										<controls:Icon
+											Grid.Column="1"
+											Glyph="Check"
+											IsVisible="{Binding IsSelected}"
+											Size="20"
+											VerticalOptions="Center"
+											Color="{DynamicResource Accent}" />
 
-									<Grid.GestureRecognizers>
-										<TapGestureRecognizer Command="{Binding SelectCommand}" />
-									</Grid.GestureRecognizers>
-								</Grid>
-							</DataTemplate>
-						</BindableLayout.ItemTemplate>
+										<Grid.GestureRecognizers>
+											<TapGestureRecognizer Command="{Binding SelectCommand}" />
+										</Grid.GestureRecognizers>
+									</Grid>
+								</DataTemplate>
+							</BindableLayout.ItemTemplate>
+						</VerticalStackLayout>
 					</VerticalStackLayout>
-				</VerticalStackLayout>
-			</Border>
-			<Label StyleClass="Caption" Text="{localization:Tr Extras.OptNote}" />
+				</Border>
+				<Label StyleClass="Caption" Text="{localization:Tr Extras.OptNote}" />
+			</VerticalStackLayout>
 
-			<Label StyleClass="Section" Text="{localization:Tr Routing.SectionExtraCharge}" />
+			<VerticalStackLayout IsVisible="{Binding ShowExtraCharge}" Spacing="{DynamicResource SpaceS}">
+				<Label StyleClass="Section" Text="{localization:Tr Routing.SectionExtraCharge}" />
 
-			<Border Padding="0" StyleClass="Card">
-				<VerticalStackLayout>
-					<VerticalStackLayout BindableLayout.ItemsSource="{Binding ExtraCharge.Options}">
-						<BindableLayout.ItemTemplate>
-							<DataTemplate x:DataType="support:ChoiceOption">
-								<Grid support:Motion.Feedback="True"
-									support:Dense.Padding="12,10"
-									ColumnDefinitions="*,Auto"
-									support:Dense.MinHeight="48">
+				<Border Padding="0" StyleClass="Card">
+					<VerticalStackLayout>
+						<VerticalStackLayout BindableLayout.ItemsSource="{Binding ExtraCharge.Options}">
+							<BindableLayout.ItemTemplate>
+								<DataTemplate x:DataType="support:ChoiceOption">
+									<Grid support:Motion.Feedback="True"
+										support:Dense.Padding="12,8"
+										ColumnDefinitions="*,Auto"
+										support:Dense.MinHeight="{StaticResource HitRow}">
 
-									<Label
-										FontFamily="{DynamicResource FontSemibold}"
-										Text="{Binding Title}"
-										VerticalOptions="Center" />
+										<Label
+											FontFamily="{DynamicResource FontSemibold}"
+											Text="{Binding Title}"
+											VerticalOptions="Center" />
 
-									<controls:Icon
-										Grid.Column="1"
-										Glyph="Check"
-										IsVisible="{Binding IsSelected}"
-										Size="20"
-										VerticalOptions="Center"
-										Color="{DynamicResource Accent}" />
+										<controls:Icon
+											Grid.Column="1"
+											Glyph="Check"
+											IsVisible="{Binding IsSelected}"
+											Size="20"
+											VerticalOptions="Center"
+											Color="{DynamicResource Accent}" />
 
-									<Grid.GestureRecognizers>
-										<TapGestureRecognizer Command="{Binding SelectCommand}" />
-									</Grid.GestureRecognizers>
-								</Grid>
-							</DataTemplate>
-						</BindableLayout.ItemTemplate>
+										<Grid.GestureRecognizers>
+											<TapGestureRecognizer Command="{Binding SelectCommand}" />
+										</Grid.GestureRecognizers>
+									</Grid>
+								</DataTemplate>
+							</BindableLayout.ItemTemplate>
+						</VerticalStackLayout>
 					</VerticalStackLayout>
-				</VerticalStackLayout>
-			</Border>
+				</Border>
+			</VerticalStackLayout>
 
 			<Label StyleClass="Section" Text="{localization:Tr Routing.SectionMore}" />
 
@@ -343,7 +351,7 @@
 									support:Dense.Padding="12,8"
 									ColumnDefinitions="*,Auto"
 									ColumnSpacing="12"
-									support:Dense.MinHeight="52">
+									support:Dense.MinHeight="{StaticResource HitRow}">
 
 									<VerticalStackLayout Spacing="1" VerticalOptions="Center">
 										<Label FontFamily="{DynamicResource FontSemibold}" Text="{Binding Title}" />

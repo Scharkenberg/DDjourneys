@@ -193,14 +193,13 @@ internal static class SchutzengelPlanTranslator
 
 
 		JourneyTransfer[] transfers =
-			journey.Transfers
+			[.. journey.Transfers
 				.Where(
 					transfer =>
 						transfer.PreviousLegIndex
 							== previousLegIndex
 						&& transfer.NextLegIndex
-							== nextLegIndex)
-				.ToArray();
+							== nextLegIndex)];
 
 
 		if (transfers.Length > 0)
@@ -285,8 +284,7 @@ internal static class SchutzengelPlanTranslator
 				fromValue,
 				toValue,
 				syntheticDuration,
-				Array.Empty<
-					(double Latitude, double Longitude)>()));
+				(List<(double Latitude, double Longitude)>)[]));
 	}
 
 
@@ -363,7 +361,7 @@ internal static class SchutzengelPlanTranslator
 			}
 
 
-			return result.ToArray();
+			return [.. result];
 		}
 
 
@@ -559,8 +557,7 @@ internal static class SchutzengelPlanTranslator
 
 	private static DateTimeOffset? GetTransferDepartureTime(
 		JourneyLeg leg) =>
-		leg.Stops
-			.LastOrDefault()
+		(leg.Stops.Count > 0 ? leg.Stops[^1] : null)
 			?.ScheduledDeparture
 			?? leg.ScheduledArrival
 			?? leg.EffectiveArrival;
@@ -568,8 +565,7 @@ internal static class SchutzengelPlanTranslator
 
 	private static DateTimeOffset? GetTransferArrivalTime(
 		JourneyLeg leg) =>
-		leg.Stops
-			.FirstOrDefault()
+		(leg.Stops.Count > 0 ? leg.Stops[0] : null)
 			?.ScheduledDeparture
 			?? leg.ScheduledDeparture
 			?? leg.EffectiveDeparture;

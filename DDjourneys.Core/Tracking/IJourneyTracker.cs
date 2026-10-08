@@ -33,8 +33,8 @@ public interface IJourneyTracker
 	/// </summary>
 	Task<WatchedJourney> FollowAsync(
 		Journey journey,
-		CancellationToken cancellationToken = default,
-		string? replacesPlanId = null);
+		string? replacesPlanId = null,
+		CancellationToken cancellationToken = default);
 
 	/// <summary>Reloads the watchlist from the provider.</summary>
 	Task RefreshAsync(CancellationToken cancellationToken = default);

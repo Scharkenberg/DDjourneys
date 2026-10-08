@@ -16,6 +16,7 @@ namespace DDjourneys.Core.Providers.Vvo;
 public sealed class VvoNetworkProvider :
 	IDepartureProvider,
 	INetworkInfoProvider,
+	IStopAreaProvider,
 	IProviderDescriptor
 {
 	private static readonly TimeSpan MaxZoneAge = TimeSpan.FromHours(24);
@@ -59,8 +60,8 @@ public sealed class VvoNetworkProvider :
 					IsArrival = query.IsArrival,
 					ModesOfTransport = ModesOf(query.Modes)
 				},
-				cancellationToken,
-				Timeout(query.TimeoutSeconds))
+				Timeout(query.TimeoutSeconds),
+				cancellationToken)
 				.ConfigureAwait(false);
 
 		return response is null
@@ -122,8 +123,8 @@ public sealed class VvoNetworkProvider :
 					departure.IsArrival,
 					token),
 				Matches,
-				cancellationToken,
-				Timeout(timeoutSeconds))
+				Timeout(timeoutSeconds),
+				cancellationToken)
 				.ConfigureAwait(false);
 
 		return response is null
@@ -142,7 +143,7 @@ public sealed class VvoNetworkProvider :
 				{
 					ShortTerm = shortTermOnly
 				},
-				cancellationToken)
+				cancellationToken: cancellationToken)
 				.ConfigureAwait(false);
 
 		return response is null
@@ -155,7 +156,7 @@ public sealed class VvoNetworkProvider :
 		CancellationToken cancellationToken = default)
 	{
 		VvoChangedLinesResponse? response =
-			await _apiClient.GetChangedLinesAsync(cancellationToken)
+			await _apiClient.GetChangedLinesAsync(cancellationToken: cancellationToken)
 				.ConfigureAwait(false);
 
 		return response is null
@@ -178,13 +179,22 @@ public sealed class VvoNetworkProvider :
 		}
 
 		VvoStopLinesResponse? response =
-			await _apiClient.GetStopLinesAsync(stop.Id, cancellationToken)
+			await _apiClient.GetStopLinesAsync(stop.Id, cancellationToken: cancellationToken)
 				.ConfigureAwait(false);
 
 		return response is null
 			? []
 			: VvoNetworkMapper.MapStopLines(response);
 	}
+
+	/// <inheritdoc />
+	public async Task<IReadOnlyList<NearbyStop>> GetStopsAroundAsync(
+		double latitude,
+		double longitude,
+		int radiusMeters,
+		int limit,
+		CancellationToken cancellationToken = default) =>
+		[.. (await GetNearbyStopsAsync(latitude, longitude, radiusMeters, cancellationToken).ConfigureAwait(false)).Take(limit)];
 
 	/// <inheritdoc />
 	public async Task<IReadOnlyList<NearbyStop>> GetNearbyStopsAsync(
@@ -217,7 +227,7 @@ public sealed class VvoNetworkProvider :
 					NorthEastLongitude = Metres(centre.Easting + radius),
 					PinTypes = ["Stop"]
 				},
-				cancellationToken)
+				cancellationToken: cancellationToken)
 				.ConfigureAwait(false);
 
 		if (response is null)
@@ -296,7 +306,7 @@ public sealed class VvoNetworkProvider :
 			}
 
 			VvoMapPolygonsResponse? response =
-				await _apiClient.GetTariffPolygonsAsync(cancellationToken)
+				await _apiClient.GetTariffPolygonsAsync(cancellationToken: cancellationToken)
 					.ConfigureAwait(false);
 
 			IReadOnlyList<ZonePolygon> zones =

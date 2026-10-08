@@ -25,7 +25,9 @@ public static class TriasProviderInfo
 			| ProviderCapabilities.Departures
 			| ProviderCapabilities.Fares
 			| ProviderCapabilities.RouteOptimisation
+			| ProviderCapabilities.PassengerFares
 			| ProviderCapabilities.LiveVehicles
 			| ProviderCapabilities.OpenData,
-			IsExperimental: true);
+			IsExperimental: true,
+			Center: new MapCenter("Dresden", 51.0504, 13.7373));
 }

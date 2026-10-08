@@ -164,6 +164,29 @@ public sealed class JourneyWindowTests
 		Assert.All(later.Journeys, journey => Assert.Null(journey.Context));
 	}
 
+	[Fact]
+	public async Task The_service_uses_native_continuation_for_a_provider_session()
+	{
+		var provider = new ContinuationTimetable();
+		var service = new JourneyService([provider]);
+		Journey shown = Timetable.BuildForTest(At(8, 0));
+		JourneyQuery query = Query(At(8, 0), JourneySearchMode.Departure, 3);
+
+		JourneyResult result = await service.PageAsync(query, [shown], previous: false, 3);
+
+		Assert.Equal(1, provider.ContinuationCalls);
+		Assert.Equal(0, provider.SearchCalls);
+		Assert.Equal(Minutes(8, 30, 3), Starts(result.Journeys));
+	}
+
+	[Fact]
+	public void Incomplete_journey_identity_is_stable()
+	{
+		Journey journey = Timetable.BuildForTest(null);
+
+		Assert.Equal(JourneyWindow.IdentityOf(journey), JourneyWindow.IdentityOf(journey));
+	}
+
 	// ----- Helpers -----
 
 	private static Task<IReadOnlyList<Journey>> Fill(
@@ -207,10 +230,10 @@ public sealed class JourneyWindowTests
 
 	/// <summary>Departure minutes of the day, every 10 minutes.</summary>
 	private static int[] Minutes(int hour, int minute, int count) =>
-		Enumerable.Range(0, count).Select(i => hour * 60 + minute + i * 10).ToArray();
+		[.. Enumerable.Range(0, count).Select(i => hour * 60 + minute + i * 10)];
 
 	private static int[] Starts(IEnumerable<Journey> journeys) =>
-		journeys.Select(journey => (int)(JourneyWindow.PlannedStart(journey)!.Value - Day).TotalMinutes).ToArray();
+		[.. journeys.Select(journey => (int)(JourneyWindow.PlannedStart(journey)!.Value - Day).TotalMinutes)];
 
 	/// <summary>
 	/// Line 1 every 10 minutes from 05:00 to 23:50, 20 minutes long. A search answers four journeys
@@ -240,17 +263,20 @@ public sealed class JourneyWindowTests
 
 			DateTimeOffset[] starts =
 				query.SearchMode == JourneySearchMode.Arrival && !ignoreTime
-					? all.Where(start => start + Ride <= time).TakeLast(answerSize).ToArray()
-					: all.Where(start => start >= time).Take(answerSize).ToArray();
+					? [.. all.Where(start => start + Ride <= time).TakeLast(answerSize)]
+					: [.. all.Where(start => start >= time).Take(answerSize)];
 
-			return Task.FromResult(JourneyResult.Success(starts.Select(Build).ToArray()));
+			return Task.FromResult(JourneyResult.Success([.. starts.Select(start => Build(start))]));
 		}
 
-		private static Journey Build(DateTimeOffset start)
+		public static Journey BuildForTest(DateTimeOffset? start) => Build(start);
+
+		private static Journey Build(DateTimeOffset? start)
 		{
 			var from = new Station { Id = "a", Name = "A" };
 			var to = new Station { Id = "b", Name = "B" };
 
+			DateTimeOffset time = start ?? Day.AddHours(8);
 			return new Journey
 			{
 				From = from,
@@ -264,10 +290,33 @@ public sealed class JourneyWindowTests
 						To = to,
 						Line = new TransitLine { Name = "1", Mode = TransitMode.Tram },
 						ScheduledDeparture = start,
-						ScheduledArrival = start + Ride
+						ScheduledArrival = start is { } ? time + Ride : null,
+						RealtimeDeparture = start is null ? time : null,
+						RealtimeArrival = start is null ? time + Ride : null
 					}
 				]
 			};
+		}
+	}
+
+	private sealed class ContinuationTimetable : IJourneyProvider, IJourneyContinuationProvider
+	{
+		public int SearchCalls { get; private set; }
+		public int ContinuationCalls { get; private set; }
+
+		public Task<JourneyResult> SearchAsync(JourneyQuery query, CancellationToken cancellationToken = default)
+		{
+			SearchCalls++;
+			return Task.FromResult(JourneyResult.Failure("unexpected_search"));
+		}
+
+		public Task<JourneyResult> GetPreviousAsync(JourneyQuery query, Journey currentJourney, int count = 5, CancellationToken cancellationToken = default) =>
+			Task.FromResult(JourneyResult.Success([]));
+
+		public Task<JourneyResult> GetNextAsync(JourneyQuery query, Journey currentJourney, int count = 5, CancellationToken cancellationToken = default)
+		{
+			ContinuationCalls++;
+			return Task.FromResult(JourneyResult.Success([.. Enumerable.Range(1, count).Select(i => Timetable.BuildForTest(At(8, 30).AddMinutes((i - 1) * 10)))]));
 		}
 	}
 }

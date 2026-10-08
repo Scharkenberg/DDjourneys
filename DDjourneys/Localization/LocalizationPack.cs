@@ -3,7 +3,7 @@ using System.Runtime.CompilerServices;
 
 namespace DDjourneys.Localization;
 
-public sealed class LocalizationPack : INotifyPropertyChanged
+public sealed partial class LocalizationPack : INotifyPropertyChanged
 {
 	private bool _isSelected;
 

@@ -2,8 +2,8 @@ using System.Collections.Concurrent;
 using System.Runtime.ExceptionServices;
 using System.Xml;
 using System.Xml.Linq;
-using DDjourneys.Core.Api;
 using DDjourneys.Core.Diagnostics;
+using DDjourneys.Core.Api;
 
 namespace DDjourneys.Core.Providers.Trias;
 
@@ -20,7 +20,7 @@ namespace DDjourneys.Core.Providers.Trias;
 public sealed class TriasClient
 {
 	private const string Endpoint =
-		"http://efa.vvo-online.de:8080/std3/trias";
+		InterfaceSchemas.TriasUrl;
 
 	private static readonly TimeSpan Reprobe = TimeSpan.FromMinutes(30);
 
@@ -73,7 +73,7 @@ public sealed class TriasClient
 			try
 			{
 				XDocument response =
-					await PostAsync(build(dialect), cancellationToken, timeout)
+					await PostAsync(build(dialect), timeout, cancellationToken)
 						.ConfigureAwait(false);
 
 				if (IsAccepted(response, out string? reason))
@@ -161,16 +161,16 @@ public sealed class TriasClient
 
 	private async Task<XDocument> PostAsync(
 		XDocument request,
-		CancellationToken cancellationToken,
-		TimeSpan? timeout)
+		TimeSpan? timeout,
+		CancellationToken cancellationToken)
 	{
 		string response =
 			await _apiClient
 				.PostXmlAsync(
 					Endpoint,
 					request.Declaration + Environment.NewLine + request.Root,
-					cancellationToken,
-					timeout)
+					timeout,
+					cancellationToken)
 				.ConfigureAwait(false);
 
 		try

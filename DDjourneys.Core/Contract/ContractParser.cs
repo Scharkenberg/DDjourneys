@@ -18,11 +18,18 @@ public static partial class ContractParser
 		new[]
 		{
 			"command", "v", "from", "from.stop", "from.lat", "from.lon", "to", "to.stop", "to.lat",
-			"to.lon", "time", "mode", "search", "plan", "ref", "x-success", "x-error"
+			"to.lon", "via", "via.stop", "via.lat", "via.lon", "at", "at.stop", "at.lat", "at.lon", "line",
+			"time", "mode", "search", "plan", "ref", "x-success", "x-error"
 		}.ToFrozenSet(StringComparer.Ordinal);
 
 	[GeneratedRegex("^[A-Za-z0-9_-]{1,24}:[A-Za-z0-9_.:-]{1,64}$")]
 	private static partial Regex StopKeyShape();
+
+	[GeneratedRegex(@"^[\p{L}\p{N}][\p{L}\p{N} ,;/.+-]{0,63}$")]
+	private static partial Regex LineShape();
+
+	[GeneratedRegex(@"^\d{1,4}([ ,;]+\d{1,4}){0,9}$")]
+	private static partial Regex NumbersShape();
 
 	[GeneratedRegex("^[\\x21-\\x7E]{1,64}$")]
 	private static partial Regex ReferenceShape();
@@ -235,20 +242,25 @@ public static partial class ContractParser
 	{
 		ContractPlace? from = null;
 		ContractPlace? to = null;
+		ContractPlace? via = null;
+		ContractPlace? at = null;
 		ContractTime? time = null;
 		JourneySearchMode? mode = null;
 		bool search = false;
 		string? planId = null;
+		string? line = null;
 
 		switch (command)
 		{
 			case ContractCommand.Plan:
 			case ContractCommand.Pick:
+			case ContractCommand.Go:
 				from = ReadPlace(bag, "from");
 				to = ReadPlace(bag, "to");
+				via = ReadPlace(bag, "via");
 				time = ReadTime(bag);
 				mode = ReadMode(bag);
-				search = command == ContractCommand.Pick || ReadFlag(bag, "search");
+				search = command != ContractCommand.Plan || ReadFlag(bag, "search");
 
 				if (from is null && to is null)
 				{
@@ -258,11 +270,23 @@ public static partial class ContractParser
 						"to");
 				}
 
+				// Searching without a start is not an error: the start is where the user starts (the app's setting).
+				// A pick still names both ends, since the caller asked for exactly that journey.
+				if (search && from is null && command != ContractCommand.Pick)
+				{
+					from = new ContractPlace(ContractKeywords.Start, null, null, null);
+				}
+
+				if (command == ContractCommand.Go && to is null)
+				{
+					throw new Refusal(ContractErrorCode.MissingParameter, "Give a destination.", "to");
+				}
+
 				if (search && (from is null || to is null))
 				{
 					throw new Refusal(
 						ContractErrorCode.MissingParameter,
-						"Searching needs both a start and a destination.",
+						"Searching needs a destination (and, for a pick, a start).",
 						from is null ? "from" : "to");
 				}
 
@@ -279,6 +303,26 @@ public static partial class ContractParser
 			case ContractCommand.Tracked:
 				planId = Text(bag, "plan", ContractLimits.MaxValueLength);
 				break;
+
+			case ContractCommand.Departures:
+				// No place: where the device is.
+				at = ReadPlace(bag, "at") ?? new ContractPlace(ContractKeywords.Here, null, null, null);
+				time = ReadTime(bag);
+				mode = ReadMode(bag);
+				break;
+
+			case ContractCommand.Map:
+				at = ReadPlace(bag, "at");
+				break;
+
+			case ContractCommand.Disruptions:
+				line = ReadLine(bag, numbersOnly: false);
+				break;
+
+			case ContractCommand.Live:
+				line = ReadLine(bag, numbersOnly: true)
+					?? throw new Refusal(ContractErrorCode.MissingParameter, "Give the line(s) to follow.", "line");
+				break;
 		}
 
 		return new ContractRequest
@@ -287,6 +331,9 @@ public static partial class ContractParser
 			Version = version,
 			From = from,
 			To = to,
+			Via = via,
+			At = at,
+			Line = line,
 			Time = time,
 			Mode = mode,
 			Search = search,
@@ -389,7 +436,16 @@ public static partial class ContractParser
 			stop = stop[..colon].ToLowerInvariant() + stop[colon..];
 		}
 
-		ContractPlace place = new(name, stop, lat, lon);
+		if (ContractKeywords.IsKeyword(name)
+			&& !ContractKeywords.IsKnown(name))
+		{
+			throw new Refusal(
+				ContractErrorCode.InvalidParameter,
+				$"'{prefix}' may be a name or one of {ContractKeywords.Here}, {ContractKeywords.Home}, {ContractKeywords.Start}.",
+				prefix);
+		}
+
+		ContractPlace place = new(ContractKeywords.IsKeyword(name) ? name!.ToLowerInvariant() : name, stop, lat, lon);
 
 		return place.IsEmpty ? null : place;
 	}
@@ -400,7 +456,7 @@ public static partial class ContractParser
 
 		if (text is null)
 		{
-			return null;
+			return new ContractTime(true, null, null);
 		}
 
 		if (text.Equals("now", StringComparison.OrdinalIgnoreCase))
@@ -515,6 +571,30 @@ public static partial class ContractParser
 		}
 
 		return value;
+	}
+
+	/// <summary>Line names ("3", "S1", "3, 11"); with <paramref name="numbersOnly"/> only numbers (the live positions know no others).</summary>
+	private static string? ReadLine(Dictionary<string, string> bag, bool numbersOnly)
+	{
+		string? text = Text(bag, "line", ContractLimits.MaxValueLength);
+
+		if (text is null)
+		{
+			return null;
+		}
+
+		if (!LineShape().IsMatch(text)
+			|| (numbersOnly && !NumbersShape().IsMatch(text)))
+		{
+			throw new Refusal(
+				ContractErrorCode.InvalidParameter,
+				numbersOnly
+					? "'line' must be one or more line numbers, for example '3' or '3,11'."
+					: "'line' must be one or more line names, for example '3', 'S1' or '3,11'.",
+				"line");
+		}
+
+		return text;
 	}
 
 	private static string Fingerprint(ContractCommand command, Dictionary<string, string> bag)

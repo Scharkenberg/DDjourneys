@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
 using DDjourneys.Core.Diagnostics;
 using DDjourneys.Core.Mapping;
+using Microsoft.Maui.Platform;
 
 namespace DDjourneys.Support;
 
@@ -39,6 +40,38 @@ public static class WebBridge
 		catch (Exception ex)
 		{
 			DiagnosticLog.Write($"[{log}] '{command}' failed: {ex.Message}");
+		}
+	}
+
+	/// <summary>
+	/// Paints the frame of the web view in the theme background, on the control and on the native web view, so the
+	/// page never shows its own white (or the previous theme) before or around its content.
+	/// </summary>
+	public static void PaintBackground(HybridWebView web)
+	{
+		ArgumentNullException.ThrowIfNull(web);
+
+		try
+		{
+			Color background = Theme.ColorOf("Bg", Colors.White);
+
+			web.BackgroundColor = background;
+
+#if ANDROID
+			if (web.Handler?.PlatformView is Android.Webkit.WebView native)
+			{
+				native.SetBackgroundColor(background.ToPlatform());
+			}
+#elif WINDOWS
+			if (web.Handler?.PlatformView is Microsoft.UI.Xaml.Controls.WebView2 native)
+			{
+				native.DefaultBackgroundColor = background.ToWindowsColor();
+			}
+#endif
+		}
+		catch (Exception ex)
+		{
+			DiagnosticLog.Write($"[Web] background not painted: {ex.Message}");
 		}
 	}
 

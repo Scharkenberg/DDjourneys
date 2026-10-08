@@ -33,7 +33,7 @@ public sealed class JourneyLeg
 	/// Usually contains intermediate stops for public transport.
 	/// </summary>
 	public IReadOnlyList<StopTime> Stops { get; init; }
-		= Array.Empty<StopTime>();
+		= [];
 
 	/// <summary>
 	/// Geometry of this movement segment in WGS84 coordinates.
@@ -113,7 +113,7 @@ public sealed class JourneyLeg
 	/// "replacement bus service"
 	/// </summary>
 	public IReadOnlyList<string> Notices { get; init; }
-		= Array.Empty<string>();
+		= [];
 
 
 	/// <summary>

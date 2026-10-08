@@ -9,12 +9,12 @@ namespace DDjourneys.Core.Diagnostics;
 /// </summary>
 public static class DiagnosticLog
 {
-	public const long MaxBytes = 512 * 1024;
+	public const long MaxBytes = 1024 * 1024;
 
 	/// <summary>Longest slice of an API body that is logged.</summary>
 	public const int MaxBodyChars = 2000;
 
-	private static readonly object Gate = new();
+	private static readonly Lock Gate = new();
 
 	/// <summary>Full path of the log file; null: nothing is written.</summary>
 	public static string? FilePath { get; set; }
@@ -33,18 +33,60 @@ public static class DiagnosticLog
 			{
 				LastError = null;
 				Write("[Log] started");
+				WriteStartInfo();
 			}
 		}
 	}
 
 	private static bool _enabled;
 
+	/// <summary>
+	/// Lines that start every log: build and interface versions (<see cref="InterfaceSchemas"/>), set by the app so a bug
+	/// report names what it was made with. Not part of the log while logging is off.
+	/// </summary>
+	public static Func<string>? StartInfo { get; set; }
+
+	private static void WriteStartInfo()
+	{
+		try
+		{
+			foreach (string line in (StartInfo?.Invoke() ?? string.Empty).Split('\n', StringSplitOptions.RemoveEmptyEntries))
+			{
+				Write("[Info] " + line.TrimEnd());
+			}
+		}
+		catch (Exception ex)
+		{
+			Write($"[Info] unavailable: {ex.Message}");
+		}
+	}
+
 	/// <summary>Why the last write failed (null: it did not); shown next to the log path so a failure is not silent.</summary>
 	public static string? LastError { get; private set; }
 
+	/// <summary>
+	/// A second place every line goes to while logging is on (the app sends it to the system log under the tag
+	/// <c>DDjourneys</c>, so <c>adb logcat -s DDjourneys</c> shows only this app's lines). Never throws.
+	/// </summary>
+	public static Action<string>? Sink { get; set; }
+
 	public static void Write(string message)
 	{
-		if (!Enabled || FilePath is not { Length: > 0 } path)
+		if (!Enabled)
+		{
+			return;
+		}
+
+		try
+		{
+			Sink?.Invoke(message);
+		}
+		catch (Exception)
+		{
+			// A sink that fails must not stop the file.
+		}
+
+		if (FilePath is not { Length: > 0 } path)
 		{
 			return;
 		}

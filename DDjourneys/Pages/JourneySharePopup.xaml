@@ -1,0 +1,273 @@
+<ContentView
+	x:Class="DDjourneys.Pages.JourneySharePopup"
+	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+	xmlns:controls="clr-namespace:DDjourneys.Controls"
+	xmlns:localization="clr-namespace:DDjourneys.Localization"
+	xmlns:support="clr-namespace:DDjourneys.Support"
+	BackgroundColor="Transparent">
+
+	<!--
+		A sheet in the app's own terms: the card pattern (rows with dividers, as on the settings page), the sheet radius,
+		density-scaled rows and paddings. The card is translucent where a window material is on, so it sits on a solid
+		layer of the page colour (SheetBase, set in code) instead of on the dimmed page behind the popup.
+	-->
+	<Grid
+		Padding="16"
+		HorizontalOptions="Fill"
+		VerticalOptions="Fill">
+
+		<Border
+			x:Name="SheetBase"
+			HorizontalOptions="Center"
+			MaximumWidthRequest="480"
+			Padding="0"
+			StrokeThickness="0"
+			VerticalOptions="Center">
+
+			<Border.StrokeShape>
+				<RoundRectangle CornerRadius="{StaticResource CornerSheet}" />
+			</Border.StrokeShape>
+
+			<Border
+				Padding="0"
+				StyleClass="Card">
+
+				<Border.StrokeShape>
+					<RoundRectangle CornerRadius="{StaticResource CornerSheet}" />
+				</Border.StrokeShape>
+
+				<VerticalStackLayout>
+
+					<!-- Header -->
+					<Grid
+						support:Dense.Padding="12,12"
+						ColumnDefinitions="Auto,*"
+						ColumnSpacing="{StaticResource SpaceM}">
+
+						<Border
+							support:Dense.MinHeight="{StaticResource HitIcon}"
+							support:Dense.MinWidth="{StaticResource HitIcon}"
+							BackgroundColor="{DynamicResource AccentSoft}"
+							StrokeThickness="0"
+							VerticalOptions="Center">
+
+							<Border.StrokeShape>
+								<RoundRectangle CornerRadius="{StaticResource CornerControl}" />
+							</Border.StrokeShape>
+
+							<controls:Icon
+								Glyph="Share"
+								HorizontalOptions="Center"
+								Size="22"
+								VerticalOptions="Center"
+								Color="{DynamicResource Accent}" />
+						</Border>
+
+						<VerticalStackLayout
+							Grid.Column="1"
+							Spacing="2"
+							VerticalOptions="Center">
+
+							<Label
+								StyleClass="Subtitle"
+								Text="{localization:Tr Journey.ShareTitle}" />
+
+							<Label
+								StyleClass="Caption"
+								Text="{localization:Tr Journey.ShareSubtitle}" />
+						</VerticalStackLayout>
+					</Grid>
+
+					<BoxView StyleClass="Divider" />
+
+				<Grid
+					support:Dense.MinHeight="{StaticResource HitRow}"
+					support:Dense.Padding="12,8"
+					support:Motion.Feedback="True"
+					ColumnDefinitions="Auto,*,Auto"
+					ColumnSpacing="{StaticResource SpaceM}"
+					SemanticProperties.Description="{localization:Tr Journey.ShareAsText}">
+
+					<Border
+						support:Dense.MinHeight="{StaticResource HitIconTight}"
+						support:Dense.MinWidth="{StaticResource HitIconTight}"
+						BackgroundColor="{DynamicResource Raised}"
+						StrokeThickness="0"
+						VerticalOptions="Center">
+
+						<Border.StrokeShape>
+							<RoundRectangle CornerRadius="{StaticResource CornerControl}" />
+						</Border.StrokeShape>
+
+						<controls:Icon
+							Glyph="Document"
+							HorizontalOptions="Center"
+							Size="20"
+							VerticalOptions="Center"
+							Color="{DynamicResource Accent}" />
+					</Border>
+
+					<VerticalStackLayout
+						Grid.Column="1"
+						Spacing="1"
+						VerticalOptions="Center">
+
+						<Label
+							FontFamily="{DynamicResource FontSemibold}"
+							Text="{localization:Tr Journey.ShareAsText}" />
+
+						<Label
+							StyleClass="Caption"
+							Text="{localization:Tr Journey.ShareTextDescription}" />
+					</VerticalStackLayout>
+
+					<controls:Icon
+						Grid.Column="2"
+						Glyph="ChevronRight"
+						Size="20"
+						VerticalOptions="Center"
+						Color="{DynamicResource InkMuted}" />
+
+					<Grid.GestureRecognizers>
+						<TapGestureRecognizer Tapped="TextTapped" />
+					</Grid.GestureRecognizers>
+				</Grid>
+
+					<BoxView StyleClass="Divider" />
+
+				<Grid
+					support:Dense.MinHeight="{StaticResource HitRow}"
+					support:Dense.Padding="12,8"
+					support:Motion.Feedback="True"
+					ColumnDefinitions="Auto,*,Auto"
+					ColumnSpacing="{StaticResource SpaceM}"
+					SemanticProperties.Description="{localization:Tr Journey.ShareAsImage}">
+
+					<Border
+						support:Dense.MinHeight="{StaticResource HitIconTight}"
+						support:Dense.MinWidth="{StaticResource HitIconTight}"
+						BackgroundColor="{DynamicResource Raised}"
+						StrokeThickness="0"
+						VerticalOptions="Center">
+
+						<Border.StrokeShape>
+							<RoundRectangle CornerRadius="{StaticResource CornerControl}" />
+						</Border.StrokeShape>
+
+						<controls:Icon
+							Glyph="Image"
+							HorizontalOptions="Center"
+							Size="20"
+							VerticalOptions="Center"
+							Color="{DynamicResource Accent}" />
+					</Border>
+
+					<VerticalStackLayout
+						Grid.Column="1"
+						Spacing="1"
+						VerticalOptions="Center">
+
+						<Label
+							FontFamily="{DynamicResource FontSemibold}"
+							Text="{localization:Tr Journey.ShareAsImage}" />
+
+						<Label
+							StyleClass="Caption"
+							Text="{localization:Tr Journey.ShareImageDescription}" />
+					</VerticalStackLayout>
+
+					<controls:Icon
+						Grid.Column="2"
+						Glyph="ChevronRight"
+						Size="20"
+						VerticalOptions="Center"
+						Color="{DynamicResource InkMuted}" />
+
+					<Grid.GestureRecognizers>
+						<TapGestureRecognizer Tapped="ImageTapped" />
+					</Grid.GestureRecognizers>
+				</Grid>
+
+					<BoxView StyleClass="Divider" />
+
+				<Grid
+					support:Dense.MinHeight="{StaticResource HitRow}"
+					support:Dense.Padding="12,8"
+					support:Motion.Feedback="True"
+					ColumnDefinitions="Auto,*,Auto"
+					ColumnSpacing="{StaticResource SpaceM}"
+					SemanticProperties.Description="{localization:Tr Journey.ShareAsCalendar}">
+
+					<Border
+						support:Dense.MinHeight="{StaticResource HitIconTight}"
+						support:Dense.MinWidth="{StaticResource HitIconTight}"
+						BackgroundColor="{DynamicResource Raised}"
+						StrokeThickness="0"
+						VerticalOptions="Center">
+
+						<Border.StrokeShape>
+							<RoundRectangle CornerRadius="{StaticResource CornerControl}" />
+						</Border.StrokeShape>
+
+						<controls:Icon
+							Glyph="Calendar"
+							HorizontalOptions="Center"
+							Size="20"
+							VerticalOptions="Center"
+							Color="{DynamicResource Accent}" />
+					</Border>
+
+					<VerticalStackLayout
+						Grid.Column="1"
+						Spacing="1"
+						VerticalOptions="Center">
+
+						<Label
+							FontFamily="{DynamicResource FontSemibold}"
+							Text="{localization:Tr Journey.ShareAsCalendar}" />
+
+						<Label
+							StyleClass="Caption"
+							Text="{localization:Tr Journey.ShareCalendarDescription}" />
+					</VerticalStackLayout>
+
+					<controls:Icon
+						Grid.Column="2"
+						Glyph="ChevronRight"
+						Size="20"
+						VerticalOptions="Center"
+						Color="{DynamicResource InkMuted}" />
+
+					<Grid.GestureRecognizers>
+						<TapGestureRecognizer Tapped="CalendarTapped" />
+					</Grid.GestureRecognizers>
+				</Grid>
+
+					<BoxView StyleClass="Divider" />
+
+					<!-- Footer -->
+					<Grid
+						support:Dense.Padding="12,8"
+						ColumnDefinitions="*,Auto"
+						ColumnSpacing="{StaticResource SpaceM}">
+
+						<Label
+							LineBreakMode="WordWrap"
+							StyleClass="Caption"
+							Text="{localization:Tr Journey.ShareChooseFormat}"
+							VerticalOptions="Center" />
+
+						<Button
+							Grid.Column="1"
+							support:Dense.MinHeight="{StaticResource HitButton}"
+							Clicked="CancelClicked"
+							StyleClass="Tonal"
+							Text="{localization:Tr Common.Cancel}"
+							VerticalOptions="Center" />
+					</Grid>
+				</VerticalStackLayout>
+			</Border>
+		</Border>
+	</Grid>
+</ContentView>

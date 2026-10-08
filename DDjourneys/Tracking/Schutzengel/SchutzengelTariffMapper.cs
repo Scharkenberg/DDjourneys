@@ -10,7 +10,7 @@ namespace DDjourneys.Tracking.Schutzengel;
 /// <summary>
 /// Price and fare-zone fields of the raw data.
 /// </summary>
-internal static class SchutzengelTariffMapper
+internal static partial class SchutzengelTariffMapper
 {
 	internal static int ParsePrice(
 		string? price)
@@ -57,11 +57,7 @@ internal static class SchutzengelTariffMapper
 
 		string First(int index) =>
 			index < parts.Length
-				? Regex.Replace(
-					parts[index],
-					@"TZ\s|\(\d+\)",
-					string.Empty)
-					.Trim()
+				? ZoneNoiseRx().Replace(parts[index], string.Empty).Trim()
 				: string.Empty;
 
 
@@ -71,4 +67,7 @@ internal static class SchutzengelTariffMapper
 			First(1)
 		];
 	}
+
+	[GeneratedRegex(@"TZ\s|\(\d+\)")]
+	private static partial Regex ZoneNoiseRx();
 }

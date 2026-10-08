@@ -73,6 +73,25 @@
 		<Setter Property="Padding" Value="{DynamicResource PadCard}" />
 		<Setter Property="support:Motion.Enter" Value="Rise" />
 		<Setter Property="support:Motion.OnShow" Value="True" />
+		<Setter Property="support:PointerLight.Enabled" Value="True" />
+	</Style>
+	<Style TargetType="Grid">
+		<Setter Property="support:PointerLight.Enabled" Value="True" />
+	</Style>
+	<Style TargetType="ContentView">
+		<Setter Property="support:PointerLight.Enabled" Value="True" />
+	</Style>
+	<Style TargetType="VerticalStackLayout">
+		<Setter Property="support:PointerLight.Enabled" Value="True" />
+	</Style>
+	<Style TargetType="HorizontalStackLayout">
+		<Setter Property="support:PointerLight.Enabled" Value="True" />
+	</Style>
+	<Style TargetType="FlexLayout">
+		<Setter Property="support:PointerLight.Enabled" Value="True" />
+	</Style>
+	<Style TargetType="StackLayout">
+		<Setter Property="support:PointerLight.Enabled" Value="True" />
 	</Style>
 	<Style Class="Chip" TargetType="Border">
 		<Setter Property="BackgroundColor" Value="{DynamicResource Raised}" />
@@ -93,8 +112,10 @@
 	</Style>
 
 	<!--  Buttons. Default filled; class Tonal for secondary actions.  -->
-	<!--  Colours go through support:Themed (local dynamic resources); see Themed.cs for why
-	      DynamicResource setters must not be used in VisualStates or Triggers here.  -->
+	<!--
+		Colours go through support:Themed (local dynamic resources); see Themed.cs for why
+		DynamicResource setters must not be used in VisualStates or Triggers here.
+	-->
 	<Style TargetType="Button">
 		<Setter Property="support:Themed.Background" Value="Accent" />
 		<Setter Property="support:Themed.Text" Value="OnAccent" />
@@ -105,7 +126,7 @@
 		<Setter Property="CornerRadius" Value="6" />
 		<Setter Property="BorderWidth" Value="0" />
 		<Setter Property="BorderColor" Value="Transparent" />
-		<Setter Property="support:Dense.MinHeight" Value="48" />
+		<Setter Property="support:Dense.MinHeight" Value="{StaticResource HitPrimary}" />
 		<Setter Property="Padding" Value="16,0" />
 		<Setter Property="support:Motion.Enter" Value="Zoom" />
 		<Setter Property="support:Motion.OnShow" Value="True" />
@@ -113,6 +134,12 @@
 			<VisualStateGroupList>
 				<VisualStateGroup x:Name="CommonStates">
 					<VisualState x:Name="Normal" />
+					<!--  Mouse hover: slightly lighter (opacity only; colours stay with Themed, nothing moves)  -->
+					<VisualState x:Name="PointerOver">
+						<VisualState.Setters>
+							<Setter Property="Opacity" Value="0.86" />
+						</VisualState.Setters>
+					</VisualState>
 					<VisualState x:Name="Pressed">
 						<VisualState.Setters>
 							<Setter Property="Scale" Value="0.97" />
@@ -131,12 +158,17 @@
 		<Setter Property="support:Themed.DisabledText" Value="InkMuted" />
 		<Setter Property="FontSize" Value="22" />
 		<Setter Property="Padding" Value="0" />
-		<Setter Property="support:Dense.MinHeight" Value="44" />
-		<Setter Property="support:Dense.MinWidth" Value="44" />
+		<Setter Property="support:Dense.MinHeight" Value="{StaticResource HitIcon}" />
+		<Setter Property="support:Dense.MinWidth" Value="{StaticResource HitIcon}" />
 		<Setter Property="VisualStateManager.VisualStateGroups">
 			<VisualStateGroupList>
 				<VisualStateGroup x:Name="CommonStates">
 					<VisualState x:Name="Normal" />
+					<VisualState x:Name="PointerOver">
+						<VisualState.Setters>
+							<Setter Property="Opacity" Value="0.7" />
+						</VisualState.Setters>
+					</VisualState>
 					<VisualState x:Name="Pressed">
 						<VisualState.Setters>
 							<Setter Property="Scale" Value="0.94" />

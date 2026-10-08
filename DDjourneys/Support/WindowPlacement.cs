@@ -9,11 +9,11 @@ namespace DDjourneys.Support;
 /// </summary>
 public static class WindowPlacement
 {
-	public const double MinWidth = 400;
-	public const double MinHeight = 600;
+	public const double MinWidth = 460;
+	public const double MinHeight = 460;
 
-	private const double DefaultWidth = 480;
-	private const double DefaultHeight = 860;
+	private const double DefaultWidth = 500;
+	private const double DefaultHeight = 800;
 	private const string Key = "windowPlacement";
 
 	public static void Attach(Window window)
@@ -58,6 +58,19 @@ public static class WindowPlacement
 		timer.Tick += (_, _) => Save(window);
 
 		return timer;
+	}
+
+	/// <summary>Forgets the saved size and position (the next window opens at its default).</summary>
+	internal static void Forget()
+	{
+		try
+		{
+			Preferences.Default.Remove(Key);
+		}
+		catch (Exception ex)
+		{
+			DiagnosticLog.Write($"Window placement not forgotten: {ex.Message}");
+		}
 	}
 
 	private static void Restore(Window window)

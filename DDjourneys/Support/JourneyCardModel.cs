@@ -33,7 +33,7 @@ public static class ModeColors
 }
 
 /// <summary>Display-ready view of a Journey for the results list.</summary>
-public sealed class JourneyCardModel : ObservableObject
+public sealed partial class JourneyCardModel : ObservableObject
 {
 	private readonly LocalizationService _localization;
 
@@ -110,6 +110,7 @@ public sealed class JourneyCardModel : ObservableObject
 
 		_hasNotices = notices > 0;
 		HasNotices = _hasNotices;
+		NoticeCount = notices;
 
 		RebuildLocalizedValues(notices);
 	}
@@ -177,8 +178,16 @@ public sealed class JourneyCardModel : ObservableObject
 
 	public string NoticesText => _noticesText;
 	public bool HasNotices { get; }
+
+	/// <summary>How many notices the journey carries; the card shows it as a small badge, not as a line of its own.</summary>
+	public int NoticeCount { get; }
+
+	/// <summary>The line under the legs: only "on time" is worth a line; notices are a badge.</summary>
 	public bool HasStatusRow =>
-		IsOnTime || HasNotices;
+		IsOnTime;
+
+	/// <summary>The icons next to the map icon (journey page); null on the cards of the result list.</summary>
+	public JourneyActions? Actions { get; init; }
 
 	public string AccessibilityText =>
 		_accessibilityText;

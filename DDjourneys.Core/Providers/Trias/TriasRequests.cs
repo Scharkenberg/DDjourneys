@@ -133,6 +133,33 @@ internal static class TriasRequests
 				Restrictions(kinds, limit, dialect)),
 			dialect);
 
+	/// <summary>The stops inside a circle (the area a map shows): the location request with a geo restriction.</summary>
+	public static XDocument LocationByArea(double latitude, double longitude, int radiusMeters, int limit, TriasDialect dialect) =>
+		Envelope(
+			new XElement(
+				T + "LocationInformationRequest",
+				new XElement(
+					T + "InitialInput",
+					new XElement(
+						T + "GeoRestriction",
+						new XElement(
+							T + "Circle",
+							new XElement(T + "Center", Position(latitude, longitude).Elements()),
+							new XElement(T + "Radius", radiusMeters.ToString(CultureInfo.InvariantCulture))))),
+				Restrictions(PlaceKinds.Stops, limit, dialect)),
+			dialect);
+
+	/// <summary>One stop by its reference: TRIAS calls carry no coordinates, this is how a stop gets its position.</summary>
+	public static XDocument LocationByRef(string id, TriasDialect dialect) =>
+		Envelope(
+			new XElement(
+				T + "LocationInformationRequest",
+				new XElement(
+					T + "LocationRef",
+					new XElement(T + (IsStopPlace(id) ? "StopPlaceRef" : "StopPointRef"), id)),
+				Restrictions(PlaceKinds.Stops, 1, dialect)),
+			dialect);
+
 	private static XElement Restrictions(PlaceKinds kinds, int limit, TriasDialect dialect)
 	{
 		var restrictions = new XElement(T + "Restrictions");

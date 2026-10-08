@@ -21,7 +21,11 @@ public static class Routes
 	public const string FocusPlan = "FocusPlan";
 	public const string Expert = "expert";
 	public const string Routing = "routing";
+
+	/// <summary>The settings page for starting the app in input mode.</summary>
+	public const string StartSettings = "startsettings";
 	public const string Providers = "providers";
+	public const string About = "about";
 	public const string Departures = "departures";
 	public const string Run = "run";
 	public const string Disruptions = "disruptions";
@@ -33,8 +37,25 @@ public static class Routes
 	public const string MapScene = "MapScene";
 	public const string MapTitle = "MapTitle";
 
+	/// <summary>
+	/// Query key: how the map page is used. <see cref="MapModePick"/> answers with a place like the place search
+	/// (<see cref="SelectedPlace"/>, <see cref="TargetIsFrom"/>, <see cref="Target"/>); without a scene the map explores the stops around.
+	/// </summary>
+	public const string MapMode = "MapMode";
+	public const string MapModePick = "pick";
+
+	/// <summary>Query key: a <c>Location</c> the map opens centred on (instead of the device, the last stop, the provider's city).</summary>
+	public const string MapAt = "MapAt";
+
+	/// <summary>Query keys of the departures page: show arrivals (bool) and the time (DateTime, provider time).</summary>
+	public const string BoardArrivals = "BoardArrivals";
+	public const string BoardTime = "BoardTime";
+
 	/// <summary>Query key: a <c>TrackTarget</c>, the one run the live vehicles page follows.</summary>
 	public const string Track = "Track";
+
+	/// <summary>Query key: a list of <c>TrackTarget</c>, the runs of a followed journey the live vehicles page follows together.</summary>
+	public const string TrackSet = "TrackSet";
 
 	/// <summary>Query key: line number(s) the live vehicles page opens with.</summary>
 	public const string Line = "Line";
@@ -46,6 +67,12 @@ public static class Routes
 	public const string Target = "Target";
 	public const string TargetVia = "via";
 	public const string TargetDepartures = "departures";
+
+	/// <summary>The place search is for the default start of the input mode (any stop, address or point of interest).</summary>
+	public const string TargetStart = "start";
+
+	/// <summary>The place search is for the home place (any stop, address or point of interest; not added to the recents).</summary>
+	public const string TargetHome = "home";
 
 	/// <summary>Query key: a stop (Location) the page is opened for.</summary>
 	public const string Stop = "Stop";

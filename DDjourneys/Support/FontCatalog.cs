@@ -11,11 +11,11 @@ public static class FontCatalog
 	public const string OpenSansId = "opensans";
 	public const string InterTightId = "intertight";
 
-	public static IReadOnlyList<string> Ids { get; } = new List<string> { SystemId, OpenSansId, InterTightId };
+	public static IReadOnlyList<string> Ids { get; } = (string[])[SystemId, OpenSansId, InterTightId];
 
 	public static string Normalize(string? id) =>
 		Ids.FirstOrDefault(i => string.Equals(i, id, StringComparison.OrdinalIgnoreCase))
-		?? OpenSansId;
+		?? SystemId;
 
 	/// <summary>FontFamily values for body text and emphasised text.</summary>
 	public static (string Regular, string Semibold) Families(string? id) =>
@@ -30,6 +30,7 @@ public static class FontCatalog
 #else
 				(string.Empty, string.Empty),
 #endif
-			_ => ("OpenSansRegular", "OpenSansSemibold")
+			OpenSansId => ("OpenSansRegular", "OpenSansSemibold"),
+			_ => Families(SystemId)
 		};
 }

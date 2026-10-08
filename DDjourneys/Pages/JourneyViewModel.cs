@@ -14,7 +14,7 @@ using Microsoft.Maui.ApplicationModel.DataTransfer;
 
 namespace DDjourneys.Pages;
 
-public sealed class JourneyViewModel :
+public sealed partial class JourneyViewModel :
 	DisposableViewModel,
 	IQueryAttributable
 {
@@ -35,6 +35,8 @@ public sealed class JourneyViewModel :
 
 	private readonly ProviderRegistry _providers;
 
+	private readonly LegRunResolver _runs;
+
 
 	/// <summary>Saves (and removes) the connection this journey belongs to; empty when it was opened without a search.</summary>
 	public RouteBookmark Bookmark { get; }
@@ -45,9 +47,12 @@ public sealed class JourneyViewModel :
 		ProviderRegistry providers,
 		ContractSession contract,
 		JourneyService journeys,
-		PlaceStore places)
+		PlaceStore places,
+		LegRunResolver runs)
 	{
 		ArgumentNullException.ThrowIfNull(places);
+
+		_runs = runs ?? throw new ArgumentNullException(nameof(runs));
 
 		Bookmark =
 			new RouteBookmark(
@@ -119,6 +124,16 @@ public sealed class JourneyViewModel :
 			new AsyncCommand(
 				OpenMapAsync);
 
+		Actions =
+			new JourneyActions
+			{
+				PdfCommand = OpenDocumentCommand,
+				HandOffCommand = HandOffCommand,
+				FollowCommand = new AsyncCommand(ToggleFollowAsync, null, ShowTrackingError),
+				PauseCommand = new AsyncCommand(TogglePauseAsync, null, ShowTrackingError),
+				NoticesCommand = new Command(() => ScrollToNotices?.Invoke())
+			};
+
 		Subscribe(
 			() => _contract.Changed += OnContractChanged,
 			() => _contract.Changed -= OnContractChanged);
@@ -131,7 +146,7 @@ public sealed class JourneyViewModel :
 	/// </summary>
 	public string? LoadError
 	{
-		get => field;
+		get;
 
 		private set
 		{
@@ -186,11 +201,54 @@ public sealed class JourneyViewModel :
 	/// <summary>Opens the printable version of the journey (tr/trippdf).</summary>
 	public AsyncCommand OpenDocumentCommand { get; }
 
-	/// <summary>The provider can swap a single ride and this journey carries what it needs.</summary>
+	/// <summary>
+	/// A single ride can be swapped for the previous or next one: by the provider's own continuation when it has one,
+	/// otherwise by searching again (every provider), so the buttons are there for every journey with a ride.
+	/// </summary>
 	public bool HasLegAlternatives =>
 		_query is not null
-		&& _journey is { Context.Length: > 0 }
-		&& _providers.Supports(ProviderCapabilities.JourneyExtras);
+		&& _journey is { } journey
+		&& journey.Legs.Any(leg => leg.IsRide);
+
+	/// <summary>The journey's actions as icons for its overview card.</summary>
+	public JourneyActions Actions { get; }
+
+	/// <summary>Set by the page: brings the notices into view (the badge in the card).</summary>
+	public Action? ScrollToNotices { get; set; }
+
+	/// <summary>Following failed or is unavailable: the message stands alone (a followed journey shows it in its strip).</summary>
+	public bool ShowTrackingProblem =>
+		!IsFollowed && !string.IsNullOrWhiteSpace(TrackingStatus);
+
+	private void RefreshActions()
+	{
+		JourneyStrings journey = _localization.CurrentStrings.Journey;
+		TrackingStrings tracking = _localization.CurrentStrings.Tracking;
+
+		Actions.HasPdf = HasDocument;
+		Actions.HasHandOff = IsHandOffAvailable;
+		Actions.CanFollow = IsTrackingAvailable;
+		Actions.IsFollowed = IsFollowed;
+		Actions.CanPause = CanPause;
+		Actions.IsPaused = IsPaused;
+
+		Actions.PdfDescription = journey.OpenPdf;
+		Actions.HandOffDescription = journey.HandOff;
+		Actions.FollowDescription = IsFollowed ? tracking.StopFollowing : journey.FollowJourney;
+		Actions.PauseDescription = IsPaused ? tracking.Resume : journey.DeactivateTracking;
+
+		Actions.Touch();
+	}
+
+	private Task ToggleFollowAsync() =>
+		IsFollowed
+			? StopFollowingAsync()
+			: FollowJourneyAsync();
+
+	private Task TogglePauseAsync() =>
+		IsPaused || CanPause
+			? SetPausedAsync(!IsPaused)
+			: Task.CompletedTask;
 
 	public bool HasDocument =>
 		_query is not null
@@ -201,7 +259,7 @@ public sealed class JourneyViewModel :
 	/// <summary>Result of the last alternative lookup ("shown", "none found"); empty otherwise.</summary>
 	public string AlternativeStatus
 	{
-		get => field;
+		get;
 
 		private set
 		{
@@ -223,7 +281,7 @@ public sealed class JourneyViewModel :
 	/// <summary>Why the hand-over failed; empty otherwise.</summary>
 	public string HandOffStatus
 	{
-		get => field;
+		get;
 
 		private set
 		{
@@ -250,6 +308,8 @@ public sealed class JourneyViewModel :
 				{
 					OnPropertyChanged(
 						nameof(IsHandOffAvailable));
+
+					RefreshActions();
 				}
 			});
 
@@ -276,6 +336,8 @@ public sealed class JourneyViewModel :
 
 		OnPropertyChanged(
 			nameof(IsHandOffAvailable));
+
+		RefreshActions();
 	}
 
 	public bool ExpertViewEnabled => _settings.ExpertView;
@@ -295,8 +357,15 @@ public sealed class JourneyViewModel :
 
 	public string? TrackingStatus
 	{
-		get => field;
-		private set => SetProperty(ref field, value);
+		get;
+
+		private set
+		{
+			if (SetProperty(ref field, value))
+			{
+				OnPropertyChanged(nameof(ShowTrackingProblem));
+			}
+		}
 	}
 
 	private WatchedJourney? _followed;
@@ -322,6 +391,15 @@ public sealed class JourneyViewModel :
 	{
 		_alternative?.Cancel();
 		StopObservingTracking();
+	}
+
+	/// <summary>The page's clock: rides that have started or ended since the last tick change their state.</summary>
+	public void TickClock()
+	{
+		foreach (LegRow row in Rows.OfType<LegRow>())
+		{
+			row.RefreshActive();
+		}
 	}
 
 	public void StopObservingTracking()
@@ -360,6 +438,9 @@ public sealed class JourneyViewModel :
 		OnPropertyChanged(nameof(IsPaused));
 		OnPropertyChanged(nameof(CanPause));
 		OnPropertyChanged(nameof(CanFollow));
+		OnPropertyChanged(nameof(ShowTrackingProblem));
+
+		RefreshActions();
 
 		FollowJourneyCommand.RaiseCanExecuteChanged();
 		PauseCommand.RaiseCanExecuteChanged();
@@ -392,7 +473,10 @@ public sealed class JourneyViewModel :
 				? _tracker.Find(original)?.PlanId
 				: null;
 
-		await _tracker.FollowAsync(_journey, default, replaces);
+		WatchedJourney watched = await _tracker.FollowAsync(_journey, replaces, default);
+
+		// The followed journey's map (and its vehicles) needs the rides with their boarding stops.
+		FollowedRides.Save(watched.PlanId, _journey);
 
 		UpdateFollowState();
 
@@ -436,8 +520,9 @@ public sealed class JourneyViewModel :
 					[Routes.JourneyData] = _journey
 				});
 
-	private static Task OpenFollowedAsync() =>
-		Shell.Current.GoToAsync(Routes.Tracked);
+	// Beside the journey as a pane in a wide window (see Panes).
+	private Task OpenFollowedAsync() =>
+		Panes.GoToAsync(Routes.Tracked, [], this);
 
 	private void ShowTrackingError(Exception ex) =>
 		TrackingStatus =
@@ -451,7 +536,7 @@ public sealed class JourneyViewModel :
 	/// <summary>Start and destination, split so the header can put the city under the name.</summary>
 	public string FromName
 	{
-		get => field;
+		get;
 		private set => SetProperty(
 			ref field,
 			value);
@@ -460,7 +545,7 @@ public sealed class JourneyViewModel :
 
 	public string? FromPlace
 	{
-		get => field;
+		get;
 		private set => SetProperty(
 			ref field,
 			value);
@@ -469,7 +554,7 @@ public sealed class JourneyViewModel :
 
 	public string ToName
 	{
-		get => field;
+		get;
 		private set => SetProperty(
 			ref field,
 			value);
@@ -478,7 +563,7 @@ public sealed class JourneyViewModel :
 
 	public string? ToPlace
 	{
-		get => field;
+		get;
 		private set => SetProperty(
 			ref field,
 			value);
@@ -491,7 +576,7 @@ public sealed class JourneyViewModel :
 
 	public JourneyCardModel? Summary
 	{
-		get => field;
+		get;
 
 		private set =>
 			SetProperty(
@@ -502,7 +587,7 @@ public sealed class JourneyViewModel :
 
 	public string RouteText
 	{
-		get => field;
+		get;
 
 		private set =>
 			SetProperty(
@@ -514,7 +599,7 @@ public sealed class JourneyViewModel :
 
 	public string DayText
 	{
-		get => field;
+		get;
 
 		private set =>
 			SetProperty(
@@ -526,7 +611,7 @@ public sealed class JourneyViewModel :
 
 	public IReadOnlyList<NoticeRow> Notices
 	{
-		get => field;
+		get;
 
 		private set
 		{
@@ -549,7 +634,7 @@ public sealed class JourneyViewModel :
 	/// <summary>Tickets and prices the provider quotes (empty when it quotes none).</summary>
 	public IReadOnlyList<FareRow> Fares
 	{
-		get => field;
+		get;
 
 		private set
 		{
@@ -572,7 +657,7 @@ public sealed class JourneyViewModel :
 	/// <summary>The section starts collapsed: the preferred ticket is in its header, the rest on demand.</summary>
 	public bool FaresExpanded
 	{
-		get => field;
+		get;
 
 		private set
 		{
@@ -605,7 +690,7 @@ public sealed class JourneyViewModel :
 	/// <summary>The ticket for the passenger set in the options, named under the section title.</summary>
 	public string FaresSummaryName
 	{
-		get => field;
+		get;
 
 		private set =>
 			SetProperty(
@@ -618,7 +703,7 @@ public sealed class JourneyViewModel :
 	/// <summary>Its price, shown in the section header.</summary>
 	public string FaresSummaryPrice
 	{
-		get => field;
+		get;
 
 		private set =>
 			SetProperty(
@@ -631,7 +716,7 @@ public sealed class JourneyViewModel :
 	/// <summary>"Zones: Dresden, Radebeul": the zones are the same for every ticket, so they are said once.</summary>
 	public string? FaresZonesText
 	{
-		get => field;
+		get;
 
 		private set
 		{
@@ -653,7 +738,7 @@ public sealed class JourneyViewModel :
 	/// <summary>The conditions the provider prints with its tickets, each once.</summary>
 	public string? FaresNotesText
 	{
-		get => field;
+		get;
 
 		private set
 		{
@@ -708,20 +793,34 @@ public sealed class JourneyViewModel :
 			return;
 		}
 
-		int index = journey.Legs.ToList().IndexOf(leg);
+		int index = -1;
+
+		for (int i = 0; i < journey.Legs.Count; i++)
+		{
+			if (ReferenceEquals(journey.Legs[i], leg))
+			{
+				index = i;
+
+				break;
+			}
+		}
 
 		if (index < 0)
 		{
 			return;
 		}
 
-		_alternative?.Cancel();
+		CancellationTokenSource? earlier = _alternative;
+
+		earlier?.Cancel();
 
 		var cts = new CancellationTokenSource();
 		_alternative = cts;
 
 		JourneyStrings strings =
 			_localization.CurrentStrings.Journey;
+
+		AlternativeStatus = strings.LegSearching;
 
 		try
 		{
@@ -738,12 +837,16 @@ public sealed class JourneyViewModel :
 				return;
 			}
 
-			Journey? next =
-				result.Journeys.FirstOrDefault(
-					candidate => candidate.Id == journey.Id)
-				?? result.Journeys.FirstOrDefault();
+			if (result.Outcome == JourneyOutcome.Failed)
+			{
+				DiagnosticLog.Write($"[Leg alternative] failed: {result.ErrorMessage} {result.ErrorDetail}");
+			}
 
-			if (next is null)
+			// The one journey that was asked for; a journey that is the same as the one on screen is no answer.
+			Journey? next = result.Journeys.Count > 0 ? result.Journeys[0] : null;
+
+			if (next is null
+				|| ReferenceEquals(next, journey))
 			{
 				AlternativeStatus = strings.LegNone;
 
@@ -764,6 +867,16 @@ public sealed class JourneyViewModel :
 
 			AlternativeStatus = ex.Message;
 		}
+		finally
+		{
+			// Only the request that is still the current one frees the slot; each one disposes its own source.
+			if (ReferenceEquals(_alternative, cts))
+			{
+				_alternative = null;
+			}
+
+			cts.Dispose();
+		}
 	}
 
 
@@ -783,35 +896,54 @@ public sealed class JourneyViewModel :
 					[Routes.Line] = row.LineNumber
 				};
 
-			// The leg that was tapped is the run to follow: line, direction and the stops with their times.
+			// The leg that was tapped is the run to follow: line, direction and a course with times, from its stops
+			// or, when the provider gives no stop positions, from its geometry. Without one the live page would
+			// show every vehicle of the line, so a leg that cannot be followed opens nothing.
 			if (row.Source is { } leg)
 			{
-				TrackTarget target =
-					new()
-					{
-						Line = row.LineNumber,
-						Mode = leg.Mode,
-						Direction = leg.Line?.Destination,
-						Course =
-							(leg.Stops
-								.Where(stop => stop.Station.Latitude is not null && stop.Station.Longitude is not null)
-								.Select(
-									stop => new CoursePoint(
-										stop.Station.Latitude!.Value,
-										stop.Station.Longitude!.Value,
-										stop.EffectiveDeparture ?? stop.EffectiveArrival,
-										stop.Station.Name))).ToList()
-					};
+				// The passenger usually looks before the vehicle has reached the boarding stop, so the whole run is
+				// looked up (the departure at the boarding stop that is this leg, and its stops before and after).
+				// The leg's own course is the fallback.
+				AlternativeStatus = _localization.CurrentStrings.Extras.LiveConnecting;
 
-				if (target.IsUsable)
+				TrackTarget? target = null;
+
+				try
+				{
+					target =
+						await _runs.ResolveAsync(
+							leg,
+							row.LineNumber,
+							_settings.TimeoutSeconds);
+				}
+				catch (Exception ex) when (ex is not OperationCanceledException)
+				{
+					DiagnosticLog.Write($"Looking up the run of line {row.LineNumber} failed: {ex.Message}");
+				}
+
+				target ??= TrackTargets.FromLeg(leg, row.LineNumber);
+
+				AlternativeStatus = string.Empty;
+
+				if (target is not null)
 				{
 					parameters[Routes.Track] = target;
 				}
+				else
+				{
+					DiagnosticLog.Write($"No course to follow for line {row.LineNumber}: {leg.Stops.Count} stops, {leg.Path.Count} path points");
+
+					AlternativeStatus = _localization.CurrentStrings.Extras.TrackNoCourse;
+
+					return;
+				}
 			}
 
-			await Shell.Current.GoToAsync(
+			// Beside this page as a pane in a wide window (see Panes).
+			await Panes.GoToAsync(
 				Routes.Vehicles,
-				parameters);
+				parameters,
+				this);
 		}
 		catch (Exception ex)
 		{
@@ -833,7 +965,8 @@ public sealed class JourneyViewModel :
 
 			if (!await MapScenes.OpenAsync(
 					MapScenes.FromJourney(journey),
-					strings.MapJourneyTitle))
+					strings.MapJourneyTitle,
+					this))
 			{
 				AlternativeStatus = strings.MapNoData;
 			}
@@ -934,6 +1067,8 @@ public sealed class JourneyViewModel :
 			OnPropertyChanged(nameof(HasLegAlternatives));
 			OnPropertyChanged(nameof(HasDocument));
 
+			RefreshActions();
+
 			LoadError =
 				null;
 
@@ -992,7 +1127,8 @@ public sealed class JourneyViewModel :
 				: fare.ValidFor;
 
 		Fares =
-			journey.Fares
+			(List<FareRow>)
+			[.. journey.Fares
 				.OrderBy(
 					fare => ReferenceEquals(fare, preferred)
 						? 0
@@ -1037,8 +1173,7 @@ public sealed class JourneyViewModel :
 							ReferenceEquals(
 								fare,
 								preferred)
-					})
-				.ToList();
+					})];
 
 		FaresSummaryName =
 			preferred is null
@@ -1106,9 +1241,9 @@ public sealed class JourneyViewModel :
 			new JourneyCardModel(
 				journey)
 			{
-				ShowEndpoints = false,
 				Passenger = _settings.Passenger,
-				MapCommand = OpenMapCommand
+				MapCommand = OpenMapCommand,
+				Actions = Actions
 			};
 
 
@@ -1171,7 +1306,8 @@ public sealed class JourneyViewModel :
 
 
 		Notices =
-			journey.Notices
+			(List<NoticeRow>)
+			[.. journey.Notices
 				.Where(
 					n =>
 						!string.IsNullOrWhiteSpace(n)
@@ -1192,8 +1328,7 @@ public sealed class JourneyViewModel :
 
 							Technical =
 								options.Technical
-						})
-				.ToList();
+						})];
 
 
 		Rows.Clear();
@@ -1204,6 +1339,11 @@ public sealed class JourneyViewModel :
 				journey,
 				options))
 		{
+			if (row is LegRow leg)
+			{
+				leg.CanSwapRide = HasLegAlternatives;
+			}
+
 			Rows.Add(row);
 		}
 
@@ -1350,7 +1490,7 @@ public sealed class JourneyViewModel :
 					: await ChooseShareFormat(
 						text.ShareTitle,
 						strings.Common.Cancel,
-						[text.ShareAsText, text.ShareAsImage]);
+						[text.ShareAsText, text.ShareAsImage, text.ShareAsCalendar]);
 
 			if (choice == text.ShareAsImage)
 			{
@@ -1361,6 +1501,34 @@ public sealed class JourneyViewModel :
 					{
 						Title = text.ShareTitle,
 						File = new ShareFile(path, "image/png")
+					});
+			}
+			else if (choice == text.ShareAsCalendar)
+			{
+				string? file =
+					JourneyCalendar.Build(
+						_journey,
+						$"{model.Origin} \u2192 {model.Destination}",
+						JourneyShareText.Build(model, strings),
+						_settings.DefaultLeadMinutes,
+						DateTimeOffset.UtcNow);
+
+				if (file is null)
+				{
+					AlternativeStatus = text.CalendarUnavailable;
+
+					return;
+				}
+
+				string path = Path.Combine(FileSystem.CacheDirectory, "journey.ics");
+
+				await File.WriteAllTextAsync(path, file, new System.Text.UTF8Encoding(false));
+
+				await Share.Default.RequestAsync(
+					new ShareFileRequest
+					{
+						Title = text.ShareAsCalendar,
+						File = new ShareFile(path, JourneyCalendar.MediaType)
 					});
 			}
 			else if (choice == text.ShareAsText)

@@ -5,9 +5,7 @@ using Android.OS;
 
 using DDjourneys.Core.Tracking.Live;
 
-// The namespace is part of the generated Java class name of this service; it stays as it is
-// although the class no longer lives in a Schutzengel folder.
-namespace DDjourneys.Platforms.Android.LiveJourney.Schutzengel;
+namespace DDjourneys.Platforms.Android.LiveJourney;
 
 /// <summary>
 /// Keeps the process alive while a journey is active or about to start, so the polling loop of the
@@ -16,8 +14,10 @@ namespace DDjourneys.Platforms.Android.LiveJourney.Schutzengel;
 [Service(
 	Enabled = true,
 	Exported = false,
-	ForegroundServiceType = global::Android.Content.PM.ForegroundService.TypeDataSync)]
-internal sealed class JourneyTrackingForegroundService : Service
+	ForegroundServiceType =
+		global::Android.Content.PM.ForegroundService.TypeDataSync |
+		global::Android.Content.PM.ForegroundService.TypeLocation)]
+public sealed class JourneyTrackingForegroundService : Service
 {
 	/// <summary>False if the system refuses (for example a start from the background).</summary>
 	public static bool TryStart()

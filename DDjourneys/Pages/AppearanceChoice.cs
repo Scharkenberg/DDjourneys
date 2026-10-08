@@ -3,7 +3,7 @@ using DDjourneys.Support;
 namespace DDjourneys.Pages;
 
 /// <summary>One row of the appearance page: a localized title, a description, an optional colour swatch and the selection mark.</summary>
-public sealed class AppearanceChoice : ObservableObject
+public sealed partial class AppearanceChoice(string id, bool hasSwatch) : ObservableObject
 {
 	private string _title = string.Empty;
 	private string _description = string.Empty;
@@ -14,15 +14,9 @@ public sealed class AppearanceChoice : ObservableObject
 	private Color _accent = Colors.Transparent;
 	private Color _ink = Colors.Transparent;
 
-	public AppearanceChoice(string id, bool hasSwatch)
-	{
-		Id = id;
-		HasSwatch = hasSwatch;
-	}
+	public string Id { get; } = id;
 
-	public string Id { get; }
-
-	public bool HasSwatch { get; }
+	public bool HasSwatch { get; } = hasSwatch;
 
 	public string Title
 	{

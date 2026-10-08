@@ -55,7 +55,7 @@
 						Color="{DynamicResource Delay}" />
 					<Label
 						StyleClass="Caption"
-						Text="{Binding AffectsRoutingText}"
+						Text="{localization:Tr Disruptions.AffectsRouting}"
 						VerticalOptions="Center" />
 				</HorizontalStackLayout>
 			</FlexLayout>

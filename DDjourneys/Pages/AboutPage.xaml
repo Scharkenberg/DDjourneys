@@ -1,0 +1,21 @@
+<ContentPage
+	x:Class="DDjourneys.Pages.AboutPage"
+	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+	xmlns:controls="clr-namespace:DDjourneys.Controls"
+	xmlns:localization="clr-namespace:DDjourneys.Localization"
+	Title="{localization:Tr Settings.About}">
+
+	<ScrollView>
+		<VerticalStackLayout Padding="{DynamicResource PadPage}" Spacing="{DynamicResource SpaceM}">
+
+			<controls:MarkdownView x:Name="Document" />
+
+			<Label
+				x:Name="Message"
+				IsVisible="False"
+				StyleClass="Caption" />
+
+		</VerticalStackLayout>
+	</ScrollView>
+</ContentPage>

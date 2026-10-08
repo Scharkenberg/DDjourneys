@@ -6,7 +6,7 @@ using DDjourneys.Support;
 namespace DDjourneys.Pages;
 
 /// <summary>Mode, colour set, pure black and font face. Every choice applies immediately.</summary>
-public sealed class AppearanceViewModel : DisposableViewModel
+public sealed partial class AppearanceViewModel : DisposableViewModel
 {
 	private readonly LocalizationService _localization = LocalizationService.Current;
 
@@ -19,22 +19,22 @@ public sealed class AppearanceViewModel : DisposableViewModel
 			new(Theme.ModeDark, false)
 		];
 
-		Colors = ColorCatalog.All.Select(o => new AppearanceChoice(o.Id, true)).ToList();
+		Colors = [.. ColorCatalog.All.Select(o => new AppearanceChoice(o.Id, true))];
 
-		Fonts = FontCatalog.Ids.Select(id => new AppearanceChoice(id, false)).ToList();
+		Fonts = [.. FontCatalog.Ids.Select(id => new AppearanceChoice(id, false))];
 
-		Densities = DensityProfile.All.Select(d => new AppearanceChoice(d.Id, false)).ToList();
+		Densities = [.. DensityProfile.All.Select(d => new AppearanceChoice(d.Id, false))];
 
-		Materials = MaterialProfile.Materials.Where(Material.IsSupported).Select(id => new AppearanceChoice(id, false)).ToList();
+		Materials = [.. MaterialProfile.Materials.Where(Material.IsSupported).Select(id => new AppearanceChoice(id, false))];
 
-		MaterialSurfaces = MaterialProfile.Coverages.Select(id => new AppearanceChoice(id, false)).ToList();
+		MaterialSurfaces = [.. MaterialProfile.Coverages.Select(id => new AppearanceChoice(id, false))];
 
 		SelectMaterialCommand = new AsyncCommand<string>(id => ApplyAsync(() => Theme.SetMaterialAsync(id ?? MaterialProfile.Mica)));
 		SelectMaterialSurfacesCommand = new AsyncCommand<string>(id => ApplyAsync(() => Theme.SetMaterialSurfacesAsync(id ?? MaterialProfile.Layered)));
 
 		SelectModeCommand = new AsyncCommand<string>(id => ApplyAsync(() => Theme.SetModeAsync(id ?? Theme.ModeSystem)));
 		SelectColorCommand = new AsyncCommand<string>(id => ApplyAsync(() => Theme.SetColorAsync(id ?? ColorCatalog.DefaultId)));
-		SelectFontCommand = new AsyncCommand<string>(id => ApplyAsync(() => Theme.SetFontAsync(id ?? FontCatalog.OpenSansId)));
+		SelectFontCommand = new AsyncCommand<string>(id => ApplyAsync(() => Theme.SetFontAsync(id ?? FontCatalog.SystemId)));
 
 		SelectDensityCommand = new AsyncCommand<string>(
 			id =>
@@ -74,9 +74,6 @@ public sealed class AppearanceViewModel : DisposableViewModel
 	public List<AppearanceChoice> Materials { get; }
 
 	public List<AppearanceChoice> MaterialSurfaces { get; }
-
-	/// <summary>The material settings only exist where a material can be shown.</summary>
-	public bool ShowMaterial => Material.Available;
 
 	public AsyncCommand<string> SelectMaterialCommand { get; }
 

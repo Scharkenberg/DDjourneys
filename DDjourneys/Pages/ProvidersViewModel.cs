@@ -6,25 +6,18 @@ using DDjourneys.Support;
 namespace DDjourneys.Pages;
 
 /// <summary>One provider as the list shows it.</summary>
-public sealed class ProviderRow : ObservableObject
+public sealed partial class ProviderRow(
+	ProviderInfo info,
+	IReadOnlyList<string> capabilities,
+	Command select) : ObservableObject
 {
-	public ProviderRow(
-		ProviderInfo info,
-		IReadOnlyList<string> capabilities,
-		Command select)
-	{
-		Info = info;
-		Capabilities = capabilities;
-		SelectCommand = select;
-	}
-
-	public ProviderInfo Info { get; }
+	public ProviderInfo Info { get; } = info;
 
 	public string Name => Info.Name;
 
 	public bool IsExperimental => Info.IsExperimental;
 
-	public string ExperimentalText =>
+	private static string ExperimentalText =>
 		LocalizationService.Current.CurrentStrings.Provider.Experimental;
 
 	public string FullName => Info.FullName;
@@ -32,18 +25,53 @@ public sealed class ProviderRow : ObservableObject
 	public string Coverage => Info.Coverage;
 
 	/// <summary>Localized labels of what the provider supports.</summary>
-	public IReadOnlyList<string> Capabilities { get; }
+	public IReadOnlyList<string> Capabilities { get; } = capabilities;
 
 	public bool IsSelected
 	{
-		get => field;
-		internal set =>
-			SetProperty(
-				ref field,
-				value);
+		get;
+		internal set
+		{
+			if (SetProperty(ref field, value))
+			{
+				OnPropertyChanged(nameof(IsNotSelected));
+			}
+		}
 	}
 
-	public Command SelectCommand { get; }
+	public bool IsNotSelected =>
+		!IsSelected;
+
+	public Command SelectCommand { get; } = select;
+
+	/// <summary>A hairline above every row but the first of its card.</summary>
+	public bool HasDivider { get; init; }
+
+	/// <summary>The details (coverage, what the provider supports, the button to use it) are shown.</summary>
+	public bool IsExpanded
+	{
+		get;
+		set
+		{
+			if (SetProperty(ref field, value))
+			{
+				OnPropertyChanged(nameof(ChevronRotation));
+			}
+		}
+	}
+
+	public double ChevronRotation =>
+		IsExpanded
+			? 180
+			: 0;
+
+	public Command ToggleCommand => field ??= new Command(() => IsExpanded = !IsExpanded);
+
+	public string UseText =>
+		LocalizationService.Current.CurrentStrings.Provider.Use;
+
+	public string InUseText =>
+		LocalizationService.Current.CurrentStrings.Provider.InUse;
 
 	public string Description =>
 		Info.IsExperimental
@@ -59,7 +87,7 @@ public sealed record ProviderGroup(
 
 
 /// <summary>Provider picker. Lists whatever the registry holds, grouped by region, so new providers need no UI work.</summary>
-public sealed class ProvidersViewModel : DisposableViewModel
+public sealed partial class ProvidersViewModel : DisposableViewModel
 {
 	private static readonly (ProviderCapabilities Flag, Func<IUiStrings, string> Label)[] Labels =
 	[
@@ -97,7 +125,7 @@ public sealed class ProvidersViewModel : DisposableViewModel
 
 	public IReadOnlyList<ProviderGroup> Groups
 	{
-		get => field;
+		get;
 		private set =>
 			SetProperty(
 				ref field,
@@ -116,26 +144,32 @@ public sealed class ProvidersViewModel : DisposableViewModel
 			_localization.CurrentStrings;
 
 		Groups =
-			(_registry.Providers
+			(List<ProviderGroup>)
+			[.. _registry.Providers
 				.GroupBy(provider => provider.Region)
 				.Select(
 					group => new ProviderGroup(
 						group.Key,
-						(group.Select(
-							provider =>
+						(List<ProviderRow>)
+						[.. group.Select(
+							(provider, index) =>
 							{
 								ProviderRow? row = null;
 
 								row =
 									new ProviderRow(
 										provider,
-										(Labels
+										(List<string>)
+										[.. Labels
 											.Where(label => provider.Supports(label.Flag))
-											.Select(label => label.Label(strings))).ToList(),
-										new Command(() => Select(row!)));
+											.Select(label => label.Label(strings))],
+										new Command(() => Select(row!)))
+									{
+										HasDivider = index > 0
+									};
 
 								return row;
-							})).ToList()))).ToList();
+							})]))];
 
 		RefreshSelection();
 	}

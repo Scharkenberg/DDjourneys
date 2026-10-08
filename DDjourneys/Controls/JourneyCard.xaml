@@ -11,10 +11,17 @@
 		<VerticalStackLayout Spacing="{DynamicResource SpaceM}">
 
 			<!--  Times  -->
-			<Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{DynamicResource SpaceM}">
+			<Grid ColumnDefinitions="*,Auto,*" ColumnSpacing="{DynamicResource SpaceM}">
 
 				<VerticalStackLayout Grid.Column="0" Spacing="2">
 					<Label StyleClass="Time" Text="{Binding DepartureTime}" />
+					<controls:StopNameView
+						x:Name="FromStop"
+						Compact="True"
+						SingleLine="True"
+						IsVisible="{Binding ShowEndpoints}"
+						Place="{Binding FromPlace}"
+						Stop="{Binding FromName}" />
 					<Label
 						IsVisible="{Binding HasDepartureDelay}"
 						StyleClass="Delay"
@@ -70,6 +77,14 @@
 						HorizontalTextAlignment="End"
 						StyleClass="Time"
 						Text="{Binding ArrivalTime}" />
+					<controls:StopNameView
+						x:Name="ToStop"
+						Alignment="End"
+						SingleLine="True"
+						Compact="True"
+						IsVisible="{Binding ShowEndpoints}"
+						Place="{Binding ToPlace}"
+						Stop="{Binding ToName}" />
 					<Label
 						HorizontalTextAlignment="End"
 						IsVisible="{Binding HasArrivalDelay}"
@@ -79,53 +94,112 @@
 
 			</Grid>
 
-			<!--  Where from / where to  -->
-			<Grid
-				ColumnDefinitions="*,*"
-				ColumnSpacing="{DynamicResource SpaceM}"
-				IsVisible="{Binding ShowEndpoints}">
-				<controls:StopNameView
-					Compact="True"
-					Place="{Binding FromPlace}"
-					Stop="{Binding FromName}" />
-				<controls:StopNameView
-					Grid.Column="1"
-					Alignment="End"
-					Compact="True"
-					Place="{Binding ToPlace}"
-					Stop="{Binding ToName}" />
-			</Grid>
-
-			<!--  Legs and state on the left, the map button anchored bottom right  -->
+			<!--  Legs: one line, centered, and swipeable when it is too long for the card; the actions sit beside it  -->
 			<Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource SpaceS}">
 
-				<VerticalStackLayout Spacing="{DynamicResource SpaceM}">
-
-					<!--  Legs  -->
-					<FlexLayout AlignContent="Start" AlignItems="Start" BindableLayout.ItemsSource="{Binding Chips}" Wrap="Wrap">
+				<ScrollView
+					HorizontalScrollBarVisibility="Never"
+					Orientation="Horizontal"
+					VerticalOptions="Center">
+					<HorizontalStackLayout
+						BindableLayout.ItemsSource="{Binding Chips}"
+						Spacing="6"
+						VerticalOptions="Center">
 						<BindableLayout.ItemTemplate>
 							<DataTemplate x:DataType="support:LegChip">
 								<Border
-									Margin="0,0,6,6"
 									BackgroundColor="{Binding Look.Fill}"
-									FlexLayout.Shrink="0"
 									StrokeDashArray="{Binding Look.Dashes}"
 									StrokeShape="{Binding Look.Shape}"
 									StrokeThickness="{Binding Look.StrokeThickness}"
 									StyleClass="Chip"
-									Stroke="{Binding Look.Stroke}">
-									<support:PillScroll>
-										<Label
-											FontFamily="{DynamicResource FontSemibold}"
-											FontSize="{StaticResource FontCaption}"
-											StyleClass="ChipLabel"
-											Text="{Binding Text}"
-											TextColor="{Binding Look.Text}" />
-									</support:PillScroll>
+									Stroke="{Binding Look.Stroke}"
+									VerticalOptions="Center">
+									<Label
+										FontFamily="{DynamicResource FontSemibold}"
+										FontSize="{StaticResource FontCaption}"
+										LineBreakMode="NoWrap"
+										StyleClass="ChipLabel"
+										Text="{Binding Text}"
+										TextColor="{Binding Look.Text}" />
 								</Border>
 							</DataTemplate>
 						</BindableLayout.ItemTemplate>
-					</FlexLayout>
+					</HorizontalStackLayout>
+				</ScrollView>
+
+				<!--  Actions, vertically centered with the legs: notices (a badge, not a line), PDF, hand-over, follow, pause, map  -->
+				<HorizontalStackLayout
+					Grid.Column="1"
+					HorizontalOptions="End"
+					Spacing="0"
+					VerticalOptions="Center">
+
+					<Border
+						Padding="6,3"
+						Margin="0,0,4,0"
+						BackgroundColor="{DynamicResource Raised}"
+						IsVisible="{Binding HasNotices}"
+						SemanticProperties.Description="{Binding NoticesText}"
+						StrokeShape="RoundRectangle 100"
+						StrokeThickness="0"
+						VerticalOptions="Center"
+						support:Motion.Feedback="True">
+						<HorizontalStackLayout Spacing="3">
+							<controls:Icon
+								Glyph="Warning"
+								Size="14"
+								VerticalOptions="Center"
+								Color="{DynamicResource InkMuted}" />
+							<Label
+								FontFamily="{DynamicResource FontSemibold}"
+								FontSize="{StaticResource FontCaption}"
+								Text="{Binding NoticeCount}"
+								TextColor="{DynamicResource InkMuted}"
+								VerticalOptions="Center" />
+						</HorizontalStackLayout>
+						<Border.GestureRecognizers>
+							<TapGestureRecognizer Command="{Binding Actions.NoticesCommand}" />
+						</Border.GestureRecognizers>
+					</Border>
+
+					<controls:IconButton
+						Command="{Binding Actions.PdfCommand}"
+						Glyph="Document"
+						IsVisible="{Binding Actions.HasPdf}"
+						SemanticProperties.Description="{Binding Actions.PdfDescription}"
+						TargetSize="{StaticResource HitIconTight}" />
+
+					<controls:IconButton
+						Command="{Binding Actions.HandOffCommand}"
+						Glyph="External"
+						IsVisible="{Binding Actions.HasHandOff}"
+						SemanticProperties.Description="{Binding Actions.HandOffDescription}"
+						TargetSize="{StaticResource HitIconTight}" />
+
+					<controls:IconButton
+						Command="{Binding Actions.PauseCommand}"
+						Glyph="{Binding Actions.PauseGlyph}"
+						IsVisible="{Binding Actions.ShowPause}"
+						SemanticProperties.Description="{Binding Actions.PauseDescription}"
+						TargetSize="{StaticResource HitIconTight}" />
+
+					<controls:IconButton
+						Command="{Binding Actions.FollowCommand}"
+						Glyph="{Binding Actions.FollowGlyph}"
+						IsVisible="{Binding Actions.CanFollow}"
+						SemanticProperties.Description="{Binding Actions.FollowDescription}"
+						TargetSize="{StaticResource HitIconTight}" />
+
+					<controls:IconButton
+						Command="{Binding MapCommand}"
+						Glyph="Map"
+						IsVisible="{Binding HasMap}"
+						SemanticProperties.Description="{localization:Tr Extras.MapShow}"
+						TargetSize="{StaticResource HitIconTight}" />
+				</HorizontalStackLayout>
+
+			</Grid>
 
 					<!--  Cannot take place: own row, so a long reason can wrap  -->
 					<Label
@@ -134,18 +208,14 @@
 						StyleClass="Cancelled"
 						Text="{Binding BlockText}" />
 
-					<!--  State  -->
-					<HorizontalStackLayout IsVisible="{Binding HasStatusRow}" Spacing="{DynamicResource SpaceM}">
-						<Label IsVisible="{Binding IsOnTime}" StyleClass="OnTime">
-							<Label.Text>
-								<localization:Tr Key="Journey.OnTime" />
-							</Label.Text>
-						</Label>
-						<Label
-							IsVisible="{Binding HasNotices}"
-							StyleClass="Caption"
-							Text="{Binding NoticesText}" />
-					</HorizontalStackLayout>
+			<!--  State  -->
+			<HorizontalStackLayout IsVisible="{Binding HasStatusRow}" Spacing="{DynamicResource SpaceM}">
+				<Label IsVisible="{Binding IsOnTime}" StyleClass="OnTime">
+					<Label.Text>
+						<localization:Tr Key="Journey.OnTime" />
+					</Label.Text>
+				</Label>
+			</HorizontalStackLayout>
 
 				</VerticalStackLayout>
 

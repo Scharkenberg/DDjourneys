@@ -1,10 +1,15 @@
+using CommunityToolkit.Maui;
+using CommunityToolkit.Maui.Core;
+using CommunityToolkit.Maui.Extensions;
+using CommunityToolkit.Maui.Views;
 using DDjourneys.Support;
 
 namespace DDjourneys.Pages;
 
-public partial class JourneyPage : ContentPage
+public partial class JourneyPage : PanePage
 {
 	private readonly JourneyViewModel _vm;
+	private IDispatcherTimer? _clock;
 
 	public JourneyPage(JourneyViewModel vm)
 	{
@@ -12,8 +17,11 @@ public partial class JourneyPage : ContentPage
 		Motion.Prepare(this);
 		BindingContext = _vm = vm;
 
-		vm.ChooseShareFormat = (title, cancel, options) =>
-			DisplayActionSheetAsync(title, cancel, null, options);
+		// The notice badge in the card: bring the notices into view.
+		vm.ScrollToNotices = () => _ = PageScroll.ScrollToAsync(NoticesBlock, ScrollToPosition.Start, true);
+
+		vm.ChooseShareFormat = (title, cancel, options) => ShowSharePopupAsync(DialogPage, options);
+
 	}
 
 	protected override void OnNavigatedFrom(
@@ -21,7 +29,7 @@ public partial class JourneyPage : ContentPage
 	{
 		base.OnNavigatedFrom(args);
 
-		PageTeardown.DisposeIfLeft(args, BindingContext);
+		LeaveIfGone(args);
 	}
 
 	protected override void OnAppearing()
@@ -40,11 +48,23 @@ public partial class JourneyPage : ContentPage
 
 		_vm.StartObservingTracking();
 
+		// "In progress" ends with the ride: the rows are asked again every few seconds while the page shows.
+		if (_clock is null)
+		{
+			_clock = Dispatcher.CreateTimer();
+			_clock.Interval = TimeSpan.FromSeconds(15);
+			_clock.Tick += (_, _) => _vm.TickClock();
+		}
+
+		_clock.Start();
+		_vm.TickClock();
+
 		Motion.EnterPage(this);
 	}
 
 	protected override void OnDisappearing()
 	{
+		_clock?.Stop();
 		_vm.StopObservingTracking();
 		base.OnDisappearing();
 	}
@@ -73,9 +93,32 @@ public partial class JourneyPage : ContentPage
 
 	private void StopsToggled(object? sender, TappedEventArgs e)
 	{
-		if ((sender as BindableObject)?.BindingContext is LegRow leg)
+		if (sender is BindableObject { BindingContext: LegRow leg })
 		{
 			_vm.ToggleStopsCommand.Execute(leg);
 		}
+	}
+
+	private static async Task<string?> ShowSharePopupAsync(ContentPage page, string[] options)
+	{
+		var popup = new JourneySharePopup(page, options[0], options[1], options[2]);
+
+		IPopupResult<string?> result =
+			await page.ShowPopupAsync<string?>(
+				popup,
+				new PopupOptions
+				{
+					CanBeDismissedByTappingOutsideOfPopup = true,
+					PageOverlayColor = Colors.Black.WithAlpha(0.45f),
+
+					// The sheet draws its own shape, stroke and surface.
+					Shape = null,
+					Shadow = null
+				},
+				CancellationToken.None);
+
+		return result.WasDismissedByTappingOutsideOfPopup
+			? null
+			: result.Result;
 	}
 }

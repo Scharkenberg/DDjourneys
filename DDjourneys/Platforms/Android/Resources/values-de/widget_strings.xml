@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_route_label">DDjourneys · Verbindung</string>
+    <string name="widget_route_description">Verbindungen von einem beliebigen Ort A zu einem beliebigen Ort B.</string>
+    <string name="widget_departures_label">DDjourneys · Abfahrten</string>
+    <string name="widget_departures_description">Die nächsten Abfahrten einer Haltestelle.</string>
+    <string name="widget_arrivals_label">DDjourneys · Ankünfte</string>
+    <string name="widget_arrivals_description">Die nächsten Ankünfte an einer Haltestelle.</string>
+    <string name="widget_nearby_label">DDjourneys · Haltestellen in der Nähe</string>
+    <string name="widget_nearby_description">Die Haltestellen um dich herum mit Entfernung in Metern.</string>
+    <string name="widget_nearby_departures_label">DDjourneys · Abfahrten in der Nähe</string>
+    <string name="widget_nearby_departures_description">Die nächsten Abfahrten der Haltestellen um dich herum in einer Ansicht.</string>
+    <string name="widget_config_label">Widget-Einstellungen</string>
+</resources>

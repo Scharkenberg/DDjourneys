@@ -22,19 +22,19 @@ public sealed class OpenDataService
 
 	public Task<IReadOnlyList<StopAccessibility>> GetStopAccessibilityAsync(
 		Location stop,
-		CancellationToken cancellationToken = default,
-		TimeSpan? timeout = null) =>
+		TimeSpan? timeout = null,
+		CancellationToken cancellationToken = default) =>
 		_provider is { } provider
-			? provider.GetStopAccessibilityAsync(stop, cancellationToken, timeout)
+			? provider.GetStopAccessibilityAsync(stop, timeout, cancellationToken)
 			: Task.FromResult<IReadOnlyList<StopAccessibility>>([]);
 
 	public Task<IReadOnlyList<ServicePoint>> GetServicePointsAsync(
 		double latitude,
 		double longitude,
 		int radiusMeters = 3000,
-		CancellationToken cancellationToken = default,
-		TimeSpan? timeout = null) =>
+		TimeSpan? timeout = null,
+		CancellationToken cancellationToken = default) =>
 		_provider is { } provider
-			? provider.GetServicePointsAsync(latitude, longitude, radiusMeters, cancellationToken, timeout)
+			? provider.GetServicePointsAsync(latitude, longitude, radiusMeters, timeout, cancellationToken)
 			: Task.FromResult<IReadOnlyList<ServicePoint>>([]);
 }

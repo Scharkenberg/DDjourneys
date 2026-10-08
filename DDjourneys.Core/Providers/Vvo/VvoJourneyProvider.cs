@@ -10,7 +10,7 @@ namespace DDjourneys.Core.Providers.Vvo;
 /// <summary>
 /// Provides journey planning using the VVO WebAPI.
 /// </summary>
-public sealed class VvoJourneyProvider :
+public sealed partial class VvoJourneyProvider :
 	IJourneyProvider,
 	IJourneyContinuationProvider,
 	IJourneyExtrasProvider,
@@ -52,6 +52,12 @@ public sealed class VvoJourneyProvider :
 			return unsuitable;
 		}
 
+		Location? viaStop = await ResolveViaStopAsync(query, cancellationToken).ConfigureAwait(false);
+		if (query.Via is not null && viaStop is null)
+		{
+			return JourneyResult.NotSuitable("vvo_via_stop_unavailable");
+		}
+
 
 		var request =
 			new VvoTripRequest
@@ -70,8 +76,7 @@ public sealed class VvoJourneyProvider :
 
 				ShortTermChanges = true,
 
-				Via =
-					query.Via?.Id,
+				Via = viaStop?.Id,
 
 				StandardSettings =
 					CreateStandardSettings(query.Routing),
@@ -86,12 +91,12 @@ public sealed class VvoJourneyProvider :
 			VvoTripResponse? response =
 				await _apiClient.GetTripsAsync(
 					request,
-					cancellationToken,
 					TimeSpan.FromSeconds(
 						Math.Clamp(
 							query.TimeoutSeconds,
 							5,
-							60)))
+							60)),
+					cancellationToken)
 				.ConfigureAwait(false);
 
 
@@ -107,7 +112,7 @@ public sealed class VvoJourneyProvider :
 			if (response.Routes.Count == 0)
 			{
 				return JourneyResult.Success(
-					Array.Empty<Journey>());
+					[]);
 			}
 
 
@@ -146,6 +151,47 @@ public sealed class VvoJourneyProvider :
 		}
 	}
 
+	private async Task<Location?> ResolveViaStopAsync(JourneyQuery query, CancellationToken cancellationToken)
+	{
+		if (query.Via is not { } via)
+		{
+			return null;
+		}
+
+		if (via.IsStation)
+		{
+			return via;
+		}
+
+		if (via.Latitude is not { } latitude || via.Longitude is not { } longitude
+			|| !VvoCoordinateConverter.TryToGk4(latitude, longitude, out (double Easting, double Northing) gk4))
+		{
+			return null;
+		}
+
+		try
+		{
+			VvoPointResponse? points = await _apiClient.FindPointsByCoordinatesAsync(
+				gk4.Easting, gk4.Northing,
+				TimeSpan.FromSeconds(Math.Clamp(query.TimeoutSeconds, 5, 60)),
+				cancellationToken).ConfigureAwait(false);
+
+			return points?.Points
+				.Where(point => point.Kind == PlaceKind.Stop && point.IsStop && !string.IsNullOrWhiteSpace(point.Id))
+				.Select(VvoLocationProvider.Map)
+				.FirstOrDefault();
+		}
+		catch (OperationCanceledException)
+		{
+			throw;
+		}
+		catch (Exception ex)
+		{
+			DiagnosticLog.Write($"VVO via stop lookup failed: {ex.Message}");
+			return null;
+		}
+	}
+
 
 	/// <summary>
 	/// Requeries VVO and returns the provider-native route corresponding
@@ -179,9 +225,9 @@ public sealed class VvoJourneyProvider :
 
 		DateTimeOffset requestedTime =
 			target.Departure
-			?? target.Legs
-				.FirstOrDefault()
-				?.ScheduledDeparture
+			?? (target.Legs.Count > 0
+				? target.Legs[0].ScheduledDeparture
+				: null)
 			?? DateTimeOffset.UtcNow;
 
 
@@ -212,8 +258,8 @@ public sealed class VvoJourneyProvider :
 		VvoTripResponse? response =
 			await _apiClient.GetTripsAsync(
 				request,
-				cancellationToken,
-				TimeSpan.FromSeconds(15))
+				TimeSpan.FromSeconds(15),
+				cancellationToken)
 			.ConfigureAwait(false);
 
 
@@ -317,8 +363,8 @@ public sealed class VvoJourneyProvider :
 
 		return (
 			Route: route,
-			SessionId: response.SessionId,
-			Status: response.Status);
+			response.SessionId,
+			response.Status);
 	}
 
 
@@ -366,7 +412,7 @@ public sealed class VvoJourneyProvider :
 		if (CheckEndpoints(
 			query.From,
 			query.To,
-			query.Via) is { } unsuitable)
+			query.Via is { IsStation: false } ? null : query.Via) is { } unsuitable)
 		{
 			return unsuitable;
 		}
@@ -417,8 +463,7 @@ public sealed class VvoJourneyProvider :
 
 				ShortTermChanges = true,
 
-				Via =
-					query.Via?.Id,
+				Via = query.Via?.Id,
 
 				StandardSettings =
 					CreateStandardSettings(query.Routing),
@@ -446,12 +491,12 @@ public sealed class VvoJourneyProvider :
 			VvoTripResponse? response =
 				await _apiClient.GetPreviousNextTripsAsync(
 					request,
-					cancellationToken,
 					TimeSpan.FromSeconds(
 						Math.Clamp(
 							query.TimeoutSeconds,
 							5,
-							60)))
+							60)),
+					cancellationToken)
 				.ConfigureAwait(false);
 
 
@@ -465,7 +510,7 @@ public sealed class VvoJourneyProvider :
 			if (response.Routes.Count == 0)
 			{
 				return JourneyResult.Success(
-					Array.Empty<Journey>());
+					[]);
 			}
 
 
@@ -548,7 +593,7 @@ public sealed class VvoJourneyProvider :
 				RouteId = journey.Id,
 				PartialRouteId = journey.Legs[legIndex].Id!,
 				Time = query.DateTime,
-				Via = query.Via?.Id,
+				Via = query.Via is { IsStation: true } ? query.Via.Id : null,
 				StandardSettings = CreateStandardSettings(query.Routing),
 				MobilitySettings = CreateMobilitySettings(query.Routing),
 				Previous = previous
@@ -559,12 +604,12 @@ public sealed class VvoJourneyProvider :
 			VvoTripResponse? response =
 				await _apiClient.GetLegAlternativeAsync(
 					request,
-					cancellationToken,
 					TimeSpan.FromSeconds(
 						Math.Clamp(
 							query.TimeoutSeconds,
 							5,
-							60)))
+							60)),
+					cancellationToken)
 				.ConfigureAwait(false);
 
 			if (response is null)
@@ -576,7 +621,7 @@ public sealed class VvoJourneyProvider :
 			if (response.Routes.Count == 0)
 			{
 				return JourneyResult.Success(
-					Array.Empty<Journey>());
+					[]);
 			}
 
 			IReadOnlyList<Journey> journeys =
@@ -631,7 +676,7 @@ public sealed class VvoJourneyProvider :
 			return null;
 		}
 
-		return _apiClient.BuildTripPdfUri(
+		return VvoApiClient.BuildTripPdfUri(
 			journey.Id,
 			journey.Context,
 			query.From.Id!,
@@ -645,8 +690,8 @@ public sealed class VvoJourneyProvider :
 
 
 	// A VVO session id looks like "367417461:efa4".
-	private static readonly System.Text.RegularExpressions.Regex SessionShape =
-		new(@"^\d+:[A-Za-z0-9]+$");
+	[System.Text.RegularExpressions.GeneratedRegex(@"^\d+:[A-Za-z0-9]+$")]
+	private static partial System.Text.RegularExpressions.Regex SessionShape();
 
 
 	/// <inheritdoc />
@@ -663,7 +708,7 @@ public sealed class VvoJourneyProvider :
 			$"from={query.From.Id} to={query.To.Id} via={query.Via?.Id} time={query.DateTime:O} arrival={query.SearchMode == JourneySearchMode.Arrival}");
 
 		if (string.IsNullOrWhiteSpace(journey.Context)
-			|| !SessionShape.IsMatch(journey.Context))
+			|| !SessionShape().IsMatch(journey.Context))
 		{
 			DiagnosticLog.Write(
 				$"[VVO PDF] the session id '{journey.Context}' does not look like a VVO session id (digits, colon, letters); asking anyway");
@@ -683,7 +728,7 @@ public sealed class VvoJourneyProvider :
 		}
 
 		var attempts =
-			_apiClient.BuildTripPdfAttempts(
+			VvoApiClient.BuildTripPdfAttempts(
 				journey.Id,
 				journey.Context,
 				query.From.Id!,
@@ -698,12 +743,12 @@ public sealed class VvoJourneyProvider :
 			await _apiClient
 				.DownloadTripPdfAsync(
 					attempts,
-					cancellationToken,
 					TimeSpan.FromSeconds(
 						Math.Clamp(
 							query.TimeoutSeconds,
 							5,
-							60)))
+							60)),
+					cancellationToken)
 				.ConfigureAwait(false);
 
 		return pdf is null
@@ -725,8 +770,8 @@ public sealed class VvoJourneyProvider :
 
 	/// <summary>
 	/// The provider only answers for places it issued. A place without a provider id (stored before
-	/// ids existed, or built by hand) is not held against it, but it needs a stop id: VVO routes
-	/// between stops only.
+	/// ids existed, or built by hand) is not held against it. VVO's PointFinder ids can identify
+	/// stops, addresses, POIs or coordinate points.
 	/// </summary>
 	private static JourneyResult? CheckEndpoints(
 		Location from,
@@ -741,7 +786,7 @@ public sealed class VvoJourneyProvider :
 					"vvo_endpoint_other_provider");
 			}
 
-			if (string.IsNullOrWhiteSpace(via.Id))
+			if (!via.IsRoutable || string.IsNullOrWhiteSpace(via.Id))
 			{
 				return JourneyResult.NotSuitable(
 					"vvo_via_missing_id");
@@ -755,13 +800,13 @@ public sealed class VvoJourneyProvider :
 				"vvo_endpoint_other_provider");
 		}
 
-		if (string.IsNullOrWhiteSpace(from.Id))
+		if (!from.IsRoutable || string.IsNullOrWhiteSpace(from.Id))
 		{
 			return JourneyResult.NotSuitable(
 				"vvo_origin_missing_id");
 		}
 
-		if (string.IsNullOrWhiteSpace(to.Id))
+		if (!to.IsRoutable || string.IsNullOrWhiteSpace(to.Id))
 		{
 			return JourneyResult.NotSuitable(
 				"vvo_destination_missing_id");
@@ -798,7 +843,7 @@ public sealed class VvoJourneyProvider :
 	}
 
 
-	private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Journey, RoutingPreferences> RoutingByJourney = new();
+	private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Journey, RoutingPreferences> RoutingByJourney = [];
 
 	private static void RememberRouting(IReadOnlyList<Journey> journeys, RoutingPreferences routing)
 	{
@@ -1059,8 +1104,6 @@ public sealed class VvoJourneyProvider :
 			return journeys;
 		}
 
-		return journeys
-			.Take(maximum)
-			.ToArray();
+		return [.. journeys.Take(maximum)];
 	}
 }

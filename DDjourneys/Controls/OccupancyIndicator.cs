@@ -8,7 +8,7 @@ namespace DDjourneys.Controls;
 /// gets crushed; collapses completely when the level is unknown. Colour (green, amber, red) only
 /// reinforces the count, it is never the sole carrier of the information.
 /// </summary>
-public sealed class OccupancyIndicator : ContentView
+public sealed partial class OccupancyIndicator : ContentView
 {
 	private const int Steps = 3;
 	private const double Dot = 7;
@@ -79,14 +79,14 @@ public sealed class OccupancyIndicator : ContentView
 			_ => 0
 		};
 
-	private static View Filled(string tone)
+	private static BoxView Filled(string tone)
 	{
 		var dot = Circle(Dot);
 		dot.SetDynamicResource(BoxView.ColorProperty, tone);
 		return dot;
 	}
 
-	private static View Hollow()
+	private static Grid Hollow()
 	{
 		var ring = Circle(Dot);
 		ring.SetDynamicResource(BoxView.ColorProperty, "Outline");

@@ -9,7 +9,7 @@ namespace DDjourneys.Core.Tracking;
 /// </summary>
 public sealed class TrackingEventBroadcaster<T> : IDisposable
 {
-	private readonly object _gate = new();
+	private readonly Lock _gate = new();
 	private readonly List<Channel<T>> _subscribers = [];
 	private bool _disposed;
 

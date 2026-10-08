@@ -14,6 +14,51 @@ using Location = DDjourneys.Core.Models.Location;
 
 namespace DDjourneys.Pages;
 
+/// <summary>A favourite or recent place as one chip of the quick-pick strip.</summary>
+public sealed record PlaceChip(Location Place, bool IsFavourite)
+{
+	public string Name =>
+		StopLabel.NameFor(Place.Name, Place.Place);
+
+	public string City =>
+		StopLabel.PlaceFor(Place.Name, Place.Place) ?? string.Empty;
+
+	public bool HasCity =>
+		City.Length > 0;
+
+	public IconGlyph Glyph =>
+		IsFavourite
+			? IconGlyph.StarFilled
+			: IconGlyph.History;
+
+	public string Description =>
+		StopLabel.Compose(Place);
+}
+
+/// <summary>One line of the routes card: a saved route (bookmark) or a recent search (clock), "From \u2192 To".</summary>
+public sealed record RouteLine(
+	Location From,
+	Location To,
+	SavedRoute? Saved,
+	RouteRow? Recent)
+{
+	public bool IsSaved =>
+		Saved is not null;
+
+	public IconGlyph Glyph =>
+		IsSaved
+			? IconGlyph.BookmarkFilled
+			: IconGlyph.History;
+
+	public string Text =>
+		Saved is { Name: { Length: > 0 } name } && name != Saved.Description
+			? name
+			: $"{StopLabel.NameFor(From.Name, From.Place)} \u2192 {StopLabel.NameFor(To.Name, To.Place)}";
+
+	public string Description =>
+		$"{StopLabel.Compose(From)} \u2192 {StopLabel.Compose(To)}";
+}
+
 /// <summary>A connection the passenger searched before, as the planner lists it.</summary>
 public sealed record RouteRow(
 	RoutePair Route)
@@ -42,7 +87,7 @@ public sealed record RouteRow(
 public sealed partial class PlanViewModel : DisposableViewModel
 {
 	/// <summary>How many searched connections the planner shows before "show all".</summary>
-	private const int CollapsedRoutes = 5;
+	private const int CollapsedRoutes = 3;
 
 	private static readonly TimeSpan RolloverGrace =
 		TimeSpan.FromMinutes(30);
@@ -235,6 +280,28 @@ public sealed partial class PlanViewModel : DisposableViewModel
 						: null,
 				TellAsync);
 
+		UseLineCommand =
+			new AsyncCommand<RouteLine>(
+				line => SafeAsync(
+					() => line?.Saved is { } saved
+						? UseSavedRouteAsync(saved)
+						: UseRouteAsync(line?.Recent)));
+
+		ForgetLineCommand =
+			new Command<RouteLine>(
+				line => Safe(
+					() =>
+					{
+						if (line?.Saved is { } saved)
+						{
+							_store.RemoveSavedRoute(saved);
+						}
+						else if (line?.Recent is { } recent)
+						{
+							_store.RemoveRecentRoute(recent.Route);
+						}
+					}));
+
 		UseSavedRouteCommand =
 			new AsyncCommand<SavedRoute>(
 				route => SafeAsync(
@@ -270,6 +337,9 @@ public sealed partial class PlanViewModel : DisposableViewModel
 
 	/// <summary>Opens the place search for the stop-over.</summary>
 	public Func<Task>? OpenViaSearch { get; set; }
+
+	/// <summary>Opens the place search for the home place; the answer comes back through <see cref="SetHome"/>.</summary>
+	public Func<Task>? OpenHomeSearch { get; set; }
 
 	/// <summary>Asks for a name (title, message, suggestion); null when the passenger cancels.</summary>
 
@@ -315,6 +385,22 @@ public sealed partial class PlanViewModel : DisposableViewModel
 	/// <summary>Saves (and removes) the connection shown; the icon reflects whether it is saved.</summary>
 	public RouteBookmark Bookmark { get; }
 
+	public AsyncCommand<RouteLine> UseLineCommand { get; }
+
+	public Command<RouteLine> ForgetLineCommand { get; }
+
+	/// <summary>Home, favourites and recent places, one strip of chips.</summary>
+	public ObservableCollection<PlaceChip> PlaceChips { get; } = [];
+
+	/// <summary>Saved routes, then the latest searches (all of them when expanded).</summary>
+	public ObservableCollection<RouteLine> RouteLines { get; } = [];
+
+	public bool HasRouteLines =>
+		RouteLines.Count > 0;
+
+	public bool HasPlaceChips =>
+		PlaceChips.Count > 0;
+
 	public AsyncCommand<SavedRoute> UseSavedRouteCommand { get; }
 
 	public Command<SavedRoute> ForgetSavedRouteCommand { get; }
@@ -336,7 +422,7 @@ public sealed partial class PlanViewModel : DisposableViewModel
 
 	public Location? From
 	{
-		get => field;
+		get;
 
 		set
 		{
@@ -374,7 +460,7 @@ public sealed partial class PlanViewModel : DisposableViewModel
 	/// <summary>Stop the journey has to pass through (optional).</summary>
 	public Location? Via
 	{
-		get => field;
+		get;
 
 		set
 		{
@@ -424,7 +510,7 @@ public sealed partial class PlanViewModel : DisposableViewModel
 
 	public Location? To
 	{
-		get => field;
+		get;
 
 		set
 		{
@@ -521,7 +607,7 @@ public sealed partial class PlanViewModel : DisposableViewModel
 	/// <summary>True while the list is cut short; the toggle then offers the rest.</summary>
 	public bool CanExpandRoutes
 	{
-		get => field;
+		get;
 
 		private set => SetProperty(
 			ref field,
@@ -531,7 +617,7 @@ public sealed partial class PlanViewModel : DisposableViewModel
 
 	public bool ShowAllRoutes
 	{
-		get => field;
+		get;
 
 		set
 		{
@@ -633,7 +719,7 @@ public sealed partial class PlanViewModel : DisposableViewModel
 
 	public DateTime MinDate
 	{
-		get => field;
+		get;
 
 		private set => SetProperty(
 			ref field,
@@ -671,7 +757,7 @@ public sealed partial class PlanViewModel : DisposableViewModel
 
 	public bool IsArrival
 	{
-		get => field;
+		get;
 
 		set
 		{
@@ -702,7 +788,7 @@ public sealed partial class PlanViewModel : DisposableViewModel
 
 	public bool IsNow
 	{
-		get => field;
+		get;
 
 		private set
 		{
@@ -862,6 +948,11 @@ public sealed partial class PlanViewModel : DisposableViewModel
 				if (plan.To is { } to)
 				{
 					To = to;
+				}
+
+				if (plan.Via is { } via)
+				{
+					Via = via;
 				}
 
 				if (plan.Mode is { } mode)
@@ -1174,11 +1265,19 @@ public sealed partial class PlanViewModel : DisposableViewModel
 				: all.Take(CollapsedRoutes);
 
 		RecentRoutes.Clear();
+		RouteLines.Clear();
+
+		foreach (SavedRoute saved in _store.SavedRoutes)
+		{
+			RouteLines.Add(new RouteLine(saved.From, saved.To, saved, null));
+		}
 
 		foreach (RoutePair route in shown)
 		{
-			RecentRoutes.Add(
-				new RouteRow(route));
+			var row = new RouteRow(route);
+
+			RecentRoutes.Add(row);
+			RouteLines.Add(new RouteLine(route.From, route.To, null, row));
 		}
 
 		CanExpandRoutes =
@@ -1193,6 +1292,9 @@ public sealed partial class PlanViewModel : DisposableViewModel
 
 		OnPropertyChanged(
 			nameof(HasRecentRoutes));
+
+		OnPropertyChanged(
+			nameof(HasRouteLines));
 
 		OnPropertyChanged(
 			nameof(RoutesToggleText));
@@ -1301,11 +1403,91 @@ public sealed partial class PlanViewModel : DisposableViewModel
 	}
 
 
+	/// <summary>Home is chosen like any place: searched for, or picked from the favourites, recents or the device position.</summary>
 	private async Task SetHomeAsync()
 	{
-		if (await FindStopNearMeAsync() is { } stop)
+		if (OpenHomeSearch is not null)
 		{
-			_store.SetHome(stop);
+			await OpenHomeSearch();
+		}
+	}
+
+	/// <summary>The answer of the place search for home.</summary>
+	public void SetHome(Location place)
+	{
+		ArgumentNullException.ThrowIfNull(place);
+
+		_store.SetHome(place);
+	}
+
+
+	/// <summary>
+	/// The input mode (a setting): the start is filled in, with the device position or the place chosen in the
+	/// settings, and the search for the destination opens, ready for typing. A start that cannot be had (no
+	/// permission, no position) leaves the start empty; the destination search opens anyway.
+	/// </summary>
+	public async Task StartInputModeAsync()
+	{
+		try
+		{
+			Location? start =
+				_settings.StartFrom == StartFromKind.Place && _settings.StartFromPlace is { } chosen
+					? chosen
+					: await FindStopNearMeAsync();
+
+			if (start is not null)
+			{
+				From = start;
+			}
+
+			if (OpenPlaceSearch is not null)
+			{
+				await OpenPlaceSearch(false);
+			}
+		}
+		catch (Exception ex)
+		{
+			DiagnosticLog.Write($"Input mode failed: {ex}");
+		}
+	}
+
+
+	/// <summary>
+	/// The quick action "take me home": from the stop nearest to the device to the home stop, now, and search.
+	/// Without a home the passenger is told to set one.
+	/// </summary>
+	public async Task TakeMeHomeAsync()
+	{
+		try
+		{
+			if (_store.Home is not { } home)
+			{
+				await TellAsync(
+					_localization.CurrentStrings.Extras.ShortcutNoHome);
+
+				return;
+			}
+
+			if (await FindStopNearMeAsync() is not { } here)
+			{
+				return;
+			}
+
+			From = here;
+			To = home;
+			Via = null;
+			IsArrival = false;
+
+			SetNow();
+
+			if (CanSearch)
+			{
+				await SearchAsync();
+			}
+		}
+		catch (Exception ex)
+		{
+			DiagnosticLog.Write($"Take me home failed: {ex}");
 		}
 	}
 
@@ -1366,6 +1548,22 @@ public sealed partial class PlanViewModel : DisposableViewModel
 				{
 					SavedRoutes.Add(route);
 				}
+
+				PlaceChips.Clear();
+
+				foreach (Location favourite in _store.Favourites)
+				{
+					PlaceChips.Add(new PlaceChip(favourite, true));
+				}
+
+				foreach (Location recent in _store.Recents.Where(
+					recent => !_store.Favourites.Any(favourite => SamePlace(favourite, recent))))
+				{
+					PlaceChips.Add(new PlaceChip(recent, false));
+				}
+
+				OnPropertyChanged(
+					nameof(HasPlaceChips));
 
 				OnPropertyChanged(
 					nameof(HasFavourites));

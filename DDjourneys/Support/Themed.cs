@@ -88,7 +88,7 @@ public static class Themed
 		bool enabled = element.IsEnabled;
 		bool on = GetIsOn(element);
 
-		Apply(element, BackgroundTarget(element), Pick(element, enabled, on, BackgroundProperty, OnBackgroundProperty, DisabledBackgroundProperty));
+		Apply(element, BackgroundTarget(), Pick(element, enabled, on, BackgroundProperty, OnBackgroundProperty, DisabledBackgroundProperty));
 		Apply(element, TextTarget(element), Pick(element, enabled, on, TextProperty, OnTextProperty, DisabledTextProperty));
 		Apply(element, StrokeTarget(element), Pick(element, enabled, on, StrokeProperty, OnStrokeProperty, null));
 		Apply(element, FontTarget(element), Pick(element, enabled, on, FontProperty, OnFontProperty, null));
@@ -146,7 +146,7 @@ public static class Themed
 		}
 	}
 
-	private static BindableProperty BackgroundTarget(VisualElement element) =>
+	private static BindableProperty BackgroundTarget() =>
 		VisualElement.BackgroundColorProperty;
 
 	private static BindableProperty? TextTarget(VisualElement element) =>

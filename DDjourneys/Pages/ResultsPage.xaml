@@ -1,4 +1,4 @@
-<ContentPage
+<support:PanePage
 	x:Class="DDjourneys.Pages.ResultsPage"
 	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
 	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
@@ -74,7 +74,7 @@
 					<CollectionView.ItemTemplate>
 						<DataTemplate x:DataType="support:JourneyCardModel">
 
-							<controls:JourneyCard Loaded="CardLoaded">
+							<controls:JourneyCard EndpointTapped="JourneyTapped" Loaded="CardLoaded">
 
 								<controls:JourneyCard.GestureRecognizers>
 									<TapGestureRecognizer Tapped="JourneyTapped" />
@@ -125,4 +125,4 @@
 
 	</Grid>
 
-</ContentPage>
+</support:PanePage>

@@ -39,19 +39,89 @@ public static class Motion
 	private const int CascadeCap = 8;
 
 	private static readonly object Marker = new();
-	private static readonly ConditionalWeakTable<Page, object> Entered = new();
+	private static readonly ConditionalWeakTable<Page, object> Entered = [];
 
 	/// <summary>Views that are being animated in right now: a second entrance on the same view is skipped.</summary>
-	private static readonly ConditionalWeakTable<VisualElement, object> Playing = new();
+	private static readonly ConditionalWeakTable<VisualElement, object> Playing = [];
 
 	/// <summary>Views whose entrance has played (once per instance, so recycled list cells do not replay it).</summary>
-	private static readonly ConditionalWeakTable<VisualElement, object> Seen = new();
+	private static readonly ConditionalWeakTable<VisualElement, object> Seen = [];
 
-	private static readonly ConditionalWeakTable<VisualElement, object> Breathing = new();
-	private static readonly ConditionalWeakTable<VisualElement, Quiet> Quiets = new();
+	private static readonly ConditionalWeakTable<VisualElement, object> Breathing = [];
+	private static readonly ConditionalWeakTable<VisualElement, Quiet> Quiets = [];
 
 	/// <summary>The app setting, and the OS: "remove animations" always wins.</summary>
-	public static bool Enabled { get; private set; } = true;
+	public static bool Enabled
+	{
+		get => _enabled;
+		private set
+		{
+			if (_enabled == value)
+			{
+				return;
+			}
+
+			_enabled = value;
+
+			// Whoever waits for animations to come back is woken now instead of polling.
+			Interlocked.Exchange(ref _enabledSignal, NewSignal()).TrySetResult();
+		}
+	}
+
+	private static bool _enabled = true;
+	private static TaskCompletionSource _enabledSignal = NewSignal();
+
+	private static TaskCompletionSource NewSignal() =>
+		new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+	/// <summary>
+	/// Waits until a looping animation has a reason to run again: animations are switched on, or a long pause has
+	/// passed (so a view that was removed meanwhile is not held alive for ever).
+	/// </summary>
+	internal static async Task WaitUntilWorthAnimatingAsync()
+	{
+		if (!Enabled)
+		{
+			TaskCompletionSource signal = _enabledSignal;
+
+			if (!Enabled)
+			{
+				try
+				{
+					await signal.Task.WaitAsync(TimeSpan.FromSeconds(30));
+				}
+				catch (TimeoutException)
+				{
+					// The pause is over: the caller looks again.
+				}
+			}
+
+			return;
+		}
+
+		// Off screen, or on a page that is under another one: nothing to animate, check again later.
+		await Task.Delay(1500);
+	}
+
+	/// <summary>False for a view that is hidden, not loaded, or on a page that is not the one the user sees.</summary>
+	internal static bool IsShowing(VisualElement view)
+	{
+		if (!view.IsVisible || !view.IsLoaded)
+		{
+			return false;
+		}
+
+		Element? parent = view;
+
+		while (parent is not null and not Page)
+		{
+			parent = parent.Parent;
+		}
+
+		return parent is not Page page
+			|| Shell.Current is not { } shell
+			|| ReferenceEquals(shell.CurrentPage, page);
+	}
 
 	public static void Bind(AppSettings settings)
 	{
@@ -145,6 +215,9 @@ public static class Motion
 		pointer.PointerEntered += (_, _) => _ = HoverAsync(view, true);
 		pointer.PointerExited += (_, _) => _ = HoverAsync(view, false);
 		view.GestureRecognizers.Add(pointer);
+
+		// The mouse also shines a soft light on what can be pressed (desktop only).
+		PointerLight.SetEnabled(view, true);
 	}
 
 	private static void OnEnterChanged(BindableObject bindable, object oldValue, object newValue)
@@ -164,7 +237,7 @@ public static class Motion
 
 	private static void EnterLoaded(object? sender, EventArgs e)
 	{
-		if (!Enabled || sender is not VisualElement view || !Seen.TryAdd(view, Marker))
+		if (!Enabled || sender is not VisualElement view || !Seen.TryAdd(view, Marker) || IsQuiet)
 		{
 			return;
 		}
@@ -407,9 +480,23 @@ public static class Motion
 	}
 
 	/// <summary>Fades and lifts a view into place. Always leaves the view fully visible, whatever happens.</summary>
+	/// <summary>Until then, elements that appear do not play their entrance (a larger motion, the panes, is running).</summary>
+	private static long _quietUntil;
+
+	private static bool IsQuiet => Environment.TickCount64 < _quietUntil;
+
+	/// <summary>Entrances of elements that appear in the next <paramref name="milliseconds"/> are skipped (they appear in place).</summary>
+	public static void QuietEntrances(uint milliseconds) =>
+		_quietUntil = Math.Max(_quietUntil, Environment.TickCount64 + milliseconds);
+
 	public static Task RevealAsync(VisualElement view, int delayMs = 0, uint duration = 240, double rise = 10)
 	{
 		ArgumentNullException.ThrowIfNull(view);
+
+		if (IsQuiet)
+		{
+			return Task.CompletedTask;
+		}
 
 		return PlayAsync(view, 0, rise, 0.985, delayMs, duration, Curves.Decelerate);
 	}
@@ -528,9 +615,9 @@ public static class Motion
 		{
 			while (view.Handler is not null)
 			{
-				if (!Enabled || !view.IsVisible || !view.IsLoaded)
+				if (!Enabled || !IsShowing(view))
 				{
-					await Task.Delay(800);
+					await WaitUntilWorthAnimatingAsync();
 					continue;
 				}
 
@@ -580,9 +667,14 @@ public static class Motion
 			return;
 		}
 
+		// Hover never scales: a larger element pushes its text past the clipping edge of its pane or card.
+		// The highlight comes from the pointer light; a view left scaled by an older build returns to 1.
 		try
 		{
-			await view.ScaleToAsync(over ? 1.012 : 1, 160, Curves.Emphasized);
+			if (!over && view.Scale != 1)
+			{
+				await view.ScaleToAsync(1, 120, Curves.Emphasized);
+			}
 		}
 		catch (Exception ex)
 		{
@@ -804,7 +896,7 @@ public static class Motion
 	}
 
 	/// <summary>The top-level sections of a scrolling page (the children of its single layout), if it has that shape.</summary>
-	private static IEnumerable<IView> SectionsOf(VisualElement content)
+	private static IView[] SectionsOf(VisualElement content)
 	{
 		Layout? layout =
 			content switch
@@ -814,6 +906,6 @@ public static class Motion
 				_ => null
 			};
 
-		return layout is null ? [] : layout.Children.ToArray();
+		return layout is null ? [] : [.. layout.Children];
 	}
 }

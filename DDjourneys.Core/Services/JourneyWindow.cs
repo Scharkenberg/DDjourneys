@@ -9,11 +9,8 @@ namespace DDjourneys.Core.Services;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Nothing here relies on a provider's own paging (VVO's <c>prevnext</c> is undocumented in how it
-/// treats the time and repeats connections already shown). Instead the window is moved with plain
-/// searches: "later" asks for departures from the last shown journey on, "earlier" for arrivals up
-/// to the first shown one. Each round moves a cursor past what it got, so a round that only
-/// repeats known journeys still makes progress, and the number of rounds is capped.
+/// The window is moved with bounded searches for providers without native paging. Providers with
+/// session continuation are handled directly by <see cref="JourneyService"/>.
 /// </para>
 /// <para>
 /// All comparisons use timetable times (<see cref="PlannedStart"/>, <see cref="PlannedEnd"/>):
@@ -65,22 +62,24 @@ public static class JourneyWindow
 			? PlannedEnd(journey)
 			: PlannedStart(journey);
 
-	/// <summary>Key for duplicate detection; journeys without planned times count as distinct.</summary>
+	/// <summary>Stable key for duplicate detection, including journeys with incomplete timetable data.</summary>
 	public static string IdentityOf(Journey journey) =>
 		JourneyIdentity.Of(journey)?.Key
 		?? $"{PlannedStart(journey)?.ToUnixTimeMilliseconds()}>{PlannedEnd(journey)?.ToUnixTimeMilliseconds()}#"
-			+ string.Join("|", journey.Legs.Select(leg => leg.Line?.Name))
-			+ "#" + (journey.Id ?? Guid.NewGuid().ToString("N"));
+			+ string.Join("|", journey.Legs.Select(leg =>
+				$"{leg.Mode}:{JourneyIdentity.Normalize(leg.Line?.Name)}:{leg.From.StopKey}:{leg.To.StopKey}:"
+				+ $"{(leg.ScheduledDeparture ?? leg.EffectiveDeparture)?.ToUnixTimeMilliseconds()}:"
+				+ $"{(leg.ScheduledArrival ?? leg.EffectiveArrival)?.ToUnixTimeMilliseconds()}"))
+			+ "#" + (journey.ProviderId ?? string.Empty) + ":" + (journey.Id ?? string.Empty);
 
 	/// <summary>Orders by the mode's key; journeys without a key go last; equal keys keep their order.</summary>
 	public static List<Journey> Order(IEnumerable<Journey> journeys, JourneySearchMode mode) =>
-		journeys
+		[.. journeys
 			.Select((journey, index) => (journey, index, key: SortKey(journey, mode)))
 			.OrderBy(item => item.key is null)
 			.ThenBy(item => item.key)
 			.ThenBy(item => item.index)
-			.Select(item => item.journey)
-			.ToList();
+			.Select(item => item.journey)];
 
 	/// <summary>
 	/// Brings a first answer to exactly <paramref name="wanted"/> journeys when the timetable allows:
@@ -220,13 +219,13 @@ public static class JourneyWindow
 		// Keep the journeys closest to the list: the latest of the earlier ones, the first of the later ones.
 		page =
 			previous
-				? page.Skip(Math.Max(0, page.Count - wanted)).ToList()
-				: page.Take(wanted).ToList();
+				? [.. page.Skip(Math.Max(0, page.Count - wanted))]
+				: [.. page.Take(wanted)];
 
 		return new PageResult(page, page.Count == 0 ? failure : null);
 	}
 
-	private static IReadOnlyList<Journey> Trim(
+	private static List<Journey> Trim(
 		List<Journey> ordered,
 		JourneySearchMode mode,
 		int wanted)
@@ -238,15 +237,15 @@ public static class JourneyWindow
 
 		// Departures: the first ones after the requested time. Arrive by: the last ones before it.
 		return mode == JourneySearchMode.Arrival
-			? ordered.Skip(ordered.Count - wanted).ToList()
-			: ordered.Take(wanted).ToList();
+			? [.. ordered.Skip(ordered.Count - wanted)]
+			: [.. ordered.Take(wanted)];
 	}
 
 	private static List<Journey> Distinct(IEnumerable<Journey> journeys)
 	{
 		var seen = new HashSet<string>(StringComparer.Ordinal);
 
-		return journeys.Where(journey => seen.Add(IdentityOf(journey))).ToList();
+		return [.. journeys.Where(journey => seen.Add(IdentityOf(journey)))];
 	}
 
 	private static JourneyQuery Copy(
@@ -261,7 +260,8 @@ public static class JourneyWindow
 			SearchMode = mode,
 			MaxResults = query.MaxResults,
 			TimeoutSeconds = query.TimeoutSeconds,
-			Routing = query.Routing
+			Routing = query.Routing,
+			Via = query.Via
 		};
 
 	private static DateTimeOffset Earliest(DateTimeOffset a, DateTimeOffset b) => a < b ? a : b;

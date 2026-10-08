@@ -3,9 +3,7 @@ using Android.Content;
 using DDjourneys.Core.Tracking;
 using DDjourneys.Core.Tracking.Live;
 
-// The namespace is part of the generated Java class name that already-posted notifications
-// point to; it stays as it is although the class no longer lives in a Schutzengel folder.
-namespace DDjourneys.Platforms.Android.LiveJourney.Schutzengel;
+namespace DDjourneys.Platforms.Android.LiveJourney;
 
 /// <summary>
 /// Handles the buttons and the swipe of the live notification. The broadcast may start a fresh

@@ -103,7 +103,7 @@ public sealed record DepartureRow(
 	public bool IsCancelled =>
 		Departure.IsCancelled;
 
-	public string CancelledText =>
+	private static string CancelledText =>
 		LocalizationService.Current.CurrentStrings.Departures.Cancelled;
 
 	public OccupancyLevel Occupancy =>
@@ -239,7 +239,7 @@ public sealed record ServicePointRow(
 /// Departure monitor: what leaves (or arrives at) a stop, optionally at another time, with the lines of the
 /// stop, the tariff zone and the stops near the passenger.
 /// </summary>
-public sealed class DeparturesViewModel : DisposableViewModel
+public sealed partial class DeparturesViewModel : DisposableViewModel
 {
 	private const int NearbyRadius = 600;
 
@@ -435,7 +435,7 @@ public sealed class DeparturesViewModel : DisposableViewModel
 
 	public Location? Stop
 	{
-		get => field;
+		get;
 
 		private set
 		{
@@ -469,7 +469,7 @@ public sealed class DeparturesViewModel : DisposableViewModel
 
 	public bool IsArrival
 	{
-		get => field;
+		get;
 
 		private set
 		{
@@ -534,13 +534,13 @@ public sealed class DeparturesViewModel : DisposableViewModel
 
 	public bool IsBusy
 	{
-		get => field;
+		get;
 		private set => SetProperty(ref field, value);
 	}
 
 	public bool IsLocating
 	{
-		get => field;
+		get;
 
 		private set
 		{
@@ -553,7 +553,7 @@ public sealed class DeparturesViewModel : DisposableViewModel
 
 	public string Message
 	{
-		get => field;
+		get;
 
 		private set
 		{
@@ -569,13 +569,13 @@ public sealed class DeparturesViewModel : DisposableViewModel
 
 	public string UpdatedText
 	{
-		get => field;
+		get;
 		private set => SetProperty(ref field, value);
 	} = string.Empty;
 
 	public string? ZoneText
 	{
-		get => field;
+		get;
 
 		private set
 		{
@@ -603,7 +603,7 @@ public sealed class DeparturesViewModel : DisposableViewModel
 
 	public bool ShowLines
 	{
-		get => field;
+		get;
 
 		private set
 		{
@@ -624,7 +624,7 @@ public sealed class DeparturesViewModel : DisposableViewModel
 
 	public bool ShowAccessibility
 	{
-		get => field;
+		get;
 
 		private set
 		{
@@ -659,7 +659,7 @@ public sealed class DeparturesViewModel : DisposableViewModel
 
 	public string AccessibilityMessage
 	{
-		get => field;
+		get;
 
 		private set
 		{
@@ -675,7 +675,7 @@ public sealed class DeparturesViewModel : DisposableViewModel
 
 	public bool ShowServicePoints
 	{
-		get => field;
+		get;
 
 		private set
 		{
@@ -693,7 +693,7 @@ public sealed class DeparturesViewModel : DisposableViewModel
 
 	public string ServicePointsMessage
 	{
-		get => field;
+		get;
 
 		private set
 		{
@@ -919,7 +919,8 @@ public sealed class DeparturesViewModel : DisposableViewModel
 						timeout: TimeSpan.FromSeconds(_settings.TimeoutSeconds));
 
 				found =
-					(stops
+					(List<NearbyStop>)
+					[.. stops
 						.Take(10)
 						.Select(
 							stop =>
@@ -931,7 +932,7 @@ public sealed class DeparturesViewModel : DisposableViewModel
 											? (int)Math.Round(
 												GeoMath.DistanceMeters(here.Latitude, here.Longitude, latitude, longitude))
 											: 0
-								})).ToList();
+								})];
 			}
 
 			Nearby.Clear();
@@ -1092,7 +1093,7 @@ public sealed class DeparturesViewModel : DisposableViewModel
 		try
 		{
 			await MapScenes.OpenAsync(
-				MapScenes.FromStops(null, Array.Empty<DDjourneys.Core.Models.Location>(), new[] { row.Point }),
+				MapScenes.FromStops(null, (Location[])[], (ServicePoint[])[row.Point]),
 				row.Name);
 		}
 		catch (Exception ex)
@@ -1212,6 +1213,18 @@ public sealed class DeparturesViewModel : DisposableViewModel
 		catch (Exception ex)
 		{
 			DiagnosticLog.Write($"Stop lines failed: {ex.Message}");
+		}
+	}
+
+	/// <summary>Arrivals instead of departures and/or a time other than now, before a stop is set (which then loads).</summary>
+	public void ApplyBoard(bool arrivals, DateTime? when)
+	{
+		IsArrival = arrivals;
+
+		if (when is { } time)
+		{
+			IsNow = false;
+			SetWhen(time);
 		}
 	}
 

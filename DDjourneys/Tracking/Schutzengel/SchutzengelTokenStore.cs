@@ -12,12 +12,12 @@ namespace DDjourneys.Tracking.Schutzengel;
 /// in the app's private preferences (it is an anonymous identifier, not a credential of the person); it is
 /// only discarded when the service itself rejects it (<see cref="RemoveToken"/>).
 /// </summary>
-internal sealed class SchutzengelTokenStore
+internal static class SchutzengelTokenStore
 {
 	private const string TokenKey = "schutzengel_auth_token";
 	private const string FallbackKey = "schutzengel_auth_token.fallback";
 
-	public async Task<string?> GetAsync(CancellationToken cancellationToken)
+	public static async Task<string?> GetAsync(CancellationToken cancellationToken)
 	{
 		cancellationToken.ThrowIfCancellationRequested();
 
@@ -63,7 +63,7 @@ internal sealed class SchutzengelTokenStore
 		return fallback;
 	}
 
-	public async Task SetAsync(string value, CancellationToken cancellationToken)
+	public static async Task SetAsync(string value, CancellationToken cancellationToken)
 	{
 		cancellationToken.ThrowIfCancellationRequested();
 
@@ -83,7 +83,7 @@ internal sealed class SchutzengelTokenStore
 	}
 
 	/// <summary>The service rejected the token: both copies go.</summary>
-	public void RemoveToken()
+	public static void RemoveToken()
 	{
 		RemoveSecure();
 

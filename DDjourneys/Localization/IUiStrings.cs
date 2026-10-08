@@ -16,6 +16,7 @@ public interface IUiStrings
 	RoutingStrings Routing { get; }
 	SettingsStrings Settings { get; }
 	TransportStrings Transport { get; }
+	WidgetStrings Widgets { get; }
 }
 
 public sealed class CommonStrings
@@ -24,6 +25,7 @@ public sealed class CommonStrings
 	public required string Cancel { get; init; }
 	public required string Retry { get; init; }
 	public required string Close { get; init; }
+	public required string Back { get; init; }
 	public required string Loading { get; init; }
 	public required string Searching { get; init; }
 	public required string Today { get; init; }
@@ -162,7 +164,10 @@ public sealed class JourneyStrings
 {
 	public required string LegEarlier { get; init; }
 	public required string LegLater { get; init; }
+	public required string LegEarlierHint { get; init; }
+	public required string LegLaterHint { get; init; }
 	public required string LegNone { get; init; }
+	public required string LegSearching { get; init; }
 	public required string OpenPdf { get; init; }
 	public required string AlternativeShown { get; init; }
 	public required string Title { get; init; }
@@ -181,6 +186,13 @@ public sealed class JourneyStrings
 	public required string ShareTitle { get; init; }
 	public required string ShareAsText { get; init; }
 	public required string ShareAsImage { get; init; }
+	public required string ShareSubtitle { get; init; }
+	public required string ShareTextDescription { get; init; }
+	public required string ShareImageDescription { get; init; }
+	public required string ShareAsCalendar { get; init; }
+	public required string CalendarUnavailable { get; init; }
+	public required string ShareCalendarDescription { get; init; }
+	public required string ShareChooseFormat { get; init; }
 	public required string HandOff { get; init; }
 	public required string HandOffFailed { get; init; }
 	public required string Direct { get; init; }
@@ -243,6 +255,20 @@ public sealed class SettingsStrings
 	public required string Theme { get; init; }
 	public required string Language { get; init; }
 	public required string JourneyOptions { get; init; }
+	public required string MapSection { get; init; }
+	public required string MapKeyTitle { get; init; }
+	public required string MapKeyDescription { get; init; }
+	public required string MapKeyPlaceholder { get; init; }
+	public required string MapKeySave { get; init; }
+	public required string MapKeyStatusMissing { get; init; }
+	public required string MapKeyStatusInvalid { get; init; }
+	public required string MapKeyStatusSet { get; init; }
+	public required string MapEngineTitle { get; init; }
+	public required string MapEngineDescription { get; init; }
+	public required string MapEngineCarto { get; init; }
+	public required string MapEngineCartoDescription { get; init; }
+	public required string MapEngineLeaflet { get; init; }
+	public required string MapEngineLeafletDescription { get; init; }
 	public required string About { get; init; }
 	public required string ThemeSystem { get; init; }
 	public required string ThemeLight { get; init; }
@@ -330,7 +356,24 @@ public sealed class SettingsStrings
 	public required string MinQueryLengthDescription { get; init; }
 	public required string RoutingEntry { get; init; }
 	public required string RoutingEntryDescription { get; init; }
+	public required string StartEntry { get; init; }
+	public required string StartEntryDescription { get; init; }
+	public required string StartTitle { get; init; }
+	public required string StartInputMode { get; init; }
+	public required string StartInputModeDescription { get; init; }
+	public required string StartFromTitle { get; init; }
+	public required string StartFromLocation { get; init; }
+	public required string StartFromLocationDescription { get; init; }
+	public required string StartFromPlace { get; init; }
+	public required string StartFromPlaceDescription { get; init; }
+	public required string StartPlaceNone { get; init; }
+	public required string StartPlaceHint { get; init; }
 	public required string VersionPrefix { get; init; }
+	public required string AboutEntryDescription { get; init; }
+	public required string InterfaceVersions { get; init; }
+	public required string InterfaceVersionsDescription { get; init; }
+	public required string CopyInterfaces { get; init; }
+	public required string InterfacesCopied { get; init; }
 }
 
 public sealed class TransportStrings
@@ -405,6 +448,7 @@ public sealed class ProviderStrings
 	public required string Title { get; init; }
 	public required string Intro { get; init; }
 	public required string InUse { get; init; }
+	public required string Use { get; init; }
 	public required string CapJourneys { get; init; }
 	public required string CapPlaces { get; init; }
 	public required string CapContinuation { get; init; }
@@ -456,6 +500,8 @@ public sealed class TrackingStrings
 	public required string CourseWalk { get; init; }
 	public required string CoursePlatform { get; init; }
 	public required string CourseTrack { get; init; }
+	public required string ShowOnMap { get; init; }
+	public required string ToggleDetails { get; init; }
 	public required string CourseWalkMinutes { get; init; }
 	public required string CourseIn { get; init; }
 	public required string CourseNow { get; init; }
@@ -492,6 +538,7 @@ public sealed class TrackingStrings
 	public required string NotifGetOff { get; init; }
 	public required string NotifBoard { get; init; }
 	public required string NotifChangeTitle { get; init; }
+	public required string NotifWalkFromUntil { get; init; }
 	public required string NotifChangeText { get; init; }
 	public required string NotifRiskTitle { get; init; }
 	public required string GuaranteedChange { get; init; }
@@ -530,6 +577,7 @@ public sealed class ExtrasStrings
 	public required string LiveStop { get; init; }
 	public required string LiveConnecting { get; init; }
 	public required string LiveWaiting { get; init; }
+	public required string LiveRetry { get; init; }
 	public required string LiveError { get; init; }
 	public required string LiveLine { get; init; }
 	public required string LiveRun { get; init; }
@@ -569,6 +617,9 @@ public sealed class ExtrasStrings
 	public required string FareZones { get; init; }
 	public required string FareValidFor { get; init; }
 	public required string FareNotAll { get; init; }
+	public required string ShortcutHome { get; init; }
+	public required string ShortcutDepartures { get; init; }
+	public required string ShortcutNoHome { get; init; }
 	public required string FaresExpand { get; init; }
 	public required string FaresCollapse { get; init; }
 	public required string PassengerAdult { get; init; }
@@ -583,13 +634,29 @@ public sealed class ExtrasStrings
 	public required string LiveHowTitle { get; init; }
 	public required string LiveHowText { get; init; }
 	public required string LineFilterLabel { get; init; }
-	public required string LiveQuickLines { get; init; }
-	public required string LiveAllLines { get; init; }
 	public required string LiveInvalid { get; init; }
 	public required string LiveEmpty { get; init; }
 	public required string LiveCount { get; init; }
 	public required string MapTitle { get; init; }
 	public required string MapShow { get; init; }
+	public required string MapKeyMissing { get; init; }
+	public required string MapKeyInvalid { get; init; }
+	public required string MapKeyOpenSettings { get; init; }
+	public required string MapUnsupported { get; init; }
+	public required string MapCrashed { get; init; }
+	public required string MapBypass { get; init; }
+	public required string MapUseLeaflet { get; init; }
+	public required string MapPickStart { get; init; }
+	public required string MapPickEnd { get; init; }
+	public required string MapPickStop { get; init; }
+	public required string MapPickOnMap { get; init; }
+	public required string MapZoomHint { get; init; }
+	public required string MapPickHint { get; init; }
+	public required string MapStopDepartures { get; init; }
+	public required string MapJourneyToHere { get; init; }
+	public required string MapJourneyFromHere { get; init; }
+	public required string MapUsePlace { get; init; }
+	public required string MapNothingHere { get; init; }
 	public required string MapJourneyTitle { get; init; }
 	public required string MapStopTitle { get; init; }
 	public required string MapNoData { get; init; }
@@ -601,6 +668,7 @@ public sealed class ExtrasStrings
 	public required string MapInfo { get; init; }
 	public required string TrackFollowing { get; init; }
 	public required string TrackNotFound { get; init; }
+	public required string TrackNoCourse { get; init; }
 	public required string TrackShowAll { get; init; }
 	public required string TrackOnlyThisRun { get; init; }
 	public required string NoticeClose { get; init; }
@@ -620,3 +688,54 @@ public sealed class ExtrasStrings
 	public required string HomeNotSet { get; init; }
 }
 // </extras>
+
+
+/// <summary>Home screen widgets: the texts on the widget and in its settings.</summary>
+public sealed class WidgetStrings
+{
+	public required string NameRoute { get; init; }
+	public required string NameDepartures { get; init; }
+	public required string NameArrivals { get; init; }
+	public required string NameNearby { get; init; }
+	public required string NameNearbyDepartures { get; init; }
+	public required string Here { get; init; }
+	public required string Loading { get; init; }
+	public required string SetUp { get; init; }
+	public required string NoDepartures { get; init; }
+	public required string NoArrivals { get; init; }
+	public required string NoJourneys { get; init; }
+	public required string NoStopsNearby { get; init; }
+	public required string NeedsLocation { get; init; }
+	public required string RefreshFailed { get; init; }
+	public required string UpdatedAt { get; init; }
+	public required string PositionFrom { get; init; }
+	public required string Meters { get; init; }
+	public required string ConfigTitle { get; init; }
+	public required string ConfigFrom { get; init; }
+	public required string ConfigTo { get; init; }
+	public required string ConfigStop { get; init; }
+	public required string ChoosePlace { get; init; }
+	public required string SearchHint { get; init; }
+	public required string NoResults { get; init; }
+	public required string ConfigRadius { get; init; }
+	public required string ConfigRows { get; init; }
+	public required string RowsAuto { get; init; }
+	public required string ConfigStops { get; init; }
+	public required string ConfigPerStop { get; init; }
+	public required string ConfigLines { get; init; }
+	public required string LinesHint { get; init; }
+	public required string ConfigModes { get; init; }
+	public required string ModesAll { get; init; }
+	public required string ConfigAuto { get; init; }
+	public required string ConfigInterval { get; init; }
+	public required string IntervalMinutes { get; init; }
+	public required string IntervalHours { get; init; }
+	public required string ConfigAutoHint { get; init; }
+	public required string ConfigProvider { get; init; }
+	public required string ConfigLabelTitle { get; init; }
+	public required string ConfigTitleHint { get; init; }
+	public required string ConfigProviderChanged { get; init; }
+	public required string Done { get; init; }
+	public required string LocationHint { get; init; }
+	public required string OpenSettings { get; init; }
+}

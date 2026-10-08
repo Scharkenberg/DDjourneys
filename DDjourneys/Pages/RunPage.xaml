@@ -1,4 +1,4 @@
-<ContentPage
+<support:PanePage
 	x:Class="DDjourneys.Pages.RunPage"
 	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
 	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
@@ -40,7 +40,7 @@
 					<controls:IconButton
 						Grid.Column="2"
 						Command="{Binding OpenMapCommand}"
-						Glyph="Map"
+						Glyph="MapPin"
 						HorizontalOptions="End"
 						IsVisible="{Binding CanShowMap}"
 						SemanticProperties.Description="{localization:Tr Extras.MapShow}"
@@ -74,8 +74,8 @@
 							<DataTemplate x:DataType="local:RunRow">
 								<Grid RowDefinitions="Auto,Auto" RowSpacing="0">
 									<Grid
-										support:Dense.Padding="14,10"
-										support:Dense.MinHeight="52"
+										support:Dense.Padding="12,8"
+										support:Dense.MinHeight="{StaticResource HitRow}"
 										ColumnDefinitions="Auto,*,Auto"
 										ColumnSpacing="10"
 										Opacity="{Binding RowOpacity}"
@@ -100,7 +100,7 @@
 											<Label
 												IsVisible="{Binding IsCancelled}"
 												StyleClass="Cancelled"
-												Text="{Binding CancelledText}" />
+												Text="{localization:Tr Departures.Cancelled}" />
 										</VerticalStackLayout>
 
 										<HorizontalStackLayout
@@ -135,4 +135,4 @@
 			</VerticalStackLayout>
 		</ScrollView>
 	</RefreshView>
-</ContentPage>
+</support:PanePage>

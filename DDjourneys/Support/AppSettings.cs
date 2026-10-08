@@ -1,7 +1,10 @@
 using DDjourneys.Core.Diagnostics;
+using DDjourneys.Core.Api;
 using System.Globalization;
 using DDjourneys.Core.Models;
 using DDjourneys.Core.Providers.Vvo;
+using DDjourneys.Core.Storage;
+using Location = DDjourneys.Core.Models.Location;
 
 namespace DDjourneys.Support;
 
@@ -77,7 +80,7 @@ public sealed class AppSettings
 	/// <summary>Font face id from <see cref="FontCatalog"/>.</summary>
 	public string FontFace
 	{
-		get => Read("fontFace", FontCatalog.OpenSansId);
+		get => Read("fontFace", FontCatalog.SystemId);
 		set => Write("fontFace", value);
 	}
 
@@ -103,9 +106,10 @@ public sealed class AppSettings
 
 			(string mode, string color, bool black) = ColorCatalog.FromLegacy(legacy);
 
+			// Settings are stored as text (see Write); a typed value here made every later read fail.
 			_prefs.Set("themeMode", mode);
 			_prefs.Set("themeColor", color);
-			_prefs.Set("themePureBlack", black);
+			_prefs.Set("themePureBlack", Convert.ToString(black, CultureInfo.InvariantCulture) ?? string.Empty);
 			_prefs.Remove("themeId");
 			_prefs.Remove("theme");
 		}
@@ -129,7 +133,7 @@ public sealed class AppSettings
 		set => Write("animations", value);
 	}
 
-	/// <summary>Shows the seconds-precise time line and technical notice details.</summary>
+	/// <summary>Adds the technical cause (status line, start of the answer) to error messages and shows technical parts of notices.</summary>
 	public bool ShowTechnicalDetails
 	{
 		get => Read("technical", false);
@@ -184,7 +188,11 @@ public sealed class AppSettings
 	public int TimeoutSeconds
 	{
 		get => Math.Clamp(Read("timeout", 15), 5, 60);
-		set => Write("timeout", Math.Clamp(value, 5, 60));
+		set
+		{
+			Write("timeout", Math.Clamp(value, 5, 60));
+			ApiClient.DefaultTimeout = TimeSpan.FromSeconds(TimeoutSeconds);
+		}
 	}
 
 	// ----- Places -----
@@ -215,6 +223,29 @@ public sealed class AppSettings
 		PlaceKinds.Stops
 		| (SearchAddresses ? PlaceKinds.Addresses : PlaceKinds.None)
 		| (SearchPois ? PlaceKinds.Pois : PlaceKinds.None);
+
+	// ----- Start in input mode -----
+
+	/// <summary>The app opens as if the passenger had tapped the start already: start filled, destination search ready.</summary>
+	public bool StartInput
+	{
+		get => Read("startInput", false);
+		set => Write("startInput", value);
+	}
+
+	/// <summary>What the start of the input mode is: the device position or a chosen place.</summary>
+	public StartFromKind StartFrom
+	{
+		get => Read("startFrom", StartFromKind.Location);
+		set => Write("startFrom", value);
+	}
+
+	/// <summary>The chosen start place (a stop, a point of interest or an address). Per provider: its ids mean nothing to another.</summary>
+	public Location? StartFromPlace
+	{
+		get => LocationJson.FromJson(Read(Scoped("startFromPlace"), string.Empty));
+		set => Write(Scoped("startFromPlace"), value is null ? string.Empty : LocationJson.ToJson(value));
+	}
 
 	// ----- Journey display -----
 
@@ -277,6 +308,30 @@ public sealed class AppSettings
 			{
 				DiagnosticLog.Delete();
 			}
+		}
+	}
+
+	// ----- Map -----
+
+	/// <summary>The user's CARTO API key for the basemap; empty switches the map off (see <see cref="MapAvailability"/>).</summary>
+	public string MapApiKey
+	{
+		get => Read(MapAvailability.PreferenceKey, string.Empty).Trim();
+		set
+		{
+			Write(MapAvailability.PreferenceKey, (value ?? string.Empty).Trim());
+			MapAvailability.KeyChanged();
+		}
+	}
+
+	/// <summary>The library that draws the map: "carto" (vector, needs a key) or "leaflet" (raster tiles, no key).</summary>
+	public MapEngine MapEngine
+	{
+		get => MapAvailability.Engine;
+		set
+		{
+			MapAvailability.SetEngine(value);
+			Changed?.Invoke(this, nameof(MapEngine));
 		}
 	}
 
@@ -450,13 +505,13 @@ public sealed class AppSettings
 		ShowWalkingLegs = true;
 		ExpandNotices = false;
 		TimeoutSeconds = 15;
+		DefaultLeadMinutes = 5;
 		ShowOccupancy = true;
 		SearchAddresses = true;
 		SearchPois = true;
 		ExactPosition = false;
 		ShowPlatforms = true;
 		ExpandStops = false;
-		ExpertView = true;
 		SearchDelayMs = 500;
 		MinQueryLength = MinQueryLengthFloor;
 		ResetRoutingDefaults();
@@ -481,6 +536,24 @@ public sealed class AppSettings
 
 			return (T)parsed!;
 		}
+		catch (InvalidCastException) when (typeof(T) == typeof(bool))
+		{
+			// Written as a real boolean by an earlier build: read it as one and store it as text from now on.
+			try
+			{
+				bool stored = _prefs.Get(key, Convert.ToBoolean(fallback, CultureInfo.InvariantCulture));
+
+				_prefs.Remove(key);
+				_prefs.Set(key, Convert.ToString(stored, CultureInfo.InvariantCulture) ?? string.Empty);
+
+				return (T)(object)stored;
+			}
+			catch (Exception ex)
+			{
+				DiagnosticLog.Write($"Settings read '{key}' failed: {ex.Message}");
+				return fallback;
+			}
+		}
 		catch (Exception ex)
 		{
 			DiagnosticLog.Write($"Settings read '{key}' failed: {ex.Message}");
@@ -503,4 +576,14 @@ public sealed class AppSettings
 
 	private static string NormalizeCulture(string languageCode) =>
 	CultureInfo.GetCultureInfo(languageCode).Name;
+}
+
+/// <summary>The start of the input mode.</summary>
+public enum StartFromKind
+{
+	/// <summary>The stop or address nearest to the device.</summary>
+	Location = 0,
+
+	/// <summary>A place chosen in the settings.</summary>
+	Place
 }

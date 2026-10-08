@@ -14,7 +14,7 @@ internal sealed record TriasRunData(
 	OperatingDays? OperatingDays = null);
 
 /// <summary>TRIAS XML to the app's models. Elements are read by local name and every field is optional.</summary>
-internal static class TriasMapper
+internal static partial class TriasMapper
 {
 	// ---------- Places ----------
 
@@ -256,7 +256,7 @@ internal static class TriasMapper
 
 		if (value.Contains("s-bahn", StringComparison.OrdinalIgnoreCase)
 			|| value.Contains("stadtbahn", StringComparison.OrdinalIgnoreCase)
-			|| SuburbanLine.IsMatch(value))
+			|| SuburbanLine().IsMatch(value))
 		{
 			return TransitMode.SuburbanRail;
 		}
@@ -280,12 +280,12 @@ internal static class TriasMapper
 			return TransitMode.CableCar;
 		}
 
-		if (LongDistanceLine.IsMatch(value))
+		if (LongDistanceLine().IsMatch(value))
 		{
 			return TransitMode.LongDistanceTrain;
 		}
 
-		if (RegionalLine.IsMatch(value)
+		if (RegionalLine().IsMatch(value)
 			|| value.Contains("regional", StringComparison.OrdinalIgnoreCase)
 			|| value.Contains("zug", StringComparison.OrdinalIgnoreCase))
 		{
@@ -295,14 +295,14 @@ internal static class TriasMapper
 		return TransitMode.Unknown;
 	}
 
-	private static readonly System.Text.RegularExpressions.Regex SuburbanLine =
-		new(@"^S\s?\d{1,2}\b", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+	[System.Text.RegularExpressions.GeneratedRegex(@"^S\s?\d{1,2}\b", System.Text.RegularExpressions.RegexOptions.CultureInvariant)]
+	private static partial System.Text.RegularExpressions.Regex SuburbanLine();
 
-	private static readonly System.Text.RegularExpressions.Regex LongDistanceLine =
-		new(@"^(ICE|IC|EC|ECE|RJ|RJX|NJ|FLX|TGV)\b", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+	[System.Text.RegularExpressions.GeneratedRegex(@"^(ICE|IC|EC|ECE|RJ|RJX|NJ|FLX|TGV)\b", System.Text.RegularExpressions.RegexOptions.CultureInvariant)]
+	private static partial System.Text.RegularExpressions.Regex LongDistanceLine();
 
-	private static readonly System.Text.RegularExpressions.Regex RegionalLine =
-		new(@"^(RE|RB|IRE|MRB|OE|U\d|VIA|TLX|ODEG|SB)\s?\d*", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+	[System.Text.RegularExpressions.GeneratedRegex(@"^(RE|RB|IRE|MRB|OE|U\d|VIA|TLX|ODEG|SB)\s?\d*", System.Text.RegularExpressions.RegexOptions.CultureInvariant)]
+	private static partial System.Text.RegularExpressions.Regex RegionalLine();
 
 	private static PlatformKind KindFor(TransitMode mode) =>
 		mode is TransitMode.RegionalTrain or TransitMode.LongDistanceTrain or TransitMode.SuburbanRail
@@ -475,7 +475,7 @@ internal static class TriasMapper
 	/// The situation messages of a response by situation number. They sit once in the response context
 	/// (<c>Situations/PtSituation</c>, SIRI SX) and are referenced from legs and stops by <c>SituationFullRef</c>.
 	/// </summary>
-	private static IReadOnlyDictionary<string, string> SituationTexts(XDocument document)
+	private static Dictionary<string, string> SituationTexts(XDocument document)
 	{
 		var texts = new Dictionary<string, string>(StringComparer.Ordinal);
 

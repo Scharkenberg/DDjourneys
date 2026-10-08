@@ -15,6 +15,7 @@ using DDjourneys.Localization;
 using DDjourneys.Pages;
 using DDjourneys.Support;
 using Microsoft.Extensions.Logging;
+using Microsoft.Maui.Foldable;
 using Microsoft.Maui.LifecycleEvents;
 
 namespace DDjourneys;
@@ -23,11 +24,15 @@ public static class MauiProgram
 {
 	public static MauiApp CreateMauiApp()
 	{
+		// First of all: remembers whether the last start finished (a crash while starting leads to a safe start).
+		StartupGuard.Begin();
+
 		var builder = MauiApp.CreateBuilder();
 
 		builder
 			.UseMauiApp<App>()
 			.UseMauiCommunityToolkit()
+			.UseFoldable()
 			.ConfigureFonts(fonts =>
 			{
 				fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
@@ -53,6 +58,7 @@ public static class MauiProgram
 		AppStorage.Upgrade();
 
 		var settings = new AppSettings();
+		ApiClient.DefaultTimeout = TimeSpan.FromSeconds(settings.TimeoutSeconds);
 
 		try
 		{
@@ -66,8 +72,19 @@ public static class MauiProgram
 			DiagnosticLog.FilePath = null;
 		}
 
+		DiagnosticLog.StartInfo = AppInterfaces.Report;
+#if ANDROID
+		Platforms.Android.WebViewDiagnostics.Install();
+#endif
+
 		// Opt-in only: without the developer option nothing is logged and a leftover file is removed.
 		DiagnosticLog.Enabled = settings.LogToFile;
+
+		if (StartupGuard.FailedStarts > 0)
+		{
+			// The last line of the log before this one is the last thing that happened before the process ended.
+			DiagnosticLog.Write($"[Start] the previous {StartupGuard.FailedStarts} start(s) did not finish (a crash while starting, or the system ended the app){(StartupGuard.IsSafeStart ? ": safe start" : string.Empty)}");
+		}
 
 		if (DiagnosticLog.Enabled)
 		{
@@ -118,7 +135,15 @@ public static class MauiProgram
 		builder.Services.AddSingleton<VehicleService>();
 		builder.Services.AddSingleton<IOpenDataProvider, DresdenOpenDataProvider>();
 		builder.Services.AddSingleton<OpenDataService>();
+		builder.Services.AddSingleton<IStopAreaProvider>(
+			services => services.GetRequiredService<TriasProvider>());
+		builder.Services.AddSingleton<IStopAreaProvider>(
+			services => services.GetRequiredService<VvoNetworkProvider>());
+		builder.Services.AddSingleton<StopAreaService>();
+		builder.Services.AddSingleton<Support.PlannerLauncher>();
 		builder.Services.AddSingleton<DepartureService>();
+		builder.Services.AddSingleton<LegRunResolver>();
+		builder.Services.AddSingleton<Support.Widgets.WidgetLoader>();
 		builder.Services.AddSingleton<NetworkService>();
 
 		builder.Services.AddSingleton<JourneyProviderDiagnostics>();
@@ -193,6 +218,9 @@ public static class MauiProgram
 		builder.Services.AddTransient<JourneyPage>();
 		builder.Services.AddTransient<JourneyViewModel>();
 
+		builder.Services.AddTransient<StartSettingsPage>();
+		builder.Services.AddTransient<StartSettingsViewModel>();
+
 		builder.Services.AddTransient<SettingsPage>();
 		builder.Services.AddTransient<SettingsViewModel>();
 		builder.Services.AddTransient<AppearancePage>();
@@ -205,6 +233,7 @@ public static class MauiProgram
 		builder.Services.AddTransient<ExpertViewModel>();
 
 		builder.Services.AddTransient<ProvidersPage>();
+		builder.Services.AddTransient<AboutPage>();
 		builder.Services.AddTransient<ProvidersViewModel>();
 
 		builder.Services.AddTransient<DeparturesPage>();

@@ -186,18 +186,18 @@ public static class NoticeLinks
 	/// <summary>Content by its first bytes (magic numbers); null when unknown.</summary>
 	private static NoticeLinkKind? Sniff(byte[] bytes)
 	{
-		static bool Starts(byte[] data, params byte[] prefix) =>
+		static bool Starts(byte[] data, params ReadOnlySpan<byte> prefix) =>
 			data.Length >= prefix.Length && data.AsSpan(0, prefix.Length).SequenceEqual(prefix);
 
-		if (Starts(bytes, 0x25, 0x50, 0x44, 0x46, 0x2D))
+		if (Starts(bytes, "%PDF-"u8))
 		{
 			return NoticeLinkKind.Pdf;
 		}
 
 		if (Starts(bytes, 0x89, 0x50, 0x4E, 0x47)
 			|| Starts(bytes, 0xFF, 0xD8, 0xFF)
-			|| Starts(bytes, 0x47, 0x49, 0x46, 0x38)
-			|| (Starts(bytes, 0x52, 0x49, 0x46, 0x46) && bytes.Length > 11 && bytes[8] == 0x57 && bytes[9] == 0x45))
+			|| Starts(bytes, "GIF8"u8)
+			|| (Starts(bytes, "RIFF"u8) && bytes.Length > 11 && bytes[8] == 0x57 && bytes[9] == 0x45))
 		{
 			return NoticeLinkKind.Image;
 		}

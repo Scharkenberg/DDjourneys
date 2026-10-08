@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
 <title>DDjourneys notice</title>
 <link rel="icon" href="data:,">
 <script src="_framework/hybridwebview.js"></script>
@@ -12,7 +13,9 @@
 	--ink: #0f1a1f; --ink-muted: #4a5960; --accent: #0b6e8a; --accent-soft: #d3e9f0;
 }
 * { box-sizing: border-box; }
+/* Nothing is shown before the app has sent its theme: no flash of the wrong colours. */
 html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink); }
+html:not(.themed) body { visibility: hidden; }
 body { font: 16px/1.5 "Open Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; padding: 4px 16px 32px; overflow-wrap: anywhere; -webkit-text-size-adjust: 100%; }
 #content > :first-child { margin-top: 8px; }
 p, ul, ol, table, blockquote, pre { margin: 0 0 12px; }
@@ -73,6 +76,7 @@ a > img { cursor: pointer; }
 		css.setProperty('--accent', t.accent);
 		css.setProperty('--accent-soft', t.accentSoft);
 		document.documentElement.style.colorScheme = t.dark ? 'dark' : 'light';
+		document.documentElement.classList.add('themed');
 	}
 
 	// ---- sanitiser: only what a notice needs is rebuilt; every other tag is unwrapped or dropped, no attribute survives

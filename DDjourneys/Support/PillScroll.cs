@@ -16,7 +16,7 @@ namespace DDjourneys.Support;
 /// A pill pops in once its width is known. One that overflows scrolls to its end and back once after it appears, as a hint that it can be scrolled.
 /// </para>
 /// </summary>
-public sealed class PillScroll : ScrollView
+public sealed partial class PillScroll : ScrollView
 {
 	public static readonly BindableProperty FractionProperty =
 		BindableProperty.Create(
@@ -83,10 +83,7 @@ public sealed class PillScroll : ScrollView
 
 		_host = Pill?.Parent as VisualElement;
 
-		if (_host is not null)
-		{
-			_host.SizeChanged += OnSizeChanged;
-		}
+		_host?.SizeChanged += OnSizeChanged;
 
 		Resize();
 
@@ -98,11 +95,8 @@ public sealed class PillScroll : ScrollView
 
 	private void Release()
 	{
-		if (_host is not null)
-		{
-			_host.SizeChanged -= OnSizeChanged;
-			_host = null;
-		}
+		_host?.SizeChanged -= OnSizeChanged;
+		_host = null;
 
 		if (_label is not null)
 		{

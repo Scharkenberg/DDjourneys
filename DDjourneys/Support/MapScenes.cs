@@ -21,10 +21,14 @@ public static class MapScenes
 	private static ExtrasStrings Strings =>
 		LocalizationService.Current.CurrentStrings.Extras;
 
-	/// <summary>Opens the map page with a scene; says so (returns false) when there is nothing to show.</summary>
+	/// <summary>
+	/// Opens the map page with a scene; says so (returns false) when there is nothing to show. <paramref name="from"/>
+	/// (the asking page or view model) lets the map open beside it in a wide window (see <see cref="Panes"/>).
+	/// </summary>
 	public static async Task<bool> OpenAsync(
 		MapScene scene,
-		string title)
+		string title,
+		object? from = null)
 	{
 		ArgumentNullException.ThrowIfNull(scene);
 
@@ -33,13 +37,14 @@ public static class MapScenes
 			return false;
 		}
 
-		await Shell.Current.GoToAsync(
+		await Panes.GoToAsync(
 			Routes.Map,
 			new ShellNavigationQueryParameters
 			{
 				[Routes.MapScene] = scene,
 				[Routes.MapTitle] = title
-			});
+			},
+			from);
 
 		return true;
 	}
@@ -80,11 +85,10 @@ public static class MapScenes
 			return leg.Path;
 		}
 
-		var stops =
-			leg.Stops
+		(double Latitude, double Longitude)[] stops =
+			[.. leg.Stops
 				.Select(stop => Position(stop.Station))
-				.OfType<(double Latitude, double Longitude)>()
-				.ToArray();
+				.OfType<(double Latitude, double Longitude)>()];
 
 		if (stops.Length >= 2)
 		{
@@ -92,8 +96,9 @@ public static class MapScenes
 		}
 
 		return
-			(new[] { Position(leg.From), Position(leg.To) }
-				.OfType<(double Latitude, double Longitude)>()).ToList();
+			(List<(double Latitude, double Longitude)>)
+			[.. new[] { Position(leg.From), Position(leg.To) }
+				.OfType<(double Latitude, double Longitude)>()];
 	}
 
 	// ----- Journey -----
@@ -125,8 +130,8 @@ public static class MapScenes
 		var lines = new List<MapLine>();
 		var markers = new List<MapMarker>();
 
-		JourneyLeg? first = journey.Legs.FirstOrDefault();
-		JourneyLeg? last = journey.Legs.LastOrDefault();
+		JourneyLeg? first = journey.Legs.Count > 0 ? journey.Legs[0] : null;
+		JourneyLeg? last = journey.Legs.Count > 0 ? journey.Legs[^1] : null;
 
 		Station? origin = journey.Origin ?? journey.From;
 		Station? destination = journey.Destination ?? journey.To;
@@ -279,7 +284,7 @@ public static class MapScenes
 		{
 			lines.Add(
 				new MapLine(
-					(located.Select(item => item.Position!.Value)).ToList(),
+					(List<(double Latitude, double Longitude)>)[.. located.Select(item => item.Position!.Value)],
 					color,
 					false,
 					5));
@@ -288,7 +293,7 @@ public static class MapScenes
 		for (int index = 0; index < located.Length; index++)
 		{
 			RunStop stop = located[index].Stop;
-			(double Latitude, double Longitude) position = located[index].Position!.Value;
+			(double latitude, double longitude) = located[index].Position!.Value;
 
 			bool current = located[index].Index == vehicleIndex;
 			bool passed = located[index].Index < vehicleIndex;
@@ -296,8 +301,8 @@ public static class MapScenes
 			markers.Add(
 				new MapMarker(
 					$"run{index}",
-					position.Latitude,
-					position.Longitude,
+					latitude,
+					longitude,
 					string.Empty,
 					current ? MapMarkerKind.Current : MapMarkerKind.Stop,
 					passed ? "#9e9e9e" : color,
@@ -354,7 +359,8 @@ public static class MapScenes
 		{
 			Fit = fit,
 			Markers =
-				(vehicles
+				(List<MapMarker>)
+				[.. vehicles
 					.Select(
 						vehicle =>
 						{
@@ -378,7 +384,7 @@ public static class MapScenes
 										string.Format(CultureInfo.CurrentCulture, strings.LiveRun, vehicle.Run),
 										delay
 									}.Where(part => part.Length > 0)));
-						})).ToList()
+						})]
 		};
 	}
 
@@ -389,10 +395,41 @@ public static class MapScenes
 	public static MapScene FromTrack(
 		TrackTarget target,
 		LiveVehicle? vehicle,
+		bool fit) =>
+		FromTracks((List<TrackTarget>)[target], (List<LiveVehicle?>)[vehicle], fit);
+
+	/// <summary>The runs of a followed journey together: every course faintly, its stops, and each matched vehicle.</summary>
+	public static MapScene FromTracks(
+		IReadOnlyList<TrackTarget> targets,
+		IReadOnlyList<LiveVehicle?> vehicles,
 		bool fit)
 	{
-		ArgumentNullException.ThrowIfNull(target);
+		ArgumentNullException.ThrowIfNull(targets);
+		ArgumentNullException.ThrowIfNull(vehicles);
 
+		var markers = new List<MapMarker>();
+		var lines = new List<MapLine>();
+
+		for (int t = 0; t < targets.Count; t++)
+		{
+			AddTrack(targets[t], t < vehicles.Count ? vehicles[t] : null, t, markers, lines);
+		}
+
+		return new MapScene
+		{
+			Lines = lines,
+			Markers = markers,
+			Fit = fit
+		};
+	}
+
+	private static void AddTrack(
+		TrackTarget target,
+		LiveVehicle? vehicle,
+		int number,
+		List<MapMarker> markers,
+		List<MapLine> lines)
+	{
 		string color = ModeColor(target.Mode);
 		ExtrasStrings strings = Strings;
 
@@ -401,14 +438,11 @@ public static class MapScenes
 				.Where(point => Position(point.Latitude, point.Longitude) is not null)
 				.ToArray();
 
-		var markers = new List<MapMarker>();
-		var lines = new List<MapLine>();
-
 		if (points.Length >= 2)
 		{
 			lines.Add(
 				new MapLine(
-					(points.Select(point => (point.Latitude, point.Longitude))).ToList(),
+					(List<(double Latitude, double Longitude)>)[.. points.Select(point => (point.Latitude, point.Longitude))],
 					color,
 					false,
 					5,
@@ -421,7 +455,7 @@ public static class MapScenes
 
 			markers.Add(
 				new MapMarker(
-					$"trk{index}",
+					$"trk{number}_{index}",
 					point.Latitude,
 					point.Longitude,
 					string.Empty,
@@ -457,13 +491,6 @@ public static class MapScenes
 							delay
 						}.Where(part => part.Length > 0))));
 		}
-
-		return new MapScene
-		{
-			Lines = lines,
-			Markers = markers,
-			Fit = fit
-		};
 	}
 
 	// ----- Stops and places -----

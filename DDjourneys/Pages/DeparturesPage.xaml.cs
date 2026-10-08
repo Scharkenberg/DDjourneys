@@ -6,7 +6,7 @@ using Location = DDjourneys.Core.Models.Location;
 
 namespace DDjourneys.Pages;
 
-public partial class DeparturesPage : ContentPage, IQueryAttributable
+public partial class DeparturesPage : PanePage, IQueryAttributable
 {
 	private static readonly TimeSpan RefreshInterval = TimeSpan.FromSeconds(30);
 
@@ -27,6 +27,9 @@ public partial class DeparturesPage : ContentPage, IQueryAttributable
 				() => _ = NavigateAsync(
 					Routes.Vehicles,
 					[]));
+
+		// The stop name scrolls sideways; on Android the scroller keeps the tap from the row, so it is forwarded.
+		StopLine.Tapped += (_, _) => vm.PickStopCommand.Execute(null);
 
 		vm.OpenPlaceSearch = () =>
 			NavigateAsync(
@@ -59,6 +62,21 @@ public partial class DeparturesPage : ContentPage, IQueryAttributable
 					});
 	}
 
+	/// <summary>The map in pick mode: a tapped stop becomes the stop of the board.</summary>
+	private void MapClicked(object? sender, EventArgs e) =>
+		_ = NavigateAsync(
+			Routes.Map,
+			new ShellNavigationQueryParameters
+			{
+				[Routes.MapMode] = Routes.MapModePick,
+				[Routes.TargetIsFrom] = false,
+				[Routes.Target] = Routes.TargetDepartures
+			});
+
+	/// <summary>The quick action "departures from here": locates the device; the nearest stop becomes the stop.</summary>
+	public void StartHere() =>
+		_vm.LocateCommand.Execute(null);
+
 	public void ApplyQueryAttributes(
 		IDictionary<string, object> query)
 	{
@@ -76,6 +94,13 @@ public partial class DeparturesPage : ContentPage, IQueryAttributable
 		if (query.TryGetValue(Routes.Stop, out object? stop)
 			&& stop is Location opened)
 		{
+			// From a request of another app: arrivals and a time, set before the stop loads the board.
+			if (query.TryGetValue(Routes.BoardArrivals, out object? arrivals)
+				&& arrivals is bool showArrivals)
+			{
+				_vm.ApplyBoard(showArrivals, query.TryGetValue(Routes.BoardTime, out object? boardTime) ? boardTime as DateTime? : null);
+			}
+
 			_vm.SetStop(opened);
 		}
 	}
@@ -108,7 +133,7 @@ public partial class DeparturesPage : ContentPage, IQueryAttributable
 	{
 		base.OnNavigatedFrom(args);
 
-		PageTeardown.DisposeIfLeft(args, BindingContext);
+		LeaveIfGone(args);
 	}
 
 	private IDispatcherTimer CreateTimer()
@@ -132,9 +157,11 @@ public partial class DeparturesPage : ContentPage, IQueryAttributable
 	{
 		try
 		{
-			await Shell.Current.GoToAsync(
+			// A page that may stand beside this one opens as a pane in a wide window (see Panes).
+			await Panes.GoToAsync(
 				route,
-				parameters);
+				parameters,
+				this);
 		}
 		catch (Exception ex)
 		{

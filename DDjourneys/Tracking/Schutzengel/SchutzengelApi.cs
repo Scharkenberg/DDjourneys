@@ -10,17 +10,11 @@ using DDjourneys.Core.Serialization;
 namespace DDjourneys.Tracking.Schutzengel;
 
 /// <summary>A parsed response together with the status code the protocol keys on.</summary>
-internal sealed class SchutzengelResponse : IDisposable
+internal sealed partial class SchutzengelResponse(HttpStatusCode statusCode, JsonDocument json) : IDisposable
 {
-	public SchutzengelResponse(HttpStatusCode statusCode, JsonDocument json)
-	{
-		StatusCode = statusCode;
-		Json = json;
-	}
+	public HttpStatusCode StatusCode { get; } = statusCode;
 
-	public HttpStatusCode StatusCode { get; }
-
-	public JsonDocument Json { get; }
+	public JsonDocument Json { get; } = json;
 
 	public JsonElement Root => Json.RootElement;
 
@@ -30,7 +24,7 @@ internal sealed class SchutzengelResponse : IDisposable
 internal sealed class SchutzengelApi
 {
 	private const string BaseUrl =
-		"https://m.dvb.de/schutzengel/";
+		InterfaceSchemas.SchutzengelUrl;
 
 	private const string BrowserUserAgent =
 		"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
@@ -360,12 +354,27 @@ internal sealed class SchutzengelApi
 
 		(HttpStatusCode Status, string Text) result =
 			await SendAuthenticatedAsync(
-				method, path, body, token, cancellationToken,
-				planId, tripId, dataVersion, notificationCount).ConfigureAwait(false);
+				method, path, body, token,
+				planId, tripId, dataVersion, notificationCount, cancellationToken).ConfigureAwait(false);
 
 		if (result.Status == HttpStatusCode.Unauthorized)
 		{
-			Log("Authentication rejected (401); replacing the token once.");
+			// A replaced token means a new, empty account: every followed journey of the old one would be lost. So the
+			// same token gets a second chance first (a server that answers 401 once in a while is not the same as a
+			// token that is refused).
+			Log("Authentication rejected (401); asking again with the same token.");
+
+			await Task.Delay(TimeSpan.FromMilliseconds(800), cancellationToken).ConfigureAwait(false);
+
+			result =
+				await SendAuthenticatedAsync(
+					method, path, body, token,
+					planId, tripId, dataVersion, notificationCount, cancellationToken).ConfigureAwait(false);
+		}
+
+		if (result.Status == HttpStatusCode.Unauthorized)
+		{
+			Log("Authentication rejected (401) twice; replacing the token once.");
 
 			await RefreshAfterAuthenticationFailureAsync(token, cancellationToken).ConfigureAwait(false);
 
@@ -375,8 +384,8 @@ internal sealed class SchutzengelApi
 
 			result =
 				await SendAuthenticatedAsync(
-					method, path, body, retryToken, cancellationToken,
-					planId, tripId, dataVersion, notificationCount).ConfigureAwait(false);
+					method, path, body, retryToken,
+					planId, tripId, dataVersion, notificationCount, cancellationToken).ConfigureAwait(false);
 		}
 
 		if ((int)result.Status is < 200 or >= 300)
@@ -459,11 +468,11 @@ internal sealed class SchutzengelApi
 		string path,
 		string? body,
 		string token,
-		CancellationToken cancellationToken,
 		string? planId,
 		string? tripId,
 		string? dataVersion,
-		string? notificationCount)
+		string? notificationCount,
+		CancellationToken cancellationToken)
 	{
 		using HttpRequestMessage request = CreateRequest(method, path);
 

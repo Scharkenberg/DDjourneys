@@ -14,7 +14,7 @@ namespace DDjourneys.Platforms.Windows.LiveJourney;
 /// progress are updated in place. Windows removes a notification when it is clicked (body or
 /// button) and also when the user dismisses it; the two are told apart by the activation event.
 /// </summary>
-internal sealed partial class WindowsLiveJourneySurface : ILiveJourneySurface, IDisposable
+internal sealed partial class WindowsLiveJourneySurface(TrackingCallbackBridge bridge) : ILiveJourneySurface, IDisposable
 {
 	private const string LiveTag = "live";
 
@@ -24,7 +24,7 @@ internal sealed partial class WindowsLiveJourneySurface : ILiveJourneySurface, I
 
 	private const int MaxAlerts = 8;
 
-	private readonly TrackingCallbackBridge _bridge;
+	private readonly TrackingCallbackBridge _bridge = bridge ?? throw new ArgumentNullException(nameof(bridge));
 	private readonly Lock _gate = new();
 	private readonly SemaphoreSlim _wake = new(0);
 	private readonly CancellationTokenSource _stop = new();
@@ -41,16 +41,11 @@ internal sealed partial class WindowsLiveJourneySurface : ILiveJourneySurface, I
 	private DateTimeOffset? _dismissAt;
 	private string _lastSent = string.Empty;
 	private DateTimeOffset? _retryAt;
-	private readonly LinkedList<string> _alertTags = new();
+	private readonly LinkedList<string> _alertTags = [];
 	private Task _removal = Task.CompletedTask;
 	private bool _shownBefore;
 	private bool _loopStarted;
 	private bool _disposed;
-
-	public WindowsLiveJourneySurface(TrackingCallbackBridge bridge)
-	{
-		_bridge = bridge ?? throw new ArgumentNullException(nameof(bridge));
-	}
 
 	public bool IsSupported => true;
 

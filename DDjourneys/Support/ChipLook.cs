@@ -9,7 +9,7 @@ namespace DDjourneys.Support;
 /// stay distinguishable with colour-vision deficiencies or low contrast
 /// sensitivity.
 /// </summary>
-public sealed class ChipLook : System.ComponentModel.INotifyPropertyChanged
+public sealed partial class ChipLook : System.ComponentModel.INotifyPropertyChanged
 {
 	private readonly Color _text;
 	private readonly Color _stroke;

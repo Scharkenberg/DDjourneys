@@ -59,6 +59,8 @@ public abstract class DisposableViewModel : ObservableObject, IDisposable
 	/// <summary>Releases subscriptions first, then lets the view model stop its own work. Idempotent.</summary>
 	public void Dispose()
 	{
+		GC.SuppressFinalize(this);
+
 		if (_disposed)
 		{
 			return;

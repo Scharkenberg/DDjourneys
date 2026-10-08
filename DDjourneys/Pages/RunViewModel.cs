@@ -38,9 +38,6 @@ public sealed record RunRow(
 	public bool IsCancelled =>
 		Stop.IsCancelled;
 
-	public string CancelledText =>
-		LocalizationService.Current.CurrentStrings.Departures.Cancelled;
-
 	public string? CurrentText =>
 		IsCurrent
 			? LocalizationService.Current.CurrentStrings.Departures.VehicleHere
@@ -63,7 +60,7 @@ public sealed record RunRow(
 
 
 /// <summary>The stops a departing vehicle serves (dm/trip), with the position of the vehicle.</summary>
-public sealed class RunViewModel : DisposableViewModel, IQueryAttributable
+public sealed partial class RunViewModel : DisposableViewModel, IQueryAttributable
 {
 	private readonly DepartureService _departures;
 	private readonly AppSettings _settings;
@@ -119,7 +116,7 @@ public sealed class RunViewModel : DisposableViewModel, IQueryAttributable
 
 	public string Title
 	{
-		get => field;
+		get;
 
 		private set
 		{
@@ -132,7 +129,7 @@ public sealed class RunViewModel : DisposableViewModel, IQueryAttributable
 
 	public string? Direction
 	{
-		get => field;
+		get;
 
 		private set
 		{
@@ -148,14 +145,14 @@ public sealed class RunViewModel : DisposableViewModel, IQueryAttributable
 
 	public ChipLook? Look
 	{
-		get => field;
+		get;
 		private set => SetProperty(ref field, value);
 	}
 
 	/// <summary>True while the run loads; the RefreshView shows its spinner with it (one way).</summary>
 	public bool IsBusy
 	{
-		get => field;
+		get;
 		private set
 		{
 			field = value;
@@ -167,7 +164,7 @@ public sealed class RunViewModel : DisposableViewModel, IQueryAttributable
 
 	public string Message
 	{
-		get => field;
+		get;
 
 		private set
 		{
@@ -181,7 +178,7 @@ public sealed class RunViewModel : DisposableViewModel, IQueryAttributable
 	/// <summary>"Runs Mon–Fri" when the provider names the operating days of this run.</summary>
 	public string? OperatingText
 	{
-		get => field;
+		get;
 
 		private set
 		{
@@ -238,12 +235,13 @@ public sealed class RunViewModel : DisposableViewModel, IQueryAttributable
 			bool shown =
 				await MapScenes.OpenAsync(
 					MapScenes.FromRun(
-						(Rows.Select(row => row.Stop)).ToList(),
+						(List<RunStop>)[.. Rows.Select(row => row.Stop)],
 						departure.Line.Mode,
 						Rows.ToList().FindIndex(row => row.IsCurrent),
 						_vehicle,
 						Title),
-					Title);
+					Title,
+					this);
 
 			if (!shown)
 			{
@@ -279,14 +277,15 @@ public sealed class RunViewModel : DisposableViewModel, IQueryAttributable
 					Mode = _departure?.Line.Mode ?? TransitMode.Unknown,
 					Direction = Direction,
 					Course =
-						(Rows
+						(List<CoursePoint>)
+						[.. Rows
 							.Where(row => row.Stop.Station.Latitude is not null && row.Stop.Station.Longitude is not null)
 							.Select(
 								row => new CoursePoint(
 									row.Stop.Station.Latitude!.Value,
 									row.Stop.Station.Longitude!.Value,
 									row.Stop.Effective,
-									row.Name))).ToList()
+									row.Name))]
 				};
 
 			if (target.IsUsable)
@@ -294,9 +293,11 @@ public sealed class RunViewModel : DisposableViewModel, IQueryAttributable
 				parameters[Routes.Track] = target;
 			}
 
-			await Shell.Current.GoToAsync(
+			// Beside this page as a pane in a wide window (see Panes).
+			await Panes.GoToAsync(
 				Routes.Vehicles,
-				parameters);
+				parameters,
+				this);
 		}
 		catch (Exception ex)
 		{

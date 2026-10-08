@@ -9,7 +9,7 @@ using DDjourneys.Support;
 
 namespace DDjourneys.Pages;
 
-public sealed class ResultsViewModel :
+public sealed partial class ResultsViewModel :
 	DisposableViewModel,
 	IQueryAttributable
 {
@@ -136,7 +136,7 @@ public sealed class ResultsViewModel :
 
 	public string RouteText
 	{
-		get => field;
+		get;
 		private set => SetProperty(
 			ref field,
 			value);
@@ -147,7 +147,7 @@ public sealed class ResultsViewModel :
 	/// <summary>Start and destination, split so the header can put the city under the name.</summary>
 	public string FromName
 	{
-		get => field;
+		get;
 		private set => SetProperty(
 			ref field,
 			value);
@@ -156,7 +156,7 @@ public sealed class ResultsViewModel :
 
 	public string? FromPlace
 	{
-		get => field;
+		get;
 		private set => SetProperty(
 			ref field,
 			value);
@@ -165,7 +165,7 @@ public sealed class ResultsViewModel :
 
 	public string ToName
 	{
-		get => field;
+		get;
 		private set => SetProperty(
 			ref field,
 			value);
@@ -174,7 +174,7 @@ public sealed class ResultsViewModel :
 
 	public string? ToPlace
 	{
-		get => field;
+		get;
 		private set => SetProperty(
 			ref field,
 			value);
@@ -183,7 +183,7 @@ public sealed class ResultsViewModel :
 
 	public string WhenText
 	{
-		get => field;
+		get;
 		private set => SetProperty(
 			ref field,
 			value);
@@ -192,7 +192,7 @@ public sealed class ResultsViewModel :
 
 	public string StatusText
 	{
-		get => field;
+		get;
 		private set
 		{
 			if (SetProperty(
@@ -212,7 +212,7 @@ public sealed class ResultsViewModel :
 
 	public bool IsRefreshing
 	{
-		get => field;
+		get;
 		set => SetProperty(
 			ref field,
 			value);
@@ -221,7 +221,7 @@ public sealed class ResultsViewModel :
 
 	public bool IsLoading
 	{
-		get => field;
+		get;
 		private set
 		{
 			if (SetProperty(
@@ -255,7 +255,7 @@ public sealed class ResultsViewModel :
 
 	public bool HasError
 	{
-		get => field;
+		get;
 		private set => SetProperty(
 			ref field,
 			value);
@@ -550,9 +550,7 @@ public sealed class ResultsViewModel :
 		}
 
 		Journey[] shown =
-			Items
-				.Select(item => item.Journey)
-				.ToArray();
+			[.. Items.Select(item => item.Journey)];
 
 		var cts =
 			_paging =
@@ -569,7 +567,7 @@ public sealed class ResultsViewModel :
 					query,
 					shown,
 					previous,
-					_queryMaxResults(),
+					QueryMaxResults(),
 					cts.Token);
 
 			if (cts.IsCancellationRequested)
@@ -659,7 +657,7 @@ public sealed class ResultsViewModel :
 	}
 
 
-	private int _queryMaxResults()
+	private int QueryMaxResults()
 	{
 		return Math.Clamp(
 			_query?.MaxResults ?? 5,

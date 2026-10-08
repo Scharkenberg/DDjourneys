@@ -14,9 +14,9 @@ namespace DDjourneys.Pages;
 /// <summary>Display-ready row of the place list (results and recents).</summary>
 public sealed record PlaceRow(Location Place)
 {
-	public string Name => Place.Name;
-	public string Detail => Place.Place ?? string.Empty;
-	public bool HasDetail => !string.IsNullOrWhiteSpace(Place.Place);
+	public string Name => StopLabel.NameFor(Place.Name, Place.Place);
+	public string Detail => StopLabel.PlaceFor(Place.Name, Place.Place) ?? string.Empty;
+	public bool HasDetail => Detail.Length > 0;
 
 	/// <summary>"Address" / "Point of interest"; stops carry no label.</summary>
 	public string? KindText
@@ -61,7 +61,9 @@ public sealed partial class PlaceSearchViewModel : DisposableViewModel, IQueryAt
 	private PlaceKinds Kinds =>
 		_target is Routes.TargetDepartures or Routes.TargetVia
 			? PlaceKinds.Stops
-			: _settings.SearchKinds;
+			: _target is Routes.TargetStart or Routes.TargetHome
+				? PlaceKinds.Stops | PlaceKinds.Addresses | PlaceKinds.Pois
+				: _settings.SearchKinds;
 
 	/// <summary>Quiet time after the last keystroke before the endpoint is asked (a setting).</summary>
 	private TimeSpan Debounce => TimeSpan.FromMilliseconds(_settings.SearchDelayMs);
@@ -138,7 +140,7 @@ public sealed partial class PlaceSearchViewModel : DisposableViewModel, IQueryAt
 
 	public string Query
 	{
-		get => field;
+		get;
 		set
 		{
 			if (SetProperty(ref field, value ?? string.Empty))
@@ -150,14 +152,14 @@ public sealed partial class PlaceSearchViewModel : DisposableViewModel, IQueryAt
 
 	public bool IsSearching
 	{
-		get => field;
+		get;
 		private set => SetProperty(ref field, value);
 	}
 
 	/// <summary>Hint, "nothing found" or error. Empty when there is nothing to say.</summary>
 	public string Message
 	{
-		get => field;
+		get;
 		private set => SetProperty(ref field, value);
 	} = string.Empty;
 
@@ -304,9 +306,9 @@ public sealed partial class PlaceSearchViewModel : DisposableViewModel, IQueryAt
 				found =
 					await _locations.SearchAsync(
 						text,
-						token,
 						TimeSpan.FromSeconds(_settings.TimeoutSeconds),
-						Kinds);
+						Kinds,
+						token);
 
 				Remember(key, found);
 			}
@@ -415,7 +417,11 @@ public sealed partial class PlaceSearchViewModel : DisposableViewModel, IQueryAt
 		{
 			try
 			{
-				_store.AddRecent(place);
+				// A default start is a setting, not a place the passenger went to.
+				if (_target is not (Routes.TargetStart or Routes.TargetHome))
+				{
+					_store.AddRecent(place);
+				}
 			}
 			catch (Exception ex)
 			{

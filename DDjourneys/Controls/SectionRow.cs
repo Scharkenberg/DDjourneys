@@ -8,7 +8,7 @@ namespace DDjourneys.Controls;
 /// Rows that lead somewhere show a right chevron; rows that unfold in place (<see cref="IsExpandable"/>) show a
 /// chevron that points down when closed and up when open, so it is always clear what a tap does.
 /// </summary>
-public sealed class SectionRow : ContentView
+public sealed partial class SectionRow : ContentView
 {
 	public static readonly BindableProperty GlyphProperty =
 		BindableProperty.Create(nameof(Glyph), typeof(IconGlyph), typeof(SectionRow), IconGlyph.None,
@@ -74,7 +74,7 @@ public sealed class SectionRow : ContentView
 		Grid.SetColumn(_chevron, 2);
 
 		Dense.SetPadding(grid, new Thickness(14, 8));
-		Dense.SetMinHeight(grid, 56);
+		Dense.SetMinHeight(grid, 52);
 
 		var tap = new TapGestureRecognizer();
 		tap.Tapped += (_, _) =>

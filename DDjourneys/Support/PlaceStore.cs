@@ -50,7 +50,7 @@ public sealed class PlaceStore
 	public const int MaxSavedRoutes = 20;
 
 	private readonly IKeyValueStore _store;
-	private readonly object _gate = new();
+	private readonly Lock _gate = new();
 	private readonly List<Location> _recents;
 	private readonly List<Location> _favourites;
 	private readonly List<RoutePair> _routes;
@@ -110,10 +110,7 @@ public sealed class PlaceStore
 		_home =
 			Load(HomeKey).FirstOrDefault();
 
-		if (providers is not null)
-		{
-			providers.SelectionChanged += OnProviderChanged;
-		}
+		providers?.SelectionChanged += OnProviderChanged;
 	}
 
 
@@ -161,7 +158,7 @@ public sealed class PlaceStore
 		{
 			lock (_gate)
 			{
-				return _recents.ToArray();
+				return (Location[])[.. _recents];
 			}
 		}
 	}
@@ -176,7 +173,7 @@ public sealed class PlaceStore
 		{
 			lock (_gate)
 			{
-				return _favourites.ToArray();
+				return (Location[])[.. _favourites];
 			}
 		}
 	}
@@ -202,7 +199,7 @@ public sealed class PlaceStore
 		{
 			lock (_gate)
 			{
-				return _savedRoutes.ToArray();
+				return (SavedRoute[])[.. _savedRoutes];
 			}
 		}
 	}
@@ -215,7 +212,7 @@ public sealed class PlaceStore
 		{
 			lock (_gate)
 			{
-				return _routes.ToArray();
+				return (RoutePair[])[.. _routes];
 			}
 		}
 	}
@@ -726,15 +723,14 @@ public sealed class PlaceStore
 
 
 	private List<SavedRoute> LoadSavedRoutes() =>
-		LoadList(SavedRoutesKey, ParseSavedRoute)
+		[.. LoadList(SavedRoutesKey, ParseSavedRoute)
 			.Select(
 				entry =>
 					new SavedRoute(
 						entry.Name,
 						ToLocation(entry.From!),
 						ToLocation(entry.To!)))
-			.Take(MaxSavedRoutes)
-			.ToList();
+			.Take(MaxSavedRoutes)];
 
 
 	private void SaveSavedRoutes() =>
@@ -750,14 +746,13 @@ public sealed class PlaceStore
 
 
 	private List<RoutePair> LoadRoutes() =>
-		LoadList(RoutesKey, ParseRoute)
+		[.. LoadList(RoutesKey, ParseRoute)
 			.Select(
 				entry =>
 					new RoutePair(
 						ToLocation(entry.From!),
 						ToLocation(entry.To!)))
-			.Take(MaxRoutes)
-			.ToList();
+			.Take(MaxRoutes)];
 
 
 	private void SaveRoutes() =>
@@ -827,9 +822,8 @@ public sealed class PlaceStore
 
 	private List<Location> Load(
 		string key) =>
-		LoadList(key, ParseEntry)
-			.Select(ToLocation)
-			.ToList();
+		[.. LoadList(key, ParseEntry)
+			.Select(ToLocation)];
 
 
 	private void Save(
@@ -881,7 +875,7 @@ public sealed class PlaceStore
 
 				if (read.Items.Count > 0 || candidate == key)
 				{
-					return read.Items.ToList();
+					return [.. read.Items];
 				}
 			}
 			catch (Exception ex)
