@@ -15,11 +15,12 @@
 			<Label StyleClass="Section" Text="{localization:Tr Settings.Theme}" />
 
 			<Border Padding="0" StyleClass="Card">
-				<Grid support:Motion.Feedback="True"
+				<Grid
+					support:Dense.MinHeight="{StaticResource HitRow}"
 					support:Dense.Padding="12,8"
+					support:Motion.Feedback="True"
 					ColumnDefinitions="*,Auto"
-					ColumnSpacing="10"
-					support:Dense.MinHeight="{StaticResource HitRow}">
+					ColumnSpacing="10">
 					<VerticalStackLayout Spacing="1" VerticalOptions="Center">
 						<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.AppearanceTitle}" />
 						<Label
@@ -48,10 +49,11 @@
 
 					<BindableLayout.ItemTemplate>
 						<DataTemplate x:DataType="localization:LocalizationPack">
-							<Grid support:Motion.Feedback="True"
+							<Grid
+								support:Dense.MinHeight="{StaticResource HitRow}"
 								support:Dense.Padding="12,8"
-								ColumnDefinitions="*,Auto"
-								support:Dense.MinHeight="{StaticResource HitRow}">
+								support:Motion.Feedback="True"
+								ColumnDefinitions="*,Auto">
 
 								<Label
 									FontFamily="{DynamicResource FontSemibold}"
@@ -82,10 +84,10 @@
 				<VerticalStackLayout>
 
 					<Grid
+						support:Dense.MinHeight="{StaticResource HitRow}"
 						support:Dense.Padding="12,8"
 						ColumnDefinitions="*,Auto"
-						ColumnSpacing="12"
-						support:Dense.MinHeight="{StaticResource HitRow}">
+						ColumnSpacing="12">
 
 						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
 							<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.Animations}" />
@@ -102,10 +104,10 @@
 					<BoxView StyleClass="Divider" />
 
 					<Grid
+						support:Dense.MinHeight="{StaticResource HitRow}"
 						support:Dense.Padding="12,8"
 						ColumnDefinitions="*,Auto"
-						ColumnSpacing="12"
-						support:Dense.MinHeight="{StaticResource HitRow}">
+						ColumnSpacing="12">
 
 						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
 							<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.TechnicalDetails}" />
@@ -135,11 +137,12 @@
 
 					<BoxView StyleClass="Divider" />
 
-					<Grid support:Motion.Feedback="True"
+					<Grid
+						support:Dense.MinHeight="{StaticResource HitRow}"
 						support:Dense.Padding="12,8"
+						support:Motion.Feedback="True"
 						ColumnDefinitions="*,Auto"
-						ColumnSpacing="12"
-						support:Dense.MinHeight="{StaticResource HitRow}">
+						ColumnSpacing="12">
 
 						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
 							<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.MapEngineCarto}" />
@@ -161,11 +164,12 @@
 
 					<BoxView StyleClass="Divider" />
 
-					<Grid support:Motion.Feedback="True"
+					<Grid
+						support:Dense.MinHeight="{StaticResource HitRow}"
 						support:Dense.Padding="12,8"
+						support:Motion.Feedback="True"
 						ColumnDefinitions="*,Auto"
-						ColumnSpacing="12"
-						support:Dense.MinHeight="{StaticResource HitRow}">
+						ColumnSpacing="12">
 
 						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
 							<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.MapEngineLeaflet}" />
@@ -189,7 +193,10 @@
 			</Border>
 
 			<!--  The basemap needs the user's own CARTO key; without a usable one the map stays off  -->
-			<Border IsVisible="{Binding MapEngineIsCarto}" Padding="0" StyleClass="Card">
+			<Border
+				Padding="0"
+				IsVisible="{Binding MapEngineIsCarto}"
+				StyleClass="Card">
 				<VerticalStackLayout support:Dense.Padding="12,8" Spacing="6">
 					<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.MapKeyTitle}" />
 					<Label StyleClass="Caption" Text="{localization:Tr Settings.MapKeyDescription}" />
@@ -220,11 +227,12 @@
 				<VerticalStackLayout>
 
 					<!--  Provider: opens the list of data providers  -->
-					<Grid support:Motion.Feedback="True"
+					<Grid
+						support:Dense.MinHeight="{StaticResource HitRow}"
 						support:Dense.Padding="12,8"
+						support:Motion.Feedback="True"
 						ColumnDefinitions="*,Auto"
-						ColumnSpacing="10"
-						support:Dense.MinHeight="{StaticResource HitRow}">
+						ColumnSpacing="10">
 						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
 							<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Provider.Title}" />
 							<Label
@@ -290,10 +298,10 @@
 					<BoxView StyleClass="Divider" />
 
 					<Grid
+						support:Dense.MinHeight="{StaticResource HitRow}"
 						support:Dense.Padding="12,8"
 						ColumnDefinitions="*,Auto"
-						ColumnSpacing="12"
-						support:Dense.MinHeight="{StaticResource HitRow}">
+						ColumnSpacing="12">
 
 						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
 							<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.ArriveBy}" />
@@ -310,10 +318,10 @@
 					<BoxView StyleClass="Divider" />
 
 					<Grid
+						support:Dense.MinHeight="{StaticResource HitRow}"
 						support:Dense.Padding="12,8"
 						ColumnDefinitions="*,Auto"
-						ColumnSpacing="12"
-						support:Dense.MinHeight="{StaticResource HitRow}">
+						ColumnSpacing="12">
 
 						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
 							<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.WalkingLegs}" />
@@ -330,10 +338,10 @@
 					<BoxView StyleClass="Divider" />
 
 					<Grid
+						support:Dense.MinHeight="{StaticResource HitRow}"
 						support:Dense.Padding="12,8"
 						ColumnDefinitions="*,Auto"
-						ColumnSpacing="12"
-						support:Dense.MinHeight="{StaticResource HitRow}">
+						ColumnSpacing="12">
 
 						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
 							<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.ExpandNotices}" />
@@ -349,11 +357,12 @@
 
 					<BoxView StyleClass="Divider" />
 
-					<Grid support:Motion.Feedback="True"
+					<Grid
+						support:Dense.MinHeight="{StaticResource HitRow}"
 						support:Dense.Padding="12,8"
+						support:Motion.Feedback="True"
 						ColumnDefinitions="*,Auto"
-						ColumnSpacing="10"
-						support:Dense.MinHeight="{StaticResource HitRow}">
+						ColumnSpacing="10">
 						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
 							<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.RoutingEntry}" />
 							<Label StyleClass="Caption" Text="{localization:Tr Settings.RoutingEntryDescription}" />
@@ -373,11 +382,12 @@
 
 					<BoxView StyleClass="Divider" />
 
-					<Grid support:Motion.Feedback="True"
+					<Grid
+						support:Dense.MinHeight="{StaticResource HitRow}"
 						support:Dense.Padding="12,8"
+						support:Motion.Feedback="True"
 						ColumnDefinitions="*,Auto"
-						ColumnSpacing="10"
-						support:Dense.MinHeight="{StaticResource HitRow}">
+						ColumnSpacing="10">
 						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
 							<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.StartEntry}" />
 							<Label StyleClass="Caption" Text="{localization:Tr Settings.StartEntryDescription}" />
@@ -404,10 +414,10 @@
 				<VerticalStackLayout>
 
 					<Grid
+						support:Dense.MinHeight="{StaticResource HitRow}"
 						support:Dense.Padding="12,8"
 						ColumnDefinitions="*,Auto"
-						ColumnSpacing="12"
-						support:Dense.MinHeight="{StaticResource HitRow}">
+						ColumnSpacing="12">
 
 						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
 							<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Extras.SearchAddresses}" />
@@ -424,10 +434,10 @@
 					<BoxView StyleClass="Divider" />
 
 					<Grid
+						support:Dense.MinHeight="{StaticResource HitRow}"
 						support:Dense.Padding="12,8"
 						ColumnDefinitions="*,Auto"
-						ColumnSpacing="12"
-						support:Dense.MinHeight="{StaticResource HitRow}">
+						ColumnSpacing="12">
 
 						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
 							<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Extras.SearchPois}" />
@@ -444,10 +454,10 @@
 					<BoxView StyleClass="Divider" />
 
 					<Grid
+						support:Dense.MinHeight="{StaticResource HitRow}"
 						support:Dense.Padding="12,8"
 						ColumnDefinitions="*,Auto"
-						ColumnSpacing="12"
-						support:Dense.MinHeight="{StaticResource HitRow}">
+						ColumnSpacing="12">
 
 						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
 							<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Extras.ExactPosition}" />
@@ -471,10 +481,10 @@
 					<BoxView StyleClass="Divider" />
 
 					<Grid
+						support:Dense.MinHeight="{StaticResource HitRow}"
 						support:Dense.Padding="12,8"
 						ColumnDefinitions="*,Auto"
-						ColumnSpacing="12"
-						support:Dense.MinHeight="{StaticResource HitRow}">
+						ColumnSpacing="12">
 
 						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
 							<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.Occupancy}" />
@@ -491,10 +501,10 @@
 					<BoxView StyleClass="Divider" />
 
 					<Grid
+						support:Dense.MinHeight="{StaticResource HitRow}"
 						support:Dense.Padding="12,8"
 						ColumnDefinitions="*,Auto"
-						ColumnSpacing="12"
-						support:Dense.MinHeight="{StaticResource HitRow}">
+						ColumnSpacing="12">
 
 						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
 							<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.Platforms}" />
@@ -511,10 +521,10 @@
 					<BoxView StyleClass="Divider" />
 
 					<Grid
+						support:Dense.MinHeight="{StaticResource HitRow}"
 						support:Dense.Padding="12,8"
 						ColumnDefinitions="*,Auto"
-						ColumnSpacing="12"
-						support:Dense.MinHeight="{StaticResource HitRow}">
+						ColumnSpacing="12">
 
 						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
 							<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.ExpandStops}" />
@@ -575,10 +585,10 @@
 				<VerticalStackLayout>
 
 					<Grid
+						support:Dense.MinHeight="{StaticResource HitRow}"
 						support:Dense.Padding="12,8"
 						ColumnDefinitions="*,Auto"
-						ColumnSpacing="12"
-						support:Dense.MinHeight="{StaticResource HitRow}">
+						ColumnSpacing="12">
 
 						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
 							<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.DeveloperOptions}" />
@@ -597,10 +607,10 @@
 						<BoxView StyleClass="Divider" />
 
 						<Grid
+							support:Dense.MinHeight="{StaticResource HitRow}"
 							support:Dense.Padding="12,8"
 							ColumnDefinitions="*,Auto"
-							ColumnSpacing="12"
-							support:Dense.MinHeight="{StaticResource HitRow}">
+							ColumnSpacing="12">
 
 							<VerticalStackLayout Spacing="1" VerticalOptions="Center">
 								<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.ExpertView}" />
@@ -617,10 +627,10 @@
 						<BoxView StyleClass="Divider" />
 
 						<Grid
+							support:Dense.MinHeight="{StaticResource HitRow}"
 							support:Dense.Padding="12,8"
 							ColumnDefinitions="*,Auto"
-							ColumnSpacing="12"
-							support:Dense.MinHeight="{StaticResource HitRow}">
+							ColumnSpacing="12">
 
 							<VerticalStackLayout Spacing="1" VerticalOptions="Center">
 								<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.LogToFile}" />
@@ -644,22 +654,22 @@
 								Text="{Binding LogInfo}" />
 
 							<FlexLayout
+								support:Dense.Padding="12,8"
 								AlignContent="Start"
 								AlignItems="Start"
-								support:Dense.Padding="12,8"
 								Wrap="Wrap">
 								<Button
-									Margin="0,0,8,0"
+									Margin="0,4,8,4"
 									Command="{Binding ShareLogCommand}"
 									StyleClass="Tonal"
 									Text="{localization:Tr Settings.ShareLog}" />
 								<Button
+									Margin="0,4,0,4"
 									Command="{Binding ClearLogCommand}"
 									StyleClass="Tonal"
 									Text="{localization:Tr Settings.ClearLog}" />
 							</FlexLayout>
 						</VerticalStackLayout>
-
 
 						<BoxView StyleClass="Divider" />
 
@@ -671,6 +681,7 @@
 								LineBreakMode="CharacterWrap"
 								Text="{Binding InterfaceReport}" />
 							<Button
+								Margin="0,4,0,4"
 								Command="{Binding CopyInterfacesCommand}"
 								HorizontalOptions="Start"
 								StyleClass="Tonal"
@@ -683,11 +694,12 @@
 			</Border>
 
 			<Border Padding="0" StyleClass="Card">
-				<Grid support:Motion.Feedback="True"
+				<Grid
+					support:Dense.MinHeight="{StaticResource HitRow}"
 					support:Dense.Padding="12,8"
+					support:Motion.Feedback="True"
 					ColumnDefinitions="*,Auto"
 					ColumnSpacing="10"
-					support:Dense.MinHeight="{StaticResource HitRow}"
 					SemanticProperties.Description="{localization:Tr Settings.About}">
 					<VerticalStackLayout Spacing="1" VerticalOptions="Center">
 						<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.About}" />

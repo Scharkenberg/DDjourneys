@@ -314,14 +314,14 @@ public sealed class ReadmeLanguagesTests
 	[Fact]
 	public void Both_files_have_the_same_headings_and_paragraphs_in_the_same_order()
 	{
-		Assert.Equal(Shape(Read("README.md")), Shape(Read("README.de.md")));
+		Assert.Equal(Shape(Read("README.md")), Shape(Read("LIESMICH.md")));
 	}
 
 	[Fact]
 	public void Both_files_have_the_same_links_and_the_same_code()
 	{
 		IReadOnlyList<MarkdownBlock> english = Read("README.md");
-		IReadOnlyList<MarkdownBlock> german = Read("README.de.md");
+		IReadOnlyList<MarkdownBlock> german = Read("LIESMICH.md");
 
 		Assert.Equal(Links(english), Links(german));
 		Assert.Equal(Code(english), Code(german));
@@ -330,7 +330,7 @@ public sealed class ReadmeLanguagesTests
 	[Fact]
 	public void The_german_file_starts_with_the_name_of_the_app_and_follows_the_same_rules()
 	{
-		IReadOnlyList<MarkdownBlock> german = Read("README.de.md");
+		IReadOnlyList<MarkdownBlock> german = Read("LIESMICH.md");
 
 		Assert.Equal("DDjourneys", Plain(Assert.IsType<MarkdownHeading>(german[0])));
 		Assert.DoesNotContain(german, block => block is MarkdownList or MarkdownQuote or MarkdownRule);

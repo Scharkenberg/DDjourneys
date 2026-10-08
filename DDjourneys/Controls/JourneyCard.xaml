@@ -11,10 +11,15 @@
 		<VerticalStackLayout Spacing="{DynamicResource SpaceM}">
 
 			<!--  Times  -->
-			<Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{DynamicResource SpaceM}">
+			<Grid ColumnDefinitions="*,Auto,*" ColumnSpacing="{DynamicResource SpaceM}">
 
 				<VerticalStackLayout Grid.Column="0" Spacing="2">
 					<Label StyleClass="Time" Text="{Binding DepartureTime}" />
+					<controls:StopNameView
+						Compact="True"
+						IsVisible="{Binding ShowEndpoints}"
+						Place="{Binding FromPlace}"
+						Stop="{Binding FromName}" />
 					<Label
 						IsVisible="{Binding HasDepartureDelay}"
 						StyleClass="Delay"
@@ -70,6 +75,12 @@
 						HorizontalTextAlignment="End"
 						StyleClass="Time"
 						Text="{Binding ArrivalTime}" />
+					<controls:StopNameView
+						Alignment="End"
+						Compact="True"
+						IsVisible="{Binding ShowEndpoints}"
+						Place="{Binding ToPlace}"
+						Stop="{Binding ToName}" />
 					<Label
 						HorizontalTextAlignment="End"
 						IsVisible="{Binding HasArrivalDelay}"
@@ -77,23 +88,6 @@
 						Text="{Binding ArrivalDelay}" />
 				</VerticalStackLayout>
 
-			</Grid>
-
-			<!--  Where from / where to  -->
-			<Grid
-				ColumnDefinitions="*,*"
-				ColumnSpacing="{DynamicResource SpaceM}"
-				IsVisible="{Binding ShowEndpoints}">
-				<controls:StopNameView
-					Compact="True"
-					Place="{Binding FromPlace}"
-					Stop="{Binding FromName}" />
-				<controls:StopNameView
-					Grid.Column="1"
-					Alignment="End"
-					Compact="True"
-					Place="{Binding ToPlace}"
-					Stop="{Binding ToName}" />
 			</Grid>
 
 			<!--  Legs: one line, centered, and swipeable when it is too long for the card; the actions sit beside it  -->

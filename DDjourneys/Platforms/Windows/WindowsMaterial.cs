@@ -169,19 +169,23 @@ internal static class WindowsMaterial
 		{
 			string material = Support.Material.Effective;
 
-			SystemBackdrop? backdrop =
-				material switch
-				{
-					MaterialProfile.Mica => new MicaBackdrop { Kind = MicaKind.Base },
-					MaterialProfile.MicaAlt => new MicaBackdrop { Kind = MicaKind.BaseAlt },
-					MaterialProfile.Acrylic => new DesktopAcrylicBackdrop(),
-					_ => null
-				};
-
-			// Same kind again: leave the running backdrop alone (no flicker on every palette change).
-			if (!SameKind(window.SystemBackdrop, backdrop))
+			// Same kind again: the running backdrop is styled again with the new palette and reach (no flicker, no new
+			// controller on every change); another kind replaces it.
+			if (material == MaterialProfile.None)
 			{
-				window.SystemBackdrop = backdrop;
+				if (window.SystemBackdrop is not null)
+				{
+					window.SystemBackdrop = null;
+				}
+			}
+			else if (window.SystemBackdrop is PaletteBackdrop running
+				&& string.Equals(running.Material, material, StringComparison.Ordinal))
+			{
+				running.Restyle();
+			}
+			else
+			{
+				window.SystemBackdrop = new PaletteBackdrop(material);
 			}
 
 			// The backdrop reads the light/dark theme of the content: the app's mode, not the OS's.
@@ -203,15 +207,6 @@ internal static class WindowsMaterial
 		}
 	}
 
-	private static bool SameKind(SystemBackdrop? current, SystemBackdrop? wanted) =>
-		(current, wanted) switch
-		{
-			(null, null) => true,
-			(MicaBackdrop a, MicaBackdrop b) => a.Kind == b.Kind,
-			(DesktopAcrylicBackdrop, DesktopAcrylicBackdrop) => true,
-			_ => false
-		};
-
 	private static void StyleTitleBar(Window window, bool materialShown)
 	{
 		if (!AppWindowTitleBar.IsCustomizationSupported())
@@ -224,6 +219,7 @@ internal static class WindowsMaterial
 		Microsoft.Maui.Graphics.Color ink = Theme.ColorOf("Ink", Microsoft.Maui.Graphics.Colors.Black);
 		Microsoft.Maui.Graphics.Color muted = Theme.ColorOf("InkMuted", ink);
 		Microsoft.Maui.Graphics.Color background = Theme.BarColor;
+		Microsoft.Maui.Graphics.Color accent = Theme.ColorOf("Accent", background);
 
 		// With a material the title bar shows it; without, it wears the palette (not the OS theme).
 		WinColor? fill = materialShown ? null : ToWin(background);
@@ -237,9 +233,9 @@ internal static class WindowsMaterial
 		bar.ButtonInactiveBackgroundColor = clear;
 		bar.ButtonForegroundColor = ToWin(ink);
 		bar.ButtonInactiveForegroundColor = ToWin(muted);
-		bar.ButtonHoverBackgroundColor = ToWin(ink, 0.10f);
+		bar.ButtonHoverBackgroundColor = ToWin(materialShown ? accent : background, materialShown ? 0.22f : 0.16f);
 		bar.ButtonHoverForegroundColor = ToWin(ink);
-		bar.ButtonPressedBackgroundColor = ToWin(ink, 0.18f);
+		bar.ButtonPressedBackgroundColor = ToWin(materialShown ? accent : background, materialShown ? 0.34f : 0.24f);
 		bar.ButtonPressedForegroundColor = ToWin(ink);
 
 		if (!materialShown)

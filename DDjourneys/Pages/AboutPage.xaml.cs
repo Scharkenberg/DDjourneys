@@ -15,7 +15,7 @@ public partial class AboutPage : ContentPage
 	public const string ResourceName = "DDjourneys.README.md";
 
 	/// <summary>Name of the German document inside the app package.</summary>
-	public const string GermanResourceName = "DDjourneys.README.de.md";
+	public const string GermanResourceName = "DDjourneys.LIESMICH.md";
 
 	private string? _loadedName;
 
@@ -32,43 +32,57 @@ public partial class AboutPage : ContentPage
 
 		Motion.EnterPage(this);
 
-		string name = ResourceFor(LocalizationService.Current.LanguageCode);
+		string preferredName = ResourceFor(LocalizationService.Current.LanguageCode);
 
-		if (string.Equals(_loadedName, name, StringComparison.Ordinal))
+		if (string.Equals(_loadedName, preferredName, StringComparison.Ordinal))
 		{
 			return;
 		}
 
-		_loadedName = name;
+		try
+		{
+			await LoadAsync(preferredName);
+			_loadedName = preferredName;
+			Message.IsVisible = false;
+			return;
+		}
+		catch (Exception ex) when (preferredName == GermanResourceName)
+		{
+			DiagnosticLog.Write($"About page: {preferredName} not read, trying English fallback: {ex.Message}");
+		}
 
 		try
 		{
-			// Reading and shaping the text is off the UI thread; only the views are built here.
-			string text =
-				await Task.Run(
-					async () =>
-					{
-						await using Stream stream =
-							typeof(AboutPage).Assembly.GetManifestResourceStream(name)
-							?? throw new FileNotFoundException($"{name} is not embedded in the app.");
-
-						using var reader = new StreamReader(stream);
-
-						return await reader.ReadToEndAsync();
-					});
-
-			Document.Markdown = text;
+			await LoadAsync(ResourceName);
+			_loadedName = ResourceName;
 			Message.IsVisible = false;
 		}
 		catch (Exception ex)
 		{
-			DiagnosticLog.Write($"About page: {name} not read: {ex.Message}");
-
+			DiagnosticLog.Write($"About page: {preferredName} and fallback could not be read: {ex.Message}");
 			_loadedName = null;
-
 			Message.Text = LocalizationService.Current.CurrentStrings.Common.SomethingWentWrong;
 			Message.IsVisible = true;
 		}
+	}
+
+	private async Task LoadAsync(string name)
+	{
+		// Reading and shaping the text is off the UI thread; only the views are built here.
+		string text =
+			await Task.Run(
+				async () =>
+				{
+					await using Stream stream =
+						typeof(AboutPage).Assembly.GetManifestResourceStream(name)
+						?? throw new FileNotFoundException($"{name} is not embedded in the app.");
+
+					using var reader = new StreamReader(stream);
+
+					return await reader.ReadToEndAsync();
+				});
+
+		Document.Markdown = text;
 	}
 
 	/// <summary>The document for a UI language code ("de", "de-DE": German; anything else: English).</summary>

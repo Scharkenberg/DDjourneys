@@ -55,6 +55,35 @@ public sealed class MaterialProfileTests
 	}
 
 	[Theory]
+	[InlineData(MaterialProfile.Mica)]
+	[InlineData(MaterialProfile.MicaAlt)]
+	[InlineData(MaterialProfile.Acrylic)]
+	public void The_further_the_material_reaches_the_more_of_it_shows(string material)
+	{
+		foreach (bool dark in new[] { false, true })
+		{
+			BackdropLook backdrop = MaterialProfile.Look(material, MaterialProfile.Backdrop, dark);
+			BackdropLook layered = MaterialProfile.Look(material, MaterialProfile.Layered, dark);
+			BackdropLook immersive = MaterialProfile.Look(material, MaterialProfile.Immersive, dark);
+
+			Assert.True(backdrop.TintOpacity > layered.TintOpacity && layered.TintOpacity > immersive.TintOpacity);
+			Assert.True(backdrop.LuminosityOpacity >= layered.LuminosityOpacity && layered.LuminosityOpacity > immersive.LuminosityOpacity);
+			Assert.True(backdrop.AccentMix < layered.AccentMix && layered.AccentMix < immersive.AccentMix);
+		}
+	}
+
+	[Fact]
+	public void Acrylic_lets_more_through_than_mica_at_every_level()
+	{
+		foreach (string coverage in MaterialProfile.Coverages)
+		{
+			Assert.True(
+				MaterialProfile.Look(MaterialProfile.Acrylic, coverage, false).LuminosityOpacity
+				< MaterialProfile.Look(MaterialProfile.Mica, coverage, false).LuminosityOpacity);
+		}
+	}
+
+	[Theory]
 	[InlineData(null, MaterialProfile.Mica)]
 	[InlineData("MICAALT", MaterialProfile.MicaAlt)]
 	[InlineData("glass", MaterialProfile.Mica)]

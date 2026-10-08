@@ -243,9 +243,10 @@ public sealed partial class DisruptionsViewModel : DisposableViewModel, IQueryAt
 
 		set
 		{
+			// The provider's own flag is ignored by the service, so the list is cut here, without a new request.
 			if (SetProperty(ref field, value) && _loaded)
 			{
-				_ = LoadAsync();
+				_ = RebuildAsync(true);
 			}
 		}
 	}
@@ -428,6 +429,11 @@ public sealed partial class DisruptionsViewModel : DisposableViewModel, IQueryAt
 					StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
 			IEnumerable<Disruption> source = _changes;
+
+			if (ShortTermOnly)
+			{
+				source = source.Where(change => !change.IsPlanned);
+			}
 
 			if (_only.Count > 0)
 			{

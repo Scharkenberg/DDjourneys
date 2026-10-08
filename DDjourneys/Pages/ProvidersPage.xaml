@@ -1,11 +1,11 @@
 <ContentPage
-	xmlns:support="clr-namespace:DDjourneys.Support"
 	x:Class="DDjourneys.Pages.ProvidersPage"
 	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
 	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
 	xmlns:controls="clr-namespace:DDjourneys.Controls"
 	xmlns:local="clr-namespace:DDjourneys.Pages"
 	xmlns:localization="clr-namespace:DDjourneys.Localization"
+	xmlns:support="clr-namespace:DDjourneys.Support"
 	Title="{localization:Tr Provider.Title}"
 	x:DataType="local:ProvidersViewModel">
 
@@ -38,11 +38,12 @@
 												<BoxView IsVisible="{Binding HasDivider}" StyleClass="Divider" />
 
 												<!--  The header toggles the details; choosing is the button inside them  -->
-												<Grid support:Motion.Feedback="True"
+												<Grid
+													support:Dense.MinHeight="{StaticResource HitRow}"
 													support:Dense.Padding="12,8"
+													support:Motion.Feedback="True"
 													ColumnDefinitions="*,Auto,Auto"
 													ColumnSpacing="10"
-													support:Dense.MinHeight="{StaticResource HitRow}"
 													SemanticProperties.Description="{Binding Description}">
 
 													<VerticalStackLayout Spacing="2" VerticalOptions="Center">
@@ -80,8 +81,8 @@
 
 													<controls:Icon
 														Grid.Column="2"
-														Glyph="ChevronDown"
 														support:Motion.Turn="{Binding ChevronRotation}"
+														Glyph="ChevronDown"
 														Size="20"
 														VerticalOptions="Center"
 														Color="{DynamicResource InkMuted}" />
@@ -92,14 +93,16 @@
 												</Grid>
 
 												<VerticalStackLayout
-													IsVisible="{Binding IsExpanded}"
 													support:Dense.Padding="12,0,12,12"
+													IsVisible="{Binding IsExpanded}"
 													Spacing="8">
 
 													<Label StyleClass="Faint" Text="{Binding Coverage}" />
 
 													<!--  What it supports: informative, not tappable, so pill-shaped chips are fine  -->
-													<FlexLayout AlignContent="Start" AlignItems="Start"
+													<FlexLayout
+														AlignContent="Start"
+														AlignItems="Start"
 														BindableLayout.ItemsSource="{Binding Capabilities}"
 														Wrap="Wrap">
 
