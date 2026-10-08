@@ -100,7 +100,7 @@ public static class JourneyCalendar
 	/// <summary>Backslash, semicolon and comma are escaped, line breaks become \n.</summary>
 	private static string Escape(string text) =>
 		text.Replace("\\", "\\\\", StringComparison.Ordinal)
-			.Replace(";", "\;", StringComparison.Ordinal)
+			.Replace(";", "\\;", StringComparison.Ordinal)
 			.Replace(",", "\\,", StringComparison.Ordinal)
 			.Replace("\r\n", "\\n", StringComparison.Ordinal)
 			.Replace("\n", "\\n", StringComparison.Ordinal)
@@ -127,7 +127,7 @@ public static class JourneyCalendar
 				octets = 1;
 			}
 
-			result.Append(rune.ToString());
+			result.Append(rune);
 			octets += size;
 		}
 
