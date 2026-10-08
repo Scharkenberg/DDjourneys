@@ -687,7 +687,7 @@ public sealed partial class TrackedJourneysViewModel : DisposableViewModel, IQue
 
 			parts.Add(new LinePart(lines[i], false, current));
 
-			if (marks && journey.EnsuredChanges![i])
+			if (marks && i < journey.EnsuredChanges!.Count && journey.EnsuredChanges[i])
 			{
 				parts.Add(new LinePart(strings.GuaranteedChange, true, false));
 			}
