@@ -100,14 +100,21 @@
 			<!--  Legs: one line, centered, and swipeable when it is too long for the card; the actions sit beside it  -->
 			<Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource SpaceS}">
 
+				<!--  The scroller keeps the tap from the card on Android: the legs line forwards it itself  -->
 				<ScrollView
 					HorizontalScrollBarVisibility="Never"
 					Orientation="Horizontal"
 					VerticalOptions="Center">
+					<ScrollView.GestureRecognizers>
+						<TapGestureRecognizer Tapped="OnLegsTapped" />
+					</ScrollView.GestureRecognizers>
 					<HorizontalStackLayout
 						BindableLayout.ItemsSource="{Binding Chips}"
 						Spacing="6"
 						VerticalOptions="Center">
+						<HorizontalStackLayout.GestureRecognizers>
+							<TapGestureRecognizer Tapped="OnLegsTapped" />
+						</HorizontalStackLayout.GestureRecognizers>
 						<BindableLayout.ItemTemplate>
 							<DataTemplate x:DataType="support:LegChip">
 								<Border
