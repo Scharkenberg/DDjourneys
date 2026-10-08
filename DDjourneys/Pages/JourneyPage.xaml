@@ -9,14 +9,6 @@
 	Title="{localization:Tr Journey.Title}"
 	x:DataType="local:JourneyViewModel">
 
-	<support:PanePage.ToolbarItems>
-		<ToolbarItem
-			x:Name="ExpertItem"
-			Command="{Binding OpenExpertCommand}"
-			Order="Secondary"
-			Text="{localization:Tr Expert.Open}" />
-	</support:PanePage.ToolbarItems>
-
 	<support:PanePage.Resources>
 
 		<!--  Stop where a leg starts or ends  -->
@@ -628,23 +620,37 @@
 	</support:PanePage.Resources>
 
 
-	<ScrollView x:Name="PageScroll">
-		<VerticalStackLayout Padding="{DynamicResource PadPage}" Spacing="{DynamicResource SpaceM}">
+	<!--  As on the results page: the searched connection stays up there, what scrolls (and refreshes) is below it  -->
+	<Grid
+		Padding="{DynamicResource PadPage}"
+		RowDefinitions="Auto,*"
+		RowSpacing="{DynamicResource SpaceM}">
 
-			<VerticalStackLayout x:Name="HeaderBlock" Spacing="{DynamicResource SpaceM}">
+		<controls:SearchHeader
+			Grid.Row="0"
+			ActionCommand="{Binding RefreshCommand}"
+			ActionDescription="{localization:Tr Journey.Refresh}"
+			ActionGlyph="Refresh"
+			From="{Binding FromName}"
+			FromPlace="{Binding FromPlace}"
+			SecondaryCommand="{Binding ShareCommand}"
+			SecondaryDescription="{localization:Tr Common.Share}"
+			SecondaryGlyph="Share"
+			Subtitle="{Binding DayText}"
+			TertiaryCommand="{Binding OpenExpertCommand}"
+			TertiaryDescription="{localization:Tr Expert.Open}"
+			TertiaryGlyph="{Binding ExpertGlyph}"
+			To="{Binding ToName}"
+			ToPlace="{Binding ToPlace}" />
 
-				<controls:SearchHeader
-					ActionCommand="{Binding ShareCommand}"
-					ActionDescription="{localization:Tr Common.Share}"
-					ActionGlyph="Share"
-					FromPlace="{Binding FromPlace}"
-					SecondaryCommand="{Binding Bookmark.ToggleCommand}"
-					SecondaryDescription="{Binding Bookmark.Description}"
-					SecondaryGlyph="{Binding Bookmark.Glyph}"
-					Subtitle="{Binding DayText}"
-					ToPlace="{Binding ToPlace}"
-					From="{Binding FromName}"
-					To="{Binding ToName}" />
+		<RefreshView
+			Grid.Row="1"
+			Command="{Binding RefreshCommand}"
+			IsRefreshing="{Binding IsRefreshing, Mode=OneWay}">
+			<ScrollView x:Name="PageScroll">
+				<VerticalStackLayout Spacing="{DynamicResource SpaceM}">
+
+					<VerticalStackLayout x:Name="HeaderBlock" Spacing="{DynamicResource SpaceM}">
 
 				<controls:JourneyCard BindingContext="{Binding Summary}" />
 
@@ -786,19 +792,15 @@
 						<VerticalStackLayout BindableLayout.ItemsSource="{Binding Fares}" Spacing="2">
 							<BindableLayout.ItemTemplate>
 								<DataTemplate x:DataType="support:FareRow">
+									<!--  The preferred ticket is highlighted through Themed (a theme colour in a trigger stops following the theme)  -->
 									<Border
 										Padding="8,6"
+										support:Themed.Background="Clear"
+										support:Themed.IsOn="{Binding IsPreferred}"
+										support:Themed.OnBackground="AccentSoft"
 										SemanticProperties.Description="{Binding AccessibilityText}"
 										StrokeShape="RoundRectangle 8"
 										StrokeThickness="0">
-										<Border.Triggers>
-											<DataTrigger
-												Binding="{Binding IsPreferred}"
-												TargetType="Border"
-												Value="True">
-												<Setter Property="BackgroundColor" Value="{DynamicResource AccentSoft}" />
-											</DataTrigger>
-										</Border.Triggers>
 										<Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
 											<VerticalStackLayout Spacing="0" VerticalOptions="Center">
 												<Label LineBreakMode="WordWrap" Text="{Binding Name}" />
@@ -846,6 +848,8 @@
 			</Border>
 
 		</VerticalStackLayout>
-	</ScrollView>
+			</ScrollView>
+		</RefreshView>
+	</Grid>
 
 </support:PanePage>

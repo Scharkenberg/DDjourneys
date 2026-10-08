@@ -235,19 +235,6 @@ public static class TimelineBuilder
 			&& previousArrival is not null
 			&& nextDeparture is not null;
 
-		// With real-time times on either side the arithmetic decides: the next vehicle leaves after the previous one
-		// arrived plus the walk, so the change is not endangered, whatever the provider's timetable-based flag says
-		// (a vehicle that is late on departure does not endanger a change). Without real-time data the provider's
-		// flag stands.
-		bool live =
-			previousLeg?.RealtimeArrival is not null
-			|| nextLeg?.RealtimeDeparture is not null;
-
-		bool computable =
-			showWait
-			&& previousArrival is not null
-			&& nextDeparture is not null;
-
 		bool endangered =
 			!ensured
 			&& (computable && live

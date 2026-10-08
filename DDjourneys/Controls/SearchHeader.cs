@@ -100,7 +100,22 @@ public sealed partial class SearchHeader : ContentView
 			null,
 			propertyChanged: OnChanged);
 
+	public static readonly BindableProperty TertiaryGlyphProperty =
+		BindableProperty.Create(nameof(TertiaryGlyph), typeof(IconGlyph), typeof(SearchHeader), IconGlyph.None, propertyChanged: OnChanged);
+
+	public static readonly BindableProperty TertiaryCommandProperty =
+		BindableProperty.Create(nameof(TertiaryCommand), typeof(ICommand), typeof(SearchHeader), null, propertyChanged: OnChanged);
+
+	public static readonly BindableProperty TertiaryDescriptionProperty =
+		BindableProperty.Create(nameof(TertiaryDescription), typeof(string), typeof(SearchHeader), null, propertyChanged: OnChanged);
+
 	private readonly RouteView _route = new();
+
+	private readonly IconButton _tertiary =
+		new()
+		{
+			VerticalOptions = LayoutOptions.Start
+		};
 
 	private readonly IconButton _secondary =
 		new()
@@ -147,7 +162,7 @@ public sealed partial class SearchHeader : ContentView
 			{
 				Spacing = 0,
 				VerticalOptions = LayoutOptions.Start,
-				Children = { _secondary, _action }
+				Children = { _tertiary, _secondary, _action }
 			},
 			1,
 			0);
@@ -229,6 +244,25 @@ public sealed partial class SearchHeader : ContentView
 		set => SetValue(SecondaryDescriptionProperty, value);
 	}
 
+	/// <summary>An optional third button, left of the second (the technical details, when they are enabled).</summary>
+	public IconGlyph TertiaryGlyph
+	{
+		get => (IconGlyph)GetValue(TertiaryGlyphProperty);
+		set => SetValue(TertiaryGlyphProperty, value);
+	}
+
+	public ICommand? TertiaryCommand
+	{
+		get => (ICommand?)GetValue(TertiaryCommandProperty);
+		set => SetValue(TertiaryCommandProperty, value);
+	}
+
+	public string? TertiaryDescription
+	{
+		get => (string?)GetValue(TertiaryDescriptionProperty);
+		set => SetValue(TertiaryDescriptionProperty, value);
+	}
+
 	private static void OnChanged(BindableObject bindable, object? oldValue, object? newValue) =>
 		((SearchHeader)bindable).Apply();
 
@@ -253,5 +287,11 @@ public sealed partial class SearchHeader : ContentView
 		_secondary.IsVisible = SecondaryGlyph != IconGlyph.None;
 
 		SemanticProperties.SetDescription(_secondary, SecondaryDescription);
+
+		_tertiary.Glyph = TertiaryGlyph;
+		_tertiary.Command = TertiaryCommand;
+		_tertiary.IsVisible = TertiaryGlyph != IconGlyph.None;
+
+		SemanticProperties.SetDescription(_tertiary, TertiaryDescription);
 	}
 }

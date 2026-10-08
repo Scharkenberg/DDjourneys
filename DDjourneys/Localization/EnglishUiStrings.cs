@@ -219,6 +219,7 @@ public sealed class EnglishUiStrings : IUiStrings
 		MapJourneyTitle = "Journey map",
 		MapStopTitle = "Stops nearby",
 		MapNoData = "There are no positions to show on a map for this item.",
+		JourneyRefreshFailed = "This connection is no longer offered, nothing to update.",
 		MapStart = "Start",
 		MapEnd = "Destination",
 		RunDeparted = "This vehicle has already left; its course is no longer available.",

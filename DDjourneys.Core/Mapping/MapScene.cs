@@ -92,8 +92,13 @@ public sealed class MapScene
 		&& longitude is >= -180 and <= 180
 		&& !(latitude == 0 && longitude == 0);
 
-	/// <summary>The scene as the JSON the map page expects (<c>ddMap.set(...)</c>). Invalid coordinates are dropped.</summary>
-	public string ToJson(bool dark)
+	/// <summary>
+	/// The scene as the JSON the map page expects (<c>ddMap.set(...)</c>). Invalid coordinates are dropped.
+	/// <paramref name="color"/> turns a stored colour into the one to draw (the app stores theme references, resolved
+	/// at send time, so a scene follows theme changes); <paramref name="fit"/> overrides <see cref="Fit"/> (a re-send
+	/// after a theme change must not move the view).
+	/// </summary>
+	public string ToJson(bool dark, Func<string, string>? color = null, bool? fit = null)
 	{
 		using var stream = new MemoryStream();
 
@@ -101,7 +106,7 @@ public sealed class MapScene
 		{
 			writer.WriteStartObject();
 			writer.WriteBoolean("dark", dark);
-			writer.WriteBoolean("fit", Fit);
+			writer.WriteBoolean("fit", fit ?? Fit);
 
 			writer.WriteStartArray("markers");
 
@@ -116,7 +121,7 @@ public sealed class MapScene
 
 				if (marker.Color is not null)
 				{
-					writer.WriteString("color", marker.Color);
+					writer.WriteString("color", color is null ? marker.Color : color(marker.Color));
 				}
 
 				if (marker.Title is not null)
@@ -149,7 +154,7 @@ public sealed class MapScene
 				}
 
 				writer.WriteStartObject();
-				writer.WriteString("color", line.Color);
+				writer.WriteString("color", color is null ? line.Color : color(line.Color));
 				writer.WriteBoolean("dashed", line.Dashed);
 				writer.WriteNumber("weight", line.Weight);
 				writer.WriteNumber("opacity", Math.Clamp(line.Opacity, 0.05, 1));

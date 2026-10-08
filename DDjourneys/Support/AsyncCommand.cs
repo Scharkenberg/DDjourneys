@@ -69,33 +69,71 @@ public sealed partial class AsyncCommand : ICommand
 	}
 }
 
-/// <summary>Typed variant. A parameter of the wrong type is ignored, never cast blindly.</summary>
+/// <summary>
+/// Typed variant. A parameter of the wrong type is ignored, never cast blindly. One command serves many buttons (the
+/// rows of a list), each with its own parameter, so the parameter travels with the call: it is never kept in the command
+/// (the buttons ask <see cref="CanExecute"/> with their own parameters, and the change notification that a run raises
+/// makes every one of them ask again, which used to leave the last row's parameter behind for the run in progress).
+/// </summary>
 public sealed partial class AsyncCommand<T> : ICommand
 {
-	private readonly AsyncCommand _inner;
-	private T? _parameter;
+	private readonly Func<T, Task> _execute;
+	private readonly Func<T, bool>? _canExecute;
+	private readonly Action<Exception>? _onError;
+	private bool _running;
 
 	public AsyncCommand(Func<T, Task> execute, Func<T, bool>? canExecute = null, Action<Exception>? onError = null)
 	{
 		ArgumentNullException.ThrowIfNull(execute);
-		_inner = new AsyncCommand(
-			() => _parameter is { } value ? execute(value) : Task.CompletedTask,
-			() => _parameter is { } value && (canExecute?.Invoke(value) ?? true),
-			onError);
-		_inner.CanExecuteChanged += (s, e) => CanExecuteChanged?.Invoke(this, e);
+		_execute = execute;
+		_canExecute = canExecute;
+		_onError = onError;
 	}
 
 	public event EventHandler? CanExecuteChanged;
 
-	public bool CanExecute(object? parameter)
-	{
-		_parameter = parameter is T value ? value : default;
-		return _inner.CanExecute(null);
-	}
+	public bool CanExecute(object? parameter) =>
+		!_running
+		&& parameter is T value
+		&& (_canExecute?.Invoke(value) ?? true);
 
+	public void RaiseCanExecuteChanged() => CanExecuteChanged?.Invoke(this, EventArgs.Empty);
+
+	// Total try/catch: async void is safe here because nothing can escape.
 	public async void Execute(object? parameter)
 	{
-		_parameter = parameter is T value ? value : default;
-		await _inner.ExecuteAsync();
+		if (!CanExecute(parameter) || parameter is not T value)
+		{
+			return;
+		}
+
+		_running = true;
+		RaiseCanExecuteChanged();
+
+		try
+		{
+			await _execute(value);
+		}
+		catch (OperationCanceledException)
+		{
+		}
+		catch (Exception ex)
+		{
+			DiagnosticLog.Write($"Command failed:\n{ex}");
+
+			try
+			{
+				_onError?.Invoke(ex);
+			}
+			catch (Exception inner)
+			{
+				DiagnosticLog.Write($"Command error handler failed: {inner.Message}");
+			}
+		}
+		finally
+		{
+			_running = false;
+			RaiseCanExecuteChanged();
+		}
 	}
 }

@@ -11,7 +11,7 @@
 
 	<Grid
 		Padding="{DynamicResource PadPage}"
-		RowDefinitions="Auto,Auto,*"
+		RowDefinitions="Auto,*"
 		RowSpacing="{DynamicResource SpaceM}">
 
 		<!--  Result header  -->
@@ -31,7 +31,7 @@
 
 
 
-		<Grid Grid.Row="2">
+		<Grid Grid.Row="1">
 
 			<RefreshView Command="{Binding RefreshCommand}" IsRefreshing="{Binding IsRefreshing}">
 
