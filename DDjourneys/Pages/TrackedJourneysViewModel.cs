@@ -625,8 +625,20 @@ public sealed partial class TrackedJourneysViewModel : DisposableViewModel, IQue
 				(WatchStatus.Recent, strings.SectionRecent)
 			})
 			{
-				List<TrackedRow> rows =
-					[.. journeys.Where(item => item.Status == status).Select(item => CreateRow(item, strings))];
+				// One journey that cannot be shown must not hide the others (nor the whole page, as an empty list would).
+				var rows = new List<TrackedRow>();
+
+				foreach (WatchedJourney item in journeys.Where(item => item.Status == status))
+				{
+					try
+					{
+						rows.Add(CreateRow(item, strings));
+					}
+					catch (Exception ex)
+					{
+						DiagnosticLog.Write($"Followed journey {item.PlanId} not shown: {ex}");
+					}
+				}
 
 				if (rows.Count > 0)
 				{
@@ -635,8 +647,18 @@ public sealed partial class TrackedJourneysViewModel : DisposableViewModel, IQue
 			}
 
 			Sections = sections;
-			HasItems = journeys.Count > 0;
-			LiveOptions = CreateLiveOptions(journeys, strings);
+			HasItems = sections.Count > 0;
+
+			DiagnosticLog.Write($"[Followed] {journeys.Count} journey(s) from the tracker, {sections.Count} section(s) shown");
+
+			try
+			{
+				LiveOptions = CreateLiveOptions(journeys, strings);
+			}
+			catch (Exception ex)
+			{
+				DiagnosticLog.Write($"Live options not built: {ex.Message}");
+			}
 		}
 		catch (Exception ex)
 		{

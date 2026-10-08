@@ -41,7 +41,8 @@ public static class PaneRules
 			[Routes.Map] = typeof(MapPage),
 			[Routes.Departures] = typeof(DeparturesPage),
 			[Routes.Run] = typeof(RunPage),
-			[Routes.Vehicles] = typeof(VehiclesPage)
+			[Routes.Vehicles] = typeof(VehiclesPage),
+			[Routes.Tracked] = typeof(TrackedJourneysPage)
 		};
 
 	private static readonly HashSet<(string Left, string Right)> Pairs =
@@ -52,7 +53,9 @@ public static class PaneRules
 		(Routes.Journey, Routes.Vehicles),
 		(Routes.Departures, Routes.Run),
 		(Routes.Run, Routes.Map),
-		(Routes.Run, Routes.Vehicles)
+		(Routes.Run, Routes.Vehicles),
+		(Routes.Plan, Routes.Tracked),
+		(Routes.Journey, Routes.Tracked)
 	];
 
 	public static Type? PageFor(string route) =>
@@ -81,6 +84,7 @@ public static class PaneRules
 			DeparturesPage { BindingContext: DeparturesViewModel vm } => new DeparturesPage(vm),
 			RunPage { BindingContext: RunViewModel vm } => new RunPage(vm),
 			VehiclesPage { BindingContext: VehiclesViewModel vm } => new VehiclesPage(vm),
+			TrackedJourneysPage { BindingContext: TrackedJourneysViewModel vm } => new TrackedJourneysPage(vm),
 			MapPage => services.GetService<MapPage>(),
 			_ => null
 		};

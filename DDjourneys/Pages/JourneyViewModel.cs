@@ -520,8 +520,9 @@ public sealed partial class JourneyViewModel :
 					[Routes.JourneyData] = _journey
 				});
 
-	private static Task OpenFollowedAsync() =>
-		Shell.Current.GoToAsync(Routes.Tracked);
+	// Beside the journey as a pane in a wide window (see Panes).
+	private Task OpenFollowedAsync() =>
+		Panes.GoToAsync(Routes.Tracked, [], this);
 
 	private void ShowTrackingError(Exception ex) =>
 		TrackingStatus =
