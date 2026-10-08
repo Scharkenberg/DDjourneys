@@ -128,24 +128,45 @@
 													<!--  Header: the route, and the card's actions (live badge, map, expand) in one row of equal icon targets  -->
 													<Grid ColumnDefinitions="*,Auto" ColumnSpacing="4">
 
-														<VerticalStackLayout
+														<!--  Times with their ends right under them, the day between (as on the journey card)  -->
+														<Grid
 															support:Motion.Feedback="True"
-															Spacing="2"
+															ColumnDefinitions="*,Auto,*"
+															ColumnSpacing="{DynamicResource SpaceM}"
 															VerticalOptions="Center">
 
-															<!--  The title may wrap to two lines  -->
+															<VerticalStackLayout Spacing="2">
+																<Label StyleClass="Time" Text="{Binding DepartureTime}" />
+																<controls:StopNameView
+																	Compact="True"
+																	Place="{Binding FromPlace}"
+																	Stop="{Binding FromName}" />
+															</VerticalStackLayout>
+
 															<Label
-																FontFamily="{DynamicResource FontSemibold}"
-																LineBreakMode="TailTruncation"
-																MaxLines="2"
-																Text="{Binding Title}" />
+																Grid.Column="1"
+																Margin="0,4,0,0"
+																HorizontalTextAlignment="Center"
+																StyleClass="Caption"
+																Text="{Binding DayText}"
+																VerticalOptions="Start" />
 
-															<Label StyleClass="Caption" Text="{Binding Subtitle}" />
+															<VerticalStackLayout Grid.Column="2" Spacing="2">
+																<Label
+																	HorizontalTextAlignment="End"
+																	StyleClass="Time"
+																	Text="{Binding ArrivalTime}" />
+																<controls:StopNameView
+																	Alignment="End"
+																	Compact="True"
+																	Place="{Binding ToPlace}"
+																	Stop="{Binding ToName}" />
+															</VerticalStackLayout>
 
-															<VerticalStackLayout.GestureRecognizers>
+															<Grid.GestureRecognizers>
 																<TapGestureRecognizer Command="{Binding ToggleExpandedCommand}" />
-															</VerticalStackLayout.GestureRecognizers>
-														</VerticalStackLayout>
+															</Grid.GestureRecognizers>
+														</Grid>
 
 														<HorizontalStackLayout
 															Grid.Column="1"

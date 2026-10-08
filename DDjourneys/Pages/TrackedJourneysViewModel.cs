@@ -80,6 +80,22 @@ public sealed class TrackedRow
 	public required string PlanId { get; init; }
 	public required string Title { get; init; }
 	public required string Subtitle { get; init; }
+
+	/// <summary>Times and ends for the card header (same look as the journey card).</summary>
+	public string DepartureTime { get; init; } = string.Empty;
+
+	public string ArrivalTime { get; init; } = string.Empty;
+
+	public string DayText { get; init; } = string.Empty;
+
+	public string FromName { get; init; } = string.Empty;
+
+	public string? FromPlace { get; init; }
+
+	public string ToName { get; init; } = string.Empty;
+
+	public string? ToPlace { get; init; }
+
 	public required string LinesText { get; init; }
 
 	/// <summary>The rides as chips (a line, or the mark of a guaranteed change), in travel order.</summary>
@@ -855,6 +871,15 @@ public sealed partial class TrackedJourneysViewModel : DisposableViewModel, IQue
 			PlanId = journey.PlanId,
 			Title = route,
 			Subtitle = subtitle,
+			DepartureTime = Format.TimeOrDash(journey.Departure),
+			ArrivalTime = Format.TimeOrDash(journey.Arrival),
+			DayText =
+				(journey.Departure is { } day ? Format.DayLabel(Format.ToWall(day).Date) : string.Empty)
+				+ (journey.IsPeriodic ? $" · {strings.Periodic}" : string.Empty),
+			FromName = StopLabel.NameFor(journey.Origin, null),
+			FromPlace = StopLabel.PlaceFor(journey.Origin, null),
+			ToName = StopLabel.NameFor(journey.Destination, null),
+			ToPlace = StopLabel.PlaceFor(journey.Destination, null),
 			LinesText = LinesOf(journey, strings),
 			LineParts = LinePartsOf(journey, strings),
 			HasMap = FollowedRides.Has(journey.PlanId),
