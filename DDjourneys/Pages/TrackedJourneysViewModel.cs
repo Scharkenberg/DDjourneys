@@ -80,6 +80,22 @@ public sealed class TrackedRow
 	public required string PlanId { get; init; }
 	public required string Title { get; init; }
 	public required string Subtitle { get; init; }
+
+	/// <summary>Times and ends for the card header (same look as the journey card).</summary>
+	public string DepartureTime { get; init; } = string.Empty;
+
+	public string ArrivalTime { get; init; } = string.Empty;
+
+	public string DayText { get; init; } = string.Empty;
+
+	public string FromName { get; init; } = string.Empty;
+
+	public string? FromPlace { get; init; }
+
+	public string ToName { get; init; } = string.Empty;
+
+	public string? ToPlace { get; init; }
+
 	public required string LinesText { get; init; }
 
 	/// <summary>The rides as chips (a line, or the mark of a guaranteed change), in travel order.</summary>
@@ -609,8 +625,20 @@ public sealed partial class TrackedJourneysViewModel : DisposableViewModel, IQue
 				(WatchStatus.Recent, strings.SectionRecent)
 			})
 			{
-				List<TrackedRow> rows =
-					[.. journeys.Where(item => item.Status == status).Select(item => CreateRow(item, strings))];
+				// One journey that cannot be shown must not hide the others (nor the whole page, as an empty list would).
+				var rows = new List<TrackedRow>();
+
+				foreach (WatchedJourney item in journeys.Where(item => item.Status == status))
+				{
+					try
+					{
+						rows.Add(CreateRow(item, strings));
+					}
+					catch (Exception ex)
+					{
+						DiagnosticLog.Write($"Followed journey {item.PlanId} not shown: {ex}");
+					}
+				}
 
 				if (rows.Count > 0)
 				{
@@ -619,8 +647,18 @@ public sealed partial class TrackedJourneysViewModel : DisposableViewModel, IQue
 			}
 
 			Sections = sections;
-			HasItems = journeys.Count > 0;
-			LiveOptions = CreateLiveOptions(journeys, strings);
+			HasItems = sections.Count > 0;
+
+			DiagnosticLog.Write($"[Followed] {journeys.Count} journey(s) from the tracker, {sections.Count} section(s) shown");
+
+			try
+			{
+				LiveOptions = CreateLiveOptions(journeys, strings);
+			}
+			catch (Exception ex)
+			{
+				DiagnosticLog.Write($"Live options not built: {ex.Message}");
+			}
 		}
 		catch (Exception ex)
 		{
@@ -649,7 +687,7 @@ public sealed partial class TrackedJourneysViewModel : DisposableViewModel, IQue
 
 			parts.Add(new LinePart(lines[i], false, current));
 
-			if (marks && journey.EnsuredChanges![i])
+			if (marks && i < journey.EnsuredChanges!.Count && journey.EnsuredChanges[i])
 			{
 				parts.Add(new LinePart(strings.GuaranteedChange, true, false));
 			}
@@ -855,6 +893,15 @@ public sealed partial class TrackedJourneysViewModel : DisposableViewModel, IQue
 			PlanId = journey.PlanId,
 			Title = route,
 			Subtitle = subtitle,
+			DepartureTime = Format.TimeOrDash(journey.Departure),
+			ArrivalTime = Format.TimeOrDash(journey.Arrival),
+			DayText =
+				(journey.Departure is { } day ? Format.DayLabel(Format.ToWall(day).Date) : string.Empty)
+				+ (journey.IsPeriodic ? $" · {strings.Periodic}" : string.Empty),
+			FromName = StopLabel.NameFor(journey.Origin, null),
+			FromPlace = StopLabel.PlaceFor(journey.Origin, null),
+			ToName = StopLabel.NameFor(journey.Destination, null),
+			ToPlace = StopLabel.PlaceFor(journey.Destination, null),
 			LinesText = LinesOf(journey, strings),
 			LineParts = LinePartsOf(journey, strings),
 			HasMap = FollowedRides.Has(journey.PlanId),

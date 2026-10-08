@@ -171,7 +171,7 @@ public static class AppShortcuts
 			return false;
 		}
 
-		await shell.GoToAsync($"//{Routes.Plan}");
+		await Panes.ToStartAsync(shell);
 
 		if (shortcut == AppShortcut.Home)
 		{

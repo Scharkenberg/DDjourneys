@@ -304,7 +304,7 @@ public sealed class ContractInbox
 					return false;
 				}
 
-				await shell.GoToAsync($"//{Routes.Plan}");
+				await Panes.ToStartAsync(shell);
 				await shell.GoToAsync(route, parameters ?? []);
 
 				return true;
@@ -339,7 +339,7 @@ public sealed class ContractInbox
 			return false;
 		}
 
-		await shell.GoToAsync($"//{Routes.Plan}");
+		await Panes.ToStartAsync(shell);
 
 		if (shell.CurrentPage is not PlanPage page)
 		{

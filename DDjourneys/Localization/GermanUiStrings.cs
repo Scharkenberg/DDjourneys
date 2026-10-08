@@ -8,6 +8,7 @@ public sealed class GermanUiStrings : IUiStrings
 		Cancel = "Abbrechen",
 		Retry = "Erneut versuchen",
 		Close = "Schlie\u00dfen",
+		Back = "Zur\u00fcck",
 		Loading = "L\u00e4dt",
 		Searching = "Suche",
 		Today = "Heute",

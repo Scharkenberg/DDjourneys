@@ -33,8 +33,8 @@
 		<ApplicationId>dev.Scharkenberg.DDjourneys</ApplicationId>
 
 		<!-- Versions -->
-		<ApplicationDisplayVersion>0.8.5</ApplicationDisplayVersion>
-		<ApplicationVersion>8</ApplicationVersion>
+		<ApplicationDisplayVersion>0.8.6</ApplicationDisplayVersion>
+		<ApplicationVersion>1</ApplicationVersion>
 
 		<!-- To develop, package, and publish an app to the Microsoft Store, see: https://aka.ms/MauiTemplateUnpackaged -->
 		<WindowsPackageType>MSIX</WindowsPackageType>
@@ -114,6 +114,8 @@
 		<PackageReference Include="Microsoft.Maui.Graphics.Skia" Version="$(MauiVersion)" />
 		<PackageReference Include="CommunityToolkit.Maui" Version="15.0.1" />
 		<PackageReference Include="Xamarin.Google.Android.Material" Version="1.14.0.6" Condition="'$(TargetFramework)' == 'net11.0-android'" />
+		<!-- Foldables: TwoPaneView and DualScreenInfo (Jetpack WindowManager on Android), versioned with MAUI. -->
+		<PackageReference Include="Microsoft.Maui.Controls.Foldable" Version="$(MauiVersion)" />
 	</ItemGroup>
 
 	<ItemGroup>

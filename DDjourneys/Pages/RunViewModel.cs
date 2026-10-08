@@ -240,7 +240,8 @@ public sealed partial class RunViewModel : DisposableViewModel, IQueryAttributab
 						Rows.ToList().FindIndex(row => row.IsCurrent),
 						_vehicle,
 						Title),
-					Title);
+					Title,
+					this);
 
 			if (!shown)
 			{
@@ -292,9 +293,11 @@ public sealed partial class RunViewModel : DisposableViewModel, IQueryAttributab
 				parameters[Routes.Track] = target;
 			}
 
-			await Shell.Current.GoToAsync(
+			// Beside this page as a pane in a wide window (see Panes).
+			await Panes.GoToAsync(
 				Routes.Vehicles,
-				parameters);
+				parameters,
+				this);
 		}
 		catch (Exception ex)
 		{

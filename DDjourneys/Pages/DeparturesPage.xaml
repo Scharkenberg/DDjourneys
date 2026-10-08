@@ -1,4 +1,4 @@
-<ContentPage
+<support:PanePage
 	x:Class="DDjourneys.Pages.DeparturesPage"
 	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
 	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
@@ -25,8 +25,10 @@
 					SemanticProperties.Description="{localization:Tr Departures.Stop}">
 
 					<controls:StopNameView
+						x:Name="StopLine"
 						Compact="True"
 						Place="{Binding StopPlace}"
+						SingleLine="True"
 						Stop="{Binding StopName}"
 						VerticalOptions="Center" />
 
@@ -456,4 +458,4 @@
 		</ScrollView>
 		</RefreshView>
 	</Grid>
-</ContentPage>
+</support:PanePage>

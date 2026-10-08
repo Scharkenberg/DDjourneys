@@ -15,6 +15,7 @@ using DDjourneys.Localization;
 using DDjourneys.Pages;
 using DDjourneys.Support;
 using Microsoft.Extensions.Logging;
+using Microsoft.Maui.Foldable;
 using Microsoft.Maui.LifecycleEvents;
 
 namespace DDjourneys;
@@ -31,6 +32,7 @@ public static class MauiProgram
 		builder
 			.UseMauiApp<App>()
 			.UseMauiCommunityToolkit()
+			.UseFoldable()
 			.ConfigureFonts(fonts =>
 			{
 				fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");

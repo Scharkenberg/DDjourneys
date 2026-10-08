@@ -21,10 +21,14 @@ public static class MapScenes
 	private static ExtrasStrings Strings =>
 		LocalizationService.Current.CurrentStrings.Extras;
 
-	/// <summary>Opens the map page with a scene; says so (returns false) when there is nothing to show.</summary>
+	/// <summary>
+	/// Opens the map page with a scene; says so (returns false) when there is nothing to show. <paramref name="from"/>
+	/// (the asking page or view model) lets the map open beside it in a wide window (see <see cref="Panes"/>).
+	/// </summary>
 	public static async Task<bool> OpenAsync(
 		MapScene scene,
-		string title)
+		string title,
+		object? from = null)
 	{
 		ArgumentNullException.ThrowIfNull(scene);
 
@@ -33,13 +37,14 @@ public static class MapScenes
 			return false;
 		}
 
-		await Shell.Current.GoToAsync(
+		await Panes.GoToAsync(
 			Routes.Map,
 			new ShellNavigationQueryParameters
 			{
 				[Routes.MapScene] = scene,
 				[Routes.MapTitle] = title
-			});
+			},
+			from);
 
 		return true;
 	}

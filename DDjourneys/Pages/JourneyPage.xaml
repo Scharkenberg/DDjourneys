@@ -1,4 +1,4 @@
-<ContentPage
+<support:PanePage
 	x:Class="DDjourneys.Pages.JourneyPage"
 	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
 	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
@@ -9,15 +9,15 @@
 	Title="{localization:Tr Journey.Title}"
 	x:DataType="local:JourneyViewModel">
 
-	<ContentPage.ToolbarItems>
+	<support:PanePage.ToolbarItems>
 		<ToolbarItem
 			x:Name="ExpertItem"
 			Command="{Binding OpenExpertCommand}"
 			Order="Secondary"
 			Text="{localization:Tr Expert.Open}" />
-	</ContentPage.ToolbarItems>
+	</support:PanePage.ToolbarItems>
 
-	<ContentPage.Resources>
+	<support:PanePage.Resources>
 
 		<!--  Stop where a leg starts or ends  -->
 		<DataTemplate x:Key="StopTemplate" x:DataType="support:StopRow">
@@ -44,11 +44,11 @@
 						TextDecorations="Strikethrough" />
 
 					<Label
-						IsVisible="{Binding HasDelay}"
-						StyleClass="Delay"
 						support:Themed.IsOn="{Binding IsEarly}"
 						support:Themed.OnText="OnTime"
 						support:Themed.Text="Delay"
+						IsVisible="{Binding HasDelay}"
+						StyleClass="Delay"
 						Text="{Binding DelayText}" />
 				</VerticalStackLayout>
 
@@ -157,11 +157,11 @@
 					<HorizontalStackLayout Spacing="8">
 
 						<Label
-							IsVisible="{Binding HasDelay}"
-							StyleClass="Delay"
 							support:Themed.IsOn="{Binding IsEarly}"
 							support:Themed.OnText="OnTime"
 							support:Themed.Text="Delay"
+							IsVisible="{Binding HasDelay}"
+							StyleClass="Delay"
 							Text="{Binding DelayText}" />
 
 						<Label
@@ -200,11 +200,11 @@
 
 						<Border
 							BackgroundColor="{Binding Look.Fill}"
+							Stroke="{Binding Look.Stroke}"
 							StrokeDashArray="{Binding Look.Dashes}"
 							StrokeShape="{Binding Look.Shape}"
 							StrokeThickness="{Binding Look.StrokeThickness}"
 							StyleClass="Chip"
-							Stroke="{Binding Look.Stroke}"
 							VerticalOptions="Center">
 
 							<support:PillScroll Fraction="0.6">
@@ -268,11 +268,11 @@
 						Text="{localization:Tr Journey.Cancelled}" />
 
 					<Label
+						support:Motion.Breathe="True"
 						FontFamily="{DynamicResource FontSemibold}"
 						FontSize="{StaticResource FontCaption}"
 						IsVisible="{Binding IsActive}"
 						Text="{localization:Tr Journey.InProgress}"
-						support:Motion.Breathe="True"
 						TextColor="{DynamicResource Accent}" />
 
 					<!--  Ride actions: live position of this vehicle (pin), earlier and later alternative  -->
@@ -297,30 +297,31 @@
 
 						<Button
 							Padding="14,0"
+							support:Dense.MinHeight="{StaticResource HitButton}"
 							Command="{Binding Source={RelativeSource AncestorType={x:Type local:JourneyViewModel}}, x:DataType=local:JourneyViewModel, Path=LegEarlierCommand}"
 							CommandParameter="{Binding .}"
 							FontSize="{StaticResource FontCaption}"
 							IsVisible="{Binding CanSwapRide}"
 							SemanticProperties.Description="{localization:Tr Journey.LegEarlierHint}"
-							support:Dense.MinHeight="{StaticResource HitButton}"
 							StyleClass="Tonal"
 							Text="{localization:Tr Journey.LegEarlier}" />
 
 						<Button
 							Padding="14,0"
+							support:Dense.MinHeight="{StaticResource HitButton}"
 							Command="{Binding Source={RelativeSource AncestorType={x:Type local:JourneyViewModel}}, x:DataType=local:JourneyViewModel, Path=LegLaterCommand}"
 							CommandParameter="{Binding .}"
 							FontSize="{StaticResource FontCaption}"
 							IsVisible="{Binding CanSwapRide}"
 							SemanticProperties.Description="{localization:Tr Journey.LegLaterHint}"
-							support:Dense.MinHeight="{StaticResource HitButton}"
 							StyleClass="Tonal"
 							Text="{localization:Tr Journey.LegLater}" />
 					</HorizontalStackLayout>
 
-					<HorizontalStackLayout support:Motion.Feedback="True"
-						IsVisible="{Binding HasIntermediates}"
+					<HorizontalStackLayout
 						support:Dense.MinHeight="{StaticResource HitButton}"
+						support:Motion.Feedback="True"
+						IsVisible="{Binding HasIntermediates}"
 						SemanticProperties.Description="{localization:Tr Journey.ShowOrHideIntermediateStops}"
 						Spacing="6"
 						VerticalOptions="Center">
@@ -333,8 +334,8 @@
 							VerticalOptions="Center" />
 
 						<controls:Icon
-							Glyph="ChevronDown"
 							support:Motion.Turn="{Binding ChevronRotation}"
+							Glyph="ChevronDown"
 							Size="18"
 							VerticalOptions="Center"
 							Color="{DynamicResource Accent}" />
@@ -405,11 +406,13 @@
 		</DataTemplate>
 
 
-		<!--  Change from one ride to the next.
-		     Left: arrival time above the node, departure time below it, symmetric.
-		     Middle: rail fills the full row height (top 48 / node 18 / rest).
-     Occupancy dots sit outside the times: above the arrival, below the departure.
-		     Right: the name sits on the node's line; details follow below.  -->
+		<!--
+			Change from one ride to the next.
+			Left: arrival time above the node, departure time below it, symmetric.
+			Middle: rail fills the full row height (top 48 / node 18 / rest).
+			Occupancy dots sit outside the times: above the arrival, below the departure.
+			Right: the name sits on the node's line; details follow below.
+		-->
 		<DataTemplate x:Key="InterchangeTemplate" x:DataType="support:InterchangeRow">
 
 			<Grid
@@ -434,11 +437,11 @@
 						<Label FontFamily="{DynamicResource FontSemibold}" Text="{Binding ArrivalTime}" />
 
 						<Label
-							IsVisible="{Binding HasArrivalDelay}"
-							StyleClass="Delay"
 							support:Themed.IsOn="{Binding ArrivalIsEarly}"
 							support:Themed.OnText="OnTime"
 							support:Themed.Text="Delay"
+							IsVisible="{Binding HasArrivalDelay}"
+							StyleClass="Delay"
 							Text="{Binding ArrivalDelay}" />
 					</VerticalStackLayout>
 
@@ -451,11 +454,11 @@
 						<Label FontFamily="{DynamicResource FontSemibold}" Text="{Binding DepartureTime}" />
 
 						<Label
-							IsVisible="{Binding HasDepartureDelay}"
-							StyleClass="Delay"
 							support:Themed.IsOn="{Binding DepartureIsEarly}"
 							support:Themed.OnText="OnTime"
 							support:Themed.Text="Delay"
+							IsVisible="{Binding HasDepartureDelay}"
+							StyleClass="Delay"
 							Text="{Binding DepartureDelay}" />
 
 						<controls:OccupancyIndicator IsVisible="{Binding HasDepartureOccupancy}" Level="{Binding DepartureOccupancy}" />
@@ -622,7 +625,7 @@
 			Stop="{StaticResource StopTemplate}"
 			Walk="{StaticResource WalkTemplate}" />
 
-	</ContentPage.Resources>
+	</support:PanePage.Resources>
 
 
 	<ScrollView x:Name="PageScroll">
@@ -634,14 +637,14 @@
 					ActionCommand="{Binding ShareCommand}"
 					ActionDescription="{localization:Tr Common.Share}"
 					ActionGlyph="Share"
-					From="{Binding FromName}"
 					FromPlace="{Binding FromPlace}"
 					SecondaryCommand="{Binding Bookmark.ToggleCommand}"
 					SecondaryDescription="{Binding Bookmark.Description}"
 					SecondaryGlyph="{Binding Bookmark.Glyph}"
 					Subtitle="{Binding DayText}"
-					To="{Binding ToName}"
-					ToPlace="{Binding ToPlace}" />
+					ToPlace="{Binding ToPlace}"
+					From="{Binding FromName}"
+					To="{Binding ToName}" />
 
 				<controls:JourneyCard BindingContext="{Binding Summary}" />
 
@@ -658,12 +661,12 @@
 				<!--  Followed: one slim, tappable strip that leads to all followed journeys; the actions are icons in the card above  -->
 				<Border
 					Padding="10,6"
+					support:Motion.Feedback="True"
 					BackgroundColor="{DynamicResource AccentSoft}"
 					IsVisible="{Binding IsFollowed}"
 					SemanticProperties.Description="{localization:Tr Tracking.FollowedJourneys}"
 					StrokeShape="RoundRectangle 8"
-					StrokeThickness="0"
-					support:Motion.Feedback="True">
+					StrokeThickness="0">
 					<Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
 						<controls:Icon
 							Glyph="BellFilled"
@@ -724,8 +727,8 @@
 				<VerticalStackLayout Spacing="{DynamicResource SpaceS}">
 
 					<Grid
-						support:Motion.Feedback="True"
 						support:Dense.MinHeight="{StaticResource HitButton}"
+						support:Motion.Feedback="True"
 						ColumnDefinitions="Auto,*,Auto,Auto"
 						ColumnSpacing="10"
 						RowDefinitions="Auto,Auto"
@@ -747,8 +750,8 @@
 							VerticalTextAlignment="Center" />
 
 						<Label
-							Grid.Column="2"
 							Grid.RowSpan="2"
+							Grid.Column="2"
 							FontFamily="{DynamicResource FontSemibold}"
 							FontSize="{StaticResource FontTitle}"
 							Text="{Binding FaresSummaryPrice}"
@@ -757,10 +760,10 @@
 							VerticalTextAlignment="Center" />
 
 						<controls:Icon
-							Grid.Column="3"
 							Grid.RowSpan="2"
-							Glyph="ChevronDown"
+							Grid.Column="3"
 							support:Motion.Turn="{Binding FaresChevronRotation}"
+							Glyph="ChevronDown"
 							Size="20"
 							VerticalOptions="Center"
 							Color="{DynamicResource Accent}" />
@@ -845,4 +848,4 @@
 		</VerticalStackLayout>
 	</ScrollView>
 
-</ContentPage>
+</support:PanePage>

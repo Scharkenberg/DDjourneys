@@ -14,7 +14,7 @@ namespace DDjourneys.Pages;
 /// of the area in view (loaded again after each pan or zoom) and a tapped stop offers departures and a journey
 /// to or from it. In pick mode (<see cref="Routes.MapModePick"/>) a tap answers the place search that opened it.
 /// </summary>
-public partial class MapPage : ContentPage, IQueryAttributable
+public partial class MapPage : PanePage, IQueryAttributable
 {
 	/// <summary>Below this zoom the stops are too many to show; the page asks to zoom in.</summary>
 	private const double MinStopZoom = 13;
@@ -43,6 +43,7 @@ public partial class MapPage : ContentPage, IQueryAttributable
 	private Location? _at;
 	private bool _exploring;
 	private MapViewport? _viewport;
+	private Dictionary<string, object>? _query;
 
 	public MapPage(
 		StopAreaService areas,
@@ -70,9 +71,14 @@ public partial class MapPage : ContentPage, IQueryAttributable
 	private static ExtrasStrings Strings =>
 		LocalizationService.Current.CurrentStrings.Extras;
 
+	/// <summary>The scene, title and mode live in the page: a new instance gets the same query.</summary>
+	protected internal override IDictionary<string, object>? RecreationQuery => _query;
+
 	public void ApplyQueryAttributes(
 		IDictionary<string, object> query)
 	{
+		_query = new Dictionary<string, object>(query);
+
 		if (query.TryGetValue(Routes.MapTitle, out object? title)
 			&& title is string text
 			&& text.Length > 0)

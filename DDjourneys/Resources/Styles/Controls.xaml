@@ -134,6 +134,12 @@
 			<VisualStateGroupList>
 				<VisualStateGroup x:Name="CommonStates">
 					<VisualState x:Name="Normal" />
+					<!--  Mouse hover: slightly lighter (opacity only; colours stay with Themed, nothing moves)  -->
+					<VisualState x:Name="PointerOver">
+						<VisualState.Setters>
+							<Setter Property="Opacity" Value="0.86" />
+						</VisualState.Setters>
+					</VisualState>
 					<VisualState x:Name="Pressed">
 						<VisualState.Setters>
 							<Setter Property="Scale" Value="0.97" />
@@ -158,6 +164,11 @@
 			<VisualStateGroupList>
 				<VisualStateGroup x:Name="CommonStates">
 					<VisualState x:Name="Normal" />
+					<VisualState x:Name="PointerOver">
+						<VisualState.Setters>
+							<Setter Property="Opacity" Value="0.7" />
+						</VisualState.Setters>
+					</VisualState>
 					<VisualState x:Name="Pressed">
 						<VisualState.Setters>
 							<Setter Property="Scale" Value="0.94" />

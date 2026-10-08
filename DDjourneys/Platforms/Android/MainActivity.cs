@@ -33,6 +33,9 @@ public class MainActivity : MauiAppCompatActivity
 	{
 		base.OnCreate(savedInstanceState);
 
+		// After MAUI's own callback, so it is asked first: back closes the deepest pane while there is one.
+		PaneBackCallback.Register(this);
+
 		SystemBars.Apply(this, Support.Theme.IsDark);
 
 		// A cold start from a notification: the request waits until the shell is ready.

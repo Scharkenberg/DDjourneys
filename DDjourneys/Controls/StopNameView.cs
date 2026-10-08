@@ -59,6 +59,18 @@ public sealed partial class StopNameView : ContentView
 			0d,
 			propertyChanged: OnLookChanged);
 
+	/// <summary>
+	/// One line each, never wrapped or cut: a long name scrolls sideways (like the chip strips). For start, stop-over
+	/// and destination wherever they are a heading or a card endpoint.
+	/// </summary>
+	public static readonly BindableProperty SingleLineProperty =
+		BindableProperty.Create(
+			nameof(SingleLine),
+			typeof(bool),
+			typeof(StopNameView),
+			false,
+			propertyChanged: (bindable, _, _) => ((StopNameView)bindable).ApplyLayout());
+
 	public static readonly BindableProperty AlignmentProperty =
 		BindableProperty.Create(
 			nameof(Alignment),
@@ -80,17 +92,84 @@ public sealed partial class StopNameView : ContentView
 			StyleClass = ["Faint"]
 		};
 
+	private readonly VerticalStackLayout _lines;
+	private bool _tapForwarded;
+
+	/// <summary>
+	/// A tap on the scrolling names (Android only: its scroller keeps the touch from the views around it; elsewhere the
+	/// tap reaches them by itself). Whoever makes the surroundings tappable forwards it.
+	/// </summary>
+	public event EventHandler? Tapped;
+
 	public StopNameView()
 	{
-		Content =
+		_lines =
 			new VerticalStackLayout
 			{
 				Spacing = 1,
 				Children = { _name, _place }
 			};
 
+		Content = _lines;
+
 		ApplyLook();
 		Refresh();
+	}
+
+	public bool SingleLine
+	{
+		get => (bool)GetValue(SingleLineProperty);
+		set => SetValue(SingleLineProperty, value);
+	}
+
+	/// <summary>One line each without a scroller of its own: for a row that scrolls as a whole (<see cref="RouteView"/>).</summary>
+	internal void UseOneLine()
+	{
+		_name.LineBreakMode = LineBreakMode.NoWrap;
+		_place.LineBreakMode = LineBreakMode.NoWrap;
+	}
+
+	/// <summary>Set from XAML before the control is on screen, so the lines move into the scroller before any native view exists.</summary>
+	private void ApplyLayout()
+	{
+		Content = null;
+
+		if (SingleLine)
+		{
+			_name.LineBreakMode = LineBreakMode.NoWrap;
+			_place.LineBreakMode = LineBreakMode.NoWrap;
+
+			Content =
+				new ScrollView
+				{
+					Orientation = ScrollOrientation.Horizontal,
+					HorizontalScrollBarVisibility = ScrollBarVisibility.Never,
+					Content = _lines
+				};
+
+#if ANDROID
+			if (!_tapForwarded)
+			{
+				_tapForwarded = true;
+
+				var tap = new TapGestureRecognizer();
+				tap.Tapped += (_, _) => Tapped?.Invoke(this, EventArgs.Empty);
+				_lines.GestureRecognizers.Add(tap);
+			}
+#endif
+		}
+		else
+		{
+			_name.LineBreakMode = LineBreakMode.WordWrap;
+			_place.LineBreakMode = LineBreakMode.TailTruncation;
+
+			if (_lines.Parent is ScrollView scroller)
+			{
+				scroller.Content = null;
+			}
+
+			Content = _lines;
+		}
 	}
 
 	/// <summary>The stop's name.</summary>

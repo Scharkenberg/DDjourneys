@@ -2,7 +2,8 @@ namespace DDjourneys.Controls;
 
 /// <summary>
 /// "Start → destination" as a page header: both stops with their city on a second, fainter line.
-/// Wraps instead of truncating, so long names stay readable on a phone.
+/// One line that scrolls sideways when it is longer than the space (like the chip strips): never wrapped mid-word,
+/// never cut.
 /// </summary>
 public sealed partial class RouteView : ContentView
 {
@@ -59,20 +60,23 @@ public sealed partial class RouteView : ContentView
 
 	public RouteView()
 	{
-		var flex =
-			new FlexLayout
-			{
-				Wrap = Microsoft.Maui.Layouts.FlexWrap.Wrap,
-				AlignItems = Microsoft.Maui.Layouts.FlexAlignItems.Start,
-				Children = { _from, _arrow, _to }
-			};
+		_from.UseOneLine();
+		_to.UseOneLine();
 
 		_arrow.SetDynamicResource(Icon.ColorProperty, "InkMuted");
 
-		// The arrow keeps its size; only the two names give way when the row gets narrow.
-		FlexLayout.SetShrink(_arrow, 0);
-
-		Content = flex;
+		Content =
+			new ScrollView
+			{
+				Orientation = ScrollOrientation.Horizontal,
+				HorizontalScrollBarVisibility = ScrollBarVisibility.Never,
+				Content =
+					new HorizontalStackLayout
+					{
+						Spacing = 0,
+						Children = { _from, _arrow, _to }
+					}
+			};
 		Apply();
 	}
 
