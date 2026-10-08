@@ -27,7 +27,9 @@ internal static class NativeStyling
 
 	/// <summary>
 	/// An entry has no frame of its own here: the card around it draws the only contour. Besides the underline this clears
-	/// the outlined box that Material 3 puts around an entry (a <see cref="TextInputLayout"/>), which may attach after the mapping.
+	/// the outlined box that Material 3 puts around an entry (a <see cref="TextInputLayout"/>). With Material 3 the native
+	/// view can be the layout itself, sit inside it, or hold it, and the layout may attach after the mapping ran, so every
+	/// case is covered, again when the view attaches to the window and once more after the first layout.
 	/// </summary>
 	private static void ClearFrame(global::Android.Views.View? view)
 	{
@@ -41,28 +43,65 @@ internal static class NativeStyling
 		StripBox(view);
 
 		view.Post(() => StripBox(view));
+
+		if (!Hooked.TryGetValue(view, out _))
+		{
+			Hooked.Add(view, new object());
+			view.ViewAttachedToWindow += (_, _) => StripBox(view);
+			view.LayoutChange += (_, _) => StripBox(view);
+		}
 	}
+
+	private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<global::Android.Views.View, object> Hooked = [];
 
 	private static void StripBox(global::Android.Views.View view)
 	{
+		if (view is TextInputLayout self)
+		{
+			Strip(self);
+		}
+
 		for (global::Android.Views.IViewParent? parent = view.Parent; parent is not null; parent = parent.Parent)
 		{
 			if (parent is TextInputLayout layout)
 			{
-				layout.BoxBackgroundMode = TextInputLayout.BoxBackgroundNone;
-				layout.BoxStrokeWidth = 0;
-				layout.BoxStrokeWidthFocused = 0;
-				layout.SetBoxStrokeColorStateList(ColorStateList.ValueOf(global::Android.Graphics.Color.Transparent));
-				layout.Background = null;
-
-				return;
+				Strip(layout);
 			}
 
 			if (parent is not global::Android.Views.View)
 			{
-				return;
+				break;
 			}
 		}
+
+		if (view is global::Android.Views.ViewGroup group)
+		{
+			for (int i = 0; i < group.ChildCount; i++)
+			{
+				if (group.GetChildAt(i) is TextInputLayout inner)
+				{
+					Strip(inner);
+				}
+			}
+		}
+	}
+
+	private static void Strip(TextInputLayout layout)
+	{
+		// Only when something is left to remove: LayoutChange fires often, and changing a view there asks for a new layout.
+		if (layout.BoxBackgroundMode == TextInputLayout.BoxBackgroundNone
+			&& layout.BoxStrokeWidth == 0
+			&& layout.BoxStrokeWidthFocused == 0
+			&& layout.Background is null)
+		{
+			return;
+		}
+
+		layout.BoxBackgroundMode = TextInputLayout.BoxBackgroundNone;
+		layout.BoxStrokeWidth = 0;
+		layout.BoxStrokeWidthFocused = 0;
+		layout.SetBoxStrokeColorStateList(ColorStateList.ValueOf(global::Android.Graphics.Color.Transparent));
+		layout.Background = null;
 	}
 
 	private static void ClearUnderline(global::Android.Views.View? view)

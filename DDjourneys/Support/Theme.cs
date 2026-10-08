@@ -578,6 +578,7 @@ public static class Theme
 			Sweep();
 
 			Changed?.Invoke(null, EventArgs.Empty);
+			UiDiagnostics.ThemeChanged();
 		}
 		catch (Exception ex)
 		{

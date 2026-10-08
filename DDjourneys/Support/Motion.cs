@@ -831,6 +831,7 @@ public static class Motion
 
 		Theme.Revalidate(page);
 		Density.Revalidate(page);
+		UiDiagnostics.Page(page, "appeared");
 
 		if (page.Content is not VisualElement content)
 		{
