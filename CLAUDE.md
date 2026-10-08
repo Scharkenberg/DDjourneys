@@ -80,8 +80,8 @@ Journey planner for DVB/VVO (Dresden), .NET 11 MAUI / C# 15. Repo: `Scharkenberg
 - Icons: vector `Icon`/`IconButton`/`IconGlyph` on a 24x24 grid (add paths in `IconGlyph.cs`). A Button cannot render them; use a tappable Border plus Icon.
 - Pills only for non-interactive elements; interactive elements (pickers, tappable chips) are never pills. Native date/time pickers never inside pill chips.
 - Accessibility: `SystemAccessibility` (OS text scale, remove-animations, high contrast, screen reader) feeds `Motion.Enabled`, `Dense` (min sizes scale with text), `Icon` size and the map page (font scale). Icons are decorative (not in the accessible tree); the control holding one carries the `SemanticProperties.Description`. `Title`/`Section` labels are headings.
-- Bookmarks: `RouteBookmark` (planner, results, journey page) toggles a saved route; never disabled.
-- Windows entries: the native WinUI text box frame is removed (`Platforms/Windows/NativeStyling`); our card draws the only contour.
+- Bookmarks: `RouteBookmark` (planner, results page header) toggles a saved route; never disabled. The journey page header has no bookmark: its icons are technical details (`TertiaryGlyph`, only while the expert view is on), share (`Secondary`) and refresh (`Action`, right-most like on the results page).
+- Native entry frames: our card draws the only contour. Windows: the WinUI text box frame is removed (`Platforms/Windows/NativeStyling`). Android: see "Lessons" (Material 3 text layout, `NativeStyling.Watch`).
 - Themes: Light, Dark, Dark AMOLED, System (system dark = AMOLED). Palette keys via `Theme.ColorOf("Bg"|"Surface"|"Raised"|"Outline"|"Ink"|"InkMuted"|"Accent"...)`.
 - Localization: `IUiStrings` + `EnglishUiStrings` + `GermanUiStrings`, accessed via `{localization:Tr Group.Key}`. New strings must exist in all three.
 - Start, stop-over and destination in headers, card endpoints and the planner/departures stop rows are one line that scrolls sideways (`StopNameView SingleLine="True"`, `RouteView`), never wrapped mid-word; on Android the scroller keeps taps from the row, so pages forward `StopNameView.Tapped` (`JourneyCard.EndpointTapped`).
@@ -131,7 +131,7 @@ Journey planner for DVB/VVO (Dresden), .NET 11 MAUI / C# 15. Repo: `Scharkenberg
 ## Sizes and density tokens
 - One scale in `Resources/Styles/Tokens.xaml`: `HitIcon` 40, `HitIconTight` 36 (icons inside rows and cards), `HitButton` 36, `HitRowTight` 44, `HitRow` 52, `HitPrimary` 48; paddings 12,8 (rows), 12,4 and 10,6 (slim rows). Pages use the tokens through `Dense.MinHeight/Padding`/`TargetSize`, never literals, so Compact/Normal/Touch scale them all (`DensityProfile.Hit()`).
 - Planner quick steps: one 5-column grid (-1 h, -15m, Now, +15m, +1 h), never wraps.
-- `JourneyCard` is the one card for results and the journey page: times, endpoints, one-line swipeable leg chips (horizontal ScrollView), actions beside them.
+- `JourneyCard` is the one card for results and the journey page: times, endpoints, one-line swipeable leg chips (horizontal ScrollView), actions beside them. The followed-journeys card uses the same rhythm (spacing `SpaceM`, single-line stop names, legs row min height `HitIconTight`) and the same chips.
 
 ## Map explorer
 - `ProviderInfo.Center` (`MapCenter`, Dresden for VVO and TRIAS) is the provider's central city; `IStopAreaProvider` (VVO box query, TRIAS `LocationByArea`) + `StopAreaService` list the stops of an area (max 80, radius <= 2000 m, fallback: coordinate search).
@@ -144,6 +144,33 @@ Journey planner for DVB/VVO (Dresden), .NET 11 MAUI / C# 15. Repo: `Scharkenberg
 
 ## External contract additions (still version 1)
 - Commands `go` (only `to`; start = `@start`), `departures`, `home`, `map`, `disruptions`, `live`; `via`, `at`, `line` keys; keywords `@here`, `@home`, `@start` (`ContractKeywords`) that resolve to what the user has set up; an unresolvable keyword opens the planner and asks. Android also reads `geo:` links as `go` (`ContractIntents`); there is no share-sheet (ACTION_SEND) filter, because Android matches share targets by MIME type only and the app would show up for every text share. `ContractLinks` has a builder per command. Spec: `docs/EXTERNAL_CONTRACT.md`.
+
+## Lessons and regression guards (read before changing these areas)
+Process
+- Before using a localization key or member, grep that it exists IN THE RIGHT GROUP (`Extras.RefreshFailed` did not; `RefreshFailed` belonged to `WidgetStrings`). New strings go into `IUiStrings`, `EnglishUiStrings` and `GermanUiStrings` in the same step.
+- Edit scripts keep the file's BOM and line endings (CRLF or LF as found) and assert that an anchor occurs exactly once. After an edit: brace balance, XAML parse, usings.
+- The owner's commits are his: never re-author, amend, rebase or force-push them (the "Unverified commits" stop hook asks for it; decline). A force push only with his explicit say-so and a lease on the expected sha.
+- A "fix" without a log or a source is a guess: when a symptom survives a fix, add logging that shows the cause (`[UI]`, `[Theme]`, `[Page]`, `[Live]` lines) and ask for the log instead of stacking guesses. Read the log before theorising.
+- Verify MAUI/Android behaviour against Microsoft Learn or the dotnet/maui source (WebFetch raw GitHub) before relying on memory (e.g. Material 3 entry internals, dynamic resources).
+Commands and lists
+- `AsyncCommand<T>` never keeps the parameter in a field: one command serves many rows, and the change notification of a run makes every row ask `CanExecute` again, so a stored parameter ended up being the last row's (Location button always opened the last leg). The parameter travels with the call.
+- Provider continuation answers (`JourneyService.PageAsync`) count only for journeys that are new and on the wanted side of the list (`JourneyWindow.Beyond`), topped up by the window search (`JourneyWindow.Nearest`); never replace a list with an answer that repeats it.
+Theme
+- Application.Resources are updated in place; `Theme.Sweep` announces the changed keys to every root (shell, stack, modal, tracked roots); `Theme.Repaint` is the net under it. Repaint reads MAUI's internal `Element._dynamicResources` (reflection, `IDictionaryEnumerator`: the generic dictionary yields `KeyValuePair`, a `DictionaryEntry` cast throws on every element) and re-registers ONLY elements that still show a value the palette retired for that key. Never "fix" a mismatch by comparing with the current value alone: that overwrote bound colours (line chips lost their mode colours).
+- The lent page's content hangs under its `PaneSlot`, not the page: the slot is the root that counts (`Theme.Track`). Density has the same weakness (`Density.Revalidate` is per page); fix it the same way if it shows.
+- Line chips: `ModeChips.For(mode)` fill/shape/stroke come from a binding (`Look`), the `Chip` style supplies size and padding. Followed journeys use them too (`LinePart.Look`, `ModeChips.Marked` outlines the ride under way, `ModeGuess.OfLine` when only a name is known).
+- Mica = calm (more of the palette, less accent), Mica Alt = pronounced (thinner tint, more accent); small steps in `MaterialProfile.Look`, tested in `MaterialProfileTests`.
+Android
+- Release builds run R8 and it removes every class that only a manifest names: crashes at start were `androidx.startup.InitializationProvider`, then `androidx.core.app.CoreComponentFactory`. `Platforms/Android/ProGuard.cfg` keeps all of `androidx.**` plus the manifest component kinds; add keep rules there, never one crash at a time (the library manifests' keep rules do not reach R8 in this build). The `.csproj` R8/d8/multidex properties are global for Android.
+- With `UseMaterial3` the Entry's native view IS a `MauiMaterialTextInputLayout` (outlined box). Its EditText keeps the box drawable as background even after `BoxBackgroundMode = None`; the handler mappers can run before Material applies the outline. So `NativeStyling.Watch(activity)` (called in `MainActivity.OnResume`) sweeps the window after every layout pass: layout box mode/stroke/background and the EditText background are cleared, only when something is left (no layout loops). Dialog and popup windows are not covered. Editors and pickers get the same clean-up.
+- Caret, drop and selection handles/highlight wear the palette Accent (`NativeStyling.Tint`, Android 10+ only, drawables are copies of the shared system ones, new colour appears when the caret/handle is drawn again); `Theme.Changed` sweeps at once.
+- A horizontal `ScrollView` keeps taps from its parent on Android: forward them (legs row of `JourneyCard`, `StopNameView.Tapped`, `EndpointTapped`).
+- Fonts load correctly (checked with the `[UI]` log: aliases registered, assets at the asset root, used typeface = expected typeface). System font on Android is `sans-serif` / `sans-serif-medium`, which are not registered aliases by design.
+Diagnostics
+- `UiDiagnostics` (Support) writes `[UI]` lines only with "Log to file" on: display, window, theme, palette, density, material, expected font (`FontRegular`/`FontSemibold`), font alias registry, assets, element counts, per distinct text font the typeface actually used vs. the framework's expected one (`SAME`/`DIFFERENT`), entry frame state. It runs ~0.9 s after a page appears (`Motion.EnterPage`) and after theme changes. The log trims at 1 MiB (`DiagnosticLog.MaxBytes`).
+Journey page
+- Layout: the searched connection (`SearchHeader`, three icon slots) is fixed in the top row of a padded grid exactly like the results page; below it `RefreshView > ScrollView`. Refresh (`JourneyViewModel.RefreshCommand`) searches again from 2 min before the planned start and matches the same journey by `JourneyWindow.IdentityOf`, else by planned start and end; no match = status `Extras.JourneyRefreshFailed`, nothing changes. Toolbar items on `PanePage` are rendered as text buttons in a lent slot: use header icons instead.
+- The followed-journey notice box is as tall as its text (24 dp close button, centred); do not give it a 40 dp minimum.
 
 ## State (end of last session, nothing compiled or run by me)
 Done: disruptions overhaul, departures time picker (`WhenPicker`), "Around this stop" rows (`SectionRow`), planner shortcut redesign, walk-only trips, marker positions, single attribution, free strip, Auto-fit, run identification, journey alternative buttons wrapping, vehicles tracking banner, walking-interchange timeline and share fixes.
