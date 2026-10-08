@@ -2,6 +2,7 @@ using DDjourneys.Core.Diagnostics;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using DDjourneys.Contract;
+using DDjourneys.Controls;
 using DDjourneys.Core.Models;
 using DDjourneys.Core.Providers;
 using DDjourneys.Core.Providers.Abstractions;
@@ -352,6 +353,9 @@ public sealed partial class JourneyViewModel :
 	}
 
 	public bool ExpertViewEnabled => _settings.ExpertView;
+
+	/// <summary>The technical-details icon in the page header: only while the expert view is enabled.</summary>
+	public IconGlyph ExpertGlyph => ExpertViewEnabled ? IconGlyph.Code : IconGlyph.None;
 
 	public bool IsTrackingAvailable =>
 		_tracker.IsAvailable
@@ -1109,6 +1113,8 @@ public sealed partial class JourneyViewModel :
 	/// <summary>Rebuilds the timeline if a display setting changed since it was built.</summary>
 	public void RefreshFromSettings()
 	{
+		OnPropertyChanged(nameof(ExpertGlyph));
+
 		if (_journey is not null
 			&& _builtOptions != CurrentOptions())
 		{

@@ -37,15 +37,6 @@ public partial class JourneyPage : PanePage
 		base.OnAppearing();
 		_vm.RefreshFromSettings();
 
-		if (!_vm.ExpertViewEnabled)
-		{
-			ToolbarItems.Remove(ExpertItem);
-		}
-		else if (!ToolbarItems.Contains(ExpertItem))
-		{
-			ToolbarItems.Insert(0, ExpertItem);
-		}
-
 		_vm.StartObservingTracking();
 
 		// "In progress" ends with the ride: the rows are asked again every few seconds while the page shows.
