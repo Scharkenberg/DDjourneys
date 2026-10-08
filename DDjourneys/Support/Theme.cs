@@ -1,4 +1,7 @@
 using DDjourneys.Core.Diagnostics;
+using System.Collections;
+using System.Diagnostics.CodeAnalysis;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 
 namespace DDjourneys.Support;
@@ -35,6 +38,8 @@ public static class Theme
 
 	// Keys whose value changed in the latest Apply: all a sweep has to announce.
 	private static readonly HashSet<string> ChangedKeys = [];
+
+	private static readonly FieldInfo? RegistrationsField = FindRegistrations();
 
 	private static Application? _app;
 	private static AppSettings? _settings;
@@ -213,6 +218,7 @@ public static class Theme
 		Stamps.Add(root, new StampBox(_version));
 
 		Announce(root, Current.Keys);
+		Repaint(root, []);
 	}
 
 	/// <summary>
@@ -272,14 +278,81 @@ public static class Theme
 			}
 		}
 
+		var visited = new HashSet<Element>();
+		int repaired = 0;
+
 		foreach (VisualElement root in roots.Distinct())
 		{
 			Stamps.Remove(root);
 			Stamps.Add(root, new StampBox(_version));
 
 			Announce(root, keys);
+			repaired += Repaint(root, visited);
 		}
+
+		DiagnosticLog.Write($"[Theme] swept {visited.Count} elements in {roots.Count} roots, {repaired} stale registrations repaired");
 	}
+
+	/// <summary>
+	/// The safety net under the announcement: whatever the propagation missed (a registration that kept an old value
+	/// for any reason) is found by comparing each element's theme-bound properties with the palette in effect and is
+	/// registered again, which resolves the current value at once. Only elements that really differ are touched, so
+	/// nothing that is up to date changes its registration. Without the internal list (a future MAUI) it does nothing.
+	/// </summary>
+	private static int Repaint(Element element, HashSet<Element> visited)
+	{
+		if (!visited.Add(element))
+		{
+			return 0;
+		}
+
+		int repaired = 0;
+
+		try
+		{
+			if (RegistrationsField?.GetValue(element) is IDictionary map && map.Count > 0)
+			{
+				foreach (DictionaryEntry entry in map.Cast<DictionaryEntry>().ToArray())
+				{
+					if (entry.Key is BindableProperty property
+						&& entry.Value is ITuple { Length: > 0 } pair
+						&& pair[0] is string key
+						&& Current.TryGetValue(key, out object? wanted)
+						&& !IsCurrent(element.GetValue(property), wanted))
+					{
+						element.SetDynamicResource(property, key);
+						repaired++;
+					}
+				}
+			}
+		}
+		catch (Exception ex)
+		{
+			DiagnosticLog.Write($"[Theme] repaint skipped on {element.GetType().Name}: {ex.Message}");
+		}
+
+		if (element is IVisualTreeElement tree)
+		{
+			foreach (IVisualTreeElement child in tree.GetVisualChildren())
+			{
+				if (child is Element next)
+				{
+					repaired += Repaint(next, visited);
+				}
+			}
+		}
+
+		return repaired;
+	}
+
+	private static bool IsCurrent(object? now, object wanted) =>
+		Equals(now, wanted)
+		|| (now is SolidColorBrush solid && wanted is Color color && solid.Color == color)
+		|| (now is Color flat && wanted is SolidColorBrush brush && brush.Color == flat);
+
+	[DynamicDependency("_dynamicResources", typeof(Element))]
+	private static FieldInfo? FindRegistrations() =>
+		typeof(Element).GetField("_dynamicResources", BindingFlags.Instance | BindingFlags.NonPublic);
 
 	private static void AddPages(List<VisualElement> roots, IEnumerable<Page?> pages)
 	{
