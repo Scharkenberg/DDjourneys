@@ -7,7 +7,10 @@
 	xmlns:support="clr-namespace:DDjourneys.Support"
 	x:DataType="support:JourneyCardModel">
 
-	<Border SemanticProperties.Description="{Binding AccessibilityText}" StyleClass="Card" support:Motion.Enter="None">
+	<Border
+		support:Motion.Enter="None"
+		SemanticProperties.Description="{Binding AccessibilityText}"
+		StyleClass="Card">
 		<VerticalStackLayout Spacing="{DynamicResource SpaceM}">
 
 			<!--  Times  -->
@@ -18,9 +21,9 @@
 					<controls:StopNameView
 						x:Name="FromStop"
 						Compact="True"
-						SingleLine="True"
 						IsVisible="{Binding ShowEndpoints}"
 						Place="{Binding FromPlace}"
+						SingleLine="True"
 						Stop="{Binding FromName}" />
 					<Label
 						IsVisible="{Binding HasDepartureDelay}"
@@ -80,10 +83,10 @@
 					<controls:StopNameView
 						x:Name="ToStop"
 						Alignment="End"
-						SingleLine="True"
 						Compact="True"
 						IsVisible="{Binding ShowEndpoints}"
 						Place="{Binding ToPlace}"
+						SingleLine="True"
 						Stop="{Binding ToName}" />
 					<Label
 						HorizontalTextAlignment="End"
@@ -109,11 +112,11 @@
 							<DataTemplate x:DataType="support:LegChip">
 								<Border
 									BackgroundColor="{Binding Look.Fill}"
+									Stroke="{Binding Look.Stroke}"
 									StrokeDashArray="{Binding Look.Dashes}"
 									StrokeShape="{Binding Look.Shape}"
 									StrokeThickness="{Binding Look.StrokeThickness}"
 									StyleClass="Chip"
-									Stroke="{Binding Look.Stroke}"
 									VerticalOptions="Center">
 									<Label
 										FontFamily="{DynamicResource FontSemibold}"
@@ -136,15 +139,15 @@
 					VerticalOptions="Center">
 
 					<Border
-						Padding="6,3"
 						Margin="0,0,4,0"
+						Padding="6,3"
+						support:Motion.Feedback="True"
 						BackgroundColor="{DynamicResource Raised}"
 						IsVisible="{Binding HasNotices}"
 						SemanticProperties.Description="{Binding NoticesText}"
 						StrokeShape="RoundRectangle 100"
 						StrokeThickness="0"
-						VerticalOptions="Center"
-						support:Motion.Feedback="True">
+						VerticalOptions="Center">
 						<HorizontalStackLayout Spacing="3">
 							<controls:Icon
 								Glyph="Warning"
