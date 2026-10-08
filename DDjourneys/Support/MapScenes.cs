@@ -12,8 +12,29 @@ public static class MapScenes
 	// The map uses the app's own colours: the mode tokens of the chips and the active theme's palette.
 	private static string WalkColor => Hex(ModeColors.For(TransitMode.Walk));
 
-	private static string AccentColor =>
-		Hex(Theme.ColorOf("Accent", Color.FromArgb("#0B6E8A")));
+	private static string AccentColor => ThemeRef("Accent", "#0B6E8A");
+
+	/// <summary>
+	/// A theme colour by reference ("@Key|#fallback"): <see cref="Resolve"/> turns it into the current colour each time
+	/// the scene is sent, so maps follow theme changes.
+	/// </summary>
+	private static string ThemeRef(string key, string fallback) =>
+		$"@{key}|{fallback}";
+
+	/// <summary>A scene colour as it is drawn now: theme references resolved, plain colours unchanged.</summary>
+	public static string Resolve(string color)
+	{
+		if (color.Length < 2 || color[0] != '@')
+		{
+			return color;
+		}
+
+		int bar = color.IndexOf('|', StringComparison.Ordinal);
+		string key = bar > 1 ? color[1..bar] : color[1..];
+		string fallback = bar > 1 ? color[(bar + 1)..] : "#808080";
+
+		return Hex(Theme.ColorOf(key, Color.FromArgb(fallback)));
+	}
 
 	private static string Hex(Color color) =>
 		$"#{(int)Math.Round(color.Red * 255):X2}{(int)Math.Round(color.Green * 255):X2}{(int)Math.Round(color.Blue * 255):X2}";
@@ -340,12 +361,12 @@ public static class MapScenes
 
 	public static string DelayColor(TimeSpan? delay) =>
 		delay is not { } value
-			? Hex(Theme.ColorOf("InkMuted", Color.FromArgb("#607D8B")))
+			? ThemeRef("InkMuted", "#607D8B")
 			: value.TotalMinutes >= 5
-				? Hex(Theme.ColorOf("Cancelled", Color.FromArgb("#B91C1C")))
+				? ThemeRef("Cancelled", "#B91C1C")
 				: value.TotalMinutes >= 1
-					? Hex(Theme.ColorOf("Delay", Color.FromArgb("#9A5B00")))
-					: Hex(Theme.ColorOf("OnTime", Color.FromArgb("#15803D")));
+					? ThemeRef("Delay", "#9A5B00")
+					: ThemeRef("OnTime", "#15803D");
 
 	public static MapScene FromVehicles(
 		IEnumerable<LiveVehicle> vehicles,

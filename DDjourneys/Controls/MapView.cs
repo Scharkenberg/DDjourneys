@@ -555,6 +555,14 @@ public sealed partial class MapView : ContentView
 		}
 
 		await CallAsync("theme", WebBridge.CurrentTheme().ToJson());
+
+		// Routes and markers carry theme colours too: the same scene again, in the new colours, without moving the view.
+		if (_scene is { } scene)
+		{
+			await CallAsync("set", scene.ToJson(Theme.IsDark, MapScenes.Resolve, fit: false));
+		}
+
+		await PushOverlayAsync();
 	}
 
 	// The page reports on a background thread; listeners touch views, so they are called on the UI thread.
@@ -584,7 +592,7 @@ public sealed partial class MapView : ContentView
 			return;
 		}
 
-		await CallAsync("overlay", overlay.ToJson(Theme.IsDark));
+		await CallAsync("overlay", overlay.ToJson(Theme.IsDark, MapScenes.Resolve));
 	}
 
 	private async Task PushModeAsync()
@@ -618,7 +626,7 @@ public sealed partial class MapView : ContentView
 			return;
 		}
 
-		await CallAsync("set", scene.ToJson(Theme.IsDark));
+		await CallAsync("set", scene.ToJson(Theme.IsDark, MapScenes.Resolve));
 	}
 
 	private Task CallAsync(string command, string? json) =>

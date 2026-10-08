@@ -786,19 +786,15 @@
 						<VerticalStackLayout BindableLayout.ItemsSource="{Binding Fares}" Spacing="2">
 							<BindableLayout.ItemTemplate>
 								<DataTemplate x:DataType="support:FareRow">
+									<!--  The preferred ticket is highlighted through Themed (a theme colour in a trigger stops following the theme)  -->
 									<Border
 										Padding="8,6"
+										support:Themed.Background="Clear"
+										support:Themed.IsOn="{Binding IsPreferred}"
+										support:Themed.OnBackground="AccentSoft"
 										SemanticProperties.Description="{Binding AccessibilityText}"
 										StrokeShape="RoundRectangle 8"
 										StrokeThickness="0">
-										<Border.Triggers>
-											<DataTrigger
-												Binding="{Binding IsPreferred}"
-												TargetType="Border"
-												Value="True">
-												<Setter Property="BackgroundColor" Value="{DynamicResource AccentSoft}" />
-											</DataTrigger>
-										</Border.Triggers>
 										<Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
 											<VerticalStackLayout Spacing="0" VerticalOptions="Center">
 												<Label LineBreakMode="WordWrap" Text="{Binding Name}" />
