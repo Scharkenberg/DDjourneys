@@ -52,7 +52,66 @@ internal static class NativeStyling
 		observer.AddOnGlobalLayoutListener(_sweeper);
 		_sweeper.Root = decor;
 
+		if (!_themeHooked)
+		{
+			_themeHooked = true;
+
+			// A theme change need not cause a layout pass: carets and handles are repainted at once.
+			FrameSweeper sweeper = _sweeper;
+
+			Support.Theme.Changed += (_, _) => sweeper.Root?.Post(() => FrameSweeper.Sweep(sweeper.Root));
+		}
+
 		FrameSweeper.Sweep(decor);
+	}
+
+	private static bool _themeHooked;
+
+	private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<global::Android.Widget.EditText, object> Carets = [];
+
+	/// <summary>
+	/// The caret, the drop under it and the two selection handles wear the palette's accent instead of the system's, and
+	/// follow it when the theme changes. Their drawables are copies (the system's are shared) tinted with the accent; the
+	/// selection highlight is the accent at a third of its strength. Android 10 and later (the setters do not exist before).
+	/// </summary>
+	private static void Tint(global::Android.Widget.EditText edit)
+	{
+		if (!OperatingSystem.IsAndroidVersionAtLeast(29))
+		{
+			return;
+		}
+
+		Color accent = Support.Theme.ColorOf("Accent", Colors.Gray);
+
+		int argb = global::Android.Graphics.Color.Argb(255, (int)Math.Round(accent.Red * 255), (int)Math.Round(accent.Green * 255), (int)Math.Round(accent.Blue * 255));
+
+		if (Carets.TryGetValue(edit, out object? last) && last is int known && known == argb)
+		{
+			return;
+		}
+
+		Carets.Remove(edit);
+		Carets.Add(edit, argb);
+
+		edit.TextCursorDrawable = Tinted(edit.TextCursorDrawable, argb);
+		edit.TextSelectHandle = Tinted(edit.TextSelectHandle, argb);
+		edit.TextSelectHandleLeft = Tinted(edit.TextSelectHandleLeft, argb);
+		edit.TextSelectHandleRight = Tinted(edit.TextSelectHandleRight, argb);
+		edit.SetHighlightColor(global::Android.Graphics.Color.Argb(0x55, (argb >> 16) & 0xFF, (argb >> 8) & 0xFF, argb & 0xFF));
+	}
+
+	private static global::Android.Graphics.Drawables.Drawable? Tinted(global::Android.Graphics.Drawables.Drawable? source, int argb)
+	{
+		if (source is null)
+		{
+			return null;
+		}
+
+		global::Android.Graphics.Drawables.Drawable copy = source.GetConstantState()?.NewDrawable()?.Mutate() ?? source.Mutate();
+
+		copy.SetTint(argb);
+
+		return copy;
 	}
 
 	private static FrameSweeper? _sweeper;
@@ -69,8 +128,18 @@ internal static class NativeStyling
 			}
 		}
 
-		public static void Sweep(global::Android.Views.View view)
+		public static void Sweep(global::Android.Views.View? view)
 		{
+			if (view is null)
+			{
+				return;
+			}
+
+			if (view is global::Android.Widget.EditText edit)
+			{
+				Tint(edit);
+			}
+
 			if (view is TextInputLayout layout)
 			{
 				Strip(layout);
