@@ -101,7 +101,7 @@ public partial class JourneyPage : ContentPage
 
 	private static async Task<string?> ShowSharePopupAsync(ContentPage page, string[] options)
 	{
-		var popup = new JourneySharePopup(page, options[0], options[1]);
+		var popup = new JourneySharePopup(page, options[0], options[1], options[2]);
 
 		IPopupResult<string?> result =
 			await page.ShowPopupAsync<string?>(

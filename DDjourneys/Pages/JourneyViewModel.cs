@@ -1486,7 +1486,7 @@ public sealed partial class JourneyViewModel :
 					: await ChooseShareFormat(
 						text.ShareTitle,
 						strings.Common.Cancel,
-						[text.ShareAsText, text.ShareAsImage]);
+						[text.ShareAsText, text.ShareAsImage, text.ShareAsCalendar]);
 
 			if (choice == text.ShareAsImage)
 			{
@@ -1497,6 +1497,34 @@ public sealed partial class JourneyViewModel :
 					{
 						Title = text.ShareTitle,
 						File = new ShareFile(path, "image/png")
+					});
+			}
+			else if (choice == text.ShareAsCalendar)
+			{
+				string? file =
+					JourneyCalendar.Build(
+						_journey,
+						$"{model.Origin} \u2192 {model.Destination}",
+						JourneyShareText.Build(model, strings),
+						_settings.DefaultLeadMinutes,
+						DateTimeOffset.UtcNow);
+
+				if (file is null)
+				{
+					AlternativeStatus = text.CalendarUnavailable;
+
+					return;
+				}
+
+				string path = Path.Combine(FileSystem.CacheDirectory, "journey.ics");
+
+				await File.WriteAllTextAsync(path, file, new System.Text.UTF8Encoding(false));
+
+				await Share.Default.RequestAsync(
+					new ShareFileRequest
+					{
+						Title = text.ShareAsCalendar,
+						File = new ShareFile(path, JourneyCalendar.MediaType)
 					});
 			}
 			else if (choice == text.ShareAsText)

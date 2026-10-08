@@ -191,6 +191,61 @@
 
 					<BoxView StyleClass="Divider" />
 
+				<Grid
+					support:Dense.MinHeight="{StaticResource HitRow}"
+					support:Dense.Padding="12,8"
+					support:Motion.Feedback="True"
+					ColumnDefinitions="Auto,*,Auto"
+					ColumnSpacing="{StaticResource SpaceM}"
+					SemanticProperties.Description="{localization:Tr Journey.ShareAsCalendar}">
+
+					<Border
+						support:Dense.MinHeight="{StaticResource HitIconTight}"
+						support:Dense.MinWidth="{StaticResource HitIconTight}"
+						BackgroundColor="{DynamicResource Raised}"
+						StrokeThickness="0"
+						VerticalOptions="Center">
+
+						<Border.StrokeShape>
+							<RoundRectangle CornerRadius="{StaticResource CornerControl}" />
+						</Border.StrokeShape>
+
+						<controls:Icon
+							Glyph="Calendar"
+							HorizontalOptions="Center"
+							Size="20"
+							VerticalOptions="Center"
+							Color="{DynamicResource Accent}" />
+					</Border>
+
+					<VerticalStackLayout
+						Grid.Column="1"
+						Spacing="1"
+						VerticalOptions="Center">
+
+						<Label
+							FontFamily="{DynamicResource FontSemibold}"
+							Text="{localization:Tr Journey.ShareAsCalendar}" />
+
+						<Label
+							StyleClass="Caption"
+							Text="{localization:Tr Journey.ShareCalendarDescription}" />
+					</VerticalStackLayout>
+
+					<controls:Icon
+						Grid.Column="2"
+						Glyph="ChevronRight"
+						Size="20"
+						VerticalOptions="Center"
+						Color="{DynamicResource InkMuted}" />
+
+					<Grid.GestureRecognizers>
+						<TapGestureRecognizer Tapped="CalendarTapped" />
+					</Grid.GestureRecognizers>
+				</Grid>
+
+					<BoxView StyleClass="Divider" />
+
 					<!-- Footer -->
 					<Grid
 						support:Dense.Padding="12,8"

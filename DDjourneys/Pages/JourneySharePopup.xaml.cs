@@ -12,17 +12,20 @@ public partial class JourneySharePopup : ContentView
 	private readonly Page _hostPage;
 	private readonly string _textChoice;
 	private readonly string _imageChoice;
+	private readonly string _calendarChoice;
 
 	public JourneySharePopup(
 		Page hostPage,
 		string textChoice,
-		string imageChoice)
+		string imageChoice,
+		string calendarChoice)
 	{
 		ArgumentNullException.ThrowIfNull(hostPage);
 
 		_hostPage = hostPage;
 		_textChoice = textChoice;
 		_imageChoice = imageChoice;
+		_calendarChoice = calendarChoice;
 
 		InitializeComponent();
 
@@ -47,6 +50,11 @@ public partial class JourneySharePopup : ContentView
 	private async void ImageTapped(object? sender, TappedEventArgs e)
 	{
 		await _hostPage.ClosePopupAsync(_imageChoice, CancellationToken.None);
+	}
+
+	private async void CalendarTapped(object? sender, TappedEventArgs e)
+	{
+		await _hostPage.ClosePopupAsync(_calendarChoice, CancellationToken.None);
 	}
 
 	private async void CancelClicked(object? sender, EventArgs e)

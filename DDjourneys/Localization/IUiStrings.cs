@@ -188,6 +188,9 @@ public sealed class JourneyStrings
 	public required string ShareSubtitle { get; init; }
 	public required string ShareTextDescription { get; init; }
 	public required string ShareImageDescription { get; init; }
+	public required string ShareAsCalendar { get; init; }
+	public required string CalendarUnavailable { get; init; }
+	public required string ShareCalendarDescription { get; init; }
 	public required string ShareChooseFormat { get; init; }
 	public required string HandOff { get; init; }
 	public required string HandOffFailed { get; init; }
