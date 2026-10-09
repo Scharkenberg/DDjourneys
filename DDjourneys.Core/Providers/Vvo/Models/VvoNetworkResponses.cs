@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using DDjourneys.Core.Providers.Vvo.Serialization;
 
 namespace DDjourneys.Core.Providers.Vvo.Models;
 
@@ -67,7 +68,8 @@ public sealed class VvoRunResponse
 	public IReadOnlyList<VvoRunStop> Stops { get; init; } = [];
 
 	[JsonPropertyName("MapData")]
-	public string? MapData { get; init; }
+	[JsonConverter(typeof(VvoMapDataConverter))]
+	public IReadOnlyList<string> MapData { get; init; } = [];
 }
 
 

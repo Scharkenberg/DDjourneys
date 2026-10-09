@@ -27,6 +27,22 @@ public static class RunCourse
 	{
 		ArgumentNullException.ThrowIfNull(stops);
 
+		return Locate(stops, scheduledAtStop) is { } found
+			? [.. stops.Skip(found.Start).Take(found.End - found.Start + 1)]
+			: stops;
+	}
+
+	/// <summary>
+	/// The span of the one journey around the queried stop that <see cref="Isolate"/> cuts to, as indices into
+	/// the list: where the followed ride sits in the whole itinerary of the vehicle. Null when the anchor
+	/// cannot be found or the span would hold less than two stops (the caller then keeps the whole list).
+	/// </summary>
+	public static (int Start, int End)? Locate(
+		IReadOnlyList<RunStop> stops,
+		DateTimeOffset? scheduledAtStop)
+	{
+		ArgumentNullException.ThrowIfNull(stops);
+
 		int anchor = -1;
 
 		for (int i = 0; i < stops.Count; i++)
@@ -53,7 +69,7 @@ public static class RunCourse
 
 		if (anchor < 0)
 		{
-			return stops;
+			return null;
 		}
 
 		DateTimeOffset? TimeOf(int i) =>
@@ -139,8 +155,8 @@ public static class RunCourse
 		end = Math.Min(end, stops.Count - 1);
 
 		return end - start + 1 >= 2
-			? [.. stops.Skip(start).Take(end - start + 1)]
-			: stops;
+			? (start, end)
+			: null;
 	}
 
 	/// <summary>

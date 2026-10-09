@@ -14,6 +14,10 @@ public static class MapScenes
 
 	private static string AccentColor => ThemeRef("Accent", "#0B6E8A");
 
+	/// <summary>The quiet grey of stops that do not matter right now: the run map greys its passed
+	/// stops the same way.</summary>
+	private static string DullColor => "#9e9e9e";
+
 	/// <summary>
 	/// A theme colour by reference ("@Key|#fallback"): <see cref="Resolve"/> turns it into the current colour each time
 	/// the scene is sent, so maps follow theme changes.
@@ -120,6 +124,70 @@ public static class MapScenes
 			(List<(double Latitude, double Longitude)>)
 			[.. new[] { Position(leg.From), Position(leg.To) }
 				.OfType<(double Latitude, double Longitude)>()];
+	}
+
+	/// <summary>
+	/// The part of a route line that lies between the first and the last of the stops shown: the nearest
+	/// vertices carry the split, the stretch in between is the route. Null when the line is unusable.
+	/// </summary>
+	private static IReadOnlyList<(double Latitude, double Longitude)>? Stretch(
+		IReadOnlyList<(double Latitude, double Longitude)>? path,
+		(double Latitude, double Longitude) first,
+		(double Latitude, double Longitude) last)
+	{
+		if (path is not { Count: >= 2 })
+		{
+			return null;
+		}
+
+		int start = Nearest(path, first);
+		int end = Nearest(path, last);
+
+		if (start > end)
+		{
+			(start, end) = (end, start);
+		}
+
+		return end - start + 1 >= 2
+			? [.. path.Skip(start).Take(end - start + 1)]
+			: null;
+	}
+
+	/// <summary>The vertex of the line that is closest to a stop: where a split lands.</summary>
+	private static int Nearest(
+		IReadOnlyList<(double Latitude, double Longitude)> path,
+		(double Latitude, double Longitude) at)
+	{
+		int best = 0;
+		double bestDistance = double.MaxValue;
+
+		for (int index = 0; index < path.Count; index++)
+		{
+			double distance =
+				SquareMeters(at, path[index]);
+
+			if (distance < bestDistance)
+			{
+				bestDistance = distance;
+				best = index;
+			}
+		}
+
+		return best;
+	}
+
+	/// <summary>Squared distance of two points, close enough over a city: longitudes are closer together
+	/// than latitudes.</summary>
+	private static double SquareMeters(
+		(double Latitude, double Longitude) one,
+		(double Latitude, double Longitude) other)
+	{
+		const double LongitudeScale = 0.63;
+
+		double dy = other.Latitude - one.Latitude;
+		double dx = (other.Longitude - one.Longitude) * LongitudeScale;
+
+		return (dy * 110_540) * (dy * 110_540) + (dx * 70_000) * (dx * 70_000);
 	}
 
 	// ----- Journey -----
@@ -332,7 +400,8 @@ public static class MapScenes
 		TransitMode mode,
 		int vehicleIndex = -1,
 		GeoPosition? vehicle = null,
-		string? lineText = null)
+		string? lineText = null,
+		IReadOnlyList<(double Latitude, double Longitude)>? path = null)
 	{
 		ArgumentNullException.ThrowIfNull(stops);
 
@@ -349,9 +418,15 @@ public static class MapScenes
 
 		if (located.Length >= 2)
 		{
+			// The real line of the route when the provider has it, clipped to the stops shown; straight
+			// between the stops otherwise.
+			IReadOnlyList<(double Latitude, double Longitude)> course =
+				Stretch(path, located[0].Position!.Value, located[^1].Position!.Value)
+				?? [.. located.Select(item => item.Position!.Value)];
+
 			lines.Add(
 				new MapLine(
-					(List<(double Latitude, double Longitude)>)[.. located.Select(item => item.Position!.Value)],
+					course,
 					color,
 					false,
 					5));
@@ -372,7 +447,7 @@ public static class MapScenes
 					longitude,
 					string.Empty,
 					current ? MapMarkerKind.Current : MapMarkerKind.Stop,
-					passed ? "#9e9e9e" : color,
+					passed ? DullColor : color,
 					stop.Station.Name,
 					stop.Effective is { } time
 						? $"{Format.Time(time)}{(Format.Delay(stop.Delay) is { } delay ? $" · {delay}" : string.Empty)}"
@@ -456,8 +531,10 @@ public static class MapScenes
 	}
 
 	/// <summary>
-	/// One followed run: its whole course drawn faintly, its stops, and the matched vehicle (when one was found)
-	/// on top, in the colour of its delay.
+	/// One followed run: its whole itinerary drawn faintly — the vehicle's chained journeys around the
+	/// ride — the stops of the ride itself in the colour of its line, the rest quiet grey, the real line of
+	/// the route when the provider has it, and the matched vehicle (when one was found) on top, in the colour
+	/// of its delay.
 	/// </summary>
 	public static MapScene FromTrack(
 		TrackTarget target,
@@ -465,7 +542,7 @@ public static class MapScenes
 		bool fit) =>
 		FromTracks((List<TrackTarget>)[target], (List<LiveVehicle?>)[vehicle], fit);
 
-	/// <summary>The runs of a followed journey together: every course faintly, its stops, and each matched vehicle.</summary>
+	/// <summary>The runs of a followed journey together: every itinerary faintly, its stops, and each matched vehicle.</summary>
 	public static MapScene FromTracks(
 		IReadOnlyList<TrackTarget> targets,
 		IReadOnlyList<LiveVehicle?> vehicles,
@@ -500,16 +577,40 @@ public static class MapScenes
 		string color = ModeColor(target.Mode);
 		ExtrasStrings strings = Strings;
 
+		// The vehicle's whole itinerary when it is known (the sliding window of the run answer); the run
+		// itself otherwise. Both are built positioned-only, so the ride's span indexes the list as is.
+		IReadOnlyList<CoursePoint> source =
+			target.Itinerary ?? target.Course;
+
 		var points =
-			target.Course
+			source
 				.Where(point => Position(point.Latitude, point.Longitude) is not null)
 				.ToArray();
 
+		// The ride within the itinerary: boarding to alighting. Without a span (no itinerary, or one that
+		// does not contain the leg's stops) every stop is the ride's, as the map has always drawn it.
+		bool NoSpan =>
+			target.RideStart < 0
+			|| target.RideEnd < target.RideStart;
+
+		bool Ride(int index) =>
+			NoSpan
+			|| (index >= target.RideStart && index <= target.RideEnd);
+
 		if (points.Length >= 2)
 		{
+			// The real line of the route when the provider has it, clipped to the itinerary; straight
+			// between the stops otherwise.
+			IReadOnlyList<(double Latitude, double Longitude)> course =
+				Stretch(
+					path: target.Path,
+					first: (points[0].Latitude, points[0].Longitude),
+					last: (points[^1].Latitude, points[^1].Longitude))
+				?? [.. points.Select(point => (point.Latitude, point.Longitude))];
+
 			lines.Add(
 				new MapLine(
-					(List<(double Latitude, double Longitude)>)[.. points.Select(point => (point.Latitude, point.Longitude))],
+					course,
 					color,
 					false,
 					5,
@@ -527,7 +628,7 @@ public static class MapScenes
 					point.Longitude,
 					string.Empty,
 					MapMarkerKind.Stop,
-					color,
+					Ride(index) ? color : DullColor,
 					point.Name,
 					point.Time is { } time
 						? Format.Time(time)

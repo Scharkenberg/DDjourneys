@@ -288,14 +288,15 @@ public sealed class VvoApiClient
 			+ ",\"time\":" + timeJson
 			+ ",\"stopid\":" + JsonSerializer.Serialize(stopId, VvoJsonContext.Default.String)
 			+ ",\"isarrival\":" + (isArrival ? "true" : "false")
-			+ ",\"mapdata\":false,\"format\":\"json\"}";
+			+ ",\"mapdata\":true,\"format\":\"json\"}";
 
 		string get =
 			$"{BaseUrl}/dm/trip?format=json"
 			+ $"&time={Uri.EscapeDataString($"/Date({ms}-0000)/")}"
 			+ $"&tripId={Uri.EscapeDataString(tripId)}"
 			+ $"&stopId={Uri.EscapeDataString(stopId)}"
-			+ $"&isarrival={(isArrival ? "true" : "false")}";
+			+ $"&isarrival={(isArrival ? "true" : "false")}"
+			+ "&mapdata=true";
 
 		string post = $"{BaseUrl}/dm/trip";
 

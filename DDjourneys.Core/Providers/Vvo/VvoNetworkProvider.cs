@@ -73,13 +73,45 @@ public sealed class VvoNetworkProvider :
 	public async Task<IReadOnlyList<RunStop>> GetRunAsync(
 		Departure departure,
 		int timeoutSeconds = 15,
+		CancellationToken cancellationToken = default) =>
+		(await GetRunDetailAsync(
+				departure,
+				timeoutSeconds,
+				cancellationToken)
+			.ConfigureAwait(false)).Stops;
+
+	/// <inheritdoc />
+	public async Task<RunDetail> GetRunDetailAsync(
+		Departure departure,
+		int timeoutSeconds = 15,
 		CancellationToken cancellationToken = default)
+	{
+		VvoRunResponse? response =
+			await GetRunResponseAsync(
+					departure,
+					timeoutSeconds,
+					cancellationToken)
+				.ConfigureAwait(false);
+
+		return response is null
+			? new RunDetail([])
+			: new RunDetail(VvoNetworkMapper.MapRun(response))
+			{
+				Path = VvoPathMapper.MapRunPath(response)
+			};
+	}
+
+	/// <summary>The run answer behind a departure, whichever of the request forms the service takes.</summary>
+	private async Task<VvoRunResponse?> GetRunResponseAsync(
+		Departure departure,
+		int timeoutSeconds,
+		CancellationToken cancellationToken)
 	{
 		ArgumentNullException.ThrowIfNull(departure);
 
 		if (string.IsNullOrWhiteSpace(departure.StopId))
 		{
-			return [];
+			return null;
 		}
 
 		// tripid names the line's course, not one run (kiliankoe's webapi.md, "Run identity"): the run is the
@@ -127,9 +159,7 @@ public sealed class VvoNetworkProvider :
 				cancellationToken)
 				.ConfigureAwait(false);
 
-		return response is null
-			? []
-			: VvoNetworkMapper.MapRun(response);
+		return response;
 	}
 
 	/// <inheritdoc />

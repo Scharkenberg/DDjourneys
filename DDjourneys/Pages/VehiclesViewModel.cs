@@ -124,6 +124,18 @@ public sealed partial class VehiclesViewModel : DisposableViewModel, IQueryAttri
 	private static readonly TimeSpan EmptyAfterTracking = TimeSpan.FromMinutes(3);
 	private static readonly TimeSpan EmptyAfterLines = TimeSpan.FromMinutes(1);
 
+	/// <summary>How long "Connecting…" may stay up: after that the honest text is that the service is
+	/// quiet, not that it is still connecting.</summary>
+	private static readonly TimeSpan ConnectingFor = TimeSpan.FromSeconds(10);
+
+	/// <summary>How long after the end of the followed trips "no position" may be said: while any of
+	/// them may still be under way, the vehicle may report yet.</summary>
+	private static readonly TimeSpan TripOverAfter = TimeSpan.FromMinutes(5);
+
+	/// <summary>The pauses between the reconnects of a broken stream; the last one repeats.</summary>
+	private static readonly TimeSpan[] ReconnectPauses =
+		[TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(20)];
+
 	private readonly VehicleService _vehicles;
 	private readonly LocalizationService _localization;
 	private readonly Dictionary<string, VehicleRow> _byKey = [];
@@ -361,16 +373,69 @@ public sealed partial class VehiclesViewModel : DisposableViewModel, IQueryAttri
 			PublishScene();
 		}
 
+		ExtrasStrings strings = _localization.CurrentStrings.Extras;
+
+		// A connection that stands up says so for a moment only; after that the honest text is that the
+		// service is quiet, not that it is still connecting — vehicles often report only every minute or two.
 		if (IsStreaming
-			&& Rows.Count == 0
-			&& HasStatus
-			&& DateTimeOffset.UtcNow - _startedAt > (_target is null ? EmptyAfterLines : EmptyAfterTracking))
+			&& Status == strings.LiveConnecting
+			&& DateTimeOffset.UtcNow - _startedAt > ConnectingFor)
 		{
-			Status =
-				_target is null
-					? _localization.CurrentStrings.Extras.LiveEmpty
-					: _localization.CurrentStrings.Extras.TrackNotFound;
+			Status = strings.LiveWaiting;
 		}
+
+		if (!IsStreaming
+			|| !HasStatus
+			|| Status == strings.LiveError)
+		{
+			return;
+		}
+
+		if (_target is null)
+		{
+			if (Rows.Count == 0
+				&& DateTimeOffset.UtcNow - _startedAt > EmptyAfterLines)
+			{
+				Status = strings.LiveEmpty;
+			}
+
+			return;
+		}
+
+		// The followed trips decide how long waiting is honest: while any of them may still be under way
+		// (its last stop plus a grace), the vehicle may report yet — a layover at a stop sends nothing for
+		// minutes. Only when all of them are over is "no position" more than impatience.
+		if (_slots.All(slot => slot.Matched is not null))
+		{
+			return;
+		}
+
+		if (_slots.All(slot => Over(slot.Target)))
+		{
+			Status = strings.TrackNotFound;
+		}
+	}
+
+	/// <summary>
+	/// Whether the trip a target follows is over: its last stop lies far enough in the past. A course
+	/// without times (none in practice) falls back to the flat wait since the stream started.
+	/// </summary>
+	private bool Over(TrackTarget target)
+	{
+		DateTimeOffset? last = null;
+
+		foreach (CoursePoint point in target.Course)
+		{
+			if (point.Time is { } time
+				&& (last is null || time > last))
+			{
+				last = time;
+			}
+		}
+
+		return last is { } end
+			? DateTimeOffset.UtcNow > end + TripOverAfter
+			: DateTimeOffset.UtcNow - _startedAt > EmptyAfterTracking;
 	}
 
 	private void PublishScene()
@@ -469,8 +534,9 @@ public sealed partial class VehiclesViewModel : DisposableViewModel, IQueryAttri
 	}
 
 	/// <summary>
-	/// Runs the stream until it ends or is cancelled. Rows, the filter and the matches stay untouched, so a restart
-	/// after a pause continues with them.
+	/// Runs the stream until it is cancelled — and does not stop there: a stream that ended (the service
+	/// closed it, or it failed) is reconnected after a pause, for as long as the page watches. Rows, the
+	/// filter and the matches stay untouched, so a restart after a pause continues with them.
 	/// </summary>
 	private async Task ConnectAsync(CancellationTokenSource cts, IReadOnlyList<int> lines)
 	{
@@ -478,44 +544,78 @@ public sealed partial class VehiclesViewModel : DisposableViewModel, IQueryAttri
 
 		try
 		{
-			await foreach (LiveVehicle vehicle in
-				_vehicles.StreamAsync(
-					new VehicleFilter { Lines = lines },
-					cts.Token))
+			int failures = 0;
+
+			while (!cts.IsCancellationRequested && !IsDisposed)
 			{
+				bool delivered = false;
+
+				try
+				{
+					await foreach (LiveVehicle vehicle in
+						_vehicles.StreamAsync(
+							new VehicleFilter { Lines = lines },
+							cts.Token))
+					{
+						if (cts.IsCancellationRequested || IsDisposed)
+						{
+							return;
+						}
+
+						delivered = true;
+
+						if (_slots.Count > 0)
+						{
+							ApplyTracked(vehicle);
+
+							continue;
+						}
+
+						if (HasStatus)
+						{
+							Status = string.Empty;
+						}
+
+						Apply(vehicle);
+					}
+				}
+				catch (OperationCanceledException)
+				{
+				}
+				catch (Exception ex)
+				{
+					DiagnosticLog.Write($"Live vehicles failed: {ex}");
+				}
+
 				if (cts.IsCancellationRequested || IsDisposed)
 				{
 					return;
 				}
 
-				if (_slots.Count > 0)
-				{
-					ApplyTracked(vehicle);
-
-					continue;
-				}
-
-				if (HasStatus)
-				{
-					Status = string.Empty;
-				}
-
-				Apply(vehicle);
-			}
-
-			if (!cts.IsCancellationRequested)
-			{
+				// The stream ended without the page asking: say so, wait, and connect again. A stream that
+				// carried positions gets another go at once; a page nobody leaves keeps trying with a pause.
 				Status = strings.LiveError;
-			}
-		}
-		catch (OperationCanceledException)
-		{
-		}
-		catch (Exception ex)
-		{
-			DiagnosticLog.Write($"Live vehicles failed: {ex}");
 
-			Status = strings.LiveError;
+				if (delivered)
+				{
+					failures = 0;
+				}
+				else
+				{
+					failures++;
+				}
+
+				TimeSpan pause = ReconnectPauses[Math.Min(failures, ReconnectPauses.Length - 1)];
+
+				try
+				{
+					await Task.Delay(pause, cts.Token);
+				}
+				catch (OperationCanceledException)
+				{
+					return;
+				}
+			}
 		}
 		finally
 		{

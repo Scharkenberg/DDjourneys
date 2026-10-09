@@ -20,6 +20,19 @@ public sealed class TlmsVehicleProvider : ILiveVehicleProvider
 
 	private const int MaxMessageBytes = 1 << 20;
 
+	/// <summary>Pings that keep the connection alive through networks that drop an idle socket.</summary>
+	private static readonly TimeSpan KeepAlive = TimeSpan.FromSeconds(30);
+
+	/// <summary>
+	/// How long a session may carry nothing before the read is given up as a dead connection and
+	/// retried: a filter for one quiet line holds the stream silent for minutes, so this only bites when
+	/// nothing at all arrives — the service gone without a close.
+	/// </summary>
+	private static readonly TimeSpan IdleReceive = TimeSpan.FromMinutes(4);
+
+	/// <summary>Sessions in a row that never carried a position: then the service is down, not flaky.</summary>
+	private const int MaxEmptySessions = 3;
+
 	/// <inheritdoc />
 	public async IAsyncEnumerable<LiveVehicle> StreamAsync(
 		VehicleFilter filter,
@@ -27,32 +40,111 @@ public sealed class TlmsVehicleProvider : ILiveVehicleProvider
 	{
 		ArgumentNullException.ThrowIfNull(filter);
 
+		// The sessions of one stream: a dropped or refused connection is retried, so a hiccup of the
+		// service or of the network does not end it. A session that carried positions earned another go
+		// at once; one that never did, three times over, is the service being down — the caller says what
+		// that means.
+		int empty = 0;
+
+		while (empty < MaxEmptySessions
+			&& !cancellationToken.IsCancellationRequested)
+		{
+			bool delivered = false;
+
+			await foreach (LiveVehicle vehicle in
+				Session(filter, cancellationToken).ConfigureAwait(false))
+			{
+				delivered = true;
+
+				yield return vehicle;
+			}
+
+			if (cancellationToken.IsCancellationRequested)
+			{
+				break;
+			}
+
+			if (delivered)
+			{
+				empty = 0;
+			}
+			else
+			{
+				empty++;
+			}
+
+			if (empty >= MaxEmptySessions)
+			{
+				break;
+			}
+
+			await Task.Delay(
+				delivered
+					? TimeSpan.FromSeconds(1)
+					: empty == 1
+						? TimeSpan.FromSeconds(1)
+						: TimeSpan.FromSeconds(2),
+				cancellationToken);
+		}
+	}
+
+	/// <summary>One connection: opened, the filter sent, the messages read until it ends.</summary>
+	private static async IAsyncEnumerable<LiveVehicle> Session(
+		VehicleFilter filter,
+		[EnumeratorCancellation] CancellationToken cancellationToken)
+	{
 		using var socket = new ClientWebSocket();
 
-		await socket
-			.ConnectAsync(Endpoint, cancellationToken)
-			.ConfigureAwait(false);
+		socket.Options.KeepAliveInterval = KeepAlive;
 
-		string requestJson =
-				new JsonObject
-				{
-					["lines"] = Wire.Array(filter.Lines.Select(line => (JsonNode?)line)),
-					["positions"] = new JsonArray(),
-					["regions"] = Wire.Array(filter.Region),
-					["enrich"] = false
-				}.ToJsonString();
+		bool open = false;
 
-		DiagnosticLog.Api("TLMS", $"connect {Endpoint}, request:", requestJson);
+		try
+		{
+			await socket
+				.ConnectAsync(Endpoint, cancellationToken)
+				.ConfigureAwait(false);
 
-		byte[] request = System.Text.Encoding.UTF8.GetBytes(requestJson);
+			string requestJson =
+					new JsonObject
+					{
+						["lines"] = Wire.Array(filter.Lines.Select(line => (JsonNode?)line)),
+						["positions"] = new JsonArray(),
+						["regions"] = Wire.Array(filter.Region),
+						["enrich"] = false
+					}.ToJsonString();
 
-		await socket
-			.SendAsync(
-				request,
-				WebSocketMessageType.Text,
-				endOfMessage: true,
-				cancellationToken)
-			.ConfigureAwait(false);
+			DiagnosticLog.Api("TLMS", $"connect {Endpoint}, request:", requestJson);
+
+			byte[] request = System.Text.Encoding.UTF8.GetBytes(requestJson);
+
+			await socket
+				.SendAsync(
+					request,
+					WebSocketMessageType.Text,
+					endOfMessage: true,
+					cancellationToken)
+				.ConfigureAwait(false);
+
+			open = true;
+		}
+		catch (Exception ex) when (ex is not OperationCanceledException)
+		{
+			DiagnosticLog.Write($"[TLMS] connect failed: {ex.Message}");
+		}
+
+		if (!open
+			|| cancellationToken.IsCancellationRequested)
+		{
+			yield break;
+		}
+
+		// A stream that carries nothing for minutes is a connection that died silently (the service
+		// gone without a close, or the network dropped it): the read is given up and the session retried.
+		// Anything that arrives pushes the deadline back.
+		using var idle = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+
+		idle.CancelAfter(IdleReceive);
 
 		var buffer = new byte[16 * 1024];
 		int messages = 0;
@@ -60,11 +152,27 @@ public sealed class TlmsVehicleProvider : ILiveVehicleProvider
 		try
 		{
 			while (socket.State == WebSocketState.Open
-				&& !cancellationToken.IsCancellationRequested)
+				&& !cancellationToken.IsCancellationRequested
+				&& !idle.IsCancellationRequested)
 			{
-				string? text =
-					await ReadMessageAsync(socket, buffer, cancellationToken)
-						.ConfigureAwait(false);
+				string? text;
+
+				try
+				{
+					text =
+						await ReadMessageAsync(socket, buffer, idle.Token)
+							.ConfigureAwait(false);
+				}
+				catch (Exception ex) when (ex is not OperationCanceledException)
+				{
+					DiagnosticLog.Write($"[TLMS] read failed: {ex.Message}");
+
+					break;
+				}
+				catch (OperationCanceledException)
+				{
+					break;
+				}
 
 				if (text is null)
 				{
@@ -83,6 +191,10 @@ public sealed class TlmsVehicleProvider : ILiveVehicleProvider
 				{
 					yield return vehicle;
 				}
+
+				// Anything that arrives — a position, or a message the filter did not use — says the
+				// connection is alive: the deadline moves with it.
+				idle.CancelAfter(IdleReceive);
 			}
 		}
 		finally
