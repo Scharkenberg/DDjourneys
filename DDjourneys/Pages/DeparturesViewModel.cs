@@ -1298,9 +1298,11 @@ public sealed partial class DeparturesViewModel : DisposableViewModel
 	private void RebuildRows()
 	{
 		// The board is refreshed every half minute and hardly changes: rows that show the same stay as they are.
+		List<DepartureRow> board = [.. _current.Select(departure => new DepartureRow(departure))];
+
 		CollectionSync.Merge(
 			Rows,
-			(List<DepartureRow>)[.. _current.Select(departure => new DepartureRow(departure))],
+			board,
 			static (shown, next) => shown.Shows(next));
 	}
 

@@ -360,7 +360,8 @@ public sealed partial class VvoJourneyProvider :
 
 		// The route of the matched journey by its own remembered pairing: the mapper may drop routes,
 		// which would shift the list index against the response.
-		if (!VvoJourneyMapper.TryGetConnection(journeys[best.Index], out VvoJourneyMapper.VvoConnection? matched))
+		if (!VvoJourneyMapper.TryGetConnection(journeys[best.Index], out VvoJourneyMapper.VvoConnection? matched)
+			|| matched is null)
 		{
 			return null;
 		}

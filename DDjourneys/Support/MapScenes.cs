@@ -589,12 +589,12 @@ public static class MapScenes
 
 		// The ride within the itinerary: boarding to alighting. Without a span (no itinerary, or one that
 		// does not contain the leg's stops) every stop is the ride's, as the map has always drawn it.
-		bool NoSpan =>
+		bool NoSpan() =>
 			target.RideStart < 0
 			|| target.RideEnd < target.RideStart;
 
 		bool Ride(int index) =>
-			NoSpan
+			NoSpan()
 			|| (index >= target.RideStart && index <= target.RideEnd);
 
 		if (points.Length >= 2)

@@ -174,24 +174,21 @@ public sealed partial class Icon : ContentView
 
 	private static Shapes.Geometry? Parse(string data)
 	{
-		Shapes.Geometry? parsed;
-
 		lock (GeometryGate)
 		{
-			if (Geometries.TryGetValue(data, out Shapes.Geometry? cached))
+			if (Geometries.GetValueOrDefault(data) is { } cached)
 			{
 				return cached;
 			}
 
-			parsed = (Shapes.Geometry?)new Shapes.PathGeometryConverter()
-				.ConvertFromInvariantString(data);
-
-			if (parsed is { } geometry)
+			if (new Shapes.PathGeometryConverter()
+				.ConvertFromInvariantString(data) is Shapes.Geometry parsed)
 			{
-				Geometries[data] = geometry;
+				Geometries[data] = parsed;
+				return parsed;
 			}
-		}
 
-		return parsed;
+			return null;
+		}
 	}
 }
