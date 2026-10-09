@@ -68,9 +68,20 @@ internal static class WidgetRenderer
 		views.SetTextViewText(messageId, message);
 		views.SetViewVisibility(messageId, message.Length > 0 ? ViewStates.Visible : ViewStates.Gone);
 
+		// What the size has left over goes between the rows (about 1 dp of padding is in the layout already).
+		float density = context.Resources?.DisplayMetrics?.Density ?? 1;
+		double fontScale = context.Resources?.Configuration?.FontScale ?? 1;
+		double extra = WidgetLayout.RowPadding(heightDp, rows.Count, layout.Detail, fontScale, message.Length > 0);
+		int vertical = (int)Math.Round((1 + (extra / 2)) * density);
+
 		for (int slot = 0; slot < WidgetLayout.MaxRows; slot++)
 		{
 			Row(context, views, slot, slot < rows.Count ? rows[slot] : null, layout.Detail);
+
+			if (slot < rows.Count)
+			{
+				views.SetViewPadding(WidgetResources.Id(context, $"w_row_{slot}"), 0, vertical, 0, vertical);
+			}
 		}
 
 		return views;
