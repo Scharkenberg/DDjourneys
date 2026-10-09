@@ -235,11 +235,43 @@ public static class MapScenes
 			}
 		}
 
-		foreach (JourneyTransfer transfer in journey.Transfers)
+		// The walk of every change: the footpath the transfer carries, or a straight line between the two
+		// stops when there is no geometry anywhere (a change that walks to another stop; the plan sent to the
+		// tracking service builds its walking episode the same way). A change at the same stop draws nothing.
+		for (int index = 0; index < journey.Legs.Count - 1; index++)
 		{
-			if (transfer.Path.Count >= 2)
+			Station alight = journey.Legs[index].To;
+			Station board = journey.Legs[index + 1].From;
+
+			if (string.Equals(alight.Id, board.Id, StringComparison.OrdinalIgnoreCase))
 			{
-				lines.Add(new MapLine(transfer.Path, WalkColor, true, 4));
+				continue;
+			}
+
+			bool drew = false;
+
+			foreach (JourneyTransfer transfer in journey.Transfers.Where(
+				transfer => transfer.PreviousLegIndex == index && transfer.NextLegIndex == index + 1))
+			{
+				if (transfer.Path.Count >= 2)
+				{
+					lines.Add(new MapLine(transfer.Path, WalkColor, true, 4));
+
+					drew = true;
+				}
+			}
+
+			if (!drew
+				&& Position(alight) is { } alightAt
+				&& Position(board) is { } boardAt)
+			{
+				lines.Add(
+					new MapLine(
+						(List<(double Latitude, double Longitude)>)
+						[(alightAt.Latitude, alightAt.Longitude), (boardAt.Latitude, boardAt.Longitude)],
+						WalkColor,
+						true,
+						4));
 			}
 		}
 

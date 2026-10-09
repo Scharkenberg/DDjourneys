@@ -29,6 +29,7 @@ public class PanePage : ContentPage
 	private bool _wide;
 	private bool _appeared;
 	private bool _shownAsPane;
+	private bool _ownShown = true;
 	private bool _gone;
 	private bool _evaluationQueued;
 
@@ -234,6 +235,17 @@ public class PanePage : ContentPage
 		{
 			OnDisappearing();
 		}
+	}
+
+	/// <summary>Whether the page's own content is in view. A wide window hides it behind deeper panes of the
+	/// chain (Back brings it back); the page itself stays the current one, so a page with work of its own asks
+	/// here instead of running it while nobody looks.</summary>
+	protected bool IsOwnVisible => _ownShown;
+
+	/// <summary>The page's own content was hidden behind deeper panes of its chain, or came back into view. A
+	/// lent page is told through OnAppearing/OnDisappearing instead; this is for the page the chain stands on.</summary>
+	protected virtual void OnOwnVisibility(bool shown)
+	{
 	}
 
 	private void SyncPanes()
@@ -519,6 +531,14 @@ public class PanePage : ContentPage
 		foreach (View view in chain)
 		{
 			view.IsVisible = visible.Contains(view);
+		}
+
+		bool ownShown = _own?.IsVisible ?? _ownShown;
+
+		if (ownShown != _ownShown)
+		{
+			_ownShown = ownShown;
+			OnOwnVisibility(ownShown);
 		}
 
 		_frame.Layout(visible);

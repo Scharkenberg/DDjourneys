@@ -114,9 +114,14 @@ public partial class DeparturesPage : PanePage, IQueryAttributable
 
 		AppVisibility.Changed += OnWindowVisibility;
 
-		// Keep the board current while it is on screen; the timer stops when the page is left.
+		// Keep the board current while it is on screen; the timer stops when the page is left, and while
+		// a wide window hides the board behind deeper panes of its own chain (OnOwnVisibility).
 		_timer ??= CreateTimer();
-		_timer.Start();
+
+		if (IsOwnVisible)
+		{
+			_timer.Start();
+		}
 
 		if (_vm.HasStop)
 		{
@@ -131,13 +136,41 @@ public partial class DeparturesPage : PanePage, IQueryAttributable
 		base.OnDisappearing();
 	}
 
-	/// <summary>The window came back from minimised or hidden: the board is current again at once.</summary>
+	/// <summary>The window came back from minimised or hidden: the board is current again at once, and the
+	/// timer runs again (a hidden board or a hidden window each leave it stopped).</summary>
 	private void OnWindowVisibility(object? sender, EventArgs e)
 	{
 		if (AppVisibility.IsShown
-			&& _vm.HasStop)
+			&& IsOwnVisible)
 		{
-			_ = _vm.RefreshAsync(silent: true);
+			_timer?.Start();
+
+			if (_vm.HasStop)
+			{
+				_ = _vm.RefreshAsync(silent: true);
+			}
+		}
+	}
+
+	/// <summary>A wide window can hide the board behind deeper panes of the page's own chain, without the page
+	/// being left: the refresh waits until the board is in view again, and catches up at once when it returns.</summary>
+	protected override void OnOwnVisibility(bool shown)
+	{
+		if (!shown)
+		{
+			_timer?.Stop();
+
+			return;
+		}
+
+		if (AppVisibility.IsShown)
+		{
+			_timer?.Start();
+
+			if (_vm.HasStop)
+			{
+				_ = _vm.RefreshAsync(silent: true);
+			}
 		}
 	}
 

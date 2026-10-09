@@ -244,13 +244,10 @@ internal static class SchutzengelPlanTranslator
 		}
 
 
-		if (!string.Equals(
-			previousLeg.To.Id,
-			nextLeg.From.Id,
-			StringComparison.OrdinalIgnoreCase))
-		{
-			return;
-		}
+		// No transfer instruction: the change is whatever fits between alighting and boarding. At the same
+		// stop that is the wait (one episode that stays there); between two stops it is the walk from the
+		// alighting stop to the boarding one, with the whole time as its duration (an instruction would say
+		// how long the walk really is; the risk rule counts a duration that fills the gap as no minimum).
 
 
 		DateTimeOffset? fromTime =
@@ -578,4 +575,4 @@ internal static class SchutzengelPlanTranslator
 			left.Id,
 			right.Id,
 			StringComparison.OrdinalIgnoreCase);
-}
+}
