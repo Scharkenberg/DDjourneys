@@ -47,6 +47,50 @@ public class MainActivity : MauiAppCompatActivity
 		{
 			Accept(Intent);
 		}
+
+		WarmUpWebView();
+	}
+
+	/// <summary>
+	/// The first web view of a process costs a few hundred ms (provider load, renderer start). A throwaway one is
+	/// created once the app is idle and dropped again, so the map page finds the engine warm. Never in a safe start,
+	/// never where the map is blocked (a failing web view can end the app).
+	/// </summary>
+	private void WarmUpWebView()
+	{
+		if (StartupGuard.IsSafeStart || MapSupport.Block != MapBlock.None)
+		{
+			return;
+		}
+
+		global::Android.OS.Looper? looper = global::Android.OS.Looper.MainLooper;
+		if (looper is null)
+		{
+			return;
+		}
+
+		var handler = new global::Android.OS.Handler(looper);
+		handler.PostDelayed(() =>
+		{
+			try
+			{
+				var probe = new global::Android.Webkit.WebView(ApplicationContext!);
+				handler.PostDelayed(() =>
+				{
+					try
+					{
+						probe.Destroy();
+					}
+					catch (Exception)
+					{
+					}
+				}, 3000);
+			}
+			catch (Exception exception)
+			{
+				DiagnosticLog.Write($"[Start] web view warm-up skipped: {exception.Message}");
+			}
+		}, 4000);
 	}
 
 	public override void OnConfigurationChanged(global::Android.Content.Res.Configuration newConfig)
