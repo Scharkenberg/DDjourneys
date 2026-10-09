@@ -178,7 +178,7 @@ public sealed partial class Icon : ContentView
 
 		lock (GeometryGate)
 		{
-			if (Geometries.TryGetValue(data, out Shapes.Geometry cached))
+			if (Geometries.TryGetValue(data, out Shapes.Geometry? cached))
 			{
 				return cached;
 			}

@@ -22,7 +22,7 @@ public static class VvoJourneyMapper
 	private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Journey, VvoConnection> Connections = [];
 
 	/// <summary>The VVO route this journey was mapped from, while the journey is alive.</summary>
-	public static bool TryGetConnection(Journey journey, out VvoConnection? connection) =>
+	public static bool TryGetConnection(Journey journey, [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out VvoConnection? connection) =>
 		Connections.TryGetValue(journey, out connection);
 
 	public static IReadOnlyList<Journey> Map(

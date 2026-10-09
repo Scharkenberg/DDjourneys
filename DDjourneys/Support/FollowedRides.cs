@@ -111,7 +111,7 @@ public static class FollowedRides
 		return rides;
 	}
 
-	private static IReadOnlyList<FollowedRide> ParseRides(string planId)
+	private static List<FollowedRide> ParseRides(string planId)
 	{
 		try
 		{
