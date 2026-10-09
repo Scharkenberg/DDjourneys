@@ -56,7 +56,7 @@
 
 			<!--  The map  -->
 			<Border Padding="0" StyleClass="Card">
-				<controls:MapView x:Name="Map" HeightRequest="320" />
+				<controls:MapView x:Name="Map" ResizableByGrip="True" />
 			</Border>
 
 			<!--  Which lines  -->

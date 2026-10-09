@@ -230,6 +230,7 @@ public sealed class GermanUiStrings : IUiStrings
 		MapAutoFit = "Auto-Ausschnitt",
 		MapFitNow = "Alles anzeigen",
 		MapInfo = "Kartendaten",
+		MapGrip = "Ziehen, um die Größe der Karte zu ändern",
 		TrackFollowing = "Folge Linie {0} {1}",
 		TrackNotFound = "Weiterhin keine Position von diesem Fahrzeug. Der TLMS-Dienst könnte gestört sein, das Fahrzeug offline sein oder keine Funktelegramme senden, oder die Fahrt hat noch nicht begonnen oder ist schon vorbei.",
 		TrackNoCourse = "Diese Fahrt lässt sich nicht live verfolgen: Der Anbieter liefert weder Haltestellenpositionen noch eine Streckengeometrie dafür.",

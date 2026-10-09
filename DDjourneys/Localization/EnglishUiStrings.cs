@@ -226,6 +226,7 @@ public sealed class EnglishUiStrings : IUiStrings
 		MapAutoFit = "Auto-fit",
 		MapFitNow = "Show everything",
 		MapInfo = "Map data",
+		MapGrip = "Drag to change the size of the map",
 		TrackFollowing = "Following line {0} {1}",
 		TrackNotFound = "Still no position from this vehicle. The TLMS service may be down, the vehicle may be offline or send no radio telegrams, or the journey may not have started yet or may already be over.",
 		TrackNoCourse = "This ride cannot be followed live: the provider gave neither stop positions nor route geometry for it.",
