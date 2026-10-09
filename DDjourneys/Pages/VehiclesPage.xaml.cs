@@ -50,15 +50,37 @@ public partial class VehiclesPage : PanePage
 		{
 			_timer = Dispatcher.CreateTimer();
 			_timer.Interval = TimeSpan.FromSeconds(2);
-			_timer.Tick += (_, _) => _vm.Tick();
+			_timer.Tick += (_, _) =>
+			{
+				if (AppVisibility.IsShown)
+				{
+					_vm.Tick();
+				}
+			};
 		}
 
+		AppVisibility.Changed += OnWindowVisibility;
+
 		_timer.Start();
+	}
+
+	/// <summary>A hidden or minimised window has no use for positions: the stream pauses and resumes with it.</summary>
+	private void OnWindowVisibility(object? sender, EventArgs e)
+	{
+		if (AppVisibility.IsShown)
+		{
+			_vm.ResumeStream();
+		}
+		else
+		{
+			_vm.PauseStream();
+		}
 	}
 
 	protected override void OnDisappearing()
 	{
 		_timer?.Stop();
+		AppVisibility.Changed -= OnWindowVisibility;
 
 		// Positions nobody looks at cost battery: the stream pauses until the page is seen again.
 		_vm.PauseStream();

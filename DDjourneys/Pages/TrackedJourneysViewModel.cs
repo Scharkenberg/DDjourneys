@@ -331,7 +331,8 @@ public sealed partial class TrackedJourneysViewModel : DisposableViewModel, IQue
 			{
 				await Task.Delay(CourseTick, cancellationToken);
 
-				if (_courses.Count > 0 || NeedsClock())
+				if (AppVisibility.IsShown
+					&& (_courses.Count > 0 || NeedsClock()))
 				{
 					RebuildIfAlive();
 				}
@@ -365,8 +366,9 @@ public sealed partial class TrackedJourneysViewModel : DisposableViewModel, IQue
 				// The first pass always asks (the page just opened). After that, with nothing followed there is nothing to
 				// fetch (a new follow brings its own data and raises WatchedChanged); after a failure the page keeps retrying.
 				if (first
-					|| _tracker.Watched.Count > 0
-					|| ErrorText is not null)
+					|| (AppVisibility.IsShown
+						&& (_tracker.Watched.Count > 0
+							|| ErrorText is not null)))
 				{
 					await RefreshCoreAsync(poll: !first, cancellationToken);
 				}
