@@ -235,11 +235,39 @@ public static class MapScenes
 			}
 		}
 
-		// The walk of every change: the footpath the transfer carries, or a straight line between the two
-		// stops when there is no geometry anywhere (a change that walks to another stop; the plan sent to the
-		// tracking service builds its walking episode the same way). A change at the same stop draws nothing.
+		// The walk of every change: the footpath the transfer carries — the platform change at a stop as much
+		// as the walk to another stop — and the walks before the first and after the last leg, which are
+		// transfers without surrounding legs. Only a change between two different stops that no footpath
+		// reaches draws a straight line between the stops instead (the plan sent to the tracking service
+		// builds its walking episode the same way); a change at the same stop draws nothing.
+		bool[] covered = new bool[Math.Max(0, journey.Legs.Count - 1)];
+
+		foreach (JourneyTransfer transfer in journey.Transfers)
+		{
+			if (transfer.Path.Count < 2)
+			{
+				continue;
+			}
+
+			lines.Add(new MapLine(transfer.Path, WalkColor, true, 4));
+
+			if (transfer.PreviousLegIndex is { } previous
+				&& transfer.NextLegIndex is { } next)
+			{
+				for (int gap = Math.Max(0, previous); gap < next && gap < covered.Length; gap++)
+				{
+					covered[gap] = true;
+				}
+			}
+		}
+
 		for (int index = 0; index < journey.Legs.Count - 1; index++)
 		{
+			if (covered[index])
+			{
+				continue;
+			}
+
 			Station alight = journey.Legs[index].To;
 			Station board = journey.Legs[index + 1].From;
 
@@ -248,21 +276,7 @@ public static class MapScenes
 				continue;
 			}
 
-			bool drew = false;
-
-			foreach (JourneyTransfer transfer in journey.Transfers.Where(
-				transfer => transfer.PreviousLegIndex == index && transfer.NextLegIndex == index + 1))
-			{
-				if (transfer.Path.Count >= 2)
-				{
-					lines.Add(new MapLine(transfer.Path, WalkColor, true, 4));
-
-					drew = true;
-				}
-			}
-
-			if (!drew
-				&& Position(alight) is { } alightAt
+			if (Position(alight) is { } alightAt
 				&& Position(board) is { } boardAt)
 			{
 				lines.Add(
