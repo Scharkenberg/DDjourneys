@@ -13,7 +13,7 @@ namespace DDjourneys.Support;
 /// The frame (<see cref="PaneFrame"/>) is MAUI's <see cref="Microsoft.Maui.Controls.Foldable.TwoPaneView"/>: on a foldable
 /// the panes sit on either side of the fold, and a vertical fold always shows at least two panes.
 /// </summary>
-public class PanePage : ContentPage
+public partial class PanePage : ContentPage
 {
 	private const uint MoveDuration = 300;
 
