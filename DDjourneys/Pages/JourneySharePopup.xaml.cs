@@ -14,6 +14,8 @@ public partial class JourneySharePopup : ContentView
 	private readonly string _imageChoice;
 	private readonly string _calendarChoice;
 
+	private bool _themeSubscribed;
+
 	public JourneySharePopup(
 		Page hostPage,
 		string textChoice,
@@ -31,8 +33,27 @@ public partial class JourneySharePopup : ContentView
 
 		PaintBase();
 
-		Loaded += (_, _) => Theme.Changed += OnThemeChanged;
-		Unloaded += (_, _) => Theme.Changed -= OnThemeChanged;
+		// Reparenting can fire Loaded more often than Unloaded: the flag keeps the subscription single.
+		Loaded += OnPopupLoaded;
+		Unloaded += OnPopupUnloaded;
+	}
+
+	private void OnPopupLoaded(object? sender, EventArgs e)
+	{
+		if (!_themeSubscribed)
+		{
+			Theme.Changed += OnThemeChanged;
+			_themeSubscribed = true;
+		}
+	}
+
+	private void OnPopupUnloaded(object? sender, EventArgs e)
+	{
+		if (_themeSubscribed)
+		{
+			Theme.Changed -= OnThemeChanged;
+			_themeSubscribed = false;
+		}
 	}
 
 	private void OnThemeChanged(object? sender, EventArgs e) =>

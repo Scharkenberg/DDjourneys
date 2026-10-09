@@ -286,6 +286,13 @@ internal sealed partial class SchutzengelJourneyTracker : IJourneyTracker, ITrac
 	}
 
 	public Task RefreshAsync(CancellationToken cancellationToken = default) =>
+		RefreshCoreAsync(force: true, cancellationToken);
+
+	/// <summary>The periodic refresh of an open page: trips always, clock and plan list when their interval is up.</summary>
+	public Task PollAsync(CancellationToken cancellationToken = default) =>
+		RefreshCoreAsync(force: false, cancellationToken);
+
+	private Task RefreshCoreAsync(bool force, CancellationToken cancellationToken) =>
 		RunAsync(
 			async () =>
 			{
@@ -294,7 +301,7 @@ internal sealed partial class SchutzengelJourneyTracker : IJourneyTracker, ITrac
 					return Recompute();
 				}
 
-				return await SyncAsync(force: true, cancellationToken).ConfigureAwait(false);
+				return await SyncAsync(force, cancellationToken).ConfigureAwait(false);
 			},
 			cancellationToken);
 
@@ -565,12 +572,21 @@ internal sealed partial class SchutzengelJourneyTracker : IJourneyTracker, ITrac
 			await SyncPlanListAsync(localNow, cancellationToken).ConfigureAwait(false);
 		}
 
-		foreach (WatchEntry entry in _entries.Values.ToList())
+		if (_entries.Count > 0)
 		{
 			cancellationToken.ThrowIfCancellationRequested();
 
-			await LoadSummaryAsync(entry, cancellationToken).ConfigureAwait(false);
-			await LoadTripAsync(entry, cancellationToken).ConfigureAwait(false);
+			// The plans are independent of each other: a few at a time shortens every sync (and with it the time the
+			// radio is on). Authentication is serialised by the api's own gate, so a 401 is still handled once.
+			await Parallel.ForEachAsync(
+				_entries.Values.ToList(),
+				new ParallelOptions { MaxDegreeOfParallelism = 3, CancellationToken = cancellationToken },
+				async (entry, token) =>
+				{
+					await LoadSummaryAsync(entry, token).ConfigureAwait(false);
+					await LoadTripAsync(entry, token).ConfigureAwait(false);
+				})
+				.ConfigureAwait(false);
 		}
 
 		return Recompute();

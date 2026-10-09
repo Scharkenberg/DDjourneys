@@ -1,4 +1,6 @@
 using System.Globalization;
+using System.Runtime.CompilerServices;
+using System.Text;
 
 namespace DDjourneys.Core.Diagnostics;
 
@@ -70,6 +72,75 @@ public static class DiagnosticLog
 	/// </summary>
 	public static Action<string>? Sink { get; set; }
 
+	/// <summary>
+	/// The interpolated strings of <see cref="Write(LogStringHandler)"/> are built by this handler: when logging is
+	/// off it is never filled, so the many log lines of the network paths cost nothing while they are silent.
+	/// Formats and alignments behave exactly like ordinary string interpolation.
+	/// </summary>
+	[InterpolatedStringHandler]
+	public readonly struct LogStringHandler
+	{
+		private readonly StringBuilder? _builder;
+
+		public LogStringHandler(int literalLength, int formattedCount)
+		{
+			// The one check that decides whether a single character is appended at all.
+			_builder = Enabled
+				? new StringBuilder(literalLength + formattedCount * 11)
+				: null;
+		}
+
+		public void AppendLiteral(string literal) => _builder?.Append(literal);
+
+		public void AppendFormatted<T>(T value)
+		{
+			if (_builder is not null)
+			{
+				_ = _builder.Append(value);
+			}
+		}
+
+		public void AppendFormatted<T>(T value, string? format)
+		{
+			if (_builder is null)
+			{
+				return;
+			}
+
+			_ = value is IFormattable formattable
+				? _builder.Append(formattable.ToString(format, CultureInfo.CurrentCulture))
+				: _builder.Append(value);
+		}
+
+		public void AppendFormatted<T>(T value, int alignment) => AppendFormatted(value, alignment, null);
+
+		public void AppendFormatted<T>(T value, int alignment, string? format)
+		{
+			if (_builder is null)
+			{
+				return;
+			}
+
+			int start = _builder.Length;
+
+			AppendFormatted(value, format);
+
+			if (alignment != 0)
+			{
+				int padding = Math.Abs(alignment) - (_builder.Length - start);
+
+				if (padding > 0)
+				{
+					_ = _builder.Insert(
+						alignment > 0 ? start : _builder.Length,
+						new string(' ', padding));
+				}
+			}
+		}
+
+		internal string? GetText() => _builder?.ToString();
+	}
+
 	public static void Write(string message)
 	{
 		if (!Enabled)
@@ -118,6 +189,17 @@ public static class DiagnosticLog
 		{
 			// Logging must never disturb the app; the reason is kept for the settings page.
 			LastError = $"{ex.GetType().Name}: {ex.Message}";
+		}
+	}
+
+	/// <summary>Writes an interpolated log line; when logging is off, the string is never built.</summary>
+	public static void Write(LogStringHandler message)
+	{
+		string? text = message.GetText();
+
+		if (text is not null)
+		{
+			Write(text);
 		}
 	}
 

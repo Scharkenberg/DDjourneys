@@ -20,8 +20,8 @@ public sealed record DepartureRow(
 			? Format.TransportMode(Departure.Line.Mode)
 			: Departure.Line.Name;
 
-	public ChipLook Look =>
-		ModeChips.For(Departure.Line.Mode);
+	// Once per row: the chip look is bound several times, and the line never changes for a departure.
+	public ChipLook Look { get; } = ModeChips.For(Departure.Line.Mode);
 
 	public string Direction =>
 		Departure.Line.Destination ?? string.Empty;

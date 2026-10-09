@@ -43,6 +43,9 @@ public partial class VehiclesPage : PanePage
 		base.OnAppearing();
 		Motion.EnterPage(this);
 
+		// A stream that was paused with the page continues now (first appearance: nothing to continue).
+		_vm.ResumeStream();
+
 		if (_timer is null)
 		{
 			_timer = Dispatcher.CreateTimer();
@@ -56,6 +59,10 @@ public partial class VehiclesPage : PanePage
 	protected override void OnDisappearing()
 	{
 		_timer?.Stop();
+
+		// Positions nobody looks at cost battery: the stream pauses until the page is seen again.
+		_vm.PauseStream();
+
 		base.OnDisappearing();
 	}
 

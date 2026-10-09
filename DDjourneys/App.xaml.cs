@@ -28,9 +28,21 @@ public partial class App : Application
 		};
 	}
 
+	private static DateTimeOffset _lastSystemRefresh;
+
 	/// <summary>The accent colour and the accessibility options (text size, animations) can change in the background.</summary>
 	private static void RefreshSystemSettings()
 	{
+		DateTimeOffset now = DateTimeOffset.UtcNow;
+
+		// Resume raises Resumed and Activated together: one pass is enough (the next activation runs it again).
+		if (now - _lastSystemRefresh < TimeSpan.FromSeconds(1))
+		{
+			return;
+		}
+
+		_lastSystemRefresh = now;
+
 		Theme.Refresh();
 		SystemAccessibility.Refresh();
 	}

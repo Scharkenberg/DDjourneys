@@ -28,6 +28,8 @@ public sealed class NoOpJourneyTracker : IJourneyTracker
 
 	public Task RefreshAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
 
+	public Task PollAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+
 	public Task SetActiveAsync(string planId, bool active, CancellationToken cancellationToken = default) =>
 		Task.CompletedTask;
 

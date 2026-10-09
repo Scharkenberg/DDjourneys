@@ -78,6 +78,14 @@ public sealed partial class NoticeView : ContentView
 	{
 		if (Handler is null)
 		{
+			// The page is gone: release the native web view at once instead of waiting for its finaliser. Should the
+			// view ever be attached again it gets a new handler and the page loads from the start.
+			if (_web.Handler is not null)
+			{
+				_web.Handler.DisconnectHandler();
+				_ready = false;
+			}
+
 			if (_subscribed)
 			{
 				Theme.Changed -= OnThemeChanged;

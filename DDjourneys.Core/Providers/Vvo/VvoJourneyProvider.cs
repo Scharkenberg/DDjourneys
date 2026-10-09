@@ -193,13 +193,16 @@ public sealed partial class VvoJourneyProvider :
 	}
 
 
+	/// <summary>How long the route a search returned stays good for following it without asking VVO again.</summary>
+	private static readonly TimeSpan RememberedConnectionAge = TimeSpan.FromMinutes(10);
+
 	/// <summary>
-	/// Requeries VVO and returns the provider-native route corresponding
-	/// to a normalized DDjourneys journey.
+	/// Returns the provider-native route corresponding to a normalized DDjourneys journey.
 	///
-	/// Schutzengel requires the original VVO Connection object as rawData.
-	/// The normalized Journey intentionally does not retain provider-specific
-	/// state, so the original connection is rehydrated when tracking starts.
+	/// Schutzengel requires the original VVO Connection object as rawData. The normalized Journey
+	/// intentionally does not retain provider-specific state: the mapper remembers the route each
+	/// journey came from, so a journey of a search of this process is answered from that memory;
+	/// anything else (a restart, a spliced journey) is rehydrated by requerying VVO.
 	/// </summary>
 	public async Task<
 		(VvoRoute Route, string? SessionId, VvoStatus? Status)?>
@@ -220,6 +223,14 @@ public sealed partial class VvoJourneyProvider :
 			target.To.Id))
 		{
 			return null;
+		}
+
+		// A journey this process mapped from a VVO route: that route is what the service needs, no requery.
+		// Only a recent one: an old search's session and real-time state are not what a new follow should hand over.
+		if (VvoJourneyMapper.TryGetConnection(target, out VvoJourneyMapper.VvoConnection? remembered)
+			&& DateTimeOffset.UtcNow - remembered!.MappedAt < RememberedConnectionAge)
+		{
+			return (remembered.Route, remembered.SessionId, remembered.Status);
 		}
 
 
@@ -347,8 +358,14 @@ public sealed partial class VvoJourneyProvider :
 				.First();
 
 
-		VvoRoute route =
-			response.Routes[best.Index];
+		// The route of the matched journey by its own remembered pairing: the mapper may drop routes,
+		// which would shift the list index against the response.
+		if (!VvoJourneyMapper.TryGetConnection(journeys[best.Index], out VvoJourneyMapper.VvoConnection? matched))
+		{
+			return null;
+		}
+
+		VvoRoute route = matched.Route;
 
 
 		DiagnosticLog.Write(

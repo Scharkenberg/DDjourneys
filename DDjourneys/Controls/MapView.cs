@@ -277,6 +277,16 @@ public sealed partial class MapView : ContentView
 	{
 		if (Handler is null)
 		{
+			// The page is gone: release the native web view at once instead of waiting for its finaliser. Should the
+			// view ever be attached again it gets a new handler and the page boots from the start.
+			if (_web.Handler is not null)
+			{
+				_web.Handler.DisconnectHandler();
+				_pageReady = false;
+				_ready = false;
+				_bootReceived = false;
+			}
+
 			if (_subscribed)
 			{
 				// Left in an orderly way: not a crash.
@@ -498,6 +508,9 @@ public sealed partial class MapView : ContentView
 			_grid.Children.Remove(_web);
 			_web.RawMessageReceived -= OnRawMessage;
 			MapSupport.Finish();
+
+			// A removed web view keeps its native peer until collection: let it go here.
+			_web.Handler?.DisconnectHandler();
 
 			_web = CreateWeb();
 			_pageReady = false;

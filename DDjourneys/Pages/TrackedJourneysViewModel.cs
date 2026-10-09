@@ -358,9 +358,20 @@ public sealed partial class TrackedJourneysViewModel : DisposableViewModel, IQue
 	{
 		try
 		{
+			bool first = true;
+
 			while (!cancellationToken.IsCancellationRequested)
 			{
-				await RefreshCoreAsync(cancellationToken);
+				// The first pass always asks (the page just opened). After that, with nothing followed there is nothing to
+				// fetch (a new follow brings its own data and raises WatchedChanged); after a failure the page keeps retrying.
+				if (first
+					|| _tracker.Watched.Count > 0
+					|| ErrorText is not null)
+				{
+					await RefreshCoreAsync(poll: !first, cancellationToken);
+				}
+
+				first = false;
 
 				NotificationsBlocked = !await _tracker.CanNotifyAsync(cancellationToken);
 
@@ -492,7 +503,7 @@ public sealed partial class TrackedJourneysViewModel : DisposableViewModel, IQue
 	{
 		try
 		{
-			await RefreshCoreAsync(CancellationToken.None);
+			await RefreshCoreAsync(poll: false, CancellationToken.None);
 		}
 		finally
 		{
@@ -500,11 +511,12 @@ public sealed partial class TrackedJourneysViewModel : DisposableViewModel, IQue
 		}
 	}
 
-	private async Task RefreshCoreAsync(CancellationToken cancellationToken)
+	private async Task RefreshCoreAsync(bool poll, CancellationToken cancellationToken)
 	{
 		try
 		{
-			await _tracker.RefreshAsync(cancellationToken);
+			// A person's pull or retry asks everything again; the periodic pass only what is due.
+			await (poll ? _tracker.PollAsync(cancellationToken) : _tracker.RefreshAsync(cancellationToken));
 
 			ErrorText = null;
 		}

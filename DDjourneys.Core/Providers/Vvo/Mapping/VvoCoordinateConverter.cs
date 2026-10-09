@@ -21,6 +21,10 @@ public static class VvoCoordinateConverter
 	private static readonly Lazy<ICoordinateTransformation> Gk4ToWgs84 =
 		new(CreateGk4ToWgs84Transformation);
 
+	// The inverse direction is asked for per coordinate query: built once, like the forward one.
+	private static readonly Lazy<MathTransform> Wgs84ToGk4 =
+		new(() => Gk4ToWgs84.Value.MathTransform.Inverse());
+
 	/// <summary>Converts a GK4 point; <paramref name="easting"/> is the "Rechtswert", <paramref name="northing"/> the "Hochwert".</summary>
 	public static (double Latitude, double Longitude) FromGk4(
 		double easting,
@@ -55,7 +59,7 @@ public static class VvoCoordinateConverter
 		}
 
 		double[] gk4 =
-			Gk4ToWgs84.Value.MathTransform.Inverse().Transform(
+			Wgs84ToGk4.Value.Transform(
 				[longitude, latitude]);
 
 		if (gk4[0] is < MinEasting or >= MaxEasting

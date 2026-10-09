@@ -10,6 +10,21 @@ namespace DDjourneys.Core.Providers.Vvo.Mapping;
 /// </summary>
 public static class VvoJourneyMapper
 {
+	/// <summary>The provider-native route a mapped journey came from, with the response's session and status: what tracking needs as raw data.</summary>
+	public sealed record VvoConnection(VvoRoute Route, string? SessionId, VvoStatus? Status)
+	{
+		/// <summary>When the route was mapped: the answer of a search is only good for a while (session, real-time state).</summary>
+		public DateTimeOffset MappedAt { get; } = DateTimeOffset.UtcNow;
+	}
+
+	// The journeys a search produced are exactly the ones the user can ask to follow: their routes stay
+	// reachable here (weakly: the table forgets a journey once nothing else holds it) instead of being requiried.
+	private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Journey, VvoConnection> Connections = [];
+
+	/// <summary>The VVO route this journey was mapped from, while the journey is alive.</summary>
+	public static bool TryGetConnection(Journey journey, out VvoConnection? connection) =>
+		Connections.TryGetValue(journey, out connection);
+
 	public static IReadOnlyList<Journey> Map(
 	VvoTripResponse response,
 	Location? origin = null,
@@ -22,11 +37,20 @@ public static class VvoJourneyMapper
 		Station? originStation = VvoStopMapper.ToStation(origin);
 		Station? destinationStation = VvoStopMapper.ToStation(destination);
 
-		return
-			[.. response.Routes
-				.Select(route => MapJourney(route, response.SessionId, originStation, destinationStation, requested, arrival))
-				.Where(journey => journey is not null)
-				.Select(journey => journey!)];
+		var journeys = new List<Journey>(response.Routes.Count);
+
+		foreach (VvoRoute route in response.Routes)
+		{
+			if (MapJourney(route, response.SessionId, originStation, destinationStation, requested, arrival) is { } journey)
+			{
+				journeys.Add(journey);
+
+				// Remembered while the exact pair is at hand: routes the mapper drops would shift any index.
+				Connections.AddOrUpdate(journey, new VvoConnection(route, response.SessionId, response.Status));
+			}
+		}
+
+		return journeys;
 	}
 
 	private static Journey? MapJourney(

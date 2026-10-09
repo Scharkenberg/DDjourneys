@@ -146,6 +146,9 @@ public sealed partial class VehiclesViewModel : DisposableViewModel, IQueryAttri
 	}
 	private readonly Dictionary<string, LiveVehicle> _previous = [];
 
+	// The lines of the running stream: a resume continues with them, not with whatever is typed but not started.
+	private IReadOnlyList<int> _activeLines = [];
+
 	public VehiclesViewModel(
 		VehicleService vehicles,
 		ProviderRegistry providers)
@@ -439,6 +442,7 @@ public sealed partial class VehiclesViewModel : DisposableViewModel, IQueryAttri
 		}
 
 		(IReadOnlyList<int> lines, IReadOnlyList<string> ignored) = ParseLines(LineFilter);
+		_activeLines = lines;
 
 		ExtrasStrings strings = _localization.CurrentStrings.Extras;
 
@@ -460,6 +464,17 @@ public sealed partial class VehiclesViewModel : DisposableViewModel, IQueryAttri
 
 		IsStreaming = true;
 		Status = strings.LiveConnecting;
+
+		await ConnectAsync(cts, lines);
+	}
+
+	/// <summary>
+	/// Runs the stream until it ends or is cancelled. Rows, the filter and the matches stay untouched, so a restart
+	/// after a pause continues with them.
+	/// </summary>
+	private async Task ConnectAsync(CancellationTokenSource cts, IReadOnlyList<int> lines)
+	{
+		ExtrasStrings strings = _localization.CurrentStrings.Extras;
 
 		try
 		{
@@ -509,6 +524,33 @@ public sealed partial class VehiclesViewModel : DisposableViewModel, IQueryAttri
 				IsStreaming = false;
 			}
 		}
+	}
+
+	/// <summary>
+	/// The page is no longer seen: the stream stops receiving (rows and matches stay as they are). While the page
+	/// is hidden the positions would cost battery for a picture nobody looks at.
+	/// </summary>
+	public void PauseStream()
+	{
+		_stream?.Cancel();
+		_stream = null;
+	}
+
+	/// <summary>The page is seen again: a stream that was paused continues where it left off.</summary>
+	public void ResumeStream()
+	{
+		if (IsDisposed
+			|| !IsStreaming
+			|| _stream is not null)
+		{
+			return;
+		}
+
+		var cts = new CancellationTokenSource();
+		_stream = cts;
+		_startedAt = DateTimeOffset.UtcNow;
+
+		_ = ConnectAsync(cts, _activeLines);
 	}
 
 	/// <summary>
