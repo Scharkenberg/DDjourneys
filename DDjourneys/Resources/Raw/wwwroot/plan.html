@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="color-scheme" content="light dark">
+<title>DDjourneys plan</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="leaflet/leaflet.css">
+<script src="_framework/hybridwebview.js"></script>
+<script src="leaflet/leaflet.js"></script>
+<style>
+:root { --bg: #f2f4f5; --paper: #ffffff; }
+html, body, #plan { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: var(--bg); }
+/* Nothing is shown before the app has sent its theme: no flash of the wrong colours. */
+html:not(.themed) body { visibility: hidden; }
+#plan { background: var(--bg); outline: none; -webkit-tap-highlight-color: transparent; }
+/* The plan is a print product: a sheet of paper with a soft edge, whatever the theme. */
+.leaflet-paper-pane path { filter: drop-shadow(0 1px 6px rgba(0, 0, 0, .28)); }
+/* In the dark a white sheet glares: dimmed a little, never inverted (the colours carry meaning). */
+html.dark .leaflet-tile-pane, html.dark .leaflet-paper-pane, html.dark .leaflet-overlay-pane img { filter: brightness(.9); }
+.leaflet-container { font: inherit; }
+.leaflet-tile { image-rendering: auto; }
+</style>
+</head>
+<body>
+<div id="plan"></div>
+<script>
+(function () {
+	'use strict';
+
+	var map = null, tiles = null, image = null, paper = null, bounds = null;
+	var shown = false, loaded = 0, failed = 0, lastState = '';
+
+	function send(text) { try { window.HybridWebView.SendRawMessage(text); } catch (e) { } }
+	window.addEventListener('error', function (e) { send('error:' + e.message); });
+
+	// ---- theme ----
+	function applyTheme(t) {
+		var root = document.documentElement;
+		root.style.setProperty('--bg', t.bg);
+		root.style.colorScheme = t.dark ? 'dark' : 'light';
+		root.classList.toggle('dark', !!t.dark);
+		root.classList.add('themed');
+	}
+
+	// ---- projection ----
+	// A plan is a picture, not the globe: one unit is one CSS pixel at the deepest native level (LatLng = [y, x], y down).
+	// The native levels need not be powers of two (the VVO plans are not), so the zoom scale is the level table,
+	// interpolated geometrically between levels and doubled or halved per zoom step beyond either end.
+	function crsFor(scales) {
+		var n = scales.length - 1, ln = scales.map(Math.log);
+
+		function scale(z) {
+			if (z <= 0) { return scales[0] * Math.pow(2, z); }
+			if (z >= n) { return scales[n] * Math.pow(2, z - n); }
+			var i = Math.floor(z);
+			return Math.exp(ln[i] + (ln[i + 1] - ln[i]) * (z - i));
+		}
+
+		function zoom(s) {
+			if (s <= scales[0]) { return Math.log(s / scales[0]) / Math.LN2; }
+			if (s >= scales[n]) { return n + Math.log(s / scales[n]) / Math.LN2; }
+			var l = Math.log(s);
+			for (var i = 0; i < n; i++) {
+				if (s <= scales[i + 1]) { return i + (l - ln[i]) / (ln[i + 1] - ln[i]); }
+			}
+			return n;
+		}
+
+		return L.extend({}, L.CRS.Simple, { scale: scale, zoom: zoom, transformation: new L.Transformation(1, 0, 1, 0) });
+	}
+
+	// Tiles drawn from a vector source are made for the screen's pixel density; 1.25 already gets the 2x tile.
+	function ratio() { return Math.max(1, Math.min(3, Math.ceil((window.devicePixelRatio || 1) - 0.15))); }
+
+	// ---- view state ----
+	function fitZoom() { return map.getBoundsZoom(bounds, false, L.point(12, 12)); }
+
+	function reportZoom() {
+		if (!map) { return; }
+		var z = map.getZoom();
+		var state = 'zoom:' + (z < map.getMaxZoom() - 0.01 ? 1 : 0) + ',' + (z > map.getMinZoom() + 0.01 ? 1 : 0);
+		if (state !== lastState) { lastState = state; send(state); }
+	}
+
+	// The sheet can never be zoomed out beyond the whole of it; the bound follows the window size.
+	function updateMinZoom() {
+		var min = fitZoom();
+		map.setMinZoom(min);
+		if (map.getZoom() < min) { map.setZoom(min, { animate: false }); }
+		reportZoom();
+	}
+
+	function announce(ok) {
+		if (shown) { return; }
+		shown = true;
+		send(ok ? 'shown' : 'failed');
+	}
+
+	// ---- plan ----
+	function clear() {
+		if (map) { map.remove(); map = null; }
+		tiles = image = paper = null;
+		shown = false; loaded = failed = 0; lastState = '';
+	}
+
+	function open(plan) {
+		clear();
+
+		var levels = plan.scales.length - 1;
+		var base = '/_plan/' + encodeURIComponent(plan.key) + '/';
+		var r = ratio();
+
+		bounds = L.latLngBounds([0, 0], [plan.height, plan.width]);
+
+		map = L.map('plan', {
+			crs: crsFor(plan.scales),
+			zoomControl: false,
+			attributionControl: false,
+			zoomSnap: 0,
+			zoomDelta: 1,
+			wheelPxPerZoomLevel: 90,
+			wheelDebounceTime: 20,
+			maxBounds: bounds,
+			maxBoundsViscosity: 1,
+			bounceAtZoomLimits: false,
+			maxZoom: levels + (plan.overZoom || 0),
+			minZoom: -8,
+			fadeAnimation: true,
+			zoomAnimation: true
+		});
+
+		map.createPane('paper').style.zIndex = 150;
+		paper = L.rectangle(bounds, { pane: 'paper', stroke: false, fill: true, fillColor: plan.paper || '#ffffff', fillOpacity: 1, interactive: false }).addTo(map);
+
+		if (plan.image) {
+			image = L.imageOverlay(base + 'image', bounds, { interactive: false }).addTo(map);
+			image.on('load', function () { announce(true); });
+			image.on('error', function () { announce(false); });
+		} else {
+			var Tiles = L.TileLayer.extend({
+				getTileUrl: function (c) { return base + c.z + '/' + c.x + '/' + c.y + (plan.retina ? '?r=' + r : ''); }
+			});
+
+			tiles = new Tiles('', {
+				tileSize: plan.tileSize,
+				minNativeZoom: plan.minNative || 0,
+				maxNativeZoom: levels,
+				minZoom: -8,
+				maxZoom: levels + (plan.overZoom || 0),
+				bounds: bounds,
+				noWrap: true,
+				keepBuffer: 3,
+				updateWhenZooming: false
+			});
+
+			tiles.on('tileload', function () { loaded++; });
+			tiles.on('tileerror', function () { failed++; });
+			// The first complete view decides: the plan is up, or nothing of it could be drawn.
+			tiles.on('load', function () { announce(loaded > 0 || failed === 0); });
+			tiles.addTo(map);
+		}
+
+		map.fitBounds(bounds, { animate: false, padding: [12, 12] });
+		updateMinZoom();
+
+		map.on('zoomend', reportZoom);
+		map.on('resize', updateMinZoom);
+	}
+
+	// The one entry point C# calls (HybridWebView.InvokeJavaScriptAsync).
+	window.ddPlanCall = function (command, json) {
+		var arg = json ? JSON.parse(json) : null;
+
+		switch (command) {
+			case 'init': applyTheme(arg.theme); open(arg.plan); break;
+			case 'theme': applyTheme(arg); break;
+			case 'zoom': if (map) { arg.by > 0 ? map.zoomIn(arg.by) : map.zoomOut(-arg.by); } break;
+			case 'fit': if (map) { map.fitBounds(bounds, { padding: [12, 12] }); } break;
+			case 'clear': clear(); break;
+		}
+	};
+
+	send('ready');
+})();
+</script>
+</body>
+</html>

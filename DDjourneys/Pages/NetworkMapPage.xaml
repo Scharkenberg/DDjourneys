@@ -18,6 +18,7 @@
 				x:Name="ZoomOutButton"
 				Clicked="ZoomOutClicked"
 				Glyph="Minus"
+				IsEnabled="False"
 				SemanticProperties.Description="{localization:Tr Extras.NetworkMapZoomOut}"
 				TargetSize="{StaticResource HitIcon}" />
 
@@ -25,6 +26,7 @@
 				x:Name="ZoomInButton"
 				Clicked="ZoomInClicked"
 				Glyph="Plus"
+				IsEnabled="False"
 				SemanticProperties.Description="{localization:Tr Extras.NetworkMapZoomIn}"
 				TargetSize="{StaticResource HitIcon}" />
 
@@ -43,9 +45,13 @@
 				TargetSize="{StaticResource HitIcon}" />
 		</HorizontalStackLayout>
 
-		<!--  The plan stays a light paper in dark mode: it is a print product.  -->
-		<Grid Grid.Row="1" BackgroundColor="{DynamicResource Surface}">
-			<controls:ZoomImage x:Name="Zoom" Opacity="0" />
+		<!--  The plan stays a light paper in dark mode: it is a print product (plan.html only dims it a little).  -->
+		<Grid Grid.Row="1" BackgroundColor="{DynamicResource Bg}">
+			<controls:PlanView
+				x:Name="Plan"
+				Opacity="0"
+				Shown="PlanShown"
+				ZoomChanged="PlanZoomChanged" />
 
 			<ActivityIndicator
 				x:Name="Busy"
@@ -81,6 +87,7 @@
 				Margin="12"
 				Padding="12,6"
 				HorizontalOptions="Start"
+				InputTransparent="True"
 				IsVisible="false"
 				StrokeShape="RoundRectangle 12"
 				StyleClass="Card"

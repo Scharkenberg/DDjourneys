@@ -1,19 +1,22 @@
+using DDjourneys.Controls;
 using DDjourneys.Core.Diagnostics;
 using DDjourneys.Support;
-using SkiaSharp;
 
 namespace DDjourneys.Pages;
 
 /// <summary>
-/// The DVB line network map: downloaded on demand (see <see cref="NetworkMapStore"/>), cached for a week,
-/// pinch-zoomed and panned (double tap, mouse wheel and the zoom buttons too). The PDF opens in the system
-/// viewer. A document, not a pane page: it is pushed with a plain Shell navigation and popped by back.
+/// The DVB line network map: downloaded on demand (see <see cref="NetworkMapStore"/>), cached for a week, shown
+/// from the vector PDF in a <see cref="PlanView"/> (pinch, pan, double tap, wheel, keys and the zoom buttons) with
+/// all its detail at every zoom; the JPG at full size only when the PDF cannot be shown. The PDF also opens in the
+/// system viewer. A document, not a pane page: it is pushed with a plain Shell navigation and popped by back.
 /// </summary>
 public sealed partial class NetworkMapPage : ContentPage
 {
+	private const string PlanName = "dvb";
+
 	private readonly NetworkMapStore _maps;
 	private CancellationTokenSource? _load;
-	private double _aspect;
+	private string? _key;
 
 	public NetworkMapPage(NetworkMapStore maps)
 	{
@@ -26,7 +29,7 @@ public sealed partial class NetworkMapPage : ContentPage
 	{
 		base.OnAppearing();
 
-		if (Zoom.Source is null)
+		if (_key is null)
 		{
 			Load(refresh: false);
 		}
@@ -46,10 +49,43 @@ public sealed partial class NetworkMapPage : ContentPage
 		Load(refresh: false);
 
 	private void ZoomInClicked(object? sender, EventArgs e) =>
-		_ = Zoom.ZoomStepAsync(zoomIn: true);
+		_ = Plan.ZoomAsync(1);
 
 	private void ZoomOutClicked(object? sender, EventArgs e) =>
-		_ = Zoom.ZoomStepAsync(zoomIn: false);
+		_ = Plan.ZoomAsync(-1);
+
+	private void PlanZoomChanged(object? sender, PlanZoom zoom)
+	{
+		ZoomInButton.IsEnabled = zoom.CanZoomIn;
+		ZoomOutButton.IsEnabled = zoom.CanZoomOut;
+	}
+
+	private async void PlanShown(object? sender, bool shown)
+	{
+		Busy.IsRunning = false;
+		Busy.IsVisible = false;
+
+		if (!shown)
+		{
+			DiagnosticLog.Write("[Network map] the plan could not be drawn");
+
+			_key = null;
+			Message.IsVisible = true;
+			Plan.Opacity = 0;
+
+			return;
+		}
+
+		// The plan settles in instead of popping up.
+		if (Motion.Enabled)
+		{
+			await Plan.FadeToAsync(1, 220, Easing.CubicOut);
+		}
+		else
+		{
+			Plan.Opacity = 1;
+		}
+	}
 
 	private async void OpenPdfClicked(object? sender, EventArgs e)
 	{
@@ -66,7 +102,7 @@ public sealed partial class NetworkMapPage : ContentPage
 		{
 			DiagnosticLog.Write($"[Network map] opening the PDF failed: {ex.Message}");
 
-			Message.IsVisible = Zoom.Source is null;
+			Message.IsVisible = _key is null;
 		}
 		finally
 		{
@@ -83,40 +119,38 @@ public sealed partial class NetworkMapPage : ContentPage
 		_load = cancel;
 
 		Message.IsVisible = false;
-		Stale.IsVisible = false;
-		Busy.IsRunning = true;
-		Busy.IsVisible = true;
 		RefreshButton.IsEnabled = false;
+
+		if (_key is null)
+		{
+			Busy.IsRunning = true;
+			Busy.IsVisible = true;
+		}
 
 		try
 		{
-			NetworkMapFile map = refresh
-				? await _maps.RefreshAsync(cancel.Token)
-				: await _maps.GetJpgAsync(cancel.Token);
+			(IPlanTiles tiles, bool fresh) = await OpenAsync(refresh, cancel.Token);
 
 			if (cancel.IsCancellationRequested)
 			{
+				tiles.Dispose();
+
 				return;
 			}
 
-			// The aspect lets the zoom clamp to the paper's edge, not the letterboxed frame. The header of the
-			// file tells it: the picture itself (several megapixels) is not decoded for two numbers.
-			_aspect = await Task.Run(() => AspectOf(map.Path), cancel.Token);
+			Stale.IsVisible = !fresh;
 
-			Zoom.ContentAspect = _aspect;
-			Zoom.Reset();
-			Zoom.Source = ImageSource.FromFile(map.Path);
-			Stale.IsVisible = !map.Fresh;
+			// The same plan again (a refresh that found no new one): what is on screen stays, zoom and all.
+			if (string.Equals(tiles.Spec.Key, _key, StringComparison.Ordinal))
+			{
+				tiles.Dispose();
 
-			// The plan settles in instead of popping up.
-			if (Motion.Enabled)
-			{
-				await Zoom.FadeToAsync(1, 220, Easing.CubicOut);
+				return;
 			}
-			else
-			{
-				Zoom.Opacity = 1;
-			}
+
+			_key = tiles.Spec.Key;
+
+			await Plan.ShowAsync(tiles);
 		}
 		catch (OperationCanceledException)
 		{
@@ -126,26 +160,38 @@ public sealed partial class NetworkMapPage : ContentPage
 			// A friendly message with a way out, never a blank page; a plan on screen stays on screen.
 			DiagnosticLog.Write($"[Network map] load failed: {ex.Message}");
 
-			Message.IsVisible = Zoom.Source is null;
-			Stale.IsVisible = Zoom.Source is not null;
+			Busy.IsRunning = false;
+			Busy.IsVisible = false;
+			Message.IsVisible = _key is null;
+			Stale.IsVisible = _key is not null;
 		}
 		finally
 		{
 			if (ReferenceEquals(_load, cancel))
 			{
-				Busy.IsRunning = false;
-				Busy.IsVisible = false;
 				RefreshButton.IsEnabled = true;
 			}
 		}
 	}
 
-	private static double AspectOf(string path)
+	/// <summary>The PDF, drawn from its vectors; the JPG at full size when the PDF cannot be had or read.</summary>
+	private async Task<(IPlanTiles Tiles, bool Fresh)> OpenAsync(bool refresh, CancellationToken cancellationToken)
 	{
-		using SKCodec? codec = SKCodec.Create(path);
+		try
+		{
+			NetworkMapFile pdf = refresh
+				? await _maps.RefreshPdfAsync(cancellationToken)
+				: await _maps.GetPdfAsync(cancellationToken);
 
-		return codec is { Info: { Height: > 0 } info }
-			? (double)info.Width / info.Height
-			: 0;
+			return (await PdfPlanTiles.OpenAsync(pdf.Path, PlanName, cancellationToken), pdf.Fresh);
+		}
+		catch (Exception ex) when (ex is not OperationCanceledException)
+		{
+			DiagnosticLog.Write($"[Network map] PDF not shown, trying the JPG: {ex.Message}");
+		}
+
+		NetworkMapFile jpg = await _maps.GetJpgAsync(refresh, cancellationToken);
+
+		return (await ImagePlanTiles.OpenAsync(jpg.Path, PlanName, cancellationToken), jpg.Fresh);
 	}
 }

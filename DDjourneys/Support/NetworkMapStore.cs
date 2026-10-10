@@ -2,26 +2,24 @@ using System.Net.Http;
 using DDjourneys.Core.Api;
 using DDjourneys.Core.Diagnostics;
 using DDjourneys.Core.Providers.Vvo;
-using SkiaSharp;
 
 namespace DDjourneys.Support;
 
 /// <summary>The network map on the device: its file, and whether it is the current one.</summary>
-/// <param name="Path">The cached JPG (or PDF) on the device.</param>
+/// <param name="Path">The cached PDF (or JPG) on the device.</param>
 /// <param name="Fresh">False when the update failed and the last saved plan is shown instead.</param>
 public sealed record NetworkMapFile(string Path, bool Fresh);
 
 /// <summary>
-/// The DVB Liniennetzplan on demand: the page is read for the current plan links, the JPG downloaded - a
-/// print product that can exceed what a phone can even show, so it is downscaled to 4096 px (the texture
-/// limit of many devices) before it is cached - and kept for a week. The PDF is cached as it comes and
-/// opens in the system viewer. One download at a time (single flight); a failure keeps the old file,
-/// because a stale plan is better than none. All rights to the plan stay with the DVB.
+/// The DVB Liniennetzplan on demand: the page is read for the current plan links and the file downloaded and kept
+/// for a week, exactly as it comes (nothing is scaled down). The PDF is the plan the app shows - vector, so it keeps
+/// its detail at any zoom (<see cref="PdfPlanTiles"/>) - and the one the system viewer opens; the JPG is only the
+/// fallback when the PDF cannot be had or read. One download at a time (single flight); a failure keeps the old
+/// file, because a stale plan is better than none. All rights to the plan stay with the DVB.
 /// </summary>
 public sealed class NetworkMapStore(ApiClient api)
 {
 	private static readonly TimeSpan MaxAge = TimeSpan.FromDays(7);
-	private const int MaxEdge = 4096;
 	private static readonly TimeSpan DownloadTimeout = TimeSpan.FromSeconds(60);
 
 	private readonly SemaphoreSlim _gate = new(1, 1);
@@ -32,24 +30,22 @@ public sealed class NetworkMapStore(ApiClient api)
 
 	private static string PdfPath => Path.Combine(Directory, "networkmap.pdf");
 
-	public async Task<NetworkMapFile> GetJpgAsync(CancellationToken cancellationToken = default) =>
-		await GetAsync(JpgPath, "image/jpeg", DownscaleAsync, force: false, cancellationToken).ConfigureAwait(false);
+	public Task<NetworkMapFile> GetPdfAsync(CancellationToken cancellationToken = default) =>
+		GetAsync(pdf: true, force: false, cancellationToken);
 
-	public async Task<NetworkMapFile> GetPdfAsync(CancellationToken cancellationToken = default) =>
-		await GetAsync(PdfPath, "application/pdf", (_, _) => Task.FromResult(false), force: false, cancellationToken).ConfigureAwait(false);
-
-	/// <summary>Fetches the current plan whatever the cache says (the viewer's refresh button).</summary>
+	/// <summary>Fetches the current PDF whatever the cache says (the viewer's refresh button).</summary>
 	/// <remarks>The saved plan is kept until the new one is in: offline, a refresh shows the old plan as stale instead of nothing.</remarks>
-	public async Task<NetworkMapFile> RefreshAsync(CancellationToken cancellationToken = default) =>
-		await GetAsync(JpgPath, "image/jpeg", DownscaleAsync, force: true, cancellationToken).ConfigureAwait(false);
+	public Task<NetworkMapFile> RefreshPdfAsync(CancellationToken cancellationToken = default) =>
+		GetAsync(pdf: true, force: true, cancellationToken);
 
-	private async Task<NetworkMapFile> GetAsync(
-		string path,
-		string accept,
-		Func<byte[], CancellationToken, Task<bool>> write,
-		bool force,
-		CancellationToken cancellationToken)
+	/// <summary>The JPG, for when the PDF cannot be shown.</summary>
+	public Task<NetworkMapFile> GetJpgAsync(bool force = false, CancellationToken cancellationToken = default) =>
+		GetAsync(pdf: false, force, cancellationToken);
+
+	private async Task<NetworkMapFile> GetAsync(bool pdf, bool force, CancellationToken cancellationToken)
 	{
+		string path = pdf ? PdfPath : JpgPath;
+
 		await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
 
 		try
@@ -63,29 +59,30 @@ public sealed class NetworkMapStore(ApiClient api)
 			try
 			{
 				VvoNetworkMapUrls urls = await FindUrlsAsync(cancellationToken).ConfigureAwait(false);
-				Uri? link = path == JpgPath ? urls.Jpg : urls.Pdf;
+				Uri link = (pdf ? urls.Pdf : urls.Jpg)
+					?? throw new ApiException("The DVB page names no network map.", (int)System.Net.HttpStatusCode.NotFound);
 
-				if (link is null)
-				{
-					throw new ApiException("The DVB page names no network map.", (int)System.Net.HttpStatusCode.NotFound);
-				}
-
-				(byte[] content, string? mediaType) = await api
-					.GetBytesAsync(link.ToString(), accept, DownloadTimeout, cancellationToken)
+				(byte[] content, _) = await api
+					.GetBytesAsync(link.ToString(), pdf ? "application/pdf" : "image/jpeg", DownloadTimeout, cancellationToken)
 					.ConfigureAwait(false);
 
 				// The magic bytes decide, not the server's word.
-				bool jpeg = content.Length > 3 && content[0] == 0xFF && content[1] == 0xD8 && content[2] == 0xFF;
-				bool pdf = content.Length > 4 && content[0] == 0x25 && content[1] == 0x50 && content[2] == 0x46 && content[3] == 0x25;
+				bool valid = pdf
+					? content.Length > 4 && content[0] == 0x25 && content[1] == 0x50 && content[2] == 0x44 && content[3] == 0x46
+					: content.Length > 3 && content[0] == 0xFF && content[1] == 0xD8 && content[2] == 0xFF;
 
-				if (path == JpgPath ? !jpeg : !pdf)
+				if (!valid)
 				{
-					throw new ApiException($"The network map download is no {(path == JpgPath ? "JPEG" : "PDF")}.", (int)System.Net.HttpStatusCode.OK);
+					throw new ApiException($"The network map download is no {(pdf ? "PDF" : "JPEG")}.", (int)System.Net.HttpStatusCode.OK);
 				}
 
-				bool written = await write(content, cancellationToken).ConfigureAwait(false);
+				// Written aside and moved over, so a cut-off write never replaces a good plan.
+				string part = path + ".part";
 
-				return new NetworkMapFile(written ? path : CacheRaw(path, content), Fresh: true);
+				await File.WriteAllBytesAsync(part, content, cancellationToken).ConfigureAwait(false);
+				File.Move(part, path, overwrite: true);
+
+				return new NetworkMapFile(path, Fresh: true);
 			}
 			catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
 			{
@@ -121,46 +118,6 @@ public sealed class NetworkMapStore(ApiClient api)
 		return urls.Jpg is null && urls.Pdf is null
 			? throw new ApiException("The DVB page names no network map.", (int)System.Net.HttpStatusCode.NotFound)
 			: urls;
-	}
-
-	/// <summary>Downscales an oversized plan to what devices can show and writes it; false keeps the bytes as they are.</summary>
-	private async Task<bool> DownscaleAsync(byte[] content, CancellationToken cancellationToken)
-	{
-		using SKBitmap? source = SKBitmap.Decode(content);
-
-		if (source is null
-			|| (source.Width <= MaxEdge && source.Height <= MaxEdge))
-		{
-			await File.WriteAllBytesAsync(JpgPath, content, cancellationToken).ConfigureAwait(false);
-
-			return true;
-		}
-
-		double scale = Math.Min((double)MaxEdge / source.Width, (double)MaxEdge / source.Height);
-
-		using SKBitmap scaled = source.Resize(
-			new SKImageInfo(
-				Math.Max(1, (int)Math.Round(source.Width * scale)),
-				Math.Max(1, (int)Math.Round(source.Height * scale)),
-				source.ColorType,
-				source.AlphaType),
-			new SKSamplingOptions(SKFilterMode.Linear, SKMipmapMode.Linear));
-
-		using SKImage image = SKImage.FromBitmap(scaled);
-		using SKData data = image.Encode(SKEncodedImageFormat.Jpeg, 90);
-
-		await File.WriteAllBytesAsync(JpgPath, data.ToArray(), cancellationToken).ConfigureAwait(false);
-
-		DiagnosticLog.Write($"[Network map] downscaled {source.Width}x{source.Height} to {scaled.Width}x{scaled.Height}");
-
-		return true;
-	}
-
-	private static string CacheRaw(string path, byte[] content)
-	{
-		File.WriteAllBytes(path, content);
-
-		return path;
 	}
 
 	private static string? Cached(string path) =>
