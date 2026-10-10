@@ -11,6 +11,8 @@ internal static class WindowsTrace
 	/// The log must work from the first line of the process: a process the Widgets Board or a notification starts
 	/// runs its provider code before MAUI is built, and `MauiProgram` switches the log on only then.
 	/// </summary>
+	internal static string? BootstrapError { get; private set; }
+
 	public static void Bootstrap()
 	{
 		try
@@ -18,9 +20,10 @@ internal static class WindowsTrace
 			DiagnosticLog.FilePath = System.IO.Path.Combine(Microsoft.Maui.Storage.FileSystem.AppDataDirectory, "diagnostics.log");
 			DiagnosticLog.Enabled = new DDjourneys.Support.AppSettings().LogToFile;
 		}
-		catch (Exception)
+		catch (Exception ex)
 		{
-			// Without a path or settings the log stays off; nothing else depends on it.
+			// Without a path or settings the log stays off; the widget report names the reason.
+			BootstrapError = ex.ToString();
 		}
 	}
 

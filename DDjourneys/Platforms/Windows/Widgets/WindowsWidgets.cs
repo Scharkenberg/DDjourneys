@@ -152,6 +152,7 @@ internal static class WindowsWidgets
 		}
 
 		report.AppendLine(SelfTest());
+		report.AppendLine($"Early log: {(DiagnosticLog.Enabled ? "on" : "off")}, start error: {LiveJourney.WindowsTrace.BootstrapError ?? "none"}");
 
 		report.AppendLine($"Store: {(Store is null ? "not ready" : "ready")}, loader: {(Loader is null ? "not ready" : "ready")}");
 
