@@ -109,6 +109,7 @@ public static class ViaRouting
 		|| DwellOf(journey, via) is not { } dwell
 		|| dwell >= TimeSpan.FromMinutes(viaMinutes - 1);
 
+	/// <summary>
 	/// Journeys that pass <paramref name="query"/>'s stop-over, built from two searches with
 	/// <paramref name="search"/> (one provider's ordinary search, which is asked without a stop-over).
 	/// </summary>

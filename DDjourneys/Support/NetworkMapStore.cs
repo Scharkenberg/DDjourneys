@@ -33,36 +33,29 @@ public sealed class NetworkMapStore(ApiClient api)
 	private static string PdfPath => Path.Combine(Directory, "networkmap.pdf");
 
 	public async Task<NetworkMapFile> GetJpgAsync(CancellationToken cancellationToken = default) =>
-		await GetAsync(JpgPath, "image/jpeg", DownscaleAsync, cancellationToken).ConfigureAwait(false);
+		await GetAsync(JpgPath, "image/jpeg", DownscaleAsync, force: false, cancellationToken).ConfigureAwait(false);
 
 	public async Task<NetworkMapFile> GetPdfAsync(CancellationToken cancellationToken = default) =>
-		await GetAsync(PdfPath, "application/pdf", (_, _) => Task.FromResult(false), cancellationToken).ConfigureAwait(false);
+		await GetAsync(PdfPath, "application/pdf", (_, _) => Task.FromResult(false), force: false, cancellationToken).ConfigureAwait(false);
 
 	/// <summary>Fetches the current plan whatever the cache says (the viewer's refresh button).</summary>
-	public async Task<NetworkMapFile> RefreshAsync(CancellationToken cancellationToken = default)
-	{
-		try
-		{
-			File.Delete(JpgPath);
-		}
-		catch (Exception)
-		{
-		}
-
-		return await GetJpgAsync(cancellationToken).ConfigureAwait(false);
-	}
+	/// <remarks>The saved plan is kept until the new one is in: offline, a refresh shows the old plan as stale instead of nothing.</remarks>
+	public async Task<NetworkMapFile> RefreshAsync(CancellationToken cancellationToken = default) =>
+		await GetAsync(JpgPath, "image/jpeg", DownscaleAsync, force: true, cancellationToken).ConfigureAwait(false);
 
 	private async Task<NetworkMapFile> GetAsync(
 		string path,
 		string accept,
 		Func<byte[], CancellationToken, Task<bool>> write,
+		bool force,
 		CancellationToken cancellationToken)
 	{
 		await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
 
 		try
 		{
-			if (Cached(path) is { } file)
+			if (!force
+				&& Cached(path) is { } file)
 			{
 				return new NetworkMapFile(file, Fresh: true);
 			}
@@ -94,11 +87,11 @@ public sealed class NetworkMapStore(ApiClient api)
 
 				return new NetworkMapFile(written ? path : CacheRaw(path, content), Fresh: true);
 			}
-			catch (OperationCanceledException)
+			catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
 			{
 				throw;
 			}
-			catch (Exception ex) when (ex is ApiException or HttpRequestException or IOException)
+			catch (Exception ex) when (ex is ApiException or HttpRequestException or IOException or OperationCanceledException)
 			{
 				// A plan that is past its week is still a plan: serve it as stale instead of nothing.
 				if (File.Exists(path))

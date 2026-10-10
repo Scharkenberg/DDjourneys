@@ -1,6 +1,8 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using DDjourneys.Core.Diagnostics;
 using DDjourneys.Core.Mapping;
+using DDjourneys.Core.Serialization;
 using DDjourneys.Localization;
 using DDjourneys.Support;
 
@@ -26,6 +28,9 @@ public sealed partial class MapView : ContentView
 
 	/// <summary>Height the map starts with when the grip chin can resize it (see <see cref="ResizableByGrip"/>).</summary>
 	private const double DefaultHeight = 320;
+
+	/// <summary>Height of the grip chin where it drags (the touch minimum of the platform guidelines is 44; the bar inside stays slim).</summary>
+	private const double GripHeight = 44;
 
 	/// <summary>The grip chin never drags the map below this: the strip itself and a first look at the scene must fit.</summary>
 	private const double MinHeight = 160;
@@ -288,7 +293,8 @@ public sealed partial class MapView : ContentView
 
 		_layerRows = (title, rows);
 
-		var state = new Dictionary<string, bool>();
+		// A node tree, not a reflected dictionary: the app serialises by source-generated metadata only.
+		var state = new JsonObject();
 
 		foreach (MapLayerRow row in rows.Where(row => !row.Link))
 		{
@@ -296,14 +302,20 @@ public sealed partial class MapView : ContentView
 		}
 
 		string json =
-			System.Text.Json.JsonSerializer.Serialize(
-				new Dictionary<string, object?>
-				{
-					["label"] = title,
-					["rows"] = rows.Select(row => new Dictionary<string, object?> { ["id"] = row.Id, ["label"] = row.Label, ["link"] = row.Link }).ToList(),
-					["state"] = state
-				},
-				WebBridge.StringInfo);
+			new JsonObject
+			{
+				["label"] = title,
+				["rows"] =
+					Wire.Array(
+						rows.Select(
+							row => (JsonNode?)new JsonObject
+							{
+								["id"] = row.Id,
+								["label"] = row.Label,
+								["link"] = row.Link
+							})),
+				["state"] = state
+			}.ToJsonString();
 
 		return CallAsync("layers", json);
 	}
@@ -357,6 +369,9 @@ public sealed partial class MapView : ContentView
 			{
 				HeightRequest = Math.Max(MinHeight, Preferences.Default.Get(HeightKey, DefaultHeight));
 
+				// The handle is a thumb target, not a hairline: the strip is taller where it can be dragged.
+				_chin.HeightRequest = GripHeight;
+
 				SemanticProperties.SetDescription(
 					_chin,
 					LocalizationService.Current.CurrentStrings.Extras.MapGrip);
@@ -382,6 +397,13 @@ public sealed partial class MapView : ContentView
 	{
 		_draggingHeight = true;
 		_pressHeight = HeightRequest >= MinHeight ? HeightRequest : Height;
+
+		// The handle answers the touch: it lights up while it is held.
+		if (_chin.Content is BoxView bar)
+		{
+			bar.Opacity = 1;
+			bar.WidthRequest = 56;
+		}
 	}
 
 	/// <summary>The chin moved this far down since the drag began (negative: up).</summary>
@@ -404,6 +426,12 @@ public sealed partial class MapView : ContentView
 		}
 
 		_draggingHeight = false;
+
+		if (_chin.Content is BoxView bar)
+		{
+			bar.Opacity = 0.6;
+			bar.WidthRequest = 40;
+		}
 
 		Preferences.Default.Set(HeightKey, HeightRequest);
 	}
@@ -749,7 +777,7 @@ public sealed partial class MapView : ContentView
 			{
 				foreach (JsonProperty property in document.RootElement.EnumerateObject())
 				{
-					states[property.Name] = property.Value.ValueKind == JsonValueKind.True || (property.Value.ValueKind == JsonValueKind.False && property.Value.GetBoolean());
+					states[property.Name] = property.Value.ValueKind == JsonValueKind.True;
 				}
 			}
 

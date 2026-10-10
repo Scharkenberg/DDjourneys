@@ -185,6 +185,51 @@ public class VehicleStreamHubTests
 		hub.Dispose();
 	}
 
+	[Fact]
+	public async Task A_detached_reader_ends_instead_of_waiting_for_ever()
+	{
+		FakeLiveProvider provider = new();
+		VehicleStreamHub hub = new([provider], Linger);
+
+		VehicleStreamSubscription subscriber = hub.Subscribe();
+
+		await provider.PushAsync(At(8));
+		await DrainAsync(subscriber.Reader, 1);
+
+		subscriber.Dispose();
+
+		// A pump over the reader (the map's layer) finishes when its subscription is disposed.
+		Task completion = subscriber.Reader.Completion;
+
+		Assert.Same(completion, await Task.WhenAny(completion, Task.Delay(TimeSpan.FromSeconds(2))));
+
+		hub.Dispose();
+	}
+
+	[Fact]
+	public async Task A_subscriber_after_the_linger_started_gets_a_live_session()
+	{
+		FakeLiveProvider provider = new();
+		VehicleStreamHub hub = new([provider], Linger);
+
+		VehicleStreamSubscription first = hub.Subscribe();
+
+		first.Dispose();
+
+		// Let the linger run out and the session wind down, then come back.
+		await WaitUntilAsync(() => hub.State == VehicleStreamState.Idle, TimeSpan.FromSeconds(3));
+
+		VehicleStreamSubscription second = hub.Subscribe();
+
+		await WaitUntilAsync(() => provider.Filters.Count >= 2, TimeSpan.FromSeconds(3));
+		await provider.PushAsync(At(3));
+
+		Assert.Equal(3, (await DrainAsync(second.Reader, 1))[0].Line);
+
+		second.Dispose();
+		hub.Dispose();
+	}
+
 	private static async Task<List<LiveVehicle>> DrainAsync(ChannelReader<LiveVehicle> reader, int expected)
 	{
 		List<LiveVehicle> seen = [];

@@ -49,11 +49,17 @@ public partial class MapPage : PanePage, IQueryAttributable
 	private IReadOnlyList<TariffZoneShape> _zoneShapes = [];
 	private bool _zonesPrepared;
 
+	// What each static layer last sent: the service hands out the same list while its cache holds, so an
+	// unchanged list in an unchanged theme is told apart by reference, without building or comparing JSON.
 	private readonly Dictionary<string, ParkingSite> _parkingSites = [];
-	private string? _parkingSent;
+	private IReadOnlyList<ParkingSite>? _parkingSource;
+	private bool _parkingDark;
 
 	private readonly Dictionary<string, SharedStation> _bikeStations = [];
-	private string? _bikesSent;
+	private IReadOnlyList<SharedStation>? _bikesSource;
+	private bool _bikesDark;
+
+	private bool _appeared;
 
 	private readonly LiveVehicleLayer _vehicleLayer;
 	private IDispatcherTimer? _vehicleTimer;
@@ -190,17 +196,18 @@ public partial class MapPage : PanePage, IQueryAttributable
 		TryStartExploring();
 		_ = PrepareLayersAsync();
 
-		// The live vehicles layer ticks like the Vehicles page: only while it is on, seen and in view.
-		_vehicleTimer ??= Dispatcher.CreateTimer();
-		_vehicleTimer.Interval = TimeSpan.FromSeconds(2);
-		_vehicleTimer.Tick += OnVehicleTick;
+		_appeared = true;
 
-		if (_settings.MapVehicles
-				&& IsOwnVisible)
+		// The live vehicles layer ticks like the Vehicles page: only while it is on, seen and in view.
+		// The timer and its handler are made once; appearing again must not stack a second handler.
+		if (_vehicleTimer is null)
 		{
-			_vehicleLayer.Start();
-			_vehicleTimer.Start();
+			_vehicleTimer = Dispatcher.CreateTimer();
+			_vehicleTimer.Interval = TimeSpan.FromSeconds(2);
+			_vehicleTimer.Tick += OnVehicleTick;
 		}
+
+		UpdateVehicleStream();
 	}
 
 	protected override void OnDisappearing()
@@ -209,9 +216,9 @@ public partial class MapPage : PanePage, IQueryAttributable
 		Theme.Changed -= OnThemeChanged;
 		_providers.SelectionChanged -= OnProviderChanged;
 		AppVisibility.Changed -= OnVehicleWindowVisibility;
+		_appeared = false;
 		_load?.Cancel();
-		_vehicleTimer?.Stop();
-		_vehicleLayer.Pause();
+		UpdateVehicleStream();
 		base.OnDisappearing();
 	}
 
@@ -278,9 +285,12 @@ public partial class MapPage : PanePage, IQueryAttributable
 
 		UpdateHint(viewport);
 
-		// A viewport change never re-sends the layer itself; it only looks whether the cached
-		// counts are stale, which the service turns into one fetch per two minutes at most.
-	if (_settings.MapParking)
+		// A viewport change never re-sends a static layer; it only looks whether the cached counts are stale,
+		// which the services turn into one fetch per two minutes (parking) or one minute (bikes) at most.
+		// The vehicles layer is told the view moved: the next tick sends what is around the new centre.
+		_vehicleLayer.MarkDirty();
+
+		if (_settings.MapParking)
 		{
 			_ = SendParkingAsync();
 		}
@@ -347,66 +357,70 @@ public partial class MapPage : PanePage, IQueryAttributable
 		}
 	}
 
+	/// <summary>
+	/// A theme change: the zones depend on light or dark (their fill strength), the markers' colours are
+	/// theme references the map view resolves again when it re-sends its layers.
+	/// </summary>
 	private void OnThemeChanged(object? sender, EventArgs e) =>
-			Dispatcher.Dispatch(
-					() =>
-					{
-						SendZones();
-						_ = SendParkingAsync();
-						_ = SendBikesAsync();
-						_vehicleLayer.MarkDirty();
-					});
+		Dispatcher.Dispatch(
+			() =>
+			{
+				SendZones();
+				_ = SendParkingAsync();
+				_ = SendBikesAsync();
+				_vehicleLayer.MarkDirty();
+			});
 
 	/// <summary>Another provider: its stops are already gone with the viewport load; the zones layer starts over.</summary>
 	private void OnProviderChanged(object? sender, string providerId) =>
-			Dispatcher.Dispatch(
-					() =>
-					{
-						_zoneShapes = [];
-						_zonesPrepared = false;
-						_ = Map.SetLayerAsync(ZonesLayer, MapScene.Empty);
-						_ = PrepareLayersAsync();
-					});
+		Dispatcher.Dispatch(
+			() =>
+			{
+				_zoneShapes = [];
+				_zonesPrepared = false;
+				_ = Map.SetLayerAsync(ZonesLayer, MapScene.Empty);
+				_ = PrepareLayersAsync();
+			});
 
 	private void OnLayersChanged(object? sender, IReadOnlyDictionary<string, bool> states)
 	{
-		if (states.TryGetValue(ZonesLayer, out bool zones))
+		// Every change arrives with all rows: only the one that differs from what is set is acted on.
+		if (states.TryGetValue(ZonesLayer, out bool zones)
+			&& zones != _settings.MapZones)
 		{
-				_settings.MapZones = zones;
+			_settings.MapZones = zones;
 
-				SendZones();
-			}
+			SendZones();
+		}
 
-		if (states.TryGetValue(ParkingLayer, out bool parking))
+		if (states.TryGetValue(ParkingLayer, out bool parking)
+			&& parking != _settings.MapParking)
 		{
 			_settings.MapParking = parking;
-			_parkingSent = null;
+			_parkingSource = null;
 			_ = SendParkingAsync();
 		}
 
-		if (states.TryGetValue(BikesLayer, out bool bikes))
+		if (states.TryGetValue(BikesLayer, out bool bikes)
+			&& bikes != _settings.MapBikes)
 		{
 			_settings.MapBikes = bikes;
-			_bikesSent = null;
+			_bikesSource = null;
 			_ = SendBikesAsync();
 		}
 
-		if (states.TryGetValue(VehiclesLayer, out bool vehicles))
+		if (states.TryGetValue(VehiclesLayer, out bool vehicles)
+			&& vehicles != _settings.MapVehicles)
 		{
 			_settings.MapVehicles = vehicles;
 
-			if (vehicles)
-			{
-				_vehicleLayer.Start();
-				_vehicleTimer?.Start();
-			}
-			else
+			if (!vehicles)
 			{
 				_vehicleLayer.Reset();
-				_vehicleLayer.Pause();
-				_vehicleTimer?.Stop();
 				_ = Map.SetLayerAsync(VehiclesLayer, MapScene.Empty);
 			}
+
+			UpdateVehicleStream();
 		}
 
 		if (states.TryGetValue(NetworkMapRow, out bool networkMap)
@@ -424,22 +438,14 @@ public partial class MapPage : PanePage, IQueryAttributable
 	private async Task PrepareLayersAsync()
 	{
 		if (_zonesPrepared
-						|| !_wantsExplore)
+			|| !_wantsExplore)
 		{
 			return;
 		}
 
 		_zonesPrepared = true;
 
-		var rows = new List<MapView.MapLayerRow>
-		{
-			new(NetworkMapRow, Strings.NetworkMap, Checked: false, Link: true),
-			new(ParkingLayer, Strings.MapParking, _settings.MapParking),
-			new(BikesLayer, Strings.MapBikes, _settings.MapBikes),
-			new(VehiclesLayer, Strings.MapVehicles, _settings.MapVehicles)
-		};
-
-		await Map.SetLayersAsync(Strings.MapLayers, rows);
+		await Map.SetLayersAsync(Strings.MapLayers, LayerRows(zones: false));
 
 		_ = SendParkingAsync();
 		_ = SendBikesAsync();
@@ -459,12 +465,30 @@ public partial class MapPage : PanePage, IQueryAttributable
 
 		if (_zoneShapes.Count > 0)
 		{
-			rows.Add(new MapView.MapLayerRow(ZonesLayer, Strings.MapZones, _settings.MapZones));
-
-			await Map.SetLayersAsync(Strings.MapLayers, rows);
+			await Map.SetLayersAsync(Strings.MapLayers, LayerRows(zones: true));
 		}
 
 		SendZones();
+	}
+
+	/// <summary>The panel's rows: the switches (zones only where the provider has shapes), then the link to the network map.</summary>
+	private List<MapView.MapLayerRow> LayerRows(bool zones)
+	{
+		ExtrasStrings strings = Strings;
+
+		List<MapView.MapLayerRow> rows = [];
+
+		if (zones)
+		{
+			rows.Add(new(ZonesLayer, strings.MapZones, _settings.MapZones));
+		}
+
+		rows.Add(new(ParkingLayer, strings.MapParking, _settings.MapParking));
+		rows.Add(new(BikesLayer, strings.MapBikes, _settings.MapBikes));
+		rows.Add(new(VehiclesLayer, strings.MapVehicles, _settings.MapVehicles));
+		rows.Add(new(NetworkMapRow, strings.NetworkMap, Checked: false, Link: true));
+
+		return rows;
 	}
 
 	/// <summary>The zones layer: sent when the switch is on, cleared when it is off - never on pan or zoom.</summary>
@@ -486,20 +510,20 @@ public partial class MapPage : PanePage, IQueryAttributable
 		bool dark = Theme.IsDark;
 
 		MapScene zones =
-				new()
-				{
-					Polygons = _zoneShapes.Select(shape => MapScenes.ZonePolygon(shape, dark)).ToList(),
-						Fit = false
-				};
-
-		string size = zones.ToJson(dark, MapScenes.Resolve);
+			new()
+			{
+				Polygons = (List<MapPolygon>)[.. _zoneShapes.Select(shape => MapScenes.ZonePolygon(shape, dark))],
+				Fit = false
+			};
 
 		// A defensive cap: the shapes are simplified, but a surprise on the wire should be seen, not felt.
-		if (size.Length > 150_000)
-		{
-			DiagnosticLog.Write($"[Map] tariff zones payload {size.Length} chars is too large; halving the point cap once");
+		int size = zones.ToJson(dark, MapScenes.Resolve).Length;
 
-			zones = new MapScene { Polygons = _zoneShapes.Select(shape => MapScenes.ZonePolygon(shape, dark, 128)).ToList(), Fit = false };
+		if (size > 150_000)
+		{
+			DiagnosticLog.Write($"[Map] tariff zones payload {size} chars is too large; halving the point cap once");
+
+			zones = new MapScene { Polygons = (List<MapPolygon>)[.. _zoneShapes.Select(shape => MapScenes.ZonePolygon(shape, dark, 128))], Fit = false };
 		}
 
 		_ = Map.SetLayerAsync(ZonesLayer, zones);
@@ -520,7 +544,7 @@ public partial class MapPage : PanePage, IQueryAttributable
 		if (!_settings.MapParking)
 		{
 			_parkingSites.Clear();
-			_parkingSent = null;
+			_parkingSource = null;
 
 			_ = Map.SetLayerAsync(ParkingLayer, MapScene.Empty);
 
@@ -530,6 +554,15 @@ public partial class MapPage : PanePage, IQueryAttributable
 		try
 		{
 			IReadOnlyList<ParkingSite> sites = await _parking.GetSitesAsync();
+
+			// The same counts in the same theme need no second send.
+			bool dark = Theme.IsDark;
+
+			if (ReferenceEquals(sites, _parkingSource)
+				&& dark == _parkingDark)
+			{
+				return;
+			}
 
 			ExtrasStrings strings = Strings;
 
@@ -555,21 +588,14 @@ public partial class MapPage : PanePage, IQueryAttributable
 								: null))]
 				};
 
-			string json = layer.ToJson(Theme.IsDark, MapScenes.Resolve);
-
-			// The same counts in the same theme need no second send.
-			if (json == _parkingSent)
-			{
-				return;
-			}
-
-			_parkingSent = json;
+			_parkingSource = sites;
+			_parkingDark = dark;
 			_parkingSites.Clear();
 
 			foreach (ParkingSite site in sites)
 			{
 				_parkingSites[$"p:{site.Id}"] = site;
-		}
+			}
 
 			await Map.SetLayerAsync(ParkingLayer, layer);
 		}
@@ -662,7 +688,7 @@ public partial class MapPage : PanePage, IQueryAttributable
 		if (!_settings.MapBikes)
 		{
 			_bikeStations.Clear();
-			_bikesSent = null;
+			_bikesSource = null;
 
 			_ = Map.SetLayerAsync(BikesLayer, MapScene.Empty);
 
@@ -672,6 +698,15 @@ public partial class MapPage : PanePage, IQueryAttributable
 		try
 		{
 			IReadOnlyList<SharedStation> stations = await _bikes.GetStationsAsync();
+
+			// The same counts in the same theme need no second send.
+			bool dark = Theme.IsDark;
+
+			if (ReferenceEquals(stations, _bikesSource)
+				&& dark == _bikesDark)
+			{
+				return;
+			}
 
 			MapScene layer =
 				new()
@@ -691,21 +726,14 @@ public partial class MapPage : PanePage, IQueryAttributable
 								: null))]
 				};
 
-			string json = layer.ToJson(Theme.IsDark, MapScenes.Resolve);
-
-			// The same counts in the same theme need no second send.
-			if (json == _bikesSent)
-			{
-				return;
-			}
-
-			_bikesSent = json;
+			_bikesSource = stations;
+			_bikesDark = dark;
 			_bikeStations.Clear();
 
 			foreach (SharedStation station in stations)
 			{
 				_bikeStations[$"b:{station.Operator}:{station.StationId}"] = station;
-		}
+			}
 
 			await Map.SetLayerAsync(BikesLayer, layer);
 		}
@@ -833,15 +861,30 @@ public partial class MapPage : PanePage, IQueryAttributable
 	}
 
 	/// <summary>A hidden or minimised window has no use for live positions: the stream pauses and resumes with it.</summary>
-	private void OnVehicleWindowVisibility(object? sender, EventArgs e)
+	private void OnVehicleWindowVisibility(object? sender, EventArgs e) =>
+		Dispatcher.Dispatch(UpdateVehicleStream);
+
+	/// <summary>
+	/// The one rule for the vehicles stream and its tick: they run while the layer is switched on AND the page
+	/// is on screen AND its own content is in view AND the window is shown - and in no other case.
+	/// </summary>
+	private void UpdateVehicleStream()
 	{
-		if (AppVisibility.IsShown)
+		bool wanted =
+			_settings.MapVehicles
+			&& _appeared
+			&& IsOwnVisible
+			&& AppVisibility.IsShown;
+
+		if (wanted)
 		{
 			_vehicleLayer.Start();
+			_vehicleTimer?.Start();
 		}
 		else
 		{
 			_vehicleLayer.Pause();
+			_vehicleTimer?.Stop();
 		}
 	}
 
@@ -850,20 +893,21 @@ public partial class MapPage : PanePage, IQueryAttributable
 	{
 		base.OnOwnVisibility(shown);
 
-		if (shown)
-		{
-			if (_settings.MapVehicles
-					&& AppVisibility.IsShown)
-			{
-				_vehicleLayer.Start();
-				_vehicleTimer?.Start();
-			}
-		}
-		else
-		{
-			_vehicleLayer.Pause();
-			_vehicleTimer?.Stop();
-		}
+		UpdateVehicleStream();
+	}
+
+	protected override void OnRetired()
+	{
+		_vehicleLayer.Dispose();
+
+		base.OnRetired();
+	}
+
+	protected override void OnLeftForGood()
+	{
+		_vehicleLayer.Dispose();
+
+		base.OnLeftForGood();
 	}
 
 	/// <summary>The live vehicles layer's tick: publish when something new arrived and the map is looked at.</summary>
@@ -956,11 +1000,11 @@ public partial class MapPage : PanePage, IQueryAttributable
 		}
 		catch (Exception ex)
 		{
-		DiagnosticLog.Write($"[Map] marker tap failed: {ex}");
+			DiagnosticLog.Write($"[Map] marker tap failed: {ex}");
 		}
 		finally
 		{
-		_busy = false;
+			_busy = false;
 		}
 	}
 

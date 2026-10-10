@@ -443,6 +443,7 @@ public sealed class RoutingStrings
 	public required string ViaMinutes { get; init; }
 	public required string ViaMinutesHint { get; init; }
 	public required string ViaAny { get; init; }
+	public required string ViaMinutesValue { get; init; }
 	public required string ExtraChargeAny { get; init; }
 	public required string ExtraChargeNone { get; init; }
 	public required string ExtraChargeLocal { get; init; }
@@ -697,6 +698,8 @@ public sealed class ExtrasStrings
 	public required string NetworkMapCredit { get; init; }
 	public required string NetworkMapStale { get; init; }
 	public required string NetworkMapFailed { get; init; }
+	public required string NetworkMapZoomIn { get; init; }
+	public required string NetworkMapZoomOut { get; init; }
 	public required string MapInfo { get; init; }
 	public required string MapGrip { get; init; }
 	public required string TrackFollowing { get; init; }
@@ -790,4 +793,6 @@ public sealed class WidgetStrings
 	public required string SetupSave { get; init; }
 	public required string SetupSaved { get; init; }
 	public required string EditorFor { get; init; }
+	public required string SetupNotChosen { get; init; }
+	public required string SetupRowsCount { get; init; }
 }

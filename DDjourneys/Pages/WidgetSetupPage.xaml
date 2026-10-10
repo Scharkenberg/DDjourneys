@@ -24,27 +24,72 @@
 				<Label x:Name="EditorTitle" StyleClass="Title" />
 
 				<Label StyleClass="Section" Text="{localization:Tr Widgets.SetupKind}" />
-				<FlexLayout Wrap="Wrap" AlignContent="Start" AlignItems="Start">
-					<Button x:Name="KindDepartures" StyleClass="ChipButton" Clicked="OnKindDepartures" />
-					<Button x:Name="KindRoute" Margin="8,0,0,0" StyleClass="ChipButton" Clicked="OnKindRoute" />
+				<FlexLayout AlignContent="Start" AlignItems="Start" Wrap="Wrap">
+					<Button
+						x:Name="KindDepartures"
+						Margin="0,0,8,8"
+						Clicked="OnKindDepartures"
+						StyleClass="ChipButton" />
+					<Button
+						x:Name="KindRoute"
+						Margin="0,0,8,8"
+						Clicked="OnKindRoute"
+						StyleClass="ChipButton" />
 				</FlexLayout>
 
-				<Label x:Name="StopCaption" StyleClass="Section" />
+				<!--  The places the widget needs: the one that is being chosen is filled in; a tap picks another.  -->
+				<VerticalStackLayout Spacing="6">
+					<Button
+						x:Name="StopField"
+						HorizontalOptions="Fill"
+						Clicked="OnStopField"
+						StyleClass="Chip" />
+					<Button
+						x:Name="FromField"
+						HorizontalOptions="Fill"
+						Clicked="OnFromField"
+						StyleClass="Chip" />
+					<Button
+						x:Name="ToField"
+						HorizontalOptions="Fill"
+						Clicked="OnToField"
+						StyleClass="Chip" />
+				</VerticalStackLayout>
+
 				<Entry
 					x:Name="Search"
 					Placeholder="{localization:Tr Widgets.SetupSearch}"
-					TextColor="{DynamicResource Ink}"
 					PlaceholderColor="{DynamicResource InkMuted}"
-					Completed="OnSearchCompleted" />
+					TextChanged="OnSearchChanged"
+					TextColor="{DynamicResource Ink}" />
+				<ActivityIndicator
+					x:Name="Searching"
+					HeightRequest="24"
+					HorizontalOptions="Start"
+					IsVisible="false"
+					WidthRequest="24"
+					Color="{DynamicResource Accent}" />
 				<VerticalStackLayout x:Name="Results" Spacing="2" />
 
-				<Label StyleClass="Section" Text="{localization:Tr Widgets.SetupRows}" />
-				<Stepper x:Name="Rows" Minimum="1" Maximum="10" Increment="1" ValueChanged="OnRowsChanged" />
+				<Label x:Name="RowsCaption" StyleClass="Section" />
+				<Stepper
+					x:Name="Rows"
+					HorizontalOptions="Start"
+					Increment="1"
+					Maximum="10"
+					Minimum="1"
+					ValueChanged="OnRowsChanged" />
 
-				<Button x:Name="Save" StyleClass="Tonal" Clicked="OnSave" />
+				<Button
+					x:Name="Save"
+					Clicked="OnSave"
+					StyleClass="Tonal" />
 			</VerticalStackLayout>
 
-			<Label x:Name="SavedNote" StyleClass="Caption" IsVisible="false" />
+			<Label
+				x:Name="SavedNote"
+				IsVisible="false"
+				StyleClass="Caption" />
 		</VerticalStackLayout>
 	</ScrollView>
 </support:PanePage>

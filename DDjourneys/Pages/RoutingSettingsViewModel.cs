@@ -58,14 +58,14 @@ public sealed partial class RoutingSettingsViewModel : DisposableViewModel
 				(List<(int Code, Func<string> Title)>)
 				[
 					(1, () => Strings.ViaAny),
-					(3, () => "3"),
-					(5, () => "5"),
-					(10, () => "10"),
-					(15, () => "15"),
-					(20, () => "20"),
-					(30, () => "30"),
-					(45, () => "45"),
-					(60, () => "60")
+					(3, () => ViaStayText(3)),
+					(5, () => ViaStayText(5)),
+					(10, () => ViaStayText(10)),
+					(15, () => ViaStayText(15)),
+					(20, () => ViaStayText(20)),
+					(30, () => ViaStayText(30)),
+					(45, () => ViaStayText(45)),
+					(60, () => ViaStayText(60))
 				],
 				() => Math.Max(1, _settings.ViaMinutes),
 				value => _settings.ViaMinutes = value);
@@ -195,6 +195,10 @@ public sealed partial class RoutingSettingsViewModel : DisposableViewModel
 
 	/// <summary>How long the journey stays at the stop-over (client-side; every provider).</summary>
 	public ChoiceGroup ViaStay { get; }
+
+	/// <summary>A stay at the stop-over with its unit: a bare "3" does not say minutes.</summary>
+	private string ViaStayText(int minutes) =>
+		string.Format(System.Globalization.CultureInfo.CurrentCulture, Strings.ViaMinutesValue, minutes);
 
 	public ChoiceGroup Pace { get; }
 

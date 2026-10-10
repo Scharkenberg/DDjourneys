@@ -9,63 +9,84 @@
 
 	<Grid RowDefinitions="Auto,*,Auto" RowSpacing="0">
 
-		<Grid
-			support:Dense.Padding="12,8"
-			ColumnDefinitions="*,Auto,Auto"
-			ColumnSpacing="8">
-			<Label
-				Margin="4,0,0,0"
-				FontFamily="{DynamicResource FontSemibold}"
-				Text="{localization:Tr Extras.NetworkMap}"
-				VerticalOptions="Center" />
+		<!--  The title is the page's own (the shell bar says it); this row holds only the tools, at the trailing edge.  -->
+		<HorizontalStackLayout
+			HorizontalOptions="End"
+			support:Dense.Padding="12,4"
+			Spacing="4">
+			<controls:IconButton
+				x:Name="ZoomOutButton"
+				Clicked="ZoomOutClicked"
+				Glyph="Minus"
+				SemanticProperties.Description="{localization:Tr Extras.NetworkMapZoomOut}"
+				TargetSize="{StaticResource HitIcon}" />
 
 			<controls:IconButton
-				Grid.Column="1"
+				x:Name="ZoomInButton"
+				Clicked="ZoomInClicked"
+				Glyph="Plus"
+				SemanticProperties.Description="{localization:Tr Extras.NetworkMapZoomIn}"
+				TargetSize="{StaticResource HitIcon}" />
+
+			<controls:IconButton
+				x:Name="RefreshButton"
 				Clicked="RefreshClicked"
 				Glyph="Refresh"
 				SemanticProperties.Description="{localization:Tr Extras.NetworkMapRefresh}"
-				TargetSize="{StaticResource HitButton}" />
+				TargetSize="{StaticResource HitIcon}" />
 
 			<controls:IconButton
-				Grid.Column="2"
+				x:Name="PdfButton"
 				Clicked="OpenPdfClicked"
 				Glyph="Document"
 				SemanticProperties.Description="{localization:Tr Extras.NetworkMapOpenPdf}"
-				TargetSize="{StaticResource HitButton}" />
-		</Grid>
+				TargetSize="{StaticResource HitIcon}" />
+		</HorizontalStackLayout>
 
 		<!--  The plan stays a light paper in dark mode: it is a print product.  -->
 		<Grid Grid.Row="1" BackgroundColor="{DynamicResource Surface}">
-			<controls:ZoomImage x:Name="Zoom" />
+			<controls:ZoomImage x:Name="Zoom" Opacity="0" />
+
+			<ActivityIndicator
+				x:Name="Busy"
+				HeightRequest="32"
+				HorizontalOptions="Center"
+				IsRunning="True"
+				VerticalOptions="Center"
+				WidthRequest="32"
+				Color="{DynamicResource Accent}" />
 
 			<VerticalStackLayout
 				x:Name="Message"
 				Padding="24"
 				HorizontalOptions="Center"
 				IsVisible="false"
+				Spacing="{DynamicResource SpaceM}"
 				VerticalOptions="Center">
 				<Label
-					x:Name="MessageText"
 					FontFamily="{DynamicResource FontSemibold}"
 					HorizontalTextAlignment="Center"
 					Text="{localization:Tr Extras.NetworkMapFailed}" />
 
-			<Button
-					x:Name="Retry"
+				<Button
 					Clicked="RetryClicked"
 					HorizontalOptions="Center"
-					IsVisible="false"
 					StyleClass="Tonal"
 					Text="{localization:Tr Common.TryAgain}" />
 			</VerticalStackLayout>
 
-			<Label
+			<!--  A saved plan stands in for the current one: said once, calmly, over the corner of the plan.  -->
+			<Border
 				x:Name="Stale"
 				Margin="12"
+				Padding="12,6"
+				HorizontalOptions="Start"
 				IsVisible="false"
-				StyleClass="Caption"
-				Text="{localization:Tr Extras.NetworkMapStale}"
-				VerticalOptions="Start" />
+				StrokeShape="RoundRectangle 12"
+				StyleClass="Card"
+				VerticalOptions="Start">
+				<Label StyleClass="Caption" Text="{localization:Tr Extras.NetworkMapStale}" />
+			</Border>
 		</Grid>
 
 		<Label

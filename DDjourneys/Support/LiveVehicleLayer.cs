@@ -15,6 +15,9 @@ public sealed class LiveVehicleLayer : IDisposable
 {
 	private const string IdPrefix = "v:";
 
+	/// <summary>A position older than this is no longer where the vehicle is.</summary>
+	private static readonly TimeSpan MaxAge = TimeSpan.FromSeconds(90);
+
 	/// <summary>Below this zoom a full-vehicle map is noise; the subscription stays, the publish waits.</summary>
 	public const double MinZoom = 13;
 
@@ -88,26 +91,32 @@ public sealed class LiveVehicleLayer : IDisposable
 	/// </summary>
 	public MapScene? Publish(MapViewport? viewport, bool dark)
 	{
-		if (!_dirty
-				|| viewport is null
-				|| viewport.Zoom < MinZoom)
+		if (viewport is null
+			|| viewport.Zoom < MinZoom)
+		{
+			return null;
+		}
+
+		DateTimeOffset now = DateTimeOffset.UtcNow;
+
+		// Positions age out even when nothing new arrives (a dead stream): what left is a reason to send.
+		foreach (KeyValuePair<string, LiveVehicle> entry in _latest)
+		{
+			if (now - entry.Value.Time > MaxAge
+				&& _latest.TryRemove(entry.Key, out _))
+			{
+				_dirty = true;
+			}
+		}
+
+		if (!_dirty)
 		{
 			return null;
 		}
 
 		_dirty = false;
 
-		DateTimeOffset now = DateTimeOffset.UtcNow;
-
-		foreach (KeyValuePair<string, LiveVehicle> entry in _latest)
-		{
-			if (now - entry.Value.Time > TimeSpan.FromSeconds(90))
-			{
-				_latest.TryRemove(entry.Key, out _);
-			}
-		}
-
-		IReadOnlyList<LiveVehicle> inView = VehicleLayering.Within(viewport, _latest.Values, now: now);
+		IReadOnlyList<LiveVehicle> inView = VehicleLayering.Within(viewport, _latest.Values, maxAge: MaxAge, now: now);
 
 		if (inView.Count == 0)
 		{

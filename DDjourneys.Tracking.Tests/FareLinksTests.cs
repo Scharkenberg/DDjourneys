@@ -33,6 +33,22 @@ public sealed class FareLinksTests
 		Assert.Null(FareLinks.For(fare, "vvo"));
 	}
 
+	[Theory]
+	[InlineData("javascript:alert(1)")]
+	[InlineData("file:///C:/Windows/System32/calc.exe")]
+	[InlineData("intent://scan/#Intent;scheme=zxing;end")]
+	public void A_sale_page_is_a_web_page(string url)
+	{
+		JourneyFare fare =
+			new()
+			{
+				Name = "Single",
+				Url = url
+			};
+
+		Assert.Null(FareLinks.For(fare, "trias"));
+	}
+
 	[Fact]
 	public void Nothing_without_a_usable_url()
 	{

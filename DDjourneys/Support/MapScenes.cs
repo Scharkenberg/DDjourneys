@@ -54,9 +54,9 @@ public static class MapScenes
 	public static MapPolygon ZonePolygon(TariffZoneShape shape, bool dark, int maxPoints = 256) =>
 		new(
 			PolylineSimplify.SimplifyRing(shape.Ring, maxPoints),
-			shape.Color is { Length: > 1 } ? shape.Color : ThemeRef("@Accent", "#0b6e8a"),
+			shape.Color is { Length: > 1 } ? shape.Color : ThemeRef("Accent", "#0b6e8a"),
 			dark ? 0.14 : 0.10,
-			ThemeRef("@Outline", "#9e9e9e"),
+			ThemeRef("Outline", "#9e9e9e"),
 			shape.Number.ToString(System.Globalization.CultureInfo.InvariantCulture),
 			shape.CenterLat,
 			shape.CenterLon);
@@ -613,7 +613,9 @@ public static class MapScenes
 	/// </summary>
 	public static string ParkingColor(ParkingSite site)
 	{
-		if (!site.HasLive || site.Total <= 0)
+		// No numbers at all, or numbers that are hours old: nothing to colour (the info line says the age).
+		if (site.Total <= 0
+			|| (site.LiveAt is { } taken && DateTimeOffset.UtcNow - taken > TimeSpan.FromMinutes(90)))
 		{
 			return ThemeRef("InkMuted", "#607D8B");
 		}

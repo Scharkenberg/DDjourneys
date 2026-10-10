@@ -56,7 +56,7 @@ internal static class WindowsWidgets
 				Guid.Parse(ProviderClassId),
 				new WidgetProviderFactory(),
 				0x4, // CLSCTX_LOCAL_SERVER
-				0x1, // REGCLS_SINGLEUSE
+				0x1, // REGCLS_MULTIPLEUSE (REGCLS_SINGLEUSE is 0): the one running app serves every request of the board
 				out uint cookie);
 
 			Marshal.ThrowExceptionForHR(hr);
@@ -225,6 +225,9 @@ internal static class WindowsWidgets
 	/// <summary>The IClassFactory of the docs' FactoryHelper, handed out for CoCreateInstance.</summary>
 	private sealed class WidgetProviderFactory : IClassFactory
 	{
+		// One provider for every request: it tracks which widgets are active, and two instances would each know half.
+		private static readonly Lazy<DdWidgetProvider> Provider = new(static () => new DdWidgetProvider());
+
 		public int CreateInstance(IntPtr pUnkOuter, ref Guid riid, out IntPtr ppvObject)
 		{
 			ppvObject = IntPtr.Zero;
@@ -250,7 +253,7 @@ internal static class WindowsWidgets
 		{
 			try
 			{
-				ppvObject = MarshalInspectable<IWidgetProvider>.FromManaged(new DdWidgetProvider());
+				ppvObject = MarshalInspectable<IWidgetProvider>.FromManaged(Provider.Value);
 
 				return 0;
 			}

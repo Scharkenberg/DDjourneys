@@ -34,6 +34,15 @@ public sealed class SharedMobilityService
 
 	private readonly SemaphoreSlim _gate = new(1, 1);
 
+	// The joined list of an operator stays the same object while its feeds are the same objects, and so does the
+	// merged list while its parts are: the map page tells an unchanged answer by reference, without building
+	// five hundred markers (and their JSON) on every pan.
+	private readonly Dictionary<string, (GbfsStationInformation Information, GbfsStationStatus? Status, IReadOnlyList<SharedStation> Stations)> _joined =
+		new(StringComparer.Ordinal);
+
+	private IReadOnlyList<IReadOnlyList<SharedStation>> _parts = [];
+	private IReadOnlyList<SharedStation> _merged = [];
+
 	public SharedMobilityService(GbfsClient client)
 	{
 		ArgumentNullException.ThrowIfNull(client);
@@ -49,14 +58,23 @@ public sealed class SharedMobilityService
 
 		try
 		{
-			List<SharedStation> all = [];
+			List<IReadOnlyList<SharedStation>> parts = [];
 
 			foreach (Operator stationOperator in Operators)
 			{
-				all.AddRange(await GetOperatorAsync(stationOperator, timeout, cancellationToken).ConfigureAwait(false));
+				parts.Add(await GetOperatorAsync(stationOperator, timeout, cancellationToken).ConfigureAwait(false));
 			}
 
-			return all;
+			if (parts.Count == _parts.Count
+				&& parts.Zip(_parts).All(pair => ReferenceEquals(pair.First, pair.Second)))
+			{
+				return _merged;
+			}
+
+			_parts = parts;
+			_merged = [.. parts.SelectMany(part => part)];
+
+			return _merged;
 		}
 		finally
 		{
@@ -134,6 +152,17 @@ public sealed class SharedMobilityService
 			}
 		}
 
-		return GbfsClient.Join(information, status, stationOperator.Name, stationOperator.Website);
+		if (_joined.TryGetValue(stationOperator.Id, out var previous)
+			&& ReferenceEquals(previous.Information, information)
+			&& ReferenceEquals(previous.Status, status))
+		{
+			return previous.Stations;
+		}
+
+		IReadOnlyList<SharedStation> stations = GbfsClient.Join(information, status, stationOperator.Name, stationOperator.Website);
+
+		_joined[stationOperator.Id] = (information, status, stations);
+
+		return stations;
 	}
 }

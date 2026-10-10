@@ -745,10 +745,6 @@ public sealed partial class DeparturesViewModel : DisposableViewModel
 	public bool HasServicePointsMessage =>
 		ServicePointsMessage.Length > 0;
 
-	/// <summary>
-	/// Stop ids, lines and boards belong to one provider: after a switch nothing of the old one is kept, and the
-	/// quick picks are those of the new provider's favourites and recents.
-	/// </summary>
 	/// <summary>Where this line actually goes: the next run of the line from this stop's board, both
 	/// directions when they can be told apart, as one map.</summary>
 	private async Task OpenLineMapAsync(StopLineRow row)
@@ -804,6 +800,10 @@ public sealed partial class DeparturesViewModel : DisposableViewModel
 		}
 	}
 
+	/// <summary>
+	/// Stop ids, lines and boards belong to one provider: after a switch nothing of the old one is kept, and the
+	/// quick picks are those of the new provider's favourites and recents.
+	/// </summary>
 	private void OnProviderChanged(object? sender, string providerId) =>
 		MainThread.BeginInvokeOnMainThread(
 			() =>

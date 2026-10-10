@@ -105,8 +105,10 @@ public sealed class VehicleStreamHub : IDisposable
 				_lingerTimer = null;
 			}
 
-			if (!_running
-					&& _provider is not null)
+			// A session that was asked to end (the linger ran out) is as good as gone: a consumer arriving in
+			// the moment before it winds down starts a fresh one instead of being completed with it.
+			if ((!_running || _session is { IsCancellationRequested: true })
+				&& _provider is not null)
 			{
 				_running = true;
 				start = new CancellationTokenSource();
@@ -125,6 +127,9 @@ public sealed class VehicleStreamHub : IDisposable
 	private void Unsubscribe(Channel<LiveVehicle> channel)
 	{
 		Timer? arm = null;
+
+		// A detached reader must end: a consumer that pumps the channel would wait on it for ever.
+		channel.Writer.TryComplete();
 
 		lock (_gate)
 		{
@@ -183,7 +188,7 @@ public sealed class VehicleStreamHub : IDisposable
 				{
 					if (token.IsCancellationRequested)
 					{
-						return;
+						break;
 					}
 
 					delivered = true;
@@ -222,8 +227,12 @@ public sealed class VehicleStreamHub : IDisposable
 			}
 		}
 
-		CompleteAll();
-		SetState(VehicleStreamState.Idle);
+		// Only the session that is still the current one winds the hub down; an older one that a newer
+		// has replaced leaves the channels (and the state) to its successor.
+		if (CompleteAll(session))
+		{
+			SetState(VehicleStreamState.Idle);
+		}
 	}
 
 	private void FanOut(LiveVehicle vehicle)
@@ -237,12 +246,17 @@ public sealed class VehicleStreamHub : IDisposable
 		}
 	}
 
-	private void CompleteAll()
+	private bool CompleteAll(CancellationTokenSource session)
 	{
 		List<Channel<LiveVehicle>> rest;
 
 		lock (_gate)
 		{
+			if (!ReferenceEquals(_session, session))
+			{
+				return false;
+			}
+
 			rest = [.. _channels];
 			_channels.Clear();
 			_running = false;
@@ -253,6 +267,8 @@ public sealed class VehicleStreamHub : IDisposable
 		{
 			channel.Writer.TryComplete();
 		}
+
+		return true;
 	}
 
 	private void SetState(VehicleStreamState next)

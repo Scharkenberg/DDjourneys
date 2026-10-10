@@ -250,20 +250,37 @@ body.dark .maplibregl-ctrl-group button .maplibregl-ctrl-icon { filter: invert(1
 	border-radius: var(--radius); padding: 4px 8px; font-size: .85rem; line-height: 1.3; }
 .dd-attr.open > div { display: block; }
 .dd-attr a { color: var(--ink); text-decoration: underline; }
-/* Layers: the map's own switch panel, filled by the app; hidden entirely while it has no rows. */
+/* Layers: the map's own switch panel, filled by the app; hidden entirely while it has no rows. The panel
+   fades and settles in (and back out) instead of snapping; the OS setting for reduced motion switches that off. */
 .dd-layers { position: relative; }
 .dd-layers > button { background: var(--surface); border: 0; cursor: pointer; width: 30px; height: 30px; padding: 0; display: none; align-items: center; justify-content: center; }
 .dd-layers > button svg { width: 18px; height: 18px; stroke: var(--ink); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .dd-layers > button svg .solid { fill: var(--ink); stroke: none; }
-.dd-layers > div { display: none; position: absolute; right: 0; top: 34px; min-width: 200px; background: var(--surface); color: var(--ink); border: 1px solid var(--outline);
-	border-radius: var(--radius); padding: 4px; z-index: 5; }
-.dd-layers.open > div { display: block; }
-.dd-layers .row { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 36px; padding: 6px 10px; border: 0; background: none; color: var(--ink);
+.dd-layers > div { position: absolute; right: 0; top: 34px; min-width: 232px; max-height: min(60vh, 340px); overflow-y: auto; background: var(--surface); color: var(--ink);
+	border: 1px solid var(--outline); border-radius: var(--radius); padding: 4px; z-index: 5; box-shadow: 0 4px 16px rgba(0,0,0,.25);
+	opacity: 0; visibility: hidden; transform: translateY(-6px) scale(.98); transform-origin: top right; pointer-events: none;
+	transition: opacity .16s ease, transform .16s ease, visibility 0s linear .16s; }
+.dd-layers.open > div { opacity: 1; visibility: visible; transform: none; pointer-events: auto; transition-delay: 0s; }
+.dd-layers .row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 44px; padding: 6px 12px; border: 0; background: none; color: var(--ink);
 	font: 600 .95rem/1.2 var(--font); text-align: left; cursor: pointer; border-radius: var(--radius); }
 .dd-layers .row:hover { background: var(--accent-soft); }
-.dd-layers .row i { width: 16px; height: 16px; border: 2px solid var(--ink-muted); border-radius: 4px; box-sizing: border-box; flex: none; }
+.dd-layers .row:focus-visible, .dd-layers > button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.dd-layers .row span { flex: 1; min-width: 0; }
+.dd-layers .row i { width: 20px; height: 20px; border: 2px solid var(--ink-muted); border-radius: 5px; box-sizing: border-box; flex: none; position: relative; transition: background-color .12s ease, border-color .12s ease; }
 .dd-layers .row.on i { background: var(--accent); border-color: var(--accent); }
+.dd-layers .row.on i::after { content: ''; position: absolute; left: 5px; top: 1px; width: 4px; height: 9px; border: solid var(--on-accent, #fff); border-width: 0 2px 2px 0; transform: rotate(45deg); }
 .dd-layers .row.link i { display: none; }
+.dd-layers .row.link::after { content: '\203A'; color: var(--ink-muted); font-size: 1.3rem; line-height: 1; }
+.dd-layers .rule { height: 1px; margin: 4px 8px; background: var(--outline); }
+@media (pointer: coarse) {
+	.dd-layers > button, .dd-fitnow button { width: 40px; height: 40px; }
+	.maplibregl-ctrl-group button { width: 40px; height: 40px; }
+	.leaflet-container .leaflet-bar a { width: 40px; height: 40px; line-height: 40px; }
+	.dd-layers > div { top: 44px; }
+}
+@media (prefers-reduced-motion: reduce) {
+	.dd-layers > div, .dd-layers .row i { transition: none; }
+}
 /* Zone numbers on the map: quiet, and only from this zoom on (see updateLabelZoom). */
 .dd-zlicon { background: none; border: 0; }
 .dd-zone-label { position: absolute; transform: translate(-50%, -50%); font: 700 calc(.8rem * var(--fs))/1 var(--font); color: var(--ink);
@@ -327,7 +344,7 @@ window.ddMain = function (engineName) {
 
 	// Layers: one group per id (markers, polygons, labels), sent once by the app instead of on every viewport
 	// change. Layer ids are marker-id namespaces: "stops" for the stops in view, Tier 2 uses p:/b:/v: prefixes.
-	var layerPayloads = {}, layerStores = {}, layerPolyGroups = {}, layerLabelMarkers = {};
+	var layerPayloads = {}, layerStores = {}, layerPolyGroups = {}, layerLabelMarkers = {}, layerHadShapes = {};
 	var layerRows = null, layerState = {}, layerTitle = '', layerButton = null, layerPanel = null;
 
 	function dd(text) { if (window.ddLog) { window.ddLog(text); } }
@@ -713,6 +730,9 @@ window.ddMain = function (engineName) {
 		applyLayerMarkers();
 	}
 
+	// A move re-syncs only the markers of the layers (the in-view culling); shapes and labels are drawn when
+	// a layer arrives or the style is rebuilt - never per pan, which would tear the zones down and up again.
+
 	// ---- layers (per-id groups; static data arrives once, only what moves is sent again) ----
 	function setLayer(id, payload) {
 		if (!id) { return; }
@@ -725,10 +745,10 @@ window.ddMain = function (engineName) {
 	}
 
 	function applyLayerMarkers() {
-		Object.keys(layerPayloads).forEach(function (id) { applyLayer(id); });
+		Object.keys(layerPayloads).forEach(syncLayerMarkers);
 	}
 
-	function applyLayer(id) {
+	function syncLayerMarkers(id) {
 		if (!map) { return; }
 
 		var payload = layerPayloads[id] || {};
@@ -736,8 +756,20 @@ window.ddMain = function (engineName) {
 		if (!layerStores[id]) { layerStores[id] = {}; }
 
 		syncMarkers(layerStores[id], inView(payload.markers || []), true);
+	}
 
-		drawLayerShapes(id);
+	// A layer arrived: its markers and, only when it has (or had) any, its shapes.
+	function applyLayer(id) {
+		if (!map) { return; }
+
+		syncLayerMarkers(id);
+
+		var hasShapes = ((layerPayloads[id] || {}).polygons || []).length > 0;
+
+		if (hasShapes || layerHadShapes[id]) {
+			drawLayerShapes(id);
+			layerHadShapes[id] = hasShapes;
+		}
 	}
 
 	// A large layer (the sharing bikes are 500+) only keeps the markers in view, so the DOM never holds
@@ -756,7 +788,9 @@ window.ddMain = function (engineName) {
 	}
 
 	function drawAllLayerShapes() {
-		Object.keys(layerPayloads).forEach(drawLayerShapes);
+		Object.keys(layerPayloads).forEach(function (id) {
+			if (((layerPayloads[id] || {}).polygons || []).length > 0) { drawLayerShapes(id); }
+		});
 	}
 
 	function drawLayerShapes(id) {
@@ -918,9 +952,21 @@ window.ddMain = function (engineName) {
 		layerButton.type = 'button';
 		layerButton.innerHTML = '<svg viewBox="0 0 24 24"><path class="solid" d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg>';
 		layerButton.style.display = 'none';
-		layerButton.addEventListener('click', function (e) { e.stopPropagation(); box.classList.toggle('open'); });
-		document.addEventListener('click', function () { box.classList.remove('open'); });
-		map.on('movestart', function () { box.classList.remove('open'); });
+		layerButton.setAttribute('aria-haspopup', 'true');
+		layerButton.setAttribute('aria-expanded', 'false');
+
+		function setOpen(open) {
+			box.classList.toggle('open', open);
+			layerButton.setAttribute('aria-expanded', open ? 'true' : 'false');
+		}
+
+		layerButton.addEventListener('click', function (e) { e.stopPropagation(); setOpen(!box.classList.contains('open')); });
+		document.addEventListener('click', function () { setOpen(false); });
+		document.addEventListener('keydown', function (e) {
+			if (e.key === 'Escape' && box.classList.contains('open')) { setOpen(false); layerButton.focus(); }
+		});
+		map.on('movestart', function () { setOpen(false); });
+		layerPanel.addEventListener('click', function (e) { e.stopPropagation(); });
 		box.appendChild(layerPanel);
 		box.appendChild(layerButton);
 		refreshLayerRows();
@@ -936,26 +982,40 @@ window.ddMain = function (engineName) {
 		layerButton.setAttribute('aria-label', layerTitle);
 		layerPanel.innerHTML = '';
 
+		var sawLink = false;
+
 		rows.forEach(function (row) {
 			var b = document.createElement('button');
 			var check = !row.link;
+			var label = document.createElement('span');
+
+			// The switches first, then a rule, then the places a row only leads to.
+			if (!check && !sawLink && layerPanel.children.length) {
+				var rule = document.createElement('div');
+				rule.className = 'rule';
+				layerPanel.appendChild(rule);
+			}
+
+			sawLink = sawLink || !check;
 
 			b.type = 'button';
 			b.className = 'row' + (check && layerState[row.id] ? ' on' : '') + (check ? '' : ' link');
-			b.textContent = row.label;
+			label.textContent = row.label;
 
 			if (check) {
 				b.setAttribute('role', 'checkbox');
 				b.setAttribute('aria-checked', layerState[row.id] ? 'true' : 'false');
+				b.appendChild(document.createElement('i'));
 			}
 
-			b.appendChild(document.createElement('i'));
+			b.appendChild(label);
 			b.addEventListener('click', function (e) {
 				e.stopPropagation();
 
 				if (check) {
 					layerState[row.id] = !layerState[row.id];
-					refreshLayerRows();
+					b.classList.toggle('on', !!layerState[row.id]);
+					b.setAttribute('aria-checked', layerState[row.id] ? 'true' : 'false');
 				}
 
 				postLayers(check ? null : row.id);
@@ -1339,6 +1399,7 @@ window.ddMain = function (engineName) {
 		css.setProperty('--ink-muted', t.inkMuted);
 		css.setProperty('--accent', t.accent);
 		css.setProperty('--accent-soft', t.accentSoft);
+		css.setProperty('--on-accent', readableInk(t.accent));
 		css.setProperty('--font', fontStack(t.font));
 		css.setProperty('--fs', String(t.fontScale || 1));
 

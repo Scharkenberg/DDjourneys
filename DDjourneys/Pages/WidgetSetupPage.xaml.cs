@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+using System.Globalization;
 using DDjourneys.Core.Diagnostics;
 using DDjourneys.Core.Models;
 using DDjourneys.Core.Providers;
@@ -15,26 +15,37 @@ namespace DDjourneys.Pages;
 /// Sets the Windows widgets of the app up: which stop a departures widget shows, which route a route
 /// widget follows, how many rows. Widgets are pinned from the Widgets Board itself (there is no pin API);
 /// this page configures what a pinned widget shows, and the set-up card of a fresh widget opens it.
+/// The editor shows what the widget has now, one tap on a field chooses which place the search fills, and
+/// Save waits until the widget has what it needs to show anything.
 /// </summary>
 public partial class WidgetSetupPage : PanePage, IQueryAttributable
 {
+	private static readonly TimeSpan SearchDelay = TimeSpan.FromMilliseconds(350);
+
+	private enum Field
+	{
+		Stop,
+		From,
+		To
+	}
+
 	private readonly IWidgetStore _store;
 	private readonly LocationService _locations;
 	private readonly ProviderRegistry _providers;
-	private readonly AppSettings _settings;
 
 	private string? _id;
 	private WidgetKind _kind = WidgetKind.Departures;
+	private Field _field = Field.Stop;
 	private Location? _stop;
 	private Location? _from;
 	private Location? _to;
 	private int _rows = 5;
+	private CancellationTokenSource? _search;
 
 	public WidgetSetupPage(
 		IWidgetStore store,
 		LocationService locations,
-		ProviderRegistry providers,
-		AppSettings settings)
+		ProviderRegistry providers)
 	{
 		InitializeComponent();
 		Motion.Prepare(this);
@@ -42,7 +53,6 @@ public partial class WidgetSetupPage : PanePage, IQueryAttributable
 		_store = store;
 		_locations = locations;
 		_providers = providers;
-		_settings = settings;
 
 		Rows.Value = _rows;
 	}
@@ -53,8 +63,8 @@ public partial class WidgetSetupPage : PanePage, IQueryAttributable
 	public void ApplyQueryAttributes(IDictionary<string, object> query)
 	{
 		if (query.TryGetValue(Routes.WidgetId, out object? value)
-				&& value is string id
-				&& id.Length > 0)
+			&& value is string id
+			&& id.Length > 0)
 		{
 			Open(id);
 		}
@@ -68,38 +78,46 @@ public partial class WidgetSetupPage : PanePage, IQueryAttributable
 		Reload();
 	}
 
+	protected override void OnDisappearing()
+	{
+		_search?.Cancel();
+
+		base.OnDisappearing();
+	}
+
 	private void Reload()
 	{
 		Pinned.Children.Clear();
 
-		foreach (string id in PinnedIds())
+		string[] ids = PinnedIds();
+
+		for (int index = 0; index < ids.Length; index++)
 		{
+			string id = ids[index];
 			WidgetConfig? config = _store.LoadConfig(id);
 			string kind = config?.Kind is WidgetKind.Route
-					? Strings.SetupKindRoute
-					: Strings.SetupKindDepartures;
+				? Strings.SetupKindRoute
+				: Strings.SetupKindDepartures;
 
 			var row =
 				new Grid
 				{
-					ColumnDefinitions = [new ColumnDefinition(GridLength.Auto), new ColumnDefinition(GridLength.Star), new ColumnDefinition(GridLength.Auto)],
+					ColumnDefinitions = [new ColumnDefinition(GridLength.Star), new ColumnDefinition(GridLength.Auto)],
 					ColumnSpacing = 10,
-				Padding = new(12, 8)
+					Padding = new Thickness(12, 8)
 				};
 
-			row.Add(new Label { Text = config?.Title is { Length: > 0 } title ? title : kind, VerticalOptions = LayoutOptions.Center, StyleClass = ["Title"] });
-			row.Add(
-				new Label
-				{
-					Text = kind,
-					StyleClass = ["Caption"],
-					VerticalOptions = LayoutOptions.Center
-				},
-				1);
+			// What the widget shows, in words a person knows: its title or its place, never the id.
+			var text = new VerticalStackLayout { Spacing = 1, VerticalOptions = LayoutOptions.Center };
+
+			text.Add(new Label { Text = Describe(config, kind, index + 1), LineBreakMode = LineBreakMode.TailTruncation, StyleClass = ["Title"] });
+			text.Add(new Label { Text = config is { IsComplete: true } ? kind : Strings.CardSetUp, StyleClass = ["Caption"] });
+
+			row.Add(text);
 
 			Button open = new() { Text = Strings.CardSetUp, StyleClass = ["ChipButton"] };
 			open.Clicked += (_, _) => Open(id);
-			row.Add(open, 2);
+			row.Add(open, 1);
 
 			Pinned.Add(row);
 			Pinned.Add(new BoxView { StyleClass = ["Divider"] });
@@ -111,16 +129,60 @@ public partial class WidgetSetupPage : PanePage, IQueryAttributable
 		}
 	}
 
+	/// <summary>A widget by its title, else its stop or route, else its kind and number.</summary>
+	private static string Describe(WidgetConfig? config, string kind, int number)
+	{
+		if (config is null)
+		{
+			return string.Format(CultureInfo.CurrentCulture, Strings.EditorFor, number);
+		}
+
+		if (config.Title.Length > 0)
+		{
+			return config.Title;
+		}
+
+		return config.Kind switch
+		{
+			WidgetKind.Route when config.From?.Place is { } start && config.To?.Place is { } end =>
+				$"{start.Name} \u2192 {end.Name}",
+			WidgetKind.Departures when config.Stop is { } stop => stop.Name,
+			_ => string.Format(CultureInfo.CurrentCulture, "{0} \u00b7 {1}", kind, number)
+		};
+	}
+
 	private void Open(string id)
 	{
 		_id = id;
-		_kind = _store.LoadConfig(id)?.Kind ?? WidgetKind.Departures;
 
-		EditorTitle.Text = string.Format(System.Globalization.CultureInfo.CurrentCulture, Strings.EditorFor, id);
+		// The editor starts from what the widget has, not from what the last one left in the fields.
+		WidgetConfig? config = _store.LoadConfig(id);
+
+		_kind = config?.Kind is WidgetKind.Route ? WidgetKind.Route : WidgetKind.Departures;
+		_stop = config?.Stop;
+		_from = config?.From?.Place;
+		_to = config?.To?.Place;
+		_rows = config is { MaxRows: > 0 } ? Math.Clamp(config.MaxRows, 1, WidgetConfig.MaxRowsLimit) : 5;
+
+		string[] ids = PinnedIds();
+		int number = Math.Max(0, Array.IndexOf(ids, id)) + 1;
+
+		EditorTitle.Text = string.Format(CultureInfo.CurrentCulture, Strings.EditorFor, number);
+
+		bool wasHidden = !Editor.IsVisible;
+
 		Editor.IsVisible = true;
 		SavedNote.IsVisible = false;
 
+		Rows.Value = _rows;
+		Search.Text = string.Empty;
+
 		ApplyKind();
+
+		if (wasHidden)
+		{
+			_ = Motion.RevealAsync(Editor);
+		}
 	}
 
 	private void ApplyKind()
@@ -128,13 +190,49 @@ public partial class WidgetSetupPage : PanePage, IQueryAttributable
 		KindDepartures.Text = Strings.SetupKindDepartures;
 		KindRoute.Text = Strings.SetupKindRoute;
 		Save.Text = Strings.SetupSave;
-		StopCaption.Text = _kind is WidgetKind.Route ? Strings.SetupFrom : Strings.SetupStop;
 
 		KindDepartures.StyleClass = _kind is WidgetKind.Departures ? ["ChipButton"] : ["Chip"];
 		KindRoute.StyleClass = _kind is WidgetKind.Route ? ["ChipButton"] : ["Chip"];
 
+		StopField.IsVisible = _kind is WidgetKind.Departures;
+		FromField.IsVisible = _kind is WidgetKind.Route;
+		ToField.IsVisible = _kind is WidgetKind.Route;
+
+		// The search fills the first place that is still open.
+		_field =
+			_kind is WidgetKind.Route
+				? (_from is null ? Field.From : _to is null ? Field.To : _field is Field.To ? Field.To : Field.From)
+				: Field.Stop;
+
 		Results.Children.Clear();
+
+		RefreshFields();
 	}
+
+	/// <summary>Each field says what it holds (or that it holds nothing yet); the one being filled is the filled-in chip.</summary>
+	private void RefreshFields()
+	{
+		SetField(StopField, Strings.SetupStop, _stop, Field.Stop);
+		SetField(FromField, Strings.SetupFrom, _from, Field.From);
+		SetField(ToField, Strings.SetupTo, _to, Field.To);
+
+		RowsCaption.Text = string.Format(CultureInfo.CurrentCulture, Strings.SetupRowsCount, _rows);
+
+		Save.IsEnabled = IsComplete;
+	}
+
+	private void SetField(Button button, string label, Location? place, Field field)
+	{
+		button.Text = $"{label}: {place?.Name ?? Strings.SetupNotChosen}";
+		button.StyleClass = _field == field ? ["ChipButton"] : ["Chip"];
+
+		SemanticProperties.SetDescription(button, button.Text);
+	}
+
+	private bool IsComplete =>
+		_kind is WidgetKind.Route
+			? _from is not null && _to is not null
+			: _stop is not null;
 
 	private void OnKindDepartures(object? sender, EventArgs e)
 	{
@@ -148,21 +246,59 @@ public partial class WidgetSetupPage : PanePage, IQueryAttributable
 		ApplyKind();
 	}
 
-	private async void OnSearchCompleted(object? sender, EventArgs e)
+	private void OnStopField(object? sender, EventArgs e) => PickField(Field.Stop);
+
+	private void OnFromField(object? sender, EventArgs e) => PickField(Field.From);
+
+	private void OnToField(object? sender, EventArgs e) => PickField(Field.To);
+
+	private void PickField(Field field)
 	{
+		_field = field;
+
 		Results.Children.Clear();
+		Search.Text = string.Empty;
+		Search.Focus();
 
-		string query = Search.Text?.Trim() ?? string.Empty;
+		RefreshFields();
+	}
 
-		if (query.Length == 0)
+	/// <summary>A search as the person types: after a short pause, newest question wins.</summary>
+	private async void OnSearchChanged(object? sender, TextChangedEventArgs e)
+	{
+		_search?.Cancel();
+
+		string query = e.NewTextValue?.Trim() ?? string.Empty;
+
+		if (query.Length < 2)
 		{
+			Results.Children.Clear();
+			Searching.IsVisible = false;
+			Searching.IsRunning = false;
+
 			return;
 		}
 
+		var cancel = new CancellationTokenSource();
+
+		_search = cancel;
+
 		try
 		{
+			await Task.Delay(SearchDelay, cancel.Token);
+
+			Searching.IsVisible = true;
+			Searching.IsRunning = true;
+
 			IReadOnlyList<Location> found =
-				await _locations.SearchAsync(query, kinds: PlaceKinds.Stops);
+				await _locations.SearchAsync(query, kinds: PlaceKinds.Stops, cancellationToken: cancel.Token);
+
+			if (cancel.IsCancellationRequested)
+			{
+				return;
+			}
+
+			Results.Children.Clear();
 
 			foreach (Location place in found.Take(8))
 			{
@@ -170,49 +306,67 @@ public partial class WidgetSetupPage : PanePage, IQueryAttributable
 					new()
 					{
 						Text = place.Name,
+						HorizontalOptions = LayoutOptions.Fill,
 						StyleClass = ["Chip"]
 					};
 				row.Clicked += (_, _) => Choose(place);
 				Results.Add(row);
 			}
 		}
+		catch (OperationCanceledException)
+		{
+		}
 		catch (Exception ex)
 		{
 			DiagnosticLog.Write($"[Widgets] stop search failed: {ex.Message}");
+		}
+		finally
+		{
+			if (ReferenceEquals(_search, cancel))
+			{
+				Searching.IsVisible = false;
+				Searching.IsRunning = false;
+			}
 		}
 	}
 
 	private void Choose(Location place)
 	{
-		if (_kind is WidgetKind.Route)
+		switch (_field)
 		{
-			if (_from is null)
-			{
+			case Field.Stop:
+				_stop = place;
+				break;
+
+			case Field.From:
 				_from = place;
-				StopCaption.Text = Strings.SetupTo;
-			}
-			else
-			{
+
+				// On to the destination when it is still open.
+				_field = _to is null ? Field.To : Field.From;
+				break;
+
+			case Field.To:
 				_to = place;
-			}
-		}
-		else
-		{
-			_stop = place;
+				break;
 		}
 
-		Search.Text = place.Name;
 		Results.Children.Clear();
+		Search.Text = string.Empty;
+
+		RefreshFields();
 	}
 
 	private void OnRowsChanged(object? sender, ValueChangedEventArgs e)
 	{
-		_rows = Math.Clamp((int)e.NewValue, 1, 10);
+		_rows = Math.Clamp((int)e.NewValue, 1, WidgetConfig.MaxRowsLimit);
+
+		RefreshFields();
 	}
 
 	private async void OnSave(object? sender, EventArgs e)
 	{
-		if (_id is not { Length: > 0 } id)
+		if (_id is not { Length: > 0 } id
+			|| !IsComplete)
 		{
 			return;
 		}
@@ -222,7 +376,6 @@ public partial class WidgetSetupPage : PanePage, IQueryAttributable
 		WidgetConfig existing =
 			_store.LoadConfig(id) ?? new WidgetConfig { ProviderId = provider };
 
-		// The first chosen stop of a route is the start, the second the destination; the kind decides which.
 		WidgetConfig config =
 			_kind is WidgetKind.Route
 				? existing with
@@ -231,15 +384,17 @@ public partial class WidgetSetupPage : PanePage, IQueryAttributable
 						ProviderId = provider,
 						MaxRows = _rows,
 						Stop = null,
-						From = _from is { } from ? new WidgetPlace(from) : existing.From,
-						To = _to is { } to ? new WidgetPlace(to) : existing.To
+						From = new WidgetPlace(_from),
+						To = new WidgetPlace(_to)
 					}
 				: existing with
 					{
 						Kind = _kind,
 						ProviderId = provider,
 						MaxRows = _rows,
-						Stop = _stop is { } stop ? stop : existing.Stop
+						Stop = _stop,
+						From = null,
+						To = null
 					};
 
 		_store.SaveConfig(id, config);

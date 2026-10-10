@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using DDjourneys.Platforms.Windows.LiveJourney;
 using DDjourneys.Support.Widgets;
 using Microsoft.Windows.Widgets.Providers;
@@ -13,7 +14,8 @@ namespace DDjourneys.Platforms.Windows.Widgets;
 /// </summary>
 public sealed class DdWidgetProvider : IWidgetProvider
 {
-	private readonly Dictionary<string, bool> _active = new(StringComparer.Ordinal);
+	// The board calls from its own threads, all on this one instance.
+	private readonly ConcurrentDictionary<string, bool> _active = new(StringComparer.Ordinal);
 
 	public DdWidgetProvider()
 	{
@@ -44,7 +46,7 @@ public sealed class DdWidgetProvider : IWidgetProvider
 
 	public void DeleteWidget(string widgetId, string customState)
 	{
-		_active.Remove(widgetId);
+		_active.TryRemove(widgetId, out _);
 		WindowsWidgets.Store?.Remove(widgetId);
 
 		if (_active.Count == 0)
@@ -69,7 +71,7 @@ public sealed class DdWidgetProvider : IWidgetProvider
 
 	public void Deactivate(string widgetId)
 	{
-		if (_active.TryGetValue(widgetId, out bool active))
+		if (_active.ContainsKey(widgetId))
 		{
 			_active[widgetId] = false;
 		}

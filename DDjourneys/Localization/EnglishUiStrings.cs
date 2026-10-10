@@ -249,6 +249,8 @@ public sealed class EnglishUiStrings : IUiStrings
 		NetworkMapCredit = "Liniennetzplan: Dresdner Verkehrsbetriebe (DVB). The map is downloaded from the DVB website; all rights to it stay with the DVB.",
 		NetworkMapStale = "The current plan could not be loaded; this is the saved version.",
 		NetworkMapFailed = "The network map could not be loaded. Check the connection and try again.",
+		NetworkMapZoomIn = "Zoom in",
+		NetworkMapZoomOut = "Zoom out",
 		MapInfo = "Map data",
 		MapGrip = "Drag to change the size of the map",
 		TrackFollowing = "Following line {0} {1}",
@@ -586,7 +588,8 @@ public sealed class EnglishUiStrings : IUiStrings
 		SectionVia = "Stop over",
 		ViaMinutes = "Stay at the stop over",
 		ViaMinutesHint = "On journeys through the stop over. Any means one minute, the shortest stay there is.",
-		ViaAny = "Any"
+		ViaAny = "Any",
+		ViaMinutesValue = "{0} min"
 	};
 
 	public ProviderStrings Provider { get; } = new()
@@ -786,6 +789,8 @@ public sealed class EnglishUiStrings : IUiStrings
 		SetupRows = "Rows",
 		SetupSave = "Save",
 		SetupSaved = "Saved. The widget shows it with the next refresh.",
-		EditorFor = "Widget {0}"
+		EditorFor = "Widget {0}",
+		SetupNotChosen = "Not chosen yet",
+		SetupRowsCount = "{0} rows"
 	};
 }

@@ -19,8 +19,10 @@ public static class FareLinks
 	/// </summary>
 	public static Uri? For(JourneyFare fare, string providerId)
 	{
+		// A sale page is a web page: the provider's text never names a file, an app intent or a script.
 		if (fare.Url is { Length: > 0 } text
-			&& Uri.TryCreate(text, UriKind.Absolute, out Uri? link))
+			&& Uri.TryCreate(text, UriKind.Absolute, out Uri? link)
+			&& link.Scheme is "https" or "http")
 		{
 			return link;
 		}
