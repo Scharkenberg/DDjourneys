@@ -781,7 +781,6 @@ public sealed class WidgetStrings
 	public required string CardSetUp { get; init; }
 	public required string SetupTitle { get; init; }
 	public required string SetupSummary { get; init; }
-	public required string SetupHint { get; init; }
 	public required string SetupPick { get; init; }
 	public required string SetupNone { get; init; }
 	public required string SetupKind { get; init; }
@@ -792,11 +791,19 @@ public sealed class WidgetStrings
 	public required string SetupTo { get; init; }
 	public required string SetupSearch { get; init; }
 	public required string SetupRows { get; init; }
-	public required string SetupSave { get; init; }
 	public required string SetupSaved { get; init; }
 	public required string EditorFor { get; init; }
 	public required string SetupNotChosen { get; init; }
 	public required string SetupRowsCount { get; init; }
+	public required string SetupRowsHelp { get; init; }
+	public required string SetupStep1 { get; init; }
+	public required string SetupStep2 { get; init; }
+	public required string SetupStep3 { get; init; }
+	public required string SetupNotSetUp { get; init; }
+	public required string SetupChange { get; init; }
+	public required string SetupIncompleteStop { get; init; }
+	public required string SetupIncompleteRoute { get; init; }
+	public required string CardSetUpHint { get; init; }
 	public required string DiagTitle { get; init; }
 	public required string DiagHint { get; init; }
 	public required string DiagCopy { get; init; }

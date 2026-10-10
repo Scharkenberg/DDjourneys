@@ -82,7 +82,7 @@ public static class WidgetUpdaterWin
 				WidgetSnapshot? snapshot =
 						await loader.LoadAsync(
 							config,
-							WidgetLayout.For(240, 160, config.MaxRows, 1).Rows,
+							WidgetCard.RowsFor(WindowsWidgets.SizeOf(id), config.MaxRows),
 							DeviceLocator.LastFix,
 							limit.Token)
 							.ConfigureAwait(false);
@@ -141,12 +141,16 @@ public static class WidgetUpdaterWin
 			return;
 		}
 
-		WidgetLayout layout = WidgetLayout.For(240, 160, config.MaxRows, 1);
-
 		WidgetCardPayload card =
 			snapshot is null
 				? WidgetCard.SetUp(Strings())
-				: WidgetCard.For(snapshot, layout, Strings(), config.Title);
+				: WidgetCard.For(
+					snapshot,
+					WindowsWidgets.SizeOf(id),
+					config.MaxRows,
+					Strings(),
+					config.Title,
+					WidgetChipImages.For);
 
 		Send(id, card);
 	}
@@ -212,6 +216,7 @@ public static class WidgetUpdaterWin
 			widgets.CardRefresh,
 			widgets.CardOpen,
 			widgets.CardSetUp,
-			widgets.RefreshFailed);
+			widgets.RefreshFailed,
+			widgets.CardSetUpHint);
 	}
 }

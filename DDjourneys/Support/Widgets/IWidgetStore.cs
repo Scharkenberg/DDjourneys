@@ -5,7 +5,7 @@ namespace DDjourneys.Support.Widgets;
 /// <summary>
 /// What is kept per widget id: its settings, the last snapshot and when it was fetched. One interface for
 /// both platforms (Android: the preferences; Windows: the application data settings); the JSON formats are
-/// the app's own (WidgetConfig, WidgetSnapshot), so <c>widget-data</c> stays at r1 for both.
+/// the app's own (WidgetConfig, WidgetSnapshot), so <c>widget-data</c> (r2: journey rows carry arrival, duration, transfers, lines and lead) is one revision for both.
 /// </summary>
 public interface IWidgetStore
 {

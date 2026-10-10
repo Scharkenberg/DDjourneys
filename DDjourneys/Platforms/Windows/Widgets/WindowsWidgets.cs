@@ -39,6 +39,35 @@ internal static class WindowsWidgets
 	private static int _registered;
 	private static string _registration = "not tried yet";
 
+	private static readonly ConcurrentDictionary<string, WidgetCardSize> Sizes = new(StringComparer.Ordinal);
+
+	/// <summary>The size the board shows the widget in (medium until it says otherwise).</summary>
+	internal static WidgetCardSize SizeOf(string id) =>
+		Sizes.TryGetValue(id, out WidgetCardSize size) ? size : WidgetCardSize.Medium;
+
+	/// <summary>Notes the size from a context the board sent; true when it differs from what was known.</summary>
+	internal static bool RememberSize(WidgetContext? context)
+	{
+		if (context?.Id is not { Length: > 0 } id)
+		{
+			return false;
+		}
+
+		WidgetCardSize size =
+			context.Size switch
+			{
+				WidgetSize.Small => WidgetCardSize.Small,
+				WidgetSize.Large => WidgetCardSize.Large,
+				_ => WidgetCardSize.Medium
+			};
+
+		bool changed = SizeOf(id) != size;
+
+		Sizes[id] = size;
+
+		return changed;
+	}
+
 	/// <summary>Widgets the board created before the store existed: id and the manifest definition they came from.</summary>
 	private static readonly ConcurrentDictionary<string, string> Early = new(StringComparer.Ordinal);
 

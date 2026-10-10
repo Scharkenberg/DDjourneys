@@ -97,8 +97,8 @@ public static class InterfaceSchemas
 		public const int DvbNetworkMap = 1;
 		public const int VvoPur = 1;
 		public const int Gbfs = 1;
-		public const int WidgetData = 1;
-		public const int WidgetCardWin = 1;
+		public const int WidgetData = 2;
+		public const int WidgetCardWin = 2;
 	}
 
 	/// <summary>Interfaces that exist in the core library; the app adds its own (see <c>AppInterfaces</c>).</summary>
@@ -159,7 +159,7 @@ public static class InterfaceSchemas
 		new(
 			"widget-card-win", InterfaceKind.Internal, "Windows widget cards",
 			R(Revision.WidgetCardWin), string.Empty,
-			"the Adaptive Card of a Windows widget: literal rows (like the docs' weather example), the host's semantic colours for the statuses, two actions (refresh, open) and a set-up card"),
+			"the Adaptive Card (1.6) of a Windows widget, built for the size the board reports: the header overridden with the stop or route, literal rows (like the docs' weather example) with drawn line chips (data-URI images), the host's semantic colours for the statuses, refresh and open actions (select action open) and a set-up card"),
 		new(
 			"contract", InterfaceKind.Contract, "External contract (links, intents, protocol launches)",
 			Number(ContractVersion.Current) + " (oldest answered: " + Number(ContractVersion.Oldest) + ")",

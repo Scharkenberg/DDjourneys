@@ -1,4 +1,5 @@
 using System.Globalization;
+using DDjourneys.Controls;
 using DDjourneys.Core.Diagnostics;
 using DDjourneys.Core.Models;
 using DDjourneys.Core.Providers;
@@ -15,12 +16,13 @@ namespace DDjourneys.Pages;
 /// Sets the Windows widgets of the app up: which stop a departures widget shows, which route a route
 /// widget follows, how many rows. Widgets are pinned from the Widgets Board itself (there is no pin API);
 /// this page configures what a pinned widget shows, and the set-up card of a fresh widget opens it.
-/// The editor shows what the widget has now, one tap on a field chooses which place the search fills, and
-/// Save waits until the widget has what it needs to show anything.
+/// The list shows the widgets of the board, one tap opens the editor under it; the editor saves by itself as
+/// soon as the widget has what it needs to show anything (no Save button, like the system's settings).
 /// </summary>
 public partial class WidgetSetupPage : PanePage, IQueryAttributable
 {
 	private static readonly TimeSpan SearchDelay = TimeSpan.FromMilliseconds(350);
+	private static readonly TimeSpan SaveDelay = TimeSpan.FromMilliseconds(500);
 
 	private enum Field
 	{
@@ -40,7 +42,10 @@ public partial class WidgetSetupPage : PanePage, IQueryAttributable
 	private Location? _from;
 	private Location? _to;
 	private int _rows = 5;
+	private bool _dirty;
+	private bool _loading;
 	private CancellationTokenSource? _search;
+	private CancellationTokenSource? _save;
 
 	public WidgetSetupPage(
 		IWidgetStore store,
@@ -76,14 +81,27 @@ public partial class WidgetSetupPage : PanePage, IQueryAttributable
 		Motion.EnterPage(this);
 
 		Reload();
+
+		// One widget that still needs its settings: no need to ask which one.
+		if (_id is null
+			&& PinnedIds() is { Length: 1 } only
+			&& _store.LoadConfig(only[0]) is not { IsComplete: true })
+		{
+			Open(only[0]);
+		}
 	}
 
 	protected override void OnDisappearing()
 	{
 		_search?.Cancel();
 
+		// What was changed a moment ago is not lost by leaving.
+		SaveNow();
+
 		base.OnDisappearing();
 	}
+
+	// ---------- The widgets on the board ----------
 
 	private void Reload()
 	{
@@ -94,43 +112,144 @@ public partial class WidgetSetupPage : PanePage, IQueryAttributable
 		for (int index = 0; index < ids.Length; index++)
 		{
 			string id = ids[index];
-			WidgetConfig? config = _store.LoadConfig(id);
-			string kind = config?.Kind is WidgetKind.Route
-				? Strings.SetupKindRoute
-				: Strings.SetupKindDepartures;
 
-			var row =
-				new Grid
-				{
-					ColumnDefinitions = [new ColumnDefinition(GridLength.Star), new ColumnDefinition(GridLength.Auto)],
-					ColumnSpacing = 10,
-					Padding = new Thickness(12, 8)
-				};
+			Pinned.Add(BuildRow(id, _store.LoadConfig(id), index + 1, string.Equals(id, _id, StringComparison.Ordinal)));
 
-			// What the widget shows, in words a person knows: its title or its place, never the id.
-			var text = new VerticalStackLayout { Spacing = 1, VerticalOptions = LayoutOptions.Center };
-
-			text.Add(new Label { Text = Describe(config, kind, index + 1), LineBreakMode = LineBreakMode.TailTruncation, StyleClass = ["Title"] });
-			text.Add(new Label { Text = config is { IsComplete: true } ? kind : Strings.CardSetUp, StyleClass = ["Caption"] });
-
-			row.Add(text);
-
-			Button open = new() { Text = Strings.CardSetUp, StyleClass = ["ChipButton"] };
-			open.Clicked += (_, _) => Open(id);
-			row.Add(open, 1);
-
-			Pinned.Add(row);
-			Pinned.Add(new BoxView { StyleClass = ["Divider"] });
+			if (index < ids.Length - 1)
+			{
+				Pinned.Add(new BoxView { StyleClass = ["Divider"] });
+			}
 		}
 
-		if (Pinned.Children.Count == 0)
+		if (ids.Length == 0)
 		{
-			Pinned.Add(new Label { Text = Strings.SetupNone, StyleClass = ["Caption"] });
+			var none =
+				new Label
+				{
+					Text = Strings.SetupNone,
+					StyleClass = ["Caption"],
+					Margin = new Thickness(12, 14)
+				};
+
+			Pinned.Add(none);
 		}
 	}
 
-	/// <summary>A widget by its title, else its stop or route, else its kind and number.</summary>
-	private static string Describe(WidgetConfig? config, string kind, int number)
+	/// <summary>One widget of the board: its icon, what it shows in words a person knows (never the id), and its state.</summary>
+	private View BuildRow(string id, WidgetConfig? config, int number, bool selected)
+	{
+		bool complete = config is { IsComplete: true };
+		bool route = config?.Kind is WidgetKind.Route;
+
+		var row =
+			new Grid
+			{
+				ColumnDefinitions = [new ColumnDefinition(GridLength.Auto), new ColumnDefinition(GridLength.Star), new ColumnDefinition(GridLength.Auto)],
+				ColumnSpacing = 12,
+				Padding = new Thickness(12, 8)
+			};
+
+		Dense.SetMinHeight(row, Token("HitRow", 52));
+		Motion.SetFeedback(row, true);
+		row.SetDynamicResource(VisualElement.BackgroundColorProperty, selected ? "AccentSoft" : "Clear");
+
+		var tile =
+			new Border
+			{
+				WidthRequest = 40,
+				HeightRequest = 40,
+				Padding = 0,
+				StrokeThickness = 0,
+				StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = new CornerRadius(8) },
+				VerticalOptions = LayoutOptions.Center
+			};
+
+		tile.SetDynamicResource(VisualElement.BackgroundColorProperty, selected ? "Surface" : "AccentSoft");
+
+		var glyph =
+			new Icon
+			{
+				Glyph = route ? IconGlyph.Route : IconGlyph.Clock,
+				Size = 22,
+				HorizontalOptions = LayoutOptions.Center,
+				VerticalOptions = LayoutOptions.Center
+			};
+
+		glyph.SetDynamicResource(Icon.ColorProperty, "Accent");
+
+		tile.Content = glyph;
+		row.Add(tile);
+
+		var text = new VerticalStackLayout { Spacing = 1, VerticalOptions = LayoutOptions.Center };
+
+		var title =
+			new Label
+			{
+				Text = Describe(config, number),
+				LineBreakMode = LineBreakMode.TailTruncation,
+				MaxLines = 1
+			};
+
+		title.SetDynamicResource(Label.FontFamilyProperty, "FontSemibold");
+
+		string kind = route ? Strings.SetupKindRoute : Strings.SetupKindDepartures;
+
+		text.Add(title);
+		text.Add(
+			new Label
+			{
+				Text = complete
+					? $"{kind} · {string.Format(CultureInfo.CurrentCulture, Strings.SetupRowsCount, config!.MaxRows > 0 ? config.MaxRows : 5)}"
+					: kind,
+				StyleClass = ["Caption"],
+				LineBreakMode = LineBreakMode.TailTruncation,
+				MaxLines = 1
+			});
+
+		row.Add(text, 1);
+
+		if (complete)
+		{
+			var chevron = new Icon { Glyph = selected ? IconGlyph.ChevronDown : IconGlyph.ChevronRight, Size = 20, VerticalOptions = LayoutOptions.Center };
+
+			chevron.SetDynamicResource(Icon.ColorProperty, "InkMuted");
+			row.Add(chevron, 2);
+		}
+		else
+		{
+			// Not a control: the state of the widget, so it is a pill.
+			var state =
+				new Border
+				{
+					StrokeThickness = 0,
+					Padding = new Thickness(10, 3),
+					VerticalOptions = LayoutOptions.Center,
+					StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = new CornerRadius(100) }
+				};
+
+			state.SetDynamicResource(VisualElement.BackgroundColorProperty, selected ? "Surface" : "AccentSoft");
+
+			var label = new Label { Text = Strings.SetupNotSetUp, FontSize = 12, LineBreakMode = LineBreakMode.NoWrap, MaxLines = 1 };
+
+			label.SetDynamicResource(Label.TextColorProperty, "Accent");
+			label.SetDynamicResource(Label.FontFamilyProperty, "FontSemibold");
+
+			state.Content = label;
+			row.Add(state, 2);
+		}
+
+		SemanticProperties.SetDescription(row, $"{title.Text}, {kind}{(complete ? string.Empty : ", " + Strings.SetupNotSetUp)}");
+
+		var tap = new TapGestureRecognizer();
+
+		tap.Tapped += (_, _) => Open(id);
+		row.GestureRecognizers.Add(tap);
+
+		return row;
+	}
+
+	/// <summary>A widget by its title, else its stop or route, else "Widget n".</summary>
+	private static string Describe(WidgetConfig? config, int number)
 	{
 		if (config is null)
 		{
@@ -145,39 +264,49 @@ public partial class WidgetSetupPage : PanePage, IQueryAttributable
 		return config.Kind switch
 		{
 			WidgetKind.Route when config.From?.Place is { } start && config.To?.Place is { } end =>
-				$"{start.Name} \u2192 {end.Name}",
-			WidgetKind.Departures when config.Stop is { } stop => stop.Name,
-			_ => string.Format(CultureInfo.CurrentCulture, "{0} \u00b7 {1}", kind, number)
+				$"{StopLabel.NameFor(start.Name, start.Place)} → {StopLabel.NameFor(end.Name, end.Place)}",
+			WidgetKind.Departures when config.Stop is { } stop => StopLabel.NameFor(stop.Name, stop.Place),
+			_ => string.Format(CultureInfo.CurrentCulture, Strings.EditorFor, number)
 		};
 	}
 
+	// ---------- The editor ----------
+
 	private void Open(string id)
 	{
+		// What was changed on the widget that is closed now is kept.
+		SaveNow();
+
 		_id = id;
 
 		// The editor starts from what the widget has, not from what the last one left in the fields.
 		WidgetConfig? config = _store.LoadConfig(id);
+
+		_loading = true;
 
 		_kind = config?.Kind is WidgetKind.Route ? WidgetKind.Route : WidgetKind.Departures;
 		_stop = config?.Stop;
 		_from = config?.From?.Place;
 		_to = config?.To?.Place;
 		_rows = config is { MaxRows: > 0 } ? Math.Clamp(config.MaxRows, 1, WidgetConfig.MaxRowsLimit) : 5;
+		_dirty = false;
 
 		string[] ids = PinnedIds();
 		int number = Math.Max(0, Array.IndexOf(ids, id)) + 1;
 
-		EditorTitle.Text = string.Format(CultureInfo.CurrentCulture, Strings.EditorFor, number);
+		EditorTitle.Text = Describe(config, number);
 
 		bool wasHidden = !Editor.IsVisible;
 
 		Editor.IsVisible = true;
-		SavedNote.IsVisible = false;
 
 		Rows.Value = _rows;
 		Search.Text = string.Empty;
 
-		ApplyKind();
+		_loading = false;
+
+		ApplyKind(first: true);
+		Reload();
 
 		if (wasHidden)
 		{
@@ -185,14 +314,13 @@ public partial class WidgetSetupPage : PanePage, IQueryAttributable
 		}
 	}
 
-	private void ApplyKind()
+	private void ApplyKind(bool first = false)
 	{
-		KindDepartures.Text = Strings.SetupKindDepartures;
-		KindRoute.Text = Strings.SetupKindRoute;
-		Save.Text = Strings.SetupSave;
+		SegDeparturesLabel.Text = Strings.SetupKindDepartures;
+		SegRouteLabel.Text = Strings.SetupKindRoute;
 
-		KindDepartures.StyleClass = _kind is WidgetKind.Departures ? ["ChipButton"] : ["Chip"];
-		KindRoute.StyleClass = _kind is WidgetKind.Route ? ["ChipButton"] : ["Chip"];
+		SetSegment(SegDepartures, SegDeparturesLabel, SegDeparturesIcon, _kind is WidgetKind.Departures);
+		SetSegment(SegRoute, SegRouteLabel, SegRouteIcon, _kind is WidgetKind.Route);
 
 		StopField.IsVisible = _kind is WidgetKind.Departures;
 		FromField.IsVisible = _kind is WidgetKind.Route;
@@ -204,29 +332,62 @@ public partial class WidgetSetupPage : PanePage, IQueryAttributable
 				? (_from is null ? Field.From : _to is null ? Field.To : _field is Field.To ? Field.To : Field.From)
 				: Field.Stop;
 
-		Results.Children.Clear();
-
+		ClearResults();
 		RefreshFields();
+
+		if (!first)
+		{
+			Changed();
+		}
 	}
 
-	/// <summary>Each field says what it holds (or that it holds nothing yet); the one being filled is the filled-in chip.</summary>
+	private static void SetSegment(Border segment, Label label, Icon icon, bool on)
+	{
+		Themed.SetIsOn(segment, on);
+		Themed.SetIsOn(label, on);
+
+		icon.SetDynamicResource(Icon.ColorProperty, on ? "OnAccent" : "InkMuted");
+	}
+
+	/// <summary>Each field says what it holds (or that it holds nothing yet); the one being filled wears the accent outline.</summary>
 	private void RefreshFields()
 	{
-		SetField(StopField, Strings.SetupStop, _stop, Field.Stop);
-		SetField(FromField, Strings.SetupFrom, _from, Field.From);
-		SetField(ToField, Strings.SetupTo, _to, Field.To);
+		SetField(StopField, StopCaption, StopValue, Strings.SetupStop, _stop, Field.Stop);
+		SetField(FromField, FromCaption, FromValue, Strings.SetupFrom, _from, Field.From);
+		SetField(ToField, ToCaption, ToValue, Strings.SetupTo, _to, Field.To);
 
-		RowsCaption.Text = string.Format(CultureInfo.CurrentCulture, Strings.SetupRowsCount, _rows);
+		RowsValue.Text = string.Format(CultureInfo.CurrentCulture, Strings.SetupRowsCount, _rows);
 
-		Save.IsEnabled = IsComplete;
+		RefreshStatus(saved: false);
 	}
 
-	private void SetField(Button button, string label, Location? place, Field field)
+	private void SetField(Border border, Label caption, Label value, string label, Location? place, Field field)
 	{
-		button.Text = $"{label}: {place?.Name ?? Strings.SetupNotChosen}";
-		button.StyleClass = _field == field ? ["ChipButton"] : ["Chip"];
+		caption.Text = label;
+		value.Text = place is null ? Strings.SetupNotChosen : StopLabel.NameFor(place.Name, place.Place);
+		value.SetDynamicResource(Label.TextColorProperty, place is null ? "InkMuted" : "Ink");
 
-		SemanticProperties.SetDescription(button, button.Text);
+		Themed.SetIsOn(border, _field == field);
+
+		SemanticProperties.SetDescription(border, $"{label}: {value.Text}. {Strings.SetupChange}");
+	}
+
+	private void RefreshStatus(bool saved)
+	{
+		if (IsComplete)
+		{
+			StatusIcon.Glyph = saved ? IconGlyph.Check : IconGlyph.Info;
+			StatusIcon.SetDynamicResource(Icon.ColorProperty, saved ? "OnTime" : "InkMuted");
+			StatusLabel.Text = saved ? Strings.SetupSaved : string.Empty;
+		}
+		else
+		{
+			StatusIcon.Glyph = IconGlyph.Info;
+			StatusIcon.SetDynamicResource(Icon.ColorProperty, "InkMuted");
+			StatusLabel.Text = _kind is WidgetKind.Route ? Strings.SetupIncompleteRoute : Strings.SetupIncompleteStop;
+		}
+
+		StatusIcon.IsVisible = StatusLabel.Text.Length > 0;
 	}
 
 	private bool IsComplete =>
@@ -236,12 +397,22 @@ public partial class WidgetSetupPage : PanePage, IQueryAttributable
 
 	private void OnKindDepartures(object? sender, EventArgs e)
 	{
+		if (_kind is WidgetKind.Departures)
+		{
+			return;
+		}
+
 		_kind = WidgetKind.Departures;
 		ApplyKind();
 	}
 
 	private void OnKindRoute(object? sender, EventArgs e)
 	{
+		if (_kind is WidgetKind.Route)
+		{
+			return;
+		}
+
 		_kind = WidgetKind.Route;
 		ApplyKind();
 	}
@@ -256,11 +427,17 @@ public partial class WidgetSetupPage : PanePage, IQueryAttributable
 	{
 		_field = field;
 
-		Results.Children.Clear();
+		ClearResults();
 		Search.Text = string.Empty;
 		Search.Focus();
 
 		RefreshFields();
+	}
+
+	private void ClearResults()
+	{
+		Results.Children.Clear();
+		ResultsCard.IsVisible = false;
 	}
 
 	/// <summary>A search as the person types: after a short pause, newest question wins.</summary>
@@ -272,7 +449,7 @@ public partial class WidgetSetupPage : PanePage, IQueryAttributable
 
 		if (query.Length < 2)
 		{
-			Results.Children.Clear();
+			ClearResults();
 			Searching.IsVisible = false;
 			Searching.IsRunning = false;
 
@@ -300,18 +477,24 @@ public partial class WidgetSetupPage : PanePage, IQueryAttributable
 
 			Results.Children.Clear();
 
-			foreach (Location place in found.Take(8))
+			Location[] shown = [.. found.Take(8)];
+
+			for (int index = 0; index < shown.Length; index++)
 			{
-				Button row =
-					new()
-					{
-						Text = place.Name,
-						HorizontalOptions = LayoutOptions.Fill,
-						StyleClass = ["Chip"]
-					};
-				row.Clicked += (_, _) => Choose(place);
-				Results.Add(row);
+				Results.Add(BuildResult(shown[index]));
+
+				if (index < shown.Length - 1)
+				{
+					Results.Add(new BoxView { StyleClass = ["Divider"] });
+				}
 			}
+
+			if (shown.Length == 0)
+			{
+				Results.Add(new Label { Text = Strings.NoResults, StyleClass = ["Caption"], Margin = new Thickness(12, 14) });
+			}
+
+			ResultsCard.IsVisible = true;
 		}
 		catch (OperationCanceledException)
 		{
@@ -328,6 +511,47 @@ public partial class WidgetSetupPage : PanePage, IQueryAttributable
 				Searching.IsRunning = false;
 			}
 		}
+	}
+
+	private View BuildResult(Location place)
+	{
+		(string name, string? city) = StopLabel.Split(place.Name, place.Place);
+
+		var row =
+			new Grid
+			{
+				ColumnDefinitions = [new ColumnDefinition(GridLength.Auto), new ColumnDefinition(GridLength.Star)],
+				ColumnSpacing = 12,
+				Padding = new Thickness(12, 8)
+			};
+
+		Dense.SetMinHeight(row, Token("HitRowTight", 44));
+		Motion.SetFeedback(row, true);
+
+		var pin = new Icon { Glyph = IconGlyph.MapPin, Size = 20, VerticalOptions = LayoutOptions.Center };
+
+		pin.SetDynamicResource(Icon.ColorProperty, "InkMuted");
+		row.Add(pin);
+
+		var text = new VerticalStackLayout { Spacing = 0, VerticalOptions = LayoutOptions.Center };
+
+		text.Add(new Label { Text = name, LineBreakMode = LineBreakMode.TailTruncation, MaxLines = 1 });
+
+		if (!string.IsNullOrWhiteSpace(city))
+		{
+			text.Add(new Label { Text = city, StyleClass = ["Faint"], LineBreakMode = LineBreakMode.TailTruncation, MaxLines = 1 });
+		}
+
+		row.Add(text, 1);
+
+		SemanticProperties.SetDescription(row, StopLabel.NameFor(place.Name, place.Place));
+
+		var tap = new TapGestureRecognizer();
+
+		tap.Tapped += (_, _) => Choose(place);
+		row.GestureRecognizers.Add(tap);
+
+		return row;
 	}
 
 	private void Choose(Location place)
@@ -350,26 +574,83 @@ public partial class WidgetSetupPage : PanePage, IQueryAttributable
 				break;
 		}
 
-		Results.Children.Clear();
+		ClearResults();
 		Search.Text = string.Empty;
 
 		RefreshFields();
+		Changed();
 	}
 
 	private void OnRowsChanged(object? sender, ValueChangedEventArgs e)
 	{
-		_rows = Math.Clamp((int)e.NewValue, 1, WidgetConfig.MaxRowsLimit);
+		if (_loading)
+		{
+			return;
+		}
+
+		int rounded = Math.Clamp((int)Math.Round(e.NewValue), 1, WidgetConfig.MaxRowsLimit);
+
+		// The slider is continuous: it settles on whole rows.
+		if (Math.Abs(Rows.Value - rounded) > 0.001)
+		{
+			_loading = true;
+			Rows.Value = rounded;
+			_loading = false;
+		}
+
+		if (rounded == _rows)
+		{
+			return;
+		}
+
+		_rows = rounded;
 
 		RefreshFields();
+		Changed();
 	}
 
-	private async void OnSave(object? sender, EventArgs e)
+	// ---------- Saving ----------
+
+	/// <summary>Something was changed: it is saved a moment after the last change, once the widget is complete.</summary>
+	private async void Changed()
 	{
-		if (_id is not { Length: > 0 } id
+		if (_loading)
+		{
+			return;
+		}
+
+		_dirty = true;
+
+		_save?.Cancel();
+
+		var cancel = new CancellationTokenSource();
+
+		_save = cancel;
+
+		try
+		{
+			await Task.Delay(SaveDelay, cancel.Token);
+		}
+		catch (OperationCanceledException)
+		{
+			return;
+		}
+
+		SaveNow();
+	}
+
+	private void SaveNow()
+	{
+		_save?.Cancel();
+
+		if (!_dirty
+			|| _id is not { Length: > 0 } id
 			|| !IsComplete)
 		{
 			return;
 		}
+
+		_dirty = false;
 
 		string provider = _providers.Selected?.Id ?? string.Empty;
 
@@ -400,16 +681,20 @@ public partial class WidgetSetupPage : PanePage, IQueryAttributable
 		_store.SaveConfig(id, config);
 		_store.ClearSnapshot(id);
 
-		SavedNote.Text = Strings.SetupSaved;
-		SavedNote.IsVisible = true;
+		RefreshStatus(saved: true);
+		Reload();
 
 #if WINDOWS
-		await Platforms.Windows.Widgets.WidgetUpdaterWin.RefreshAsync(id);
-#else
-		await Task.CompletedTask;
+		_ = Platforms.Windows.Widgets.WidgetUpdaterWin.RefreshAsync(id);
 #endif
+	}
 
-		Reload();
+	// ---------- Troubleshooting ----------
+
+	private void OnDiagToggle(object? sender, EventArgs e)
+	{
+		DiagBody.IsVisible = !DiagBody.IsVisible;
+		DiagChevron.Glyph = DiagBody.IsVisible ? IconGlyph.ChevronUp : IconGlyph.ChevronDown;
 	}
 
 	private async void OnDiagnostics(object? sender, EventArgs e)
@@ -442,6 +727,11 @@ public partial class WidgetSetupPage : PanePage, IQueryAttributable
 			DiagButton.IsEnabled = true;
 		}
 	}
+
+	private static double Token(string key, double fallback) =>
+		Application.Current?.Resources.TryGetValue(key, out object? value) == true && value is double number
+			? number
+			: fallback;
 
 	private static string[] PinnedIds()
 	{

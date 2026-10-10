@@ -28,6 +28,8 @@ public sealed partial class DdWidgetProvider : IWidgetProvider
 				if (info.WidgetContext?.Id is { Length: > 0 } id)
 				{
 					_active[id] = false;
+
+					WindowsWidgets.RememberSize(info.WidgetContext);
 				}
 			}
 		}
@@ -45,6 +47,8 @@ public sealed partial class DdWidgetProvider : IWidgetProvider
 		}
 
 		_active[id] = false;
+
+		WindowsWidgets.RememberSize(widgetContext);
 
 		WindowsTrace.Write($"[Widgets] CreateWidget {id} ({widgetContext.DefinitionId}, size {widgetContext.Size})");
 
@@ -104,6 +108,8 @@ public sealed partial class DdWidgetProvider : IWidgetProvider
 		WindowsTrace.Write($"[Widgets] Activate {id}");
 
 		_active[id] = true;
+
+		WindowsWidgets.RememberSize(widgetContext);
 		WindowsBackground.SetKeepAlive(true);
 
 		// Serve what is cached at once, then look for newer rows in the background.
@@ -156,11 +162,15 @@ public sealed partial class DdWidgetProvider : IWidgetProvider
 
 	public void OnWidgetContextChanged(WidgetContextChangedArgs contextChangedArgs)
 	{
-		// A size change is the only case today; the card fits itself to the size at render time.
+		// A size change is the only case today: the card is built for the size, so it is built again (and the
+		// rows a bigger size has room for are asked for).
 		string? id = contextChangedArgs?.WidgetContext?.Id;
 
 		if (id is { Length: > 0 })
 		{
+			WindowsTrace.Write($"[Widgets] context changed {id}: {contextChangedArgs!.WidgetContext!.Size}");
+
+			WindowsWidgets.RememberSize(contextChangedArgs.WidgetContext);
 			WidgetUpdaterWin.Serve(id);
 		}
 	}

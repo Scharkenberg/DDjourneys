@@ -105,7 +105,19 @@ public static class WidgetSnapshots
 					: delay is { } late && late >= TimeSpan.FromMinutes(1)
 						? WidgetDelay.Late
 						: WidgetDelay.None,
-			At = journey.Departure
+			At = journey.Departure,
+			Arrival = Format.TimeOrDash(journey.Arrival),
+			Duration = Format.Duration(journey.Duration),
+			Transfers = transfersText,
+			Lines = string.Join(
+				" \u203a ",
+				rides
+					.Select(leg => leg.Line?.Name)
+					.Where(name => !string.IsNullOrWhiteSpace(name))
+					.Select(name => name!)),
+			Lead = walksFirst && walk.Length > 0
+				? $"{walk} \u2192 {StopLabel.NameFor(first!.From.Name, first.From.Place)}"
+				: string.Empty
 		};
 	}
 
