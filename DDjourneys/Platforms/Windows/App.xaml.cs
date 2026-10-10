@@ -20,6 +20,8 @@ namespace DDjourneys.WinUI
 		/// </summary>
 		public App()
 		{
+			WindowsTrace.Bootstrap();
+
 			WindowsTrace.Write($"Process start: {string.Join(' ', Environment.GetCommandLineArgs())}");
 
 			UnhandledException += (_, e) => WindowsTrace.Write("Unhandled UI exception", e.Exception);
