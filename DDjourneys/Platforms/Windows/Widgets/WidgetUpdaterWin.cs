@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using DDjourneys.Core.Diagnostics;
 using DDjourneys.Core.Widgets;
 using DDjourneys.Localization;
@@ -9,10 +10,11 @@ using Microsoft.Windows.Widgets.Providers;
 namespace DDjourneys.Platforms.Windows.Widgets;
 
 /// <summary>
-/// Fetches widget rows and hands the board a card: on demand when a widget becomes visible or its refresh
-/// button is used, and in a slow shared cycle while the app runs (the parity of Android's 30-minute update
-/// interval). One flight per widget at a time; a failed fetch keeps the old snapshot, marked stale - the
-/// same honest degradation as the Android updater.
+/// Fetches widget rows and hands the board a card: on demand when a widget becomes visible or is tapped, and in a
+/// slow shared cycle while the app runs (the parity of Android's 30-minute update interval). One flight per widget
+/// at a time; a failed fetch keeps the old snapshot, marked stale - the same honest degradation as the Android
+/// updater. While a widget is on screen a minute tick draws its card again from the cached rows (no network: the
+/// countdowns move, departed rows drop out), and asks for new rows when too few are left.
 /// </summary>
 public static class WidgetUpdaterWin
 {
@@ -21,13 +23,27 @@ public static class WidgetUpdaterWin
 
 	private static readonly TimeSpan FetchLimit = TimeSpan.FromSeconds(8);
 
+	/// <summary>The least time between two fetches the minute tick asks for.</summary>
+	private static readonly TimeSpan RefillEvery = TimeSpan.FromMinutes(2);
+
 	private static readonly Lock Gate = new();
 	private static readonly Dictionary<string, bool> InFlight = new(StringComparer.Ordinal);
+
+	/// <summary>The widgets the board shows right now.</summary>
+	private static readonly ConcurrentDictionary<string, bool> Visible = new(StringComparer.Ordinal);
+
+	/// <summary>The card last sent per widget: an unchanged card is not sent again.</summary>
+	private static readonly ConcurrentDictionary<string, string> LastSent = new(StringComparer.Ordinal);
+
+	private static readonly ConcurrentDictionary<string, DateTimeOffset> LastFetch = new(StringComparer.Ordinal);
+
 	private static CancellationTokenSource? _cycleSource;
 
-	/// <summary>Starts the shared refresh cycle (called once the app is running).</summary>
+	/// <summary>Starts the shared refresh cycle and the minute tick (called once the app is running).</summary>
 	public static void StartCycle()
 	{
+		CancellationToken token;
+
 		lock (Gate)
 		{
 			if (_cycleSource is not null)
@@ -36,17 +52,42 @@ public static class WidgetUpdaterWin
 			}
 
 			_cycleSource = new CancellationTokenSource();
+			token = _cycleSource.Token;
 		}
 
-		_ = CycleAsync(_cycleSource.Token);
+		_ = CycleAsync(token);
+		_ = TickAsync(token);
 	}
 
-	/// <summary>Serves the widget from the cache at once; asks for newer rows in the background.</summary>
+	/// <summary>The board shows the widget (or stops showing it): only shown widgets are drawn again every minute.</summary>
+	public static void SetVisible(string id, bool visible)
+	{
+		if (visible)
+		{
+			Visible[id] = true;
+		}
+		else
+		{
+			Visible.TryRemove(id, out _);
+		}
+	}
+
+	/// <summary>Forgets what is kept for a widget the board removed.</summary>
+	public static void Forget(string id)
+	{
+		Visible.TryRemove(id, out _);
+		LastSent.TryRemove(id, out _);
+		LastFetch.TryRemove(id, out _);
+	}
+
+	/// <summary>Serves the widget from the cache at once (sent even when unchanged: the board may have lost it); asks for newer rows in the background.</summary>
 	public static void Serve(string id)
 	{
-		RenderFromCache(id);
+		WidgetConfig? config = WindowsWidgets.Store?.LoadConfig(id);
 
-		if (WindowsWidgets.Store?.LoadConfig(id) is { IsComplete: true })
+		Render(id, config, force: true);
+
+		if (config is { IsComplete: true })
 		{
 			_ = RefreshAsync(id);
 		}
@@ -57,7 +98,7 @@ public static class WidgetUpdaterWin
 	{
 		if (WindowsWidgets.Store?.LoadConfig(id) is not { IsComplete: true } config)
 		{
-			RenderSetUp(id);
+			RenderSetUp(id, force: true);
 
 			return;
 		}
@@ -72,6 +113,8 @@ public static class WidgetUpdaterWin
 			InFlight[id] = true;
 		}
 
+		LastFetch[id] = DateTimeOffset.UtcNow;
+
 		try
 		{
 			using var limit = new CancellationTokenSource(FetchLimit);
@@ -80,12 +123,12 @@ public static class WidgetUpdaterWin
 			if (WindowsWidgets.Loader is { } loader)
 			{
 				WidgetSnapshot? snapshot =
-						await loader.LoadAsync(
-							config,
-							WidgetCard.RowsFor(WindowsWidgets.SizeOf(id), config.MaxRows),
-							DeviceLocator.LastFix,
-							limit.Token)
-							.ConfigureAwait(false);
+					await loader.LoadAsync(
+						config,
+						WidgetCard.RowsFor(WindowsWidgets.SizeOf(id), config.MaxRows),
+						DeviceLocator.LastFix,
+						limit.Token)
+						.ConfigureAwait(false);
 
 				if (snapshot is not null)
 				{
@@ -93,7 +136,7 @@ public static class WidgetUpdaterWin
 				}
 			}
 
-			RenderFromCache(id);
+			Render(id, config, force: false);
 		}
 		catch (Exception ex)
 		{
@@ -102,7 +145,7 @@ public static class WidgetUpdaterWin
 			// What was there stays for the next round; this card says so (not persisted, like Android's).
 			WidgetSnapshot? previous = WindowsWidgets.Store?.LoadSnapshot(id);
 
-			RenderSnapshot(id, previous is null ? null : previous with { IsStale = true });
+			RenderSnapshot(id, config, previous is null ? null : previous with { IsStale = true }, force: false);
 		}
 		finally
 		{
@@ -114,33 +157,22 @@ public static class WidgetUpdaterWin
 	}
 
 	/// <summary>The card for the cached snapshot, whatever it says; the set-up card when there are no settings.</summary>
-	private static void RenderFromCache(string id)
+	private static void Render(string id, WidgetConfig? config, bool force)
 	{
-		if (WindowsWidgets.Store is not { } store)
+		if (config is null
+			|| WindowsWidgets.Store is not { } store)
 		{
-			return;
-		}
-
-		if (store.LoadConfig(id) is not { } config)
-		{
-			RenderSetUp(id);
+			RenderSetUp(id, force);
 
 			return;
 		}
 
-		RenderSnapshot(id, store.LoadSnapshot(id));
+		RenderSnapshot(id, config, store.LoadSnapshot(id), force);
 	}
 
 	/// <summary>One card from a snapshot as it stands (the stale flag included); the set-up card without one.</summary>
-	private static void RenderSnapshot(string id, WidgetSnapshot? snapshot)
+	private static void RenderSnapshot(string id, WidgetConfig config, WidgetSnapshot? snapshot, bool force)
 	{
-		if (WindowsWidgets.Store?.LoadConfig(id) is not { } config)
-		{
-			RenderSetUp(id);
-
-			return;
-		}
-
 		WidgetCardPayload card =
 			snapshot is null
 				? WidgetCard.SetUp(Strings())
@@ -152,14 +184,21 @@ public static class WidgetUpdaterWin
 					config.Title,
 					WidgetChipImages.For);
 
-		Send(id, card);
+		Send(id, card, force);
 	}
 
-	private static void RenderSetUp(string id) =>
-		Send(id, WidgetCard.SetUp(Strings()));
+	private static void RenderSetUp(string id, bool force) =>
+		Send(id, WidgetCard.SetUp(Strings()), force);
 
-	private static void Send(string id, WidgetCardPayload card)
+	private static void Send(string id, WidgetCardPayload card, bool force)
 	{
+		if (!force
+			&& LastSent.TryGetValue(id, out string? last)
+			&& string.Equals(last, card.Template, StringComparison.Ordinal))
+		{
+			return;
+		}
+
 		try
 		{
 			WidgetManager.GetDefault().UpdateWidget(
@@ -168,6 +207,8 @@ public static class WidgetUpdaterWin
 					Template = card.Template,
 					Data = card.Data
 				});
+
+			LastSent[id] = card.Template;
 		}
 		catch (Exception ex)
 		{
@@ -207,6 +248,55 @@ public static class WidgetUpdaterWin
 		}
 	}
 
+	/// <summary>On the minute, for the widgets on screen: the card again from the cache, and new rows when the cache runs low.</summary>
+	private static async Task TickAsync(CancellationToken cancellation)
+	{
+		while (!cancellation.IsCancellationRequested)
+		{
+			try
+			{
+				await Task.Delay(TimeSpan.FromSeconds(61 - DateTimeOffset.Now.Second), cancellation).ConfigureAwait(false);
+			}
+			catch (OperationCanceledException)
+			{
+				return;
+			}
+
+			foreach (string id in Visible.Keys)
+			{
+				try
+				{
+					Tick(id);
+				}
+				catch (Exception ex)
+				{
+					WindowsTrace.Write($"Drawing widget {id} again failed", ex);
+				}
+			}
+		}
+	}
+
+	private static void Tick(string id)
+	{
+		if (WindowsWidgets.Store is not { } store
+			|| store.LoadConfig(id) is not { } config)
+		{
+			return;
+		}
+
+		WidgetSnapshot? snapshot = store.LoadSnapshot(id);
+
+		RenderSnapshot(id, config, snapshot, force: false);
+
+		if (config.IsComplete
+			&& snapshot is not null
+			&& snapshot.Upcoming(DateTimeOffset.UtcNow).Count < WidgetCard.RowsFor(WindowsWidgets.SizeOf(id), config.MaxRows)
+			&& (!LastFetch.TryGetValue(id, out DateTimeOffset last) || DateTimeOffset.UtcNow - last >= RefillEvery))
+		{
+			_ = RefreshAsync(id);
+		}
+	}
+
 	private static WidgetCardStrings Strings()
 	{
 		WidgetStrings widgets = LocalizationService.Current.CurrentStrings.Widgets;
@@ -217,6 +307,8 @@ public static class WidgetUpdaterWin
 			widgets.CardOpen,
 			widgets.CardSetUp,
 			widgets.RefreshFailed,
-			widgets.CardSetUpHint);
+			widgets.CardSetUpHint,
+			widgets.CardInMinutes,
+			widgets.CardNow);
 	}
 }

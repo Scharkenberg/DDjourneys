@@ -372,12 +372,19 @@ internal static class WindowsWidgets
 	{
 		try
 		{
-			return
-			[.. WidgetManager.GetDefault()
-				.GetWidgetInfos()
-				.Select(info => info.WidgetContext?.Id)
-				.Where(static widgetId => widgetId is { Length: > 0 })
-				.Select(static widgetId => widgetId!)];
+			var ids = new List<string>();
+
+			foreach (WidgetInfo info in WidgetManager.GetDefault().GetWidgetInfos())
+			{
+				if (info.WidgetContext?.Id is { Length: > 0 } id)
+				{
+					// The sizes of the widgets on the board are known from the first look at it, also after a restart of the app.
+					RememberSize(info.WidgetContext);
+					ids.Add(id);
+				}
+			}
+
+			return [.. ids];
 		}
 		catch
 		{

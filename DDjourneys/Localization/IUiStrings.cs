@@ -804,6 +804,8 @@ public sealed class WidgetStrings
 	public required string SetupIncompleteStop { get; init; }
 	public required string SetupIncompleteRoute { get; init; }
 	public required string CardSetUpHint { get; init; }
+	public required string CardInMinutes { get; init; }
+	public required string CardNow { get; init; }
 	public required string DiagTitle { get; init; }
 	public required string DiagHint { get; init; }
 	public required string DiagCopy { get; init; }

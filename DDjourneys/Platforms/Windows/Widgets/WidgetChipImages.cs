@@ -24,6 +24,13 @@ internal static class WidgetChipImages
 
 	private static readonly ConcurrentDictionary<(string Text, TransitMode Mode), WidgetChipImage> Cache = new();
 
+	/// <summary>The lettering face, looked up once.</summary>
+	private static readonly Lazy<SKTypeface> Face =
+		new(
+			static () =>
+				SKTypeface.FromFamilyName("Segoe UI", SKFontStyleWeight.SemiBold, SKFontStyleWidth.Normal, SKFontStyleSlant.Upright)
+				?? SKTypeface.Default);
+
 	/// <summary>The chip of a row; null when the row has none (a stop header) or drawing failed.</summary>
 	public static WidgetChipImage? For(WidgetRow row)
 	{
@@ -46,11 +53,7 @@ internal static class WidgetChipImages
 
 	private static WidgetChipImage Draw(string text, TransitMode mode)
 	{
-		SKTypeface face =
-			SKTypeface.FromFamilyName("Segoe UI", SKFontStyleWeight.SemiBold, SKFontStyleWidth.Normal, SKFontStyleSlant.Upright)
-			?? SKTypeface.Default;
-
-		using var font = new SKFont(face, TextSize * Scale) { Subpixel = true };
+		using var font = new SKFont(Face.Value, TextSize * Scale) { Subpixel = true };
 
 		float textWidth = font.MeasureText(text);
 		int width = Math.Clamp((int)Math.Ceiling((textWidth / Scale) + 16), MinWidth, MaxWidth);

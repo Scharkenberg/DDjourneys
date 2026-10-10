@@ -11,7 +11,9 @@ public sealed record WidgetCardStrings(
 	string Open,
 	string SetUp,
 	string CouldNotRefresh,
-	string SetUpHint = "");
+	string SetUpHint = "",
+	string InMinutes = "in {0} min",
+	string Now = "now");
 
 /// <summary>The three sizes of the Widgets Board; the card is built for the one the board says.</summary>
 public enum WidgetCardSize
@@ -44,6 +46,9 @@ public static class WidgetCard
 
 	private const string Schema = "http://adaptivecards.io/schemas/adaptive-card.json";
 
+	/// <summary>A departure further away than this shows no countdown.</summary>
+	private static readonly TimeSpan CountdownLimit = TimeSpan.FromMinutes(60);
+
 	/// <summary>How many rows a widget of this size has room for, within the user's own cap (0: no cap).</summary>
 	public static int RowsFor(WidgetCardSize size, int maxRows)
 	{
@@ -51,14 +56,18 @@ public static class WidgetCard
 			size switch
 			{
 				WidgetCardSize.Small => 2,
-				WidgetCardSize.Medium => 4,
-				_ => 8
+				WidgetCardSize.Medium => 5,
+				_ => WidgetConfig.MaxRowsLimit
 			};
 
 		return maxRows > 0 ? Math.Min(fit, maxRows) : fit;
 	}
 
-	/// <summary>The card for a snapshot: the header, the rows that fit the size, the time of the last update, the actions.</summary>
+	/// <summary>
+	/// The card for a snapshot: the board's header, the rows that fit the size (every row with all it has to say, on
+	/// every size), and from medium up one footer line - the time of the last update and the link into the app.
+	/// A tap on the card refreshes it; there are no buttons.
+	/// </summary>
 	public static WidgetCardPayload For(
 		WidgetSnapshot snapshot,
 		WidgetCardSize size,
@@ -71,12 +80,13 @@ public static class WidgetCard
 		ArgumentNullException.ThrowIfNull(snapshot);
 		ArgumentNullException.ThrowIfNull(strings);
 
+		DateTimeOffset at = now ?? DateTimeOffset.UtcNow;
+
 		JsonArray body = Wire.Array();
 
 		string title = string.IsNullOrWhiteSpace(titleOverride) ? snapshot.Title : titleOverride;
 
-		IReadOnlyList<WidgetRow> upcoming = snapshot.Upcoming(now ?? DateTimeOffset.UtcNow);
-		IReadOnlyList<WidgetRow> shown = [.. upcoming.Take(RowsFor(size, maxRows))];
+		IReadOnlyList<WidgetRow> shown = [.. snapshot.Upcoming(at).Take(RowsFor(size, maxRows))];
 
 		if (shown.Count == 0)
 		{
@@ -91,7 +101,7 @@ public static class WidgetCard
 				body.Add(
 					row.Kind == WidgetRowKind.Header
 						? Header(row, first)
-						: Row(row, size, chips?.Invoke(row), first));
+						: Row(row, chips?.Invoke(row), first, at, strings));
 
 				first = false;
 			}
@@ -99,26 +109,20 @@ public static class WidgetCard
 
 		string stamp = Stamp(snapshot, strings);
 
-		if (size != WidgetCardSize.Small
-			&& stamp.Length > 0)
+		if (size == WidgetCardSize.Small)
 		{
-			body.Add(Text(stamp, size: "small", isSubtle: snapshot.IsStale is false, color: snapshot.IsStale ? "warning" : "default", spacing: "medium"));
+			// No room for a footer: only a problem is worth a line.
+			if (snapshot.IsStale)
+			{
+				body.Add(Text(strings.CouldNotRefresh, size: "small", color: "warning", spacing: "small"));
+			}
 		}
-		else if (size == WidgetCardSize.Small
-			&& snapshot.IsStale)
+		else
 		{
-			body.Add(Text(strings.CouldNotRefresh, size: "small", color: "warning", spacing: "small"));
-		}
-
-		JsonArray actions = Wire.Array();
-
-		if (size != WidgetCardSize.Small)
-		{
-			actions.Add(Execute(strings.Refresh, "refresh"));
-			actions.Add(Execute(strings.Open, "open"));
+			body.Add(Footer(stamp, strings, snapshot.IsStale));
 		}
 
-		return Payload(body, actions, title, Execute(strings.Open, "open"));
+		return Payload(body, title, Execute(strings.Refresh, "refresh"));
 	}
 
 	/// <summary>The card for a widget that has no settings yet: what it is for and the one thing to do.</summary>
@@ -133,14 +137,10 @@ public static class WidgetCard
 			body.Add(Text(strings.SetUpHint, isSubtle: true, spacing: "small"));
 		}
 
-		return Payload(
-			body,
-			Wire.Array(Execute(strings.SetUp, "setup")),
-			string.Empty,
-			Execute(strings.SetUp, "setup"));
+		return Payload(body, string.Empty, Execute(strings.SetUp, "setup"));
 	}
 
-	private static WidgetCardPayload Payload(JsonArray body, JsonArray actions, string header, JsonObject select)
+	private static WidgetCardPayload Payload(JsonArray body, string header, JsonObject select)
 	{
 		var card =
 			new JsonObject
@@ -157,7 +157,6 @@ public static class WidgetCard
 		}
 
 		card["body"] = body;
-		card["actions"] = actions;
 		card["selectAction"] = select;
 
 		return new WidgetCardPayload(card.ToJsonString(), "{}");
@@ -177,6 +176,32 @@ public static class WidgetCard
 				updated.ToLocalTime().ToString("HH:mm", CultureInfo.CurrentCulture))
 			: string.Empty;
 	}
+
+	/// <summary>One line at the very bottom: when the widget was updated, and the link into the app (like the weather widget's).</summary>
+	private static JsonObject Footer(string stamp, WidgetCardStrings strings, bool stale) =>
+		new()
+		{
+			["type"] = "ColumnSet",
+			["spacing"] = "small",
+			["columns"] = Wire.Array(
+				new JsonObject
+				{
+					["type"] = "Column",
+					["width"] = "stretch",
+					["verticalContentAlignment"] = "center",
+					["items"] = Wire.Array(
+						Text(stamp, size: "small", isSubtle: !stale, color: stale ? "warning" : "default", wrap: false, spacing: "none"))
+				},
+				new JsonObject
+				{
+					["type"] = "Column",
+					["width"] = "auto",
+					["verticalContentAlignment"] = "center",
+					["selectAction"] = Execute(strings.Open, "open"),
+					["items"] = Wire.Array(
+						Text(strings.Open, size: "small", weight: "bolder", color: "accent", wrap: false, spacing: "none", align: "right"))
+				})
+		};
 
 	/// <summary>A stop's name above its departures (the nearby widgets): the distance on the right.</summary>
 	private static JsonObject Header(WidgetRow row, bool first) =>
@@ -201,55 +226,53 @@ public static class WidgetCard
 				})
 		};
 
-	/// <summary>One row: the line chip, where it goes (and the second line), when - with the delay in the host's words for it.</summary>
-	private static JsonObject Row(WidgetRow row, WidgetCardSize size, WidgetChipImage? chip, bool first)
+	/// <summary>One row: the line chip, where it goes (and the second line), when - with the delay and the countdown on the right.</summary>
+	private static JsonObject Row(WidgetRow row, WidgetChipImage? chip, bool first, DateTimeOffset now, WidgetCardStrings strings)
 	{
-		bool small = size == WidgetCardSize.Small;
-		bool journey = row.Arrival.Length > 0;
+		string? countdown = Countdown(row, now, strings);
 
 		JsonArray main;
-		JsonArray tail = Wire.Array();
+		JsonArray tail;
 
-		if (journey)
+		if (row.Arrival.Length > 0)
 		{
-			// "23:09 → 23:17": when to leave and when to arrive; the facts of the journey below.
+			// A journey: "23:09 → 23:17" and the facts below; the countdown to the start and the delay on the right.
 			main = Wire.Array(
-				Text($"{row.Time} → {row.Arrival}", weight: "bolder", wrap: false, spacing: "none"));
+				Text($"{row.Time} \u2192 {row.Arrival}", weight: "bolder", wrap: false, spacing: "none"));
 
-			string facts = string.Join(" · ", new[] { row.Lead, row.Duration, row.Transfers, row.Lines }.Where(part => part.Length > 0));
+			string facts = string.Join(" \u00b7 ", new[] { row.Lead, row.Duration, row.Transfers, row.Lines }.Where(part => part.Length > 0));
 
-			if (!small && facts.Length > 0)
+			if (facts.Length > 0)
 			{
 				main.Add(Text(facts, size: "small", isSubtle: true, wrap: false, spacing: "none"));
 			}
 
+			tail = Wire.Array();
+
+			if (countdown is not null)
+			{
+				tail.Add(Text(countdown, weight: "bolder", wrap: false, spacing: "none", align: "right"));
+			}
+
 			if (row.Delay.Length > 0)
 			{
-				tail.Add(Text(row.Delay, size: small ? "small" : "default", weight: "bolder", color: Level(row), wrap: false, spacing: "none", align: "right"));
+				tail.Add(Text(row.Delay, size: "small", weight: "bolder", color: Level(row), wrap: false, spacing: "none", align: "right"));
 			}
 		}
 		else
 		{
 			main = Wire.Array(Text(row.Main, weight: "bolder", wrap: false, spacing: "none"));
 
-			if (!small && row.Sub.Length > 0)
+			if (row.Sub.Length > 0)
 			{
 				main.Add(Text(row.Sub, size: "small", isSubtle: true, wrap: false, spacing: "none"));
 			}
 
-			// Small: no second line, so a delay colours the time itself.
-			tail.Add(
-				Text(
-					row.Time,
-					weight: "bolder",
-					wrap: false,
-					spacing: "none",
-					align: "right",
-					color: small && row.Delay.Length > 0 ? Level(row) : "default"));
+			tail = Wire.Array(Text(row.Time, weight: "bolder", wrap: false, spacing: "none", align: "right"));
 
-			if (!small && row.Delay.Length > 0)
+			if (Detail(row, countdown) is { } detail)
 			{
-				tail.Add(Text(row.Delay, size: "small", color: Level(row), wrap: false, spacing: "none", align: "right"));
+				tail.Add(detail);
 			}
 		}
 
@@ -260,7 +283,7 @@ public static class WidgetCard
 					["type"] = "Column",
 					["width"] = "auto",
 					["verticalContentAlignment"] = "center",
-					["items"] = Wire.Array(Chip(row, chip, small))
+					["items"] = Wire.Array(Chip(row, chip))
 				},
 				new JsonObject
 				{
@@ -290,6 +313,72 @@ public static class WidgetCard
 		};
 	}
 
+	/// <summary>The second line on the right of a departure: the delay in the host's colour, then the countdown, subtle.</summary>
+	private static JsonObject? Detail(WidgetRow row, string? countdown)
+	{
+		if (row.Delay.Length == 0
+			&& countdown is null)
+		{
+			return null;
+		}
+
+		if (row.Delay.Length == 0)
+		{
+			return Text(countdown!, size: "small", isSubtle: true, wrap: false, spacing: "none", align: "right");
+		}
+
+		if (countdown is null)
+		{
+			return Text(row.Delay, size: "small", weight: "bolder", color: Level(row), wrap: false, spacing: "none", align: "right");
+		}
+
+		return new JsonObject
+		{
+			["type"] = "RichTextBlock",
+			["spacing"] = "none",
+			["horizontalAlignment"] = "right",
+			["inlines"] = Wire.Array(
+				new JsonObject
+				{
+					["type"] = "TextRun",
+					["text"] = row.Delay,
+					["size"] = "small",
+					["weight"] = "bolder",
+					["color"] = Level(row)
+				},
+				new JsonObject
+				{
+					["type"] = "TextRun",
+					["text"] = $" \u00b7 {countdown}",
+					["size"] = "small",
+					["isSubtle"] = true
+				})
+		};
+	}
+
+	/// <summary>"in 4 min", "now" - from the moment the card is drawn (the app draws it again every minute while it is seen); null when it is further away than an hour or has no time.</summary>
+	private static string? Countdown(WidgetRow row, DateTimeOffset now, WidgetCardStrings strings)
+	{
+		if (row.At is not { } at
+			|| row.DelayLevel == WidgetDelay.Cancelled)
+		{
+			return null;
+		}
+
+		TimeSpan until = at - now;
+
+		if (until > CountdownLimit)
+		{
+			return null;
+		}
+
+		int minutes = (int)Math.Ceiling(until.TotalMinutes);
+
+		return minutes <= 0
+			? strings.Now
+			: string.Format(CultureInfo.CurrentCulture, strings.InMinutes, minutes);
+	}
+
 	private static string Level(WidgetRow row) =>
 		row.DelayLevel switch
 		{
@@ -299,7 +388,7 @@ public static class WidgetCard
 		};
 
 	/// <summary>The line chip: the drawn image, else a rounded emphasis container with the line in it.</summary>
-	private static JsonObject Chip(WidgetRow row, WidgetChipImage? image, bool small)
+	private static JsonObject Chip(WidgetRow row, WidgetChipImage? image)
 	{
 		if (image is not null)
 		{
@@ -319,7 +408,7 @@ public static class WidgetCard
 			["style"] = "emphasis",
 			["roundedCorners"] = true,
 			["items"] = Wire.Array(
-				Text(row.Chip, size: small ? "small" : "default", weight: "bolder", wrap: false, spacing: "none", align: "center"))
+				Text(row.Chip, weight: "bolder", wrap: false, spacing: "none", align: "center"))
 		};
 	}
 
