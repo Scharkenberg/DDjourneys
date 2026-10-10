@@ -56,8 +56,8 @@ internal static class WindowsWidgets
 		WidgetCardSize size =
 			context.Size switch
 			{
-				WidgetSize.Small => WidgetCardSize.Small,
-				WidgetSize.Large => WidgetCardSize.Large,
+				Microsoft.Windows.Widgets.WidgetSize.Small => WidgetCardSize.Small,
+				Microsoft.Windows.Widgets.WidgetSize.Large => WidgetCardSize.Large,
 				_ => WidgetCardSize.Medium
 			};
 
