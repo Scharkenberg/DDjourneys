@@ -50,23 +50,54 @@ public sealed class VvoNetworkProvider :
 			return DepartureBoard.Empty;
 		}
 
-		VvoDepartureResponse? response =
-			await _apiClient.GetDeparturesAsync(
-				new VvoDepartureRequest
-				{
-					StopId = query.Stop.Id,
-					Limit = Math.Clamp(query.Limit, 1, 60),
-					Time = query.Time?.ToString("O", CultureInfo.InvariantCulture),
-					IsArrival = query.IsArrival,
-					ModesOfTransport = ModesOf(query.Modes)
-				},
-				Timeout(query.TimeoutSeconds),
-				cancellationToken)
-				.ConfigureAwait(false);
+		// The time of the board, in the forms the service reads: ISO in UTC first, the Microsoft date second.
+		// A board that starts long before the wanted time means the service ignored the time (it answers for
+		// now when it cannot read it): then the other form is tried, once.
+		string?[] forms =
+			query.Time is { } wanted
+				?
+				[
+					wanted.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture),
+					$"/Date({wanted.ToUnixTimeMilliseconds()}+0000)/"
+				]
+				: [null];
 
-		return response is null
-			? DepartureBoard.Empty
-			: VvoNetworkMapper.MapBoard(response, query.Stop, query.IsArrival);
+		DepartureBoard best = DepartureBoard.Empty;
+
+		foreach (string? form in forms)
+		{
+			VvoDepartureResponse? response =
+				await _apiClient.GetDeparturesAsync(
+					new VvoDepartureRequest
+					{
+						StopId = query.Stop.Id,
+						Limit = Math.Clamp(query.Limit, 1, 60),
+						Time = form,
+						IsArrival = query.IsArrival,
+						ModesOfTransport = ModesOf(query.Modes)
+					},
+					Timeout(query.TimeoutSeconds),
+					cancellationToken)
+					.ConfigureAwait(false);
+
+			DepartureBoard board =
+				response is null
+					? DepartureBoard.Empty
+					: VvoNetworkMapper.MapBoard(response, query.Stop, query.IsArrival);
+
+			best = board;
+
+			if (query.Time is not { } at
+				|| board.Departures.Count == 0
+				|| board.Departures[0].Scheduled >= at - TimeSpan.FromMinutes(10))
+			{
+				break;
+			}
+
+			DiagnosticLog.Write($"[VVO] the board for {at:HH:mm} starts at {board.Departures[0].Scheduled:HH:mm}: the time '{form}' was not read, trying the other form");
+		}
+
+		return best;
 	}
 
 	/// <inheritdoc />

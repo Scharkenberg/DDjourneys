@@ -34,6 +34,10 @@ namespace DDjourneys.WinUI
 			WindowsNotificationHost.Register();
 			WindowsBackground.Initialize(WindowsNotificationHost.Embedded);
 
+			// The Widgets Board waits for this class object after it started the app: registered now, not
+			// after the MAUI app has been built (that takes seconds).
+			WindowsWidgets.RegisterClassObject();
+
 			this.InitializeComponent();
 
 			// WinUI's own opaque page/navigation backgrounds must not hide the window material.

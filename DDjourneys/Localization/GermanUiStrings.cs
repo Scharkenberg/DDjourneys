@@ -803,6 +803,10 @@ public sealed class GermanUiStrings : IUiStrings
 		SetupSaved = "Gespeichert. Das Widget zeigt es mit der nächsten Aktualisierung.",
 		EditorFor = "Widget {0}",
 		SetupNotChosen = "Noch nicht gewählt",
-		SetupRowsCount = "{0} Zeilen"
+		SetupRowsCount = "{0} Zeilen",
+		DiagTitle = "Wenn ein Widget sich nicht hinzufügen lässt",
+		DiagHint = "Windows meldet nur \"Fehler beim Hinzufügen des Widgets\". Dieser Bericht zeigt, was Windows über diese App gespeichert hat. Schalten Sie unter Einstellungen, Entwickleroptionen, In Datei protokollieren ein, versuchen Sie das Hinzufügen noch einmal und schicken Sie das Protokoll zusammen mit diesem Bericht.",
+		DiagCopy = "Bericht kopieren",
+		DiagCopied = "Kopiert."
 	};
 }

@@ -38,6 +38,13 @@ public sealed partial class JourneyViewModel :
 
 	private readonly LegRunResolver _runs;
 
+	private readonly FareBorrower _fareBorrower;
+
+	/// <summary>Tickets borrowed from another interface for the journey shown (a provider that quotes none).</summary>
+	private (Journey Journey, IReadOnlyList<JourneyFare> Fares)? _borrowedFares;
+
+	private CancellationTokenSource? _borrowing;
+
 
 	/// <summary>Saves (and removes) the connection this journey belongs to; empty when it was opened without a search.</summary>
 	public RouteBookmark Bookmark { get; }
@@ -49,11 +56,13 @@ public sealed partial class JourneyViewModel :
 		ContractSession contract,
 		JourneyService journeys,
 		PlaceStore places,
-		LegRunResolver runs)
+		LegRunResolver runs,
+		FareBorrower fareBorrower)
 	{
 		ArgumentNullException.ThrowIfNull(places);
 
 		_runs = runs ?? throw new ArgumentNullException(nameof(runs));
+		_fareBorrower = fareBorrower ?? throw new ArgumentNullException(nameof(fareBorrower));
 
 		Bookmark =
 			new RouteBookmark(
@@ -479,6 +488,18 @@ public sealed partial class JourneyViewModel :
 			};
 	}
 
+	/// <summary>The journeys that are followed for this one: its parts when it was joined, else itself.</summary>
+	private static IReadOnlyList<Journey> PiecesOf(Journey journey) =>
+		journey.Parts is { Count: > 1 } parts
+			? parts
+			: (List<Journey>)[journey];
+
+	/// <summary>The plans of everything followed for the journey on show.</summary>
+	private List<string> FollowedPlanIds() =>
+		_journey is null
+			? []
+			: [.. PiecesOf(_journey).Select(piece => _tracker.Find(piece)?.PlanId).OfType<string>().Distinct()];
+
 	private async Task FollowJourneyAsync()
 	{
 		if (_journey is null)
@@ -496,11 +517,35 @@ public sealed partial class JourneyViewModel :
 
 		WatchedJourney watched = await _tracker.FollowAsync(_journey, replaces, default);
 
-		// The followed journey's map (and its vehicles) needs the rides with their boarding stops.
-		FollowedRides.Save(watched.PlanId, _journey);
+		// A journey through a stop-over that was joined from two parts is followed as two plans, one per part.
+		IReadOnlyList<Journey> pieces = PiecesOf(_journey);
 
-		// A missed connection is recovered from these ends; the notification's search needs them.
-		FollowedEndpoints.Save(watched.PlanId, _query?.From, _query?.To, _query?.Via);
+		for (int index = 0; index < pieces.Count; index++)
+		{
+			WatchedJourney? plan = index == 0 ? watched : _tracker.Find(pieces[index]);
+
+			if (plan is null)
+			{
+				continue;
+			}
+
+			// The followed journey's map (and its vehicles) needs the rides with their boarding stops.
+			FollowedRides.Save(plan.PlanId, pieces[index]);
+
+			// A missed connection is recovered from these ends; the notification's search needs them.
+			if (pieces.Count == 1)
+			{
+				FollowedEndpoints.Save(plan.PlanId, _query?.From, _query?.To, _query?.Via);
+			}
+			else if (index == 0)
+			{
+				FollowedEndpoints.Save(plan.PlanId, _query?.From, _query?.Via, null);
+			}
+			else
+			{
+				FollowedEndpoints.Save(plan.PlanId, _query?.Via, _query?.To, null);
+			}
+		}
 
 		UpdateFollowState();
 
@@ -517,7 +562,10 @@ public sealed partial class JourneyViewModel :
 			return;
 		}
 
-		await _tracker.SetActiveAsync(_followed.PlanId, !paused);
+		foreach (string planId in FollowedPlanIds())
+		{
+			await _tracker.SetActiveAsync(planId, !paused);
+		}
 
 		UpdateFollowState();
 	}
@@ -529,7 +577,10 @@ public sealed partial class JourneyViewModel :
 			return;
 		}
 
-		await _tracker.DeleteAsync(_followed.PlanId);
+		foreach (string planId in FollowedPlanIds())
+		{
+			await _tracker.DeleteAsync(planId);
+		}
 
 		UpdateFollowState();
 	}
@@ -1189,9 +1240,17 @@ public sealed partial class JourneyViewModel :
 		ExtrasStrings strings =
 			_localization.CurrentStrings.Extras;
 
+		// The journey's own tickets, else the ones borrowed for this very journey.
+		IReadOnlyList<JourneyFare> quoted =
+			journey.Fares.Count > 0
+				? journey.Fares
+				: _borrowedFares is { } borrowed && ReferenceEquals(borrowed.Journey, journey)
+					? borrowed.Fares
+					: journey.Fares;
+
 		JourneyFare? preferred =
 			FareChoice.Preferred(
-				journey.Fares,
+				quoted,
 				_settings.Passenger);
 
 		string NameOf(
@@ -1217,7 +1276,7 @@ public sealed partial class JourneyViewModel :
 
 		Fares =
 			(List<FareRow>)
-			[.. journey.Fares
+			[.. quoted
 				.OrderBy(
 					fare => ReferenceEquals(fare, preferred)
 						? 0
@@ -1294,7 +1353,7 @@ public sealed partial class JourneyViewModel :
 		string zones =
 			string.Join(
 				", ",
-				journey.Fares
+				quoted
 					.Select(
 						fare => fare.Zones)
 					.Where(
@@ -1310,7 +1369,7 @@ public sealed partial class JourneyViewModel :
 		string notes =
 			string.Join(
 				" ",
-				journey.Fares
+				quoted
 					.Select(
 						fare => fare.Notes)
 					.Where(
@@ -1327,6 +1386,48 @@ public sealed partial class JourneyViewModel :
 			nameof(FaresToggleDescription));
 	}
 
+
+	/// <summary>
+	/// A provider that quotes no tickets still gets a fare card: the same connection is looked up at the VVO
+	/// WebAPI (see <see cref="FareBorrower"/>) and its tickets are shown when it is found.
+	/// </summary>
+	private async Task BorrowFaresAsync(Journey journey)
+	{
+		_borrowing?.Cancel();
+
+		if (!_fareBorrower.Wants(journey))
+		{
+			return;
+		}
+
+		var cancel = new CancellationTokenSource();
+
+		_borrowing = cancel;
+
+		try
+		{
+			IReadOnlyList<JourneyFare> fares = await _fareBorrower.BorrowAsync(journey, cancel.Token);
+
+			if (fares.Count == 0
+				|| cancel.IsCancellationRequested
+				|| IsDisposed
+				|| !ReferenceEquals(_journey, journey))
+			{
+				return;
+			}
+
+			_borrowedFares = (journey, fares);
+
+			await MainThread.InvokeOnMainThreadAsync(() => BuildFares(journey));
+		}
+		catch (OperationCanceledException)
+		{
+		}
+		catch (Exception ex)
+		{
+			DiagnosticLog.Write($"[Fares] borrowing for the journey page failed: {ex.Message}");
+		}
+	}
 
 	private void BuildLocalizedDisplay(
 		Journey journey)
@@ -1397,6 +1498,8 @@ public sealed partial class JourneyViewModel :
 
 		BuildFares(
 			journey);
+
+		_ = BorrowFaresAsync(journey);
 
 
 		Notices =

@@ -22,7 +22,7 @@ public sealed class FareLinksTests
 	}
 
 	[Fact]
-	public void The_vvo_page_stays_empty_until_the_owner_sets_it()
+	public void The_vvo_gets_the_page_of_its_online_tickets()
 	{
 		JourneyFare fare =
 			new()
@@ -30,7 +30,9 @@ public sealed class FareLinksTests
 				Name = "Einzelfahrt"
 			};
 
-		Assert.Null(FareLinks.For(fare, "vvo"));
+		Assert.Equal(
+			"https://www.vvo-online.de/de/tarif-tickets/ticketkauf/handy-und-onlinetickets-6514.cshtml",
+			FareLinks.For(fare, "vvo")?.ToString());
 	}
 
 	[Theory]

@@ -228,7 +228,8 @@ public static class ViaRouting
 			[JourneySegment.Of(head), JourneySegment.Of(tail)],
 			keepFares: false,
 			notices: [.. head.Notices.Concat(tail.Notices).Distinct()],
-			destination: tail.Destination);
+			destination: tail.Destination,
+			parts: [head, tail]);
 
 	private static JourneyQuery Sub(
 		JourneyQuery query,

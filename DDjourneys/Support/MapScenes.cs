@@ -51,15 +51,30 @@ public static class MapScenes
 	/// quiet outline that also survives pale zone colours on a pale basemap, and the zone number as its label.
 	/// The ring is simplified once here, not on every send.
 	/// </summary>
-	public static MapPolygon ZonePolygon(TariffZoneShape shape, bool dark, int maxPoints = 256) =>
-		new(
+	public static MapPolygon ZonePolygon(TariffZoneShape shape, bool dark, int maxPoints = 256, int index = 0)
+	{
+		// One hue per zone from a categorical palette (neighbouring zones come one after another, so they differ),
+		// not the provider's own pale colours: those vanish on a pale basemap. The same hue draws the fill (a clear
+		// but quiet wash) and the outline (solid, so the borders stand out on the vector and the raster map alike).
+		string hue = (dark ? ZoneHuesDark : ZoneHuesLight)[Math.Abs(index) % ZoneHuesLight.Length];
+
+		return new(
 			PolylineSimplify.SimplifyRing(shape.Ring, maxPoints),
-			shape.Color is { Length: > 1 } ? shape.Color : ThemeRef("Accent", "#0b6e8a"),
-			dark ? 0.14 : 0.10,
-			ThemeRef("Outline", "#9e9e9e"),
+			hue,
+			dark ? 0.26 : 0.20,
+			hue,
 			shape.Number.ToString(System.Globalization.CultureInfo.InvariantCulture),
 			shape.CenterLat,
 			shape.CenterLon);
+	}
+
+	/// <summary>Zone hues for a light basemap: saturated mid tones, told apart by hue and by lightness.</summary>
+	private static readonly string[] ZoneHuesLight =
+		["#2b7bba", "#d9822b", "#3a9d5d", "#8e5bb5", "#c9484a", "#14a3a8", "#b09a10", "#d6639e", "#6f7c8a", "#7a5c3e"];
+
+	/// <summary>The same hues, lifted for a dark basemap.</summary>
+	private static readonly string[] ZoneHuesDark =
+		["#6db3f2", "#f5a85a", "#6fcf97", "#b98be0", "#f07f80", "#52d0d4", "#e6d25a", "#f08fbf", "#a9b6c4", "#c49a74"];
 
 	/// <summary>
 	/// Opens the map page with a scene; says so (returns false) when there is nothing to show. <paramref name="from"/>

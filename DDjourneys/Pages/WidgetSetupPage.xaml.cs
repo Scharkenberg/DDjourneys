@@ -412,6 +412,37 @@ public partial class WidgetSetupPage : PanePage, IQueryAttributable
 		Reload();
 	}
 
+	private async void OnDiagnostics(object? sender, EventArgs e)
+	{
+		DiagButton.IsEnabled = false;
+
+		try
+		{
+#if WINDOWS
+			string report = await Platforms.Windows.Widgets.WindowsWidgets.DiagnosticsAsync();
+#else
+			string report = "Windows widgets exist on Windows only.";
+
+			await Task.CompletedTask;
+#endif
+			DiagnosticLog.Write($"[Widgets] diagnostics:{Environment.NewLine}{report}");
+
+			await Clipboard.Default.SetTextAsync(report);
+
+			DiagText.Text = report + Environment.NewLine + Strings.DiagCopied;
+			DiagText.IsVisible = true;
+		}
+		catch (Exception ex)
+		{
+			DiagText.Text = ex.Message;
+			DiagText.IsVisible = true;
+		}
+		finally
+		{
+			DiagButton.IsEnabled = true;
+		}
+	}
+
 	private static string[] PinnedIds()
 	{
 #if WINDOWS

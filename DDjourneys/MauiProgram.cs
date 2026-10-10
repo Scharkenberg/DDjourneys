@@ -155,6 +155,7 @@ public static class MauiProgram
 
 		builder.Services.AddSingleton<JourneyProviderDiagnostics>();
 		builder.Services.AddSingleton<JourneyService>();
+		builder.Services.AddSingleton<FareBorrower>();
 
 		builder.Services.AddSingleton<ILocationProvider, VvoLocationProvider>();
 		builder.Services.AddSingleton<LocationService>();

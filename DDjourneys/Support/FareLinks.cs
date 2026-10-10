@@ -1,4 +1,5 @@
 using DDjourneys.Core.Models;
+using DDjourneys.Core.Providers.Trias;
 using DDjourneys.Core.Providers.Vvo;
 
 namespace DDjourneys.Support;
@@ -9,9 +10,11 @@ namespace DDjourneys.Support;
 /// </summary>
 public static class FareLinks
 {
-	// TODO(owner): the VVO API quotes no sale page. Pick the tickets page of the transport
-	// authority on device and set it here; that one line is the whole change.
-	private static readonly Uri? VvoTicketUrl = null;
+	// The VVO API quotes no sale page, and the authority sells through several apps (VVO mobil / DVB mobil,
+	// DB Navigator, FAIRTIQ, HandyTicket Deutschland, Moovme). Its page "Handy- und OnlineTickets" lists them
+	// all and says which suits whom (checked on vvo-online.de, tarif-tickets/ticketkauf): the honest hand-off.
+	private static readonly Uri? VvoTicketUrl =
+		new("https://www.vvo-online.de/de/tarif-tickets/ticketkauf/handy-und-onlinetickets-6514.cshtml");
 
 	/// <summary>
 	/// The link for a quoted ticket: the provider's own URL first (TRIAS SaleUrl), then the
@@ -28,7 +31,8 @@ public static class FareLinks
 		}
 
 		if (VvoTicketUrl is { } vvo
-			&& string.Equals(providerId, VvoProviderInfo.Id, StringComparison.OrdinalIgnoreCase))
+			&& (string.Equals(providerId, VvoProviderInfo.Id, StringComparison.OrdinalIgnoreCase)
+				|| string.Equals(providerId, TriasProviderInfo.Id, StringComparison.OrdinalIgnoreCase)))
 		{
 			return vvo;
 		}

@@ -797,4 +797,8 @@ public sealed class WidgetStrings
 	public required string EditorFor { get; init; }
 	public required string SetupNotChosen { get; init; }
 	public required string SetupRowsCount { get; init; }
+	public required string DiagTitle { get; init; }
+	public required string DiagHint { get; init; }
+	public required string DiagCopy { get; init; }
+	public required string DiagCopied { get; init; }
 }

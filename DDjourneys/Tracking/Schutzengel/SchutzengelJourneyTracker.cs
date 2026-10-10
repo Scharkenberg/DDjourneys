@@ -171,6 +171,16 @@ internal sealed partial class SchutzengelJourneyTracker : IJourneyTracker, ITrac
 	{
 		ArgumentNullException.ThrowIfNull(journey);
 
+		// A journey joined from parts is followed when every part is: its state is the first part's.
+		if (journey.Parts is { Count: > 1 } parts)
+		{
+			WatchedJourney?[] found = [.. parts.Select(Find)];
+
+			return found.All(item => item is not null)
+				? found[0]
+				: null;
+		}
+
 		string? key = JourneyFingerprint.Of(journey);
 
 		return key is null
@@ -234,6 +244,27 @@ internal sealed partial class SchutzengelJourneyTracker : IJourneyTracker, ITrac
 		CancellationToken cancellationToken = default)
 	{
 		ArgumentNullException.ThrowIfNull(journey);
+
+		// A journey joined from parts (through a stop-over no provider could plan in one piece): each part is a
+		// journey of the provider with its own route, and each is followed; the first one stands for the whole.
+		if (journey.Parts is { Count: > 1 } parts)
+		{
+			WatchedJourney? first = null;
+
+			foreach (Journey part in parts)
+			{
+				WatchedJourney followed =
+					await FollowAsync(
+						part,
+						first is null ? replacesPlanId : null,
+						cancellationToken)
+					.ConfigureAwait(false);
+
+				first ??= followed;
+			}
+
+			return first!;
+		}
 
 		await RequestNotificationPermissionAsync().ConfigureAwait(false);
 

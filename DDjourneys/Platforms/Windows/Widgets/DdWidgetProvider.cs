@@ -13,7 +13,7 @@ namespace DDjourneys.Platforms.Windows.Widgets;
 /// became visible (Activate) is served its cached snapshot and refreshed in the background; a widget
 /// without settings gets the set-up card; every widget carries two actions, refresh and open.
 /// </summary>
-public sealed class DdWidgetProvider : IWidgetProvider
+public sealed partial class DdWidgetProvider : IWidgetProvider
 {
 	// The board calls from its own threads, all on this one instance.
 	private readonly ConcurrentDictionary<string, bool> _active = new(StringComparer.Ordinal);
@@ -46,8 +46,18 @@ public sealed class DdWidgetProvider : IWidgetProvider
 
 		_active[id] = false;
 
+		WindowsTrace.Write($"[Widgets] CreateWidget {id} ({widgetContext.DefinitionId}, size {widgetContext.Size})");
+
 		try
 		{
+			// The app may still be building when the board creates a widget: the kind waits for the store.
+			if (WindowsWidgets.Store is null)
+			{
+				WindowsWidgets.RememberEarly(id, widgetContext.DefinitionId ?? string.Empty);
+
+				return;
+			}
+
 			// The picker entry decides the kind: a route widget starts as a route widget in the set-up page.
 			if (WindowsWidgets.Store is { } store
 				&& store.LoadConfig(id) is null)
@@ -73,6 +83,8 @@ public sealed class DdWidgetProvider : IWidgetProvider
 
 	public void DeleteWidget(string widgetId, string customState)
 	{
+		WindowsTrace.Write($"[Widgets] DeleteWidget {widgetId}");
+
 		_active.TryRemove(widgetId, out _);
 		WindowsWidgets.Store?.Remove(widgetId);
 
@@ -89,6 +101,8 @@ public sealed class DdWidgetProvider : IWidgetProvider
 			return;
 		}
 
+		WindowsTrace.Write($"[Widgets] Activate {id}");
+
 		_active[id] = true;
 		WindowsBackground.SetKeepAlive(true);
 
@@ -98,6 +112,8 @@ public sealed class DdWidgetProvider : IWidgetProvider
 
 	public void Deactivate(string widgetId)
 	{
+		WindowsTrace.Write($"[Widgets] Deactivate {widgetId}");
+
 		if (_active.ContainsKey(widgetId))
 		{
 			_active[widgetId] = false;
@@ -119,6 +135,8 @@ public sealed class DdWidgetProvider : IWidgetProvider
 		{
 			return;
 		}
+
+		WindowsTrace.Write($"[Widgets] action '{actionInvokedArgs!.Verb}' on {id}");
 
 		switch (actionInvokedArgs!.Verb)
 		{

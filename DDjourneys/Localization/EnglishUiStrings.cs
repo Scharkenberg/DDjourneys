@@ -793,6 +793,10 @@ public sealed class EnglishUiStrings : IUiStrings
 		SetupSaved = "Saved. The widget shows it with the next refresh.",
 		EditorFor = "Widget {0}",
 		SetupNotChosen = "Not chosen yet",
-		SetupRowsCount = "{0} rows"
+		SetupRowsCount = "{0} rows",
+		DiagTitle = "If a widget cannot be added",
+		DiagHint = "Windows only says \"Error adding your widget\". This report shows what Windows has on record for this app. Turn on Settings, Developer options, Log to file, try to add the widget once more, and share the log together with this report.",
+		DiagCopy = "Copy the report",
+		DiagCopied = "Copied."
 	};
 }

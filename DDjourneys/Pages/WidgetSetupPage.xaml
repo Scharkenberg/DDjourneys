@@ -90,6 +90,23 @@
 				x:Name="SavedNote"
 				IsVisible="false"
 				StyleClass="Caption" />
+
+			<!--  The board's own error says nothing: what Windows has on record for this app, to copy  -->
+			<BoxView StyleClass="Divider" />
+			<Label StyleClass="Subtitle" Text="{localization:Tr Widgets.DiagTitle}" />
+			<Label StyleClass="Caption" Text="{localization:Tr Widgets.DiagHint}" />
+			<Button
+				x:Name="DiagButton"
+				Clicked="OnDiagnostics"
+				HorizontalOptions="Start"
+				StyleClass="Tonal"
+				Text="{localization:Tr Widgets.DiagCopy}" />
+			<Label
+				x:Name="DiagText"
+				IsVisible="false"
+				FontFamily="Consolas"
+				FontSize="12"
+				StyleClass="Faint" />
 		</VerticalStackLayout>
 	</ScrollView>
 </support:PanePage>
