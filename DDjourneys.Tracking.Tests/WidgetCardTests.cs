@@ -219,7 +219,6 @@ public class WidgetCardTests
 					WidgetCard.For(
 						snapshot,
 						WidgetCardSize.Medium,
-						0,
 						Strings(),
 						chips: _ => new WidgetChipImage("data:image/png;base64,AAAA", 40, 24),
 						now: snapshot.UpdatedAt))).First()["columns"]![0]!["items"]![0]!;
