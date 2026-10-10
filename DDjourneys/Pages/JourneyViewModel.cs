@@ -1406,7 +1406,7 @@ public sealed partial class JourneyViewModel :
 
 		try
 		{
-			IReadOnlyList<JourneyFare> fares = await _fareBorrower.BorrowAsync(journey, cancel.Token);
+			IReadOnlyList<JourneyFare> fares = await _fareBorrower.BorrowAsync(journey, _query, cancel.Token);
 
 			if (fares.Count == 0
 				|| cancel.IsCancellationRequested

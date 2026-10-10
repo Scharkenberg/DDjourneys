@@ -151,6 +151,8 @@ internal static class WindowsWidgets
 			report.AppendLine($"Class object {ProviderClassId}: {_registration}");
 		}
 
+		report.AppendLine(SelfTest());
+
 		report.AppendLine($"Store: {(Store is null ? "not ready" : "ready")}, loader: {(Loader is null ? "not ready" : "ready")}");
 
 		try
@@ -350,6 +352,37 @@ internal static class WindowsWidgets
 		catch
 		{
 			return [];
+		}
+	}
+
+	[DllImport("ole32.dll")]
+	private static extern int CoCreateInstance(
+		ref Guid clsid,
+		nint outer,
+		uint context,
+		ref Guid iid,
+		out nint instance);
+
+	/// <summary>Asks COM for the provider class the way the Widgets Board does (local server): the answer tells whether COM can reach it.</summary>
+	private static string SelfTest()
+	{
+		Guid clsid = new(ProviderClassId);
+		Guid iid = new("00000000-0000-0000-C000-000000000046");
+
+		try
+		{
+			int hr = CoCreateInstance(ref clsid, 0, 0x4 /* CLSCTX_LOCAL_SERVER */, ref iid, out nint instance);
+
+			if (instance != 0)
+			{
+				Marshal.Release(instance);
+			}
+
+			return $"COM self-test (CoCreateInstance, local server): 0x{hr:X8} {(hr == 0 ? "ok" : "FAILED")}";
+		}
+		catch (Exception ex)
+		{
+			return $"COM self-test threw: {ex.Message}";
 		}
 	}
 
