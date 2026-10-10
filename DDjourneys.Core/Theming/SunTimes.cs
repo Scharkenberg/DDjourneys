@@ -45,10 +45,11 @@ public static class SunTimes
 			(DateTimeOffset? sunrise, DateTimeOffset? sunset) = For(latitude, longitude, day.AddDays(i));
 
 			DateTimeOffset? next =
-				[sunrise, sunset]
+				new DateTimeOffset?[] { sunrise, sunset }
 					.OfType<DateTimeOffset>()
 					.Where(time => time > utc)
 					.OrderBy(time => time)
+					.Cast<DateTimeOffset?>()
 					.FirstOrDefault();
 
 			if (next is { } boundary)

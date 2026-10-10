@@ -8,7 +8,7 @@ namespace DDjourneys.Core.Providers.Vvo.Models;
 /// not part of this shape: it is most of the file's bytes and is only read, in a second pass, for the few
 /// sites that carry no count of their own.
 /// </summary>
-public sealed class VvoParkingSite
+public class VvoParkingSite
 {
 	[JsonPropertyName("id")]
 	public string? Id { get; init; }

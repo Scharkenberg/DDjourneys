@@ -88,10 +88,10 @@ public static class ViaRouting
 			// The vehicle stays on board through the stop-over: the stop's own dwell there.
 			if (leg.Stops.FirstOrDefault(stop => Matches(stop.Station, via)) is { } halt)
 			{
-				return halt.EffectiveDeparture is { } from
-					&& halt.EffectiveArrival is { } at
-					&& from >= at
-					? from - at
+				return halt.EffectiveDeparture is { } leave
+					&& halt.EffectiveArrival is { } arrive
+					&& leave >= arrive
+					? leave - arrive
 					: TimeSpan.Zero;
 			}
 		}

@@ -781,6 +781,39 @@ public sealed partial class VehiclesViewModel : DisposableViewModel, IQueryAttri
 		IsStreaming = false;
 	}
 
+	/// <summary>
+	/// A page nobody looks at stops reading the stream: the subscription ends, so the hub can close its
+	/// socket after the linger. The stream itself stays on - what it shows stays, only the reading pauses.
+	/// </summary>
+	public void PauseStream()
+	{
+		if (!IsStreaming)
+		{
+			return;
+		}
+
+		_stream?.Cancel();
+		_stream = null;
+	}
+
+	/// <summary>A page seen again continues its stream where it was: the lines it had, not what is typed but not started.</summary>
+	public void ResumeStream()
+	{
+		if (!IsStreaming
+			|| _stream is not null
+			|| IsDisposed)
+		{
+			return;
+		}
+
+		CancellationTokenSource cts = new();
+		_stream = cts;
+
+		// The cancellation of the pause detached the subscription; ConnectAsync subscribes again, and the
+		// hub reopens its socket with the first reader. What the board shows stays standing while it connects.
+		_ = ConnectAsync(cts, _activeLines);
+	}
+
 	protected override void OnDisposing() =>
 		Stop();
 }

@@ -40,7 +40,7 @@ public class VehicleStreamHubTests
 		List<LiveVehicle> secondSeen = await DrainAsync(second.Reader, 2);
 
 		Assert.Equal([8, 8], firstSeen.Select(vehicle => vehicle.Line).ToArray());
-		Assert.Equal([8, 8], secondSeen.Select(vehicle => vehicle.Run).ToArray());
+		Assert.Equal([8, 8], secondSeen.Select(vehicle => vehicle.Line).ToArray());
 
 		first.Dispose();
 		second.Dispose();

@@ -14,6 +14,7 @@ using DDjourneys.Core.Storage;
 using DDjourneys.Core.Tracking.Live;
 using DDjourneys.Localization;
 using DDjourneys.Support;
+using Location = DDjourneys.Core.Models.Location;
 
 namespace DDjourneys.Tracking.Schutzengel;
 

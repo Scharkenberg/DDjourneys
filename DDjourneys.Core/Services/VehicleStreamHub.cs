@@ -88,8 +88,10 @@ public sealed class VehicleStreamHub : IDisposable
 	{
 		Channel<LiveVehicle> channel =
 			Channel.CreateBounded<LiveVehicle>(
-				ChannelCapacity,
-				new BoundedChannelFullMode DropOldest());
+				new BoundedChannelOptions(ChannelCapacity)
+				{
+					FullMode = BoundedChannelFullMode.DropOldest
+				});
 
 		CancellationTokenSource? start = null;
 

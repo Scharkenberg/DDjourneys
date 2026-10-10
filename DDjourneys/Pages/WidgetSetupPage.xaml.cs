@@ -1,10 +1,13 @@
 using System.Collections.ObjectModel;
 using DDjourneys.Core.Diagnostics;
 using DDjourneys.Core.Models;
+using DDjourneys.Core.Providers;
 using DDjourneys.Core.Services;
+using DDjourneys.Core.Widgets;
 using DDjourneys.Localization;
 using DDjourneys.Support;
 using DDjourneys.Support.Widgets;
+using Location = DDjourneys.Core.Models.Location;
 
 namespace DDjourneys.Pages;
 
@@ -84,7 +87,7 @@ public partial class WidgetSetupPage : PanePage, IQueryAttributable
 				Padding = new(12, 8)
 				};
 
-			row.Add(new Label { Text = config?.Title?.Length > 0 ? config.Title : kind, VerticalOptions = LayoutOptions.Center, StyleClass = ["Title"] });
+			row.Add(new Label { Text = config?.Title is { Length: > 0 } title ? title : kind, VerticalOptions = LayoutOptions.Center, StyleClass = ["Title"] });
 			row.Add(
 				new Label
 				{

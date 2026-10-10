@@ -304,7 +304,7 @@ public sealed class VvoNetworkProvider :
 			(IReadOnlyList<TariffZoneShape>)[.. zones
 					.Select(ToShape)
 					.OfType<TariffZoneShape>()
-					.OrderBy(shape => shape.Number, StringComparer.OrdinalIgnoreCase)];
+					.OrderBy(shape => shape.Number)];
 	}
 
 	public async Task<TariffZone?> FindTariffZoneAsync(
@@ -403,7 +403,7 @@ public sealed class VvoNetworkProvider :
 		(double Latitude, double Longitude) centre =
 			zone.Centre is { } at
 				? VvoCoordinateConverter.FromGk4(at.X, at.Y)
-				: Centroid(zone._ring);
+				: Centroid(zone.Ring);
 
 		return new TariffZoneShape(
 			number,
@@ -411,7 +411,7 @@ public sealed class VvoNetworkProvider :
 			zone.Zone.Color,
 			centre.Latitude,
 			centre.Longitude,
-			(IReadOnlyList<(double Latitude, double Longitude)>)[.. zone._ring
+			(IReadOnlyList<(double Latitude, double Longitude)>)[.. zone.Ring
 				.Select(point => VvoCoordinateConverter.FromGk4(point.X, point.Y))]);
 	}
 
@@ -443,7 +443,13 @@ public sealed class VvoNetworkProvider :
 
 		public TariffZone Zone { get; }
 
+		/// <summary>The label position, when the wire names one.</summary>
+		public (double X, double Y)? Centre { get; }
+
 		public double Area { get; }
+
+		/// <summary>The outline ring in GK4 (easting, northing).</summary>
+		public (double X, double Y)[] Ring => _ring;
 
 		/// <summary>"zone|name|#colour|centreN|centreE|n|e|n|e|..."; values with decimals are WGS84 degrees.</summary>
 		public static ZonePolygon? Parse(string raw)

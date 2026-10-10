@@ -16,10 +16,10 @@ public static partial class VvoNetworkMap
 
 	private const string BaseUrl = "https://www.dvb.de";
 
-	[GeneratedRegex("dvb_lnp_\\d+_st_\\d+_jpg\\.jpg", RegexOptions.IgnoreCase)]
+	[GeneratedRegex("href=[\"']([^\"']*dvb_lnp_\\d+_st_\\d+_jpg\\.jpg)[\"']", RegexOptions.IgnoreCase)]
 	private static partial Regex StandardJpg();
 
-	[GeneratedRegex("dvb_lnp_\\d+_st_\\d+_pdf\\.pdf", RegexOptions.IgnoreCase)]
+	[GeneratedRegex("href=[\"']([^\"']*dvb_lnp_\\d+_st_\\d+_pdf\\.pdf)[\"']", RegexOptions.IgnoreCase)]
 	private static partial Regex StandardPdf();
 
 	/// <summary>The first standard plan of each kind in the page, absolute; null when the page names none.</summary>
@@ -36,7 +36,7 @@ public static partial class VvoNetworkMap
 		Match first = pattern.Match(html ?? string.Empty);
 
 		return first.Success
-			&& Uri.TryCreate(new Uri(BaseUrl), first.Value, out Uri? absolute)
+			&& Uri.TryCreate(new Uri(BaseUrl), first.Groups[1].Value, out Uri? absolute)
 				? absolute
 				: null;
 	}

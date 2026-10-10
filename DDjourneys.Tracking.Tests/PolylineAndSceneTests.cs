@@ -7,8 +7,6 @@ namespace DDjourneys.Tracking.Tests;
 /// <summary>Outlines made small enough to send (Douglas-Peucker in metres) and the polygon node of the map payload.</summary>
 public sealed class PolylineAndSceneTests
 {
-	private static readonly (double Latitude, double Longitude) Square = (51.05, 13.73);
-
 	[Fact]
 	public void Collinear_points_collapse_to_their_ends()
 	{

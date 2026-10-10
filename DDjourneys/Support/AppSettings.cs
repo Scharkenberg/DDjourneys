@@ -492,13 +492,13 @@ public sealed class AppSettings
 	{
 		get => Read(Scoped("extraCharge"), ExtraChargeFilter.Any);
 		set => Write(Scoped("extraCharge"), value);
+	}
 
 	/// <summary>Minutes to stay at the stop-over. 0 and 1 are the same thing: one minute is the floor ("Any").</summary>
 	public int ViaMinutes
 	{
 		get => Math.Clamp(Read(Scoped("viaMinutes"), 1), 0, 60);
 		set => Write(Scoped("viaMinutes"), Math.Clamp(value, 0, 60));
-	}
 	}
 
 	/// <summary>The routing options as sent with every journey search.</summary>
@@ -516,8 +516,8 @@ public sealed class AppSettings
 			FewestTransfers = FewestTransfers,
 			Optimisation = Optimisation,
 			Entrance = Entrance,
-					ExtraCharge = ExtraCharge,
-					ViaMinutes = ViaMinutes
+			ExtraCharge = ExtraCharge,
+			ViaMinutes = ViaMinutes,
 			Passenger = Passenger
 		};
 

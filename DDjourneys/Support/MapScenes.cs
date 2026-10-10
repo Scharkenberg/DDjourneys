@@ -167,7 +167,7 @@ public static class MapScenes
 		}
 
 		return end - start + 1 >= 2
-			? [.. path.Skip(start).Take(end - start + 1)]
+			? path.Skip(start).Take(end - start + 1).ToList()
 			: null;
 	}
 
@@ -440,7 +440,7 @@ public static class MapScenes
 			// between the stops otherwise.
 			IReadOnlyList<(double Latitude, double Longitude)> course =
 				Stretch(path, located[0].Position!.Value, located[^1].Position!.Value)
-				?? [.. located.Select(item => item.Position!.Value)];
+				?? located.Select(item => item.Position!.Value).ToList();
 
 			lines.Add(
 				new MapLine(
@@ -505,7 +505,7 @@ public static class MapScenes
 	/// half strength; it shares most stops with the first, so only the first carries knots.
 	/// </summary>
 	public static MapScene FromLineCourse(LineCourse course, bool fit = true) =>
-			FromLineCourses([course], fit);
+			FromLineCourses(new[] { course }, fit);
 
 	public static MapScene FromLineCourses(IReadOnlyList<LineCourse> courses, bool fit = true)
 	{
@@ -574,7 +574,7 @@ public static class MapScenes
 							MapMarkerKind.Knot,
 							DullColor,
 							stop.Station.Name,
-							Format.Time(stop.Effective)));
+							stop.Effective is { } effective ? Format.Time(effective) : string.Empty));
 				}
 
 				if (course.Vehicle is { } vehicle
@@ -759,7 +759,7 @@ public static class MapScenes
 					path: target.Path,
 					first: (points[0].Latitude, points[0].Longitude),
 					last: (points[^1].Latitude, points[^1].Longitude))
-				?? [.. points.Select(point => (point.Latitude, point.Longitude))];
+				?? points.Select(point => (point.Latitude, point.Longitude)).ToList();
 
 			lines.Add(
 				new MapLine(

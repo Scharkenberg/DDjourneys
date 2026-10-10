@@ -62,18 +62,18 @@ public sealed class SunTimesTests
 		// Before sunrise: today's sunrise. After sunset: tomorrow's sunrise.
 		Assert.Equal(
 			new DateTimeOffset(2026, 6, 21, 2, 50, 0, TimeSpan.Zero),
-			SunTimes.NextBoundary(DresdenLat, DresdenLon, new DateTimeOffset(2026, 6, 21, 1, 0, 0, TimeSpan.Zero)),
+			SunTimes.NextBoundary(DresdenLat, DresdenLon, new DateTimeOffset(2026, 6, 21, 1, 0, 0, TimeSpan.Zero))!.Value,
 			slack);
 
 		Assert.Equal(
 			new DateTimeOffset(2026, 6, 22, 2, 50, 0, TimeSpan.Zero),
-			SunTimes.NextBoundary(DresdenLat, DresdenLon, new DateTimeOffset(2026, 6, 21, 21, 0, 0, TimeSpan.Zero)),
+			SunTimes.NextBoundary(DresdenLat, DresdenLon, new DateTimeOffset(2026, 6, 21, 21, 0, 0, TimeSpan.Zero))!.Value,
 			slack);
 
 		// Between the events: the sunset of the same day.
 		Assert.Equal(
 			new DateTimeOffset(2026, 6, 21, 19, 23, 0, TimeSpan.Zero),
-			SunTimes.NextBoundary(DresdenLat, DresdenLon, new DateTimeOffset(2026, 6, 21, 12, 0, 0, TimeSpan.Zero)),
+			SunTimes.NextBoundary(DresdenLat, DresdenLon, new DateTimeOffset(2026, 6, 21, 12, 0, 0, TimeSpan.Zero))!.Value,
 			slack);
 	}
 

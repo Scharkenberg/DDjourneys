@@ -6,12 +6,14 @@ namespace DDjourneys.Tracking.Tests;
 public sealed class VvoNetworkMapTests
 {
 	private const string Page =
-		"""<html><body>
+		"""
+		<html><body>
 		<a href='/de-de/liniennetz/liniennetzplaene/dvb_lnp_11_st_1_jpg.jpg'>Standardplan</a>
 		<a href='https://www.dvb.de/documents/2416693/2599001/dvb_lnp_11_st_1_pdf.pdf'>Standardplan PDF</a>
 		<a href='/de-de/liniennetz/liniennetzplaene/dvb_lnp_11_ih_1_jpg.jpg'>Innenstadt</a>
 		<a href='/somewhere/else/plan.zip'>etwas anderes</a>
-		</body></html>""";
+		</body></html>
+		""";
 
 	[Fact]
 	public void The_first_standard_plan_of_each_kind_wins()

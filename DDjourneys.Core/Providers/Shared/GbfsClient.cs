@@ -30,7 +30,7 @@ public sealed class GbfsClient(ApiClient apiClient)
 
 			return JsonSerializer.Deserialize(
 					json,
-					VvoJson.TypeInfo(typeof(GbfsDiscovery))) as GbfsDiscovery;
+					VvoJsonContext.Default.GbfsDiscovery);
 		}
 		catch (Exception ex)
 		{
@@ -56,7 +56,7 @@ public sealed class GbfsClient(ApiClient apiClient)
 
 			return JsonSerializer.Deserialize(
 					json,
-					VvoJson.TypeInfo(typeof(GbfsStationInformation))) as GbfsStationInformation;
+					VvoJsonContext.Default.GbfsStationInformation);
 		}
 		catch (Exception ex)
 		{
@@ -82,7 +82,7 @@ public sealed class GbfsClient(ApiClient apiClient)
 
 			return JsonSerializer.Deserialize(
 					json,
-					VvoJson.TypeInfo(typeof(GbfsStationStatus))) as GbfsStationStatus;
+					VvoJsonContext.Default.GbfsStationStatus);
 		}
 		catch (Exception ex)
 		{

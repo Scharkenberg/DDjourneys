@@ -74,7 +74,7 @@ public class WidgetCardTests
 			Row("66", "07:45", WidgetDelay.Cancelled, "−1"),
 			Row("3", "07:46", WidgetDelay.None));
 
-		JsonNode template = TemplateOf(WidgetCard.For(snapshot, new WidgetLayout(3, WidgetDetail.Full, false), Strings()));
+		JsonNode template = TemplateOf(WidgetCard.For(snapshot, new WidgetLayout(3, WidgetDetail.Full, true), Strings()));
 
 		string late = template["body"]![2]!["columns"]![2]!["items"]![1]!["color"]!.GetValue<string>();
 		string cancelled = template["body"]![3]!["columns"]![2]!["items"]![1]!["color"]!.GetValue<string>();
@@ -125,7 +125,7 @@ public class WidgetCardTests
 
 		JsonNode template = TemplateOf(WidgetCard.For(snapshot, new WidgetLayout(2, WidgetDetail.Full, true), Strings()));
 
-		Assert.Equal("No departures", template["body"]![^1]!["text"]!.GetValue<string>());
+		Assert.Equal("No departures", template["body"]!.AsArray()[^1]!["text"]!.GetValue<string>());
 	}
 
 	[Fact]
@@ -173,7 +173,7 @@ public class WidgetCardTests
 		private readonly Dictionary<string, string> _values = new(StringComparer.Ordinal);
 
 		public string? Get(string key) =>
-			_values.TryGetValue(key, out string value) ? value : null;
+			_values.TryGetValue(key, out string? value) ? value : null;
 
 		public void Set(string key, string value) => _values[key] = value;
 

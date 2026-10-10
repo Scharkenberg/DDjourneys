@@ -190,6 +190,7 @@ public sealed partial class TrackedJourneysViewModel : DisposableViewModel, IQue
 	private readonly IJourneyTracker _tracker;
 	private readonly LegRunResolver _runs;
 	private readonly AppSettings _settings;
+	private readonly TrackingCallbackBridge _bridge;
 	private readonly LocalizationService _localization;
 	private readonly HashSet<string> _expanded = new(StringComparer.Ordinal);
 	private readonly HashSet<string> _courses = new(StringComparer.Ordinal);
@@ -198,11 +199,12 @@ public sealed partial class TrackedJourneysViewModel : DisposableViewModel, IQue
 
 	private CancellationTokenSource? _observation;
 
-	public TrackedJourneysViewModel(IJourneyTracker tracker, LegRunResolver runs, AppSettings settings)
+	public TrackedJourneysViewModel(IJourneyTracker tracker, LegRunResolver runs, AppSettings settings, TrackingCallbackBridge bridge)
 	{
 		_tracker = tracker ?? throw new ArgumentNullException(nameof(tracker));
 		_runs = runs ?? throw new ArgumentNullException(nameof(runs));
 		_settings = settings ?? throw new ArgumentNullException(nameof(settings));
+		_bridge = bridge ?? throw new ArgumentNullException(nameof(bridge));
 		_localization = LocalizationService.Current;
 
 		ListenToLocalization(_localization, OnLocalizationChanged);

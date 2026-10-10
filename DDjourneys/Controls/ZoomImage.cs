@@ -90,8 +90,8 @@ public sealed partial class ZoomImage : ContentView
 				double next = Math.Clamp(_pinchStart * e.Scale, 1, MaxScale);
 
 				// Zoom around the point between the fingers: it stays where it is on the screen.
-				double originX = (e.Origin.X - 0.5) * Width;
-				double originY = (e.Origin.Y - 0.5) * Height;
+				double originX = (e.ScaleOrigin.X - 0.5) * Width;
+				double originY = (e.ScaleOrigin.Y - 0.5) * Height;
 				double factor = _scale > 0 ? next / _scale : 1;
 
 				_x = originX - ((originX - _x) * factor);

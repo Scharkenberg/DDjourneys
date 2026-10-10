@@ -265,7 +265,7 @@ public static class MauiProgram
 		var provider = builder.Build();
 
 		// The sun mode follows the selected provider's central city; switching providers re-evaluates it.
-		ProviderRegistry providers = provider.GetRequiredService<ProviderRegistry>();
+		ProviderRegistry providers = provider.Services.GetRequiredService<ProviderRegistry>();
 		Theme.SunCenter = () => providers.Selected?.Center;
 		providers.SelectionChanged += (_, _) => Theme.Refresh();
 

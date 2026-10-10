@@ -1,4 +1,5 @@
 using System.Text.Json;
+using DDjourneys.Core.Models;
 using DDjourneys.Core.Providers.Shared;
 using DDjourneys.Core.Providers.Vvo.Serialization;
 
@@ -54,7 +55,7 @@ public class GbfsTests
 
 	private static T Read<T>(string json)
 	{
-		object? parsed = JsonSerializer.Deserialize(json, VvoJson.TypeInfo(typeof(T)))!;
+		object? parsed = JsonSerializer.Deserialize(json, VvoJson.TypeInfo(typeof(T))!);
 
 		return (T)parsed!;
 	}
@@ -147,7 +148,7 @@ public class GbfsTests
 		IReadOnlyList<SharedStation> joined = GbfsClient.Join(information, status, "MOBIbike");
 
 		SharedStation hauptbahnhof = joined[0];
-		Assert.Equal("nextbike://de?station_id=dd001", hauptbahnhof.AppUri!.ToString());
+		Assert.Equal("nextbike://de/?station_id=dd001", hauptbahnhof.AppUri!.ToString());
 		Assert.Equal("https://www.nextbike.de/de/dresden/", hauptbahnhof.WebUri!.ToString());
 
 		SharedStation postplatz = joined[1];

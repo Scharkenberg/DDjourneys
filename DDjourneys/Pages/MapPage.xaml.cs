@@ -488,7 +488,7 @@ public partial class MapPage : PanePage, IQueryAttributable
 		MapScene zones =
 				new()
 				{
-					Polygons = [.. _zoneShapes.Select(shape => MapScenes.ZonePolygon(shape, dark))],
+					Polygons = _zoneShapes.Select(shape => MapScenes.ZonePolygon(shape, dark)).ToList(),
 						Fit = false
 				};
 
@@ -499,7 +499,7 @@ public partial class MapPage : PanePage, IQueryAttributable
 		{
 			DiagnosticLog.Write($"[Map] tariff zones payload {size.Length} chars is too large; halving the point cap once");
 
-			zones = new MapScene { Polygons = [.. _zoneShapes.Select(shape => MapScenes.ZonePolygon(shape, dark, 128))], Fit = false };
+			zones = new MapScene { Polygons = _zoneShapes.Select(shape => MapScenes.ZonePolygon(shape, dark, 128)).ToList(), Fit = false };
 		}
 
 		_ = Map.SetLayerAsync(ZonesLayer, zones);

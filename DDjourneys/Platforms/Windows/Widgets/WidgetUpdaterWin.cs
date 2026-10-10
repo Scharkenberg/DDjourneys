@@ -2,6 +2,7 @@ using DDjourneys.Core.Diagnostics;
 using DDjourneys.Core.Widgets;
 using DDjourneys.Localization;
 using DDjourneys.Platforms.Windows.LiveJourney;
+using DDjourneys.Support;
 using DDjourneys.Support.Widgets;
 using Microsoft.Windows.Widgets.Providers;
 
@@ -75,17 +76,21 @@ public static class WidgetUpdaterWin
 		{
 			using var limit = new CancellationTokenSource(FetchLimit);
 
-			WidgetSnapshot? snapshot =
-				await WindowsWidgets.Loader.LoadAsync(
-					config,
-					WidgetLayout.For(240, 160, config.MaxRows, 1).Rows,
-					null,
-					limit.Token)
-					.ConfigureAwait(false);
-
-			if (snapshot is not null)
+			// A widget cannot ask for a position in the background: it works with the last fix, like Android's.
+			if (WindowsWidgets.Loader is { } loader)
 			{
-				WindowsWidgets.Store?.SaveSnapshot(id, snapshot);
+				WidgetSnapshot? snapshot =
+						await loader.LoadAsync(
+							config,
+							WidgetLayout.For(240, 160, config.MaxRows, 1).Rows,
+							DeviceLocator.LastFix,
+							limit.Token)
+							.ConfigureAwait(false);
+
+				if (snapshot is not null)
+				{
+					WindowsWidgets.Store?.SaveSnapshot(id, snapshot);
+				}
 			}
 
 			RenderFromCache(id);

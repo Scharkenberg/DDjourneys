@@ -44,7 +44,7 @@ public sealed class FollowedEndpointListTests
 		Assert.Null(read[0].Via);
 		Assert.Equal("plan-2", read[1].PlanId);
 		Assert.NotNull(read[1].Via);
-		Assert.Equal(51.05, read[1].From!.Latitude);
+		Assert.Equal(51.05, read[1].Via!.Latitude);
 	}
 
 	[Fact]

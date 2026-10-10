@@ -108,7 +108,7 @@ public sealed partial class LineCourseService(DepartureService departures)
 	}
 
 	/// <summary>What one run detail says about the whole line; null when there is nothing to draw.</summary>
-	internal static LineCourse? FromDetail(Departure departure, RunDetail detail)
+	public static LineCourse? FromDetail(Departure departure, RunDetail detail)
 	{
 		IReadOnlyList<RunStop> stops = detail.Stops;
 

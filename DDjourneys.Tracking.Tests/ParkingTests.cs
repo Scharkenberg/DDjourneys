@@ -29,7 +29,7 @@ public class ParkingTests
 				{"status":0,"lat":51.0,"lon":13.7,"tag":"disabled"},
 				{"status":-1,"lat":51.0,"lon":13.7}]},
 			{"ppid":"pp-1004","name":"P+R Prohlis Garage","lat":51.01,"lon":13.75,"number_total":40,
-			 "LiveData":[{"status":1,"lat":51.01,"lon":13.75},{"status":1,"lat":51.01,"lon":13.75,"tag":"disabled"}]},
+			 "LiveData":[{"status":-1,"lat":51.01,"lon":13.75},{"status":1,"lat":51.01,"lon":13.75,"tag":"disabled"}]},
 			{"name":"P+R Without Position","number_total":5,"number_free_now":1,"dtg":"2026-10-05T07:41:00Z"}
 		]
 		""";
@@ -37,7 +37,7 @@ public class ParkingTests
 	private static VvoParkingSite[] ReadSites()
 	{
 		VvoParkingSite[]? sites =
-			JsonSerializer.Deserialize(Sample, VvoJson.TypeInfo(typeof(VvoParkingSite[]))) as VvoParkingSite[];
+			JsonSerializer.Deserialize(Sample, VvoJson.TypeInfo(typeof(VvoParkingSite[]))!) as VvoParkingSite[];
 
 		Assert.NotNull(sites);
 
@@ -47,7 +47,7 @@ public class ParkingTests
 	private static VvoParkingSiteLive[] ReadLive()
 	{
 		VvoParkingSiteLive[]? live =
-			JsonSerializer.Deserialize(Sample, VvoJson.TypeInfo(typeof(VvoParkingSiteLive[]))) as VvoParkingSiteLive[];
+			JsonSerializer.Deserialize(Sample, VvoJson.TypeInfo(typeof(VvoParkingSiteLive[]))!) as VvoParkingSiteLive[];
 
 		Assert.NotNull(live);
 

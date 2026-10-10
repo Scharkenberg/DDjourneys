@@ -8,7 +8,7 @@ namespace DDjourneys.Core.Providers.Vvo.Serialization;
 
 /// <summary>
 /// Source-generated JSON metadata for every VVO request and response (and, since Tier 2, the park &amp; ride
-and GBFS roots): no runtime reflection,
+/// and GBFS roots): no runtime reflection,
 /// so it survives trimming and AOT on Android.
 /// </summary>
 [JsonSourceGenerationOptions(

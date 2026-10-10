@@ -98,14 +98,12 @@ public sealed class LiveVehicleLayer : IDisposable
 		_dirty = false;
 
 		DateTimeOffset now = DateTimeOffset.UtcNow;
-		bool aged = false;
 
 		foreach (KeyValuePair<string, LiveVehicle> entry in _latest)
 		{
-			if (now - entry.Value.Time > TimeSpan.FromSeconds(90)
-					&& _latest.TryRemove(entry.Key, out _))
+			if (now - entry.Value.Time > TimeSpan.FromSeconds(90))
 			{
-				aged = true;
+				_latest.TryRemove(entry.Key, out _);
 			}
 		}
 

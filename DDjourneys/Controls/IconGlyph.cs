@@ -57,7 +57,8 @@ public enum IconGlyph
 	Accessible,
 	Bus,
 	Edit,
-	Sun
+	Sun,
+	Detour
 }
 
 /// <summary>One icon: path markup on the 24x24 grid, and whether it is drawn solid.</summary>
@@ -262,6 +263,10 @@ internal static class IconPaths
 				new("M12 7.6 A4.4 4.4 0 1 0 12 16.4 A4.4 4.4 0 1 0 12 7.6 Z M12 2.2 V4.4 M12 19.6 V21.8 M2.2 12 H4.4 M19.6 12 H21.8 M5.2 5.2 L6.7 6.7 M17.3 17.3 L18.8 18.8 M18.8 5.2 L17.3 6.7 M6.7 17.3 L5.2 18.8"),
 
 			[IconGlyph.Accessible] =
-				new("M12 3.4 A1.9 1.9 0 1 0 12 7.2 A1.9 1.9 0 1 0 12 3.4 Z M5 9.4 H19 M12 9.4 V14.4 M12 14.4 L8.6 21 M12 14.4 L15.4 21")
+				new("M12 3.4 A1.9 1.9 0 1 0 12 7.2 A1.9 1.9 0 1 0 12 3.4 Z M5 9.4 H19 M12 9.4 V14.4 M12 14.4 L8.6 21 M12 14.4 L15.4 21"),
+
+			// A way around: the straight path dips aside and continues - alternatives for a broken connection.
+			[IconGlyph.Detour] =
+				new("M3.5 12 V12.1 M3.5 12 H8.5 C12 12 10.5 18.6 14.5 18.6 H20.5 M16 15.6 L20.5 18.6 L16 21.6")
 		};
 }

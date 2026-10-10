@@ -32,7 +32,7 @@ public sealed partial class VvoParkingProvider(ApiClient apiClient) : IParkingPr
 		VvoParkingSite[]? sites =
 			JsonSerializer.Deserialize(
 				json,
-				VvoJson.TypeInfo(typeof(VvoParkingSite[]))) as VvoParkingSite[];
+				VvoJsonContext.Default.VvoParkingSiteArray);
 
 		if (sites is null || sites.Length == 0)
 		{
@@ -47,7 +47,7 @@ public sealed partial class VvoParkingProvider(ApiClient apiClient) : IParkingPr
 			live =
 				JsonSerializer.Deserialize(
 					json,
-					VvoJson.TypeInfo(typeof(VvoParkingSiteLive[]))) as VvoParkingSiteLive[];
+					VvoJsonContext.Default.VvoParkingSiteLiveArray);
 		}
 
 		return MapSites(sites, live);

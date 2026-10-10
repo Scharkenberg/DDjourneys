@@ -1,5 +1,7 @@
 using System.Runtime.InteropServices;
+using DDjourneys.Core.Contract;
 using DDjourneys.Core.Diagnostics;
+using DDjourneys.Core.Widgets;
 using DDjourneys.Platforms.Windows.LiveJourney;
 using DDjourneys.Support.Widgets;
 using Microsoft.Windows.Widgets.Providers;
@@ -87,8 +89,8 @@ internal static class WindowsWidgets
 		// The contract links are the one source of truth for where the app can be sent.
 		Uri link =
 			config.Kind is WidgetKind.Departures or WidgetKind.Arrivals
-				? Contract.ContractLinks.Departures(Place(config.Stop))
-				: Contract.ContractLinks.Go(Place(config.To), Place(config.From));
+				? ContractLinks.Departures(Place(config.Stop), config.Kind == WidgetKind.Arrivals)
+				: ContractLinks.Plan(Place(config.From), Place(config.To), search: true);
 
 		_ = OpenAsync(link, id);
 	}
@@ -180,11 +182,17 @@ internal static class WindowsWidgets
 		}
 	}
 
+	/// <summary>A configured end as the contract names it: "here" is the contract's own default (the device), so it needs no key.</summary>
+	private static ContractPlace? Place(WidgetPlace? place) =>
+		place is { IsHere: true }
+			? null
+			: Place(place?.Place);
+
 	/// <summary>A stored place as the contract names it: the stop key when there is one, else the coordinates.</summary>
-	private static Contract.ContractPlace? Place(DDjourneys.Core.Models.Location? place) =>
+	private static ContractPlace? Place(DDjourneys.Core.Models.Location? place) =>
 		place is null
 			? null
-			: new Contract.ContractPlace(place.Name, place.StopKey, place.Latitude, place.Longitude);
+			: new ContractPlace(place.Name, place.StopKey, place.Latitude, place.Longitude);
 
 	internal static string[] PinnedIds()
 	{

@@ -584,7 +584,7 @@ internal static class LiveJourneyNotification
 			context,
 			RequestCode(action, planId),
 			target,
-			PendingIntentFlags.UpdateCurrent | PendingIntentFlags.Immutable)!
+			PendingIntentFlags.UpdateCurrent | PendingIntentFlags.Immutable)!;
 	}
 
 	/// <summary>Like <see cref="CreateAction"/>, but the intent starts the activity instead of a broadcast.</summary>

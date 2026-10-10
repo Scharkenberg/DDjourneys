@@ -1,6 +1,7 @@
 using DDjourneys.Core.Diagnostics;
 using DDjourneys.Core.Models;
 using DDjourneys.Core.Storage;
+using Location = DDjourneys.Core.Models.Location;
 
 namespace DDjourneys.Support;
 
