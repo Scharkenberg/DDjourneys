@@ -40,6 +40,20 @@ public sealed class WidgetTests
 	}
 
 	[Fact]
+	public void What_the_height_leaves_over_is_spread_over_the_rows_within_limits()
+	{
+		// Exactly as many rows as fit: next to nothing is left; plenty of room for few rows: the cap holds.
+		WidgetLayout full = WidgetLayout.For(300, 200);
+		double tight = WidgetLayout.RowPadding(200, full.Rows, full.Detail);
+		double roomy = WidgetLayout.RowPadding(480, 2, full.Detail);
+
+		Assert.InRange(tight, 0, 6);
+		Assert.Equal(6, roomy);
+		Assert.Equal(0, WidgetLayout.RowPadding(200, 0, full.Detail));
+		Assert.True(WidgetLayout.RowPadding(200, full.Rows, full.Detail, 1.5) <= tight + 6);
+	}
+
+	[Fact]
 	public void The_row_cap_of_the_user_limits_the_rows()
 	{
 		Assert.Equal(2, WidgetLayout.For(300, 480, maxRows: 2).Rows);

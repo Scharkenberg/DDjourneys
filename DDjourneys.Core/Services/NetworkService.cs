@@ -38,12 +38,37 @@ public sealed class NetworkService
 			? provider.GetDisruptedLinesAsync(cancellationToken)
 			: Task.FromResult<IReadOnlyList<DisruptionLine>>([]);
 
-	public Task<IReadOnlyList<StopLine>> GetStopLinesAsync(
+	// The lines of a stop change with the timetable, not while somebody reads: ten minutes are plenty.
+	private readonly TtlCache<IReadOnlyList<StopLine>> _stopLines = new(TimeSpan.FromMinutes(10));
+
+	public async Task<IReadOnlyList<StopLine>> GetStopLinesAsync(
 		Location stop,
-		CancellationToken cancellationToken = default) =>
-		Provider is { } provider
-			? provider.GetStopLinesAsync(stop, cancellationToken)
-			: Task.FromResult<IReadOnlyList<StopLine>>([]);
+		CancellationToken cancellationToken = default)
+	{
+		if (Provider is not { } provider)
+		{
+			return [];
+		}
+
+		// Per provider (its ids mean something else elsewhere); a stop without an id is not cached.
+		string? key = string.IsNullOrWhiteSpace(stop.Id) ? null : $"{provider.GetType().FullName}|{stop.Id}";
+
+		if (key is not null
+			&& _stopLines.TryGet(key, out IReadOnlyList<StopLine>? cached))
+		{
+			return cached;
+		}
+
+		IReadOnlyList<StopLine> lines = await provider.GetStopLinesAsync(stop, cancellationToken).ConfigureAwait(false);
+
+		if (key is not null
+			&& lines.Count > 0)
+		{
+			_stopLines.Set(key, lines);
+		}
+
+		return lines;
+	}
 
 	public Task<IReadOnlyList<NearbyStop>> GetNearbyStopsAsync(
 		double latitude,

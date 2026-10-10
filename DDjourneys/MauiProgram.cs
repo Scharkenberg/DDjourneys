@@ -24,9 +24,6 @@ public static class MauiProgram
 {
 	public static MauiApp CreateMauiApp()
 	{
-		// First of all: remembers whether the last start finished (a crash while starting leads to a safe start).
-		StartupGuard.Begin();
-
 		var builder = MauiApp.CreateBuilder();
 
 		builder
@@ -79,12 +76,6 @@ public static class MauiProgram
 
 		// Opt-in only: without the developer option nothing is logged and a leftover file is removed.
 		DiagnosticLog.Enabled = settings.LogToFile;
-
-		if (StartupGuard.FailedStarts > 0)
-		{
-			// The last line of the log before this one is the last thing that happened before the process ended.
-			DiagnosticLog.Write($"[Start] the previous {StartupGuard.FailedStarts} start(s) did not finish (a crash while starting, or the system ended the app){(StartupGuard.IsSafeStart ? ": safe start" : string.Empty)}");
-		}
 
 		if (DiagnosticLog.Enabled)
 		{

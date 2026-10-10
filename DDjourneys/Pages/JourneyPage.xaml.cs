@@ -44,7 +44,13 @@ public partial class JourneyPage : PanePage
 		{
 			_clock = Dispatcher.CreateTimer();
 			_clock.Interval = TimeSpan.FromSeconds(15);
-			_clock.Tick += (_, _) => _vm.TickClock();
+			_clock.Tick += (_, _) =>
+			{
+				if (AppVisibility.IsShown)
+				{
+					_vm.TickClock();
+				}
+			};
 		}
 
 		_clock.Start();

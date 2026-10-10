@@ -667,6 +667,7 @@ public sealed class ExtrasStrings
 	public required string MapAutoFit { get; init; }
 	public required string MapFitNow { get; init; }
 	public required string MapInfo { get; init; }
+	public required string MapGrip { get; init; }
 	public required string TrackFollowing { get; init; }
 	public required string TrackNotFound { get; init; }
 	public required string TrackNoCourse { get; init; }

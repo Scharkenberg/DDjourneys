@@ -21,6 +21,18 @@ public sealed partial class MapView : ContentView
 	/// <summary>Preference key: whether the map re-fits itself to its scene ("Auto-fit").</summary>
 	private const string AutoFitKey = "MapAutoFit";
 
+	/// <summary>Preference key: the height the user dragged the map to with the grip chin.</summary>
+	private const string HeightKey = "MapHeight";
+
+	/// <summary>Height the map starts with when the grip chin can resize it (see <see cref="ResizableByGrip"/>).</summary>
+	private const double DefaultHeight = 320;
+
+	/// <summary>The grip chin never drags the map below this: the strip itself and a first look at the scene must fit.</summary>
+	private const double MinHeight = 160;
+
+	/// <summary>The share of the window the grip chin can grow the map to: part of the page always stays in reach.</summary>
+	private const double WindowShare = 0.9;
+
 	private HybridWebView _web;
 	private MapEngine _engine;
 	private bool _bootReceived;
@@ -41,13 +53,20 @@ public sealed partial class MapView : ContentView
 	private MapScene? _overlay;
 	private (bool Explore, bool Pick, double? Latitude, double? Longitude, int Zoom)? _mode;
 
+	// The grip chin: the strip under the map, and the handle that drags its height (see ResizableByGrip).
+	private readonly Border _chin;
+	private bool _resizableByGrip;
+	private bool _draggingHeight;
+	private double _pressHeight;
+
 	public MapView()
 	{
 		_web = CreateWeb();
 
 		// The web view takes every touch (a swipe pans the map), so a strip of plain page background stays below
 		// it, inside the view's own bounds: there is always somewhere to put a finger to scroll the page or
-		// to go back, on any screen size.
+		// to go back, on any screen size. Where the map has a frame of its own (ResizableByGrip), the strip is
+		// the grip chin as well: the handle that drags the map's height.
 		var strip =
 			new Border
 			{
@@ -67,6 +86,9 @@ public sealed partial class MapView : ContentView
 			};
 
 		((BoxView)strip.Content).SetDynamicResource(BoxView.ColorProperty, "Outline");
+
+		_chin = strip;
+		_chin.HandlerChanged += OnChinHandlerChanged;
 
 		// Shown instead of the map when there is no (usable) CARTO key: one calm card, no error styling.
 		_noticeText =
@@ -273,10 +295,104 @@ public sealed partial class MapView : ContentView
 		await CallAsync("focus", System.Text.Json.JsonSerializer.Serialize(markerId, WebBridge.StringInfo));
 	}
 
+	/// <summary>
+	/// The grip chin (the strip under the map) drags the map's height: from <see cref="MinHeight"/> up to most of
+	/// the window, starting at <see cref="DefaultHeight"/>; the height the user chose is kept in the preferences.
+	/// The page-filling map leaves this off: there the chin keeps its one role, the strip that scrolls the page.
+	/// </summary>
+	public bool ResizableByGrip
+	{
+		get => _resizableByGrip;
+
+		set
+		{
+			_resizableByGrip = value;
+
+			if (value)
+			{
+				HeightRequest = Math.Max(MinHeight, Preferences.Default.Get(HeightKey, DefaultHeight));
+
+				SemanticProperties.SetDescription(
+					_chin,
+					LocalizationService.Current.CurrentStrings.Extras.MapGrip);
+			}
+		}
+	}
+
+	/// <summary>The chin's platform view arrived (or went): the height drag hangs on its native events.</summary>
+	private void OnChinHandlerChanged(object? sender, EventArgs e)
+	{
+#if ANDROID
+		if (_chin.Handler?.PlatformView is Android.Views.View view)
+		{
+			view.SetOnTouchListener(new ChinDragListener(this));
+		}
+#elif WINDOWS
+		AttachChin(_chin.Handler?.PlatformView as Microsoft.UI.Xaml.UIElement);
+#endif
+	}
+
+	/// <summary>The chin drag began: the height the map had when the finger came down.</summary>
+	private void BeginHeightDrag()
+	{
+		_draggingHeight = true;
+		_pressHeight = HeightRequest >= MinHeight ? HeightRequest : Height;
+	}
+
+	/// <summary>The chin moved this far down since the drag began (negative: up).</summary>
+	private void MoveHeightDrag(double distance)
+	{
+		if (!_draggingHeight)
+		{
+			return;
+		}
+
+		HeightRequest = Math.Clamp(_pressHeight + distance, MinHeight, HeightCeiling());
+	}
+
+	/// <summary>The chin drag ended: the height the user chose stays for the next time.</summary>
+	private void EndHeightDrag()
+	{
+		if (!_draggingHeight)
+		{
+			return;
+		}
+
+		_draggingHeight = false;
+
+		Preferences.Default.Set(HeightKey, HeightRequest);
+	}
+
+	/// <summary>The largest height the chin may drag the map to: most of the window, so part of the page stays in reach.</summary>
+	private double HeightCeiling()
+	{
+		for (Element? element = Parent; element is not null; element = element.Parent)
+		{
+			if (element is Page page
+				&& page.Window?.Height is { } height
+				&& height > 0)
+			{
+				return Math.Max(MinHeight, height * WindowShare);
+			}
+		}
+
+		return Math.Max(MinHeight, DefaultHeight * WindowShare);
+	}
+
 	private void OnHandlerChanged(object? sender, EventArgs e)
 	{
 		if (Handler is null)
 		{
+			// The page is gone: release the native web view at once instead of waiting for its finaliser. Should the
+			// view ever be attached again it gets a new handler and the page boots from the start.
+			if (_web.Handler is not null)
+			{
+				_web.Handler.DisconnectHandler();
+				_pageReady = false;
+				_ready = false;
+				_bootReceived = false;
+			}
+
 			if (_subscribed)
 			{
 				// Left in an orderly way: not a crash.
@@ -499,6 +615,9 @@ public sealed partial class MapView : ContentView
 			_web.RawMessageReceived -= OnRawMessage;
 			MapSupport.Finish();
 
+			// A removed web view keeps its native peer until collection: let it go here.
+			_web.Handler?.DisconnectHandler();
+
 			_web = CreateWeb();
 			_pageReady = false;
 			_ready = false;
@@ -631,4 +750,146 @@ public sealed partial class MapView : ContentView
 
 	private Task CallAsync(string command, string? json) =>
 		WebBridge.CallAsync(_web, "ddMapCall", command, json, "Map");
+
+#if WINDOWS
+	private Microsoft.UI.Xaml.UIElement? _chinView;
+	private double _pressY;
+
+	// The chin's pointer events carry the drag: the pointer is captured at once, so the scroll view around
+	// the page cannot pan it away while the height follows the pointer.
+	private void AttachChin(Microsoft.UI.Xaml.UIElement? view)
+	{
+		if (ReferenceEquals(view, _chinView))
+		{
+			return;
+		}
+
+		if (_chinView is not null)
+		{
+			_chinView.PointerPressed -= OnChinPressed;
+			_chinView.PointerMoved -= OnChinMoved;
+			_chinView.PointerReleased -= OnChinReleased;
+			_chinView.PointerCaptureLost -= OnChinCaptureLost;
+		}
+
+		_chinView = view;
+
+		if (view is null)
+		{
+			return;
+		}
+
+		view.PointerPressed += OnChinPressed;
+		view.PointerMoved += OnChinMoved;
+		view.PointerReleased += OnChinReleased;
+		view.PointerCaptureLost += OnChinCaptureLost;
+	}
+
+	private void OnChinPressed(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+	{
+		if (_chinView is not { } view
+			|| !_resizableByGrip
+			|| _draggingHeight
+			|| !e.GetCurrentPoint(view).Properties.IsLeftButtonPressed)
+		{
+			return;
+		}
+
+		e.Handled = true;
+
+		view.CapturePointer(e.Pointer);
+
+		_pressY = e.GetCurrentPoint(view).Position.Y;
+
+		BeginHeightDrag();
+	}
+
+	private void OnChinMoved(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+	{
+		if (_chinView is not { } view
+			|| !_draggingHeight)
+		{
+			return;
+		}
+
+		e.Handled = true;
+
+		MoveHeightDrag(e.GetCurrentPoint(view).Position.Y - _pressY);
+	}
+
+	private void OnChinReleased(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+	{
+		if (_chinView is not { } view
+			|| !_draggingHeight)
+		{
+			return;
+		}
+
+		e.Handled = true;
+
+		view.ReleasePointerCapture(e.Pointer);
+
+		EndHeightDrag();
+	}
+
+	private void OnChinCaptureLost(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e) =>
+		EndHeightDrag();
+#endif
+
+#if ANDROID
+	/// <summary>
+	/// The chin's touch listener: it takes the whole drag (the scroll view around the page would claim a
+	/// vertical drag of a child before any recognizer sees it) and keeps the parents from intercepting while
+	/// the finger is down. Without the drag (the page-filling map) it stays out of the way: the chin scrolls
+	/// the page as before.
+	/// </summary>
+	private sealed class ChinDragListener : Java.Lang.Object, Android.Views.View.IOnTouchListener
+	{
+		private readonly MapView _map;
+		private float _downY;
+		private float _density = 1;
+
+		public ChinDragListener(MapView map) => _map = map;
+
+		public bool OnTouch(Android.Views.View? view, Android.Views.MotionEvent? motion)
+		{
+			if (view is null
+				|| motion is null
+				|| !_map.ResizableByGrip)
+			{
+				return false;
+			}
+
+			switch (motion.ActionMasked)
+			{
+				case Android.Views.MotionEventActions.Down:
+					// As long as the finger is down, no parent may intercept the drag.
+					view.Parent?.RequestDisallowInterceptTouchEvent(true);
+
+					_downY = motion.GetY();
+					_density = view.Resources?.DisplayMetrics?.Density ?? 1;
+
+					_map.BeginHeightDrag();
+
+					return true;
+
+				case Android.Views.MotionEventActions.Move:
+					_map.MoveHeightDrag((motion.GetY() - _downY) / _density);
+
+					return true;
+
+				case Android.Views.MotionEventActions.Up:
+				case Android.Views.MotionEventActions.Cancel:
+					view.Parent?.RequestDisallowInterceptTouchEvent(false);
+
+					_map.EndHeightDrag();
+
+					return true;
+
+				default:
+					return true;
+			}
+		}
+	}
+#endif
 }

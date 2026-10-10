@@ -168,7 +168,27 @@ public sealed partial class Icon : ContentView
 		}
 	}
 
-	private static Shapes.Geometry? Parse(string data) =>
-		(Shapes.Geometry?)new Shapes.PathGeometryConverter()
-			.ConvertFromInvariantString(data);
+	// Parsed once per path data, shared by every icon of the same glyph (dozens per page, per row).
+	private static readonly Lock GeometryGate = new();
+	private static readonly Dictionary<string, Shapes.Geometry> Geometries = new(StringComparer.Ordinal);
+
+	private static Shapes.Geometry? Parse(string data)
+	{
+		lock (GeometryGate)
+		{
+			if (Geometries.GetValueOrDefault(data) is { } cached)
+			{
+				return cached;
+			}
+
+			if (new Shapes.PathGeometryConverter()
+				.ConvertFromInvariantString(data) is Shapes.Geometry parsed)
+			{
+				Geometries[data] = parsed;
+				return parsed;
+			}
+
+			return null;
+		}
+	}
 }

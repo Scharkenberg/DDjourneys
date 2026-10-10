@@ -52,6 +52,7 @@ namespace DDjourneys.WinUI
 						if (handler.PlatformView is Microsoft.UI.Xaml.Window window)
 						{
 							WindowsBackground.Attach(window);
+							WindowsVisibility.Attach(window);
 							WindowsMaterial.Attach(window);
 						}
 					});

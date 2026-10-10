@@ -36,8 +36,14 @@ public interface IJourneyTracker
 		string? replacesPlanId = null,
 		CancellationToken cancellationToken = default);
 
-	/// <summary>Reloads the watchlist from the provider.</summary>
+	/// <summary>Reloads the watchlist from the provider (an explicit refresh: clock and plan list are asked again too).</summary>
 	Task RefreshAsync(CancellationToken cancellationToken = default);
+
+	/// <summary>
+	/// The periodic refresh of a page that stays open: the trips are reloaded, the clock and the plan list only when
+	/// their own intervals are up. Cheaper than <see cref="RefreshAsync"/>, which is for the person asking.
+	/// </summary>
+	Task PollAsync(CancellationToken cancellationToken = default);
 
 	/// <summary>Pauses (false) or resumes (true) monitoring of one followed journey.</summary>
 	Task SetActiveAsync(string planId, bool active, CancellationToken cancellationToken = default);
