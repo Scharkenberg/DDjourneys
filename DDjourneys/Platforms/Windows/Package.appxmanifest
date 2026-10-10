@@ -66,7 +66,7 @@
 		     a uap3 AppExtension with the Widgets Board's name; the activation is CreateInstance (COM, the
 		     recommended type); pinning happens in the board's picker - there is no pin API. -->
 		<uap3:Extension Category="windows.appExtension">
-		  <uap3:AppExtension Name="com.microsoft.windows.widgets" DisplayName="DDjourneys" Id="DdWidgets" PublicFolder="Assets\\Widgets">
+		  <uap3:AppExtension Name="com.microsoft.windows.widgets" DisplayName="DDjourneys" Id="DdWidgets" PublicFolder="Assets\Widgets">
 			<uap3:Properties>
 			  <WidgetProvider>
 				<ProviderIcons>
