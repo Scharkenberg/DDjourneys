@@ -56,7 +56,10 @@
 		  <com:ComServer>
 			<com:ExeServer Executable="DDjourneys.exe" DisplayName="DDjourneys" Arguments="----AppNotificationActivated:">
 			  <com:Class Id="D4C0A5A2-6B1E-4F0A-9C3B-7E2D8A1F5B63" />
-			  <!-- The Windows Widgets Board CoCreates this one (the same value as WindowsWidgets.ProviderClassId). -->
+			</com:ExeServer>
+			<!-- The Windows Widgets Board CoCreates this class (the same value as WindowsWidgets.ProviderClassId). Its own
+			     ExeServer without arguments, exactly as in "Implement a widget provider in a C# Windows App". -->
+			<com:ExeServer Executable="DDjourneys.exe" DisplayName="DDjourneys widget provider">
 			  <com:Class Id="8F1D5A53-2A1F-4B0B-B5E1-1D2A6C90F3D7" DisplayName="DDjourneys widget provider" />
 			</com:ExeServer>
 		  </com:ComServer>
