@@ -46,23 +46,7 @@ public static class WidgetSnapshots
 		JourneyLeg[] rides = [.. journey.Legs.Where(leg => leg.IsRide)];
 		JourneyLeg? first = rides.FirstOrDefault();
 
-		int transfers = journey.TransferCount;
-
-		string transfersText =
-			transfers switch
-			{
-				0 => text.Direct,
-				1 => text.OneTransfer,
-				_ => string.Format(CultureInfo.CurrentCulture, text.MultipleTransfers, transfers)
-			};
-
-		string lines =
-			string.Join(
-				" ",
-				rides
-					.Select(leg => leg.Line?.Name)
-					.Where(name => !string.IsNullOrWhiteSpace(name))
-					.Distinct());
+		string facts = JourneyFacts(journey, rides, text);
 
 		TimeSpan? delay =
 			first is { RealtimeDeparture: { } real, ScheduledDeparture: { } plan }
@@ -95,8 +79,8 @@ public static class WidgetSnapshots
 				? StopLabel.NameFor(first!.From.Name, first.From.Place)
 				: arrival,
 			Sub = walksFirst
-				? string.Join(" · ", new[] { walk, arrival, transfersText, lines }.Where(part => part.Length > 0))
-				: string.Join(" · ", new[] { Format.Duration(journey.Duration), transfersText, lines }.Where(part => part.Length > 0)),
+				? string.Join(" · ", new[] { walk, arrival, facts }.Where(part => part.Length > 0))
+				: facts,
 			Time = Format.TimeOrDash(journey.Departure),
 			Delay = journey.IsImpossible ? text.Cancelled : Format.Delay(delay) ?? string.Empty,
 			DelayLevel =
@@ -107,18 +91,32 @@ public static class WidgetSnapshots
 						: WidgetDelay.None,
 			At = journey.Departure,
 			Arrival = Format.TimeOrDash(journey.Arrival),
-			Duration = Format.Duration(journey.Duration),
-			Transfers = transfersText,
-			Lines = string.Join(
-				" \u203a ",
-				rides
-					.Select(leg => leg.Line?.Name)
-					.Where(name => !string.IsNullOrWhiteSpace(name))
-					.Select(name => name!)),
-			Lead = walksFirst && walk.Length > 0
-				? $"{walk} \u2192 {StopLabel.NameFor(first!.From.Name, first.From.Place)}"
-				: string.Empty
+			Facts = facts,
+			Lead = walksFirst ? walk : string.Empty
 		};
+	}
+
+	/// <summary>
+	/// The second line of a journey, the same on every widget: the platform of the first ride, the duration, then
+	/// "Direct", or "transfer:"/"transfers:" with the lines after the first (the first one is the row's chip):
+	/// "Pl. 4 · 47 min · transfers: 6 › 8 › 77".
+	/// </summary>
+	public static string JourneyFacts(Journey journey, IReadOnlyList<JourneyLeg> rides, JourneyStrings text)
+	{
+		ArgumentNullException.ThrowIfNull(journey);
+		ArgumentNullException.ThrowIfNull(rides);
+		ArgumentNullException.ThrowIfNull(text);
+
+		string platform = rides.Count > 0 ? Platform(rides[0].From.Platform, rides[0].From.PlatformKind, text) : string.Empty;
+
+		string later = string.Join(" \u203a ", rides.Skip(1).Select(leg => leg.Line?.Name).Where(name => !string.IsNullOrWhiteSpace(name)));
+
+		string change =
+			rides.Count <= 1
+				? text.Direct
+				: $"{(rides.Count == 2 ? text.TransferLead : text.TransfersLead)} {later}".TrimEnd();
+
+		return string.Join(" \u00b7 ", new[] { platform, Format.Duration(journey.Duration), change }.Where(part => part.Length > 0));
 	}
 
 	public static WidgetRow ForStop(NearbyStop stop, WidgetStrings strings)
@@ -156,8 +154,9 @@ public static class WidgetSnapshots
 			? Format.TransportMode(line.Mode)
 			: line.Name;
 
-	private static string Platform(string? platform, PlatformKind kind, JourneyStrings text) =>
+	/// <summary>"Pl. 4" or "Tr. 2" (German "Stg. 4", "Gl. 2"): the short form every widget uses.</summary>
+	public static string Platform(string? platform, PlatformKind kind, JourneyStrings text) =>
 		string.IsNullOrWhiteSpace(platform)
 			? string.Empty
-			: $"{(kind == PlatformKind.Railtrack ? text.Track : text.Platform)} {platform.Trim()}";
+			: $"{(kind == PlatformKind.Railtrack ? text.TrackShort : text.PlatformShort)} {platform.Trim()}";
 }

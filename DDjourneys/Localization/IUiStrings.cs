@@ -225,6 +225,10 @@ public sealed class JourneyStrings
 	public required string Platform { get; init; }
 	public required string WithinStop { get; init; }
 	public required string Track { get; init; }
+	public required string PlatformShort { get; init; }
+	public required string TrackShort { get; init; }
+	public required string TransferLead { get; init; }
+	public required string TransfersLead { get; init; }
 	public required string LowFloor { get; init; }
 	public required string WheelchairAccessible { get; init; }
 	public required string BicycleAccessible { get; init; }
@@ -790,12 +794,10 @@ public sealed class WidgetStrings
 	public required string SetupFrom { get; init; }
 	public required string SetupTo { get; init; }
 	public required string SetupSearch { get; init; }
-	public required string SetupRows { get; init; }
+	public required string SetupTitleLabel { get; init; }
 	public required string SetupSaved { get; init; }
 	public required string EditorFor { get; init; }
 	public required string SetupNotChosen { get; init; }
-	public required string SetupRowsCount { get; init; }
-	public required string SetupRowsHelp { get; init; }
 	public required string SetupStep1 { get; init; }
 	public required string SetupStep2 { get; init; }
 	public required string SetupStep3 { get; init; }

@@ -57,7 +57,7 @@ public class WidgetCardTests
 	{
 		WidgetSnapshot snapshot = Snapshot(Row("8", "07:43", WidgetDelay.Late, "+3"));
 
-		WidgetCardPayload card = WidgetCard.For(snapshot, WidgetCardSize.Medium, 0, Strings(), now: snapshot.UpdatedAt);
+		WidgetCardPayload card = WidgetCard.For(snapshot, WidgetCardSize.Medium, Strings(), now: snapshot.UpdatedAt);
 		JsonNode template = TemplateOf(card);
 
 		Assert.Equal("AdaptiveCard", template["type"]!.GetValue<string>());
@@ -83,7 +83,7 @@ public class WidgetCardTests
 	[Fact]
 	public void An_empty_title_override_does_not_hide_the_stop()
 	{
-		JsonNode template = TemplateOf(WidgetCard.For(Snapshot(Row("8", "07:43")), WidgetCardSize.Medium, 0, Strings(), titleOverride: string.Empty));
+		JsonNode template = TemplateOf(WidgetCard.For(Snapshot(Row("8", "07:43")), WidgetCardSize.Medium, Strings(), titleOverride: string.Empty));
 
 		Assert.Equal("Postplatz", template["header"]!.GetValue<string>());
 	}
@@ -96,7 +96,7 @@ public class WidgetCardTests
 			Row("66", "07:45", WidgetDelay.Cancelled, "-1"),
 			Row("3", "07:46", WidgetDelay.None, "0"));
 
-		JsonNode[] rows = [.. RowsOf(TemplateOf(WidgetCard.For(snapshot, WidgetCardSize.Large, 0, Strings(), now: snapshot.UpdatedAt))).Take(3)];
+		JsonNode[] rows = [.. RowsOf(TemplateOf(WidgetCard.For(snapshot, WidgetCardSize.Large, Strings(), now: snapshot.UpdatedAt))).Take(3)];
 
 		// The time column is the last one; without a countdown (the rows have no clock time) its second item is the delay.
 		string Colour(JsonNode row) => row["columns"]![2]!["items"]![1]!["color"]!.GetValue<string>();
@@ -107,7 +107,7 @@ public class WidgetCardTests
 	}
 
 	[Fact]
-	public void The_size_and_the_users_cap_decide_how_many_rows_are_shown()
+	public void The_size_decides_how_many_rows_are_shown_and_always_fills_them()
 	{
 		WidgetSnapshot snapshot = Snapshot(
 			Row("8", "07:43"),
@@ -116,14 +116,19 @@ public class WidgetCardTests
 			Row("1", "07:47"),
 			Row("2", "07:48"),
 			Row("4", "07:49"),
-			Row("5", "07:50"));
+			Row("5", "07:50"),
+			Row("6", "07:51"),
+			Row("9", "07:52"),
+			Row("10", "07:53"),
+			Row("11", "07:54"));
 
-		// The footer is a column set too: one more than the rows (none on a small widget).
-		Assert.Equal(2, RowsOf(TemplateOf(WidgetCard.For(snapshot, WidgetCardSize.Small, 0, Strings(), now: snapshot.UpdatedAt))).Count());
-		Assert.Equal(5 + 1, RowsOf(TemplateOf(WidgetCard.For(snapshot, WidgetCardSize.Medium, 0, Strings(), now: snapshot.UpdatedAt))).Count());
-		Assert.Equal(7 + 1, RowsOf(TemplateOf(WidgetCard.For(snapshot, WidgetCardSize.Large, 0, Strings(), now: snapshot.UpdatedAt))).Count());
-		Assert.Equal(3 + 1, RowsOf(TemplateOf(WidgetCard.For(snapshot, WidgetCardSize.Large, 3, Strings(), now: snapshot.UpdatedAt))).Count());
-		Assert.Equal(1, WidgetCard.RowsFor(WidgetCardSize.Medium, 1));
+		// The footer is a column set too: one more than the rows, on every size.
+		Assert.Equal(2 + 1, RowsOf(TemplateOf(WidgetCard.For(snapshot, WidgetCardSize.Small, Strings(), now: snapshot.UpdatedAt))).Count());
+		Assert.Equal(6 + 1, RowsOf(TemplateOf(WidgetCard.For(snapshot, WidgetCardSize.Medium, Strings(), now: snapshot.UpdatedAt))).Count());
+		Assert.Equal(10 + 1, RowsOf(TemplateOf(WidgetCard.For(snapshot, WidgetCardSize.Large, Strings(), now: snapshot.UpdatedAt))).Count());
+		Assert.Equal(2, WidgetCard.RowsFor(WidgetCardSize.Small));
+		Assert.Equal(6, WidgetCard.RowsFor(WidgetCardSize.Medium));
+		Assert.Equal(10, WidgetCard.RowsFor(WidgetCardSize.Large));
 	}
 
 	[Fact]
@@ -131,8 +136,8 @@ public class WidgetCardTests
 	{
 		WidgetSnapshot snapshot = Snapshot(Row("8", "07:43", WidgetDelay.Late, "+3") with { Sub = "Platform 2" });
 
-		JsonNode small = RowsOf(TemplateOf(WidgetCard.For(snapshot, WidgetCardSize.Small, 0, Strings(), now: snapshot.UpdatedAt))).Single();
-		JsonNode large = RowsOf(TemplateOf(WidgetCard.For(snapshot, WidgetCardSize.Large, 0, Strings(), now: snapshot.UpdatedAt))).First();
+		JsonNode small = RowsOf(TemplateOf(WidgetCard.For(snapshot, WidgetCardSize.Small, Strings(), now: snapshot.UpdatedAt))).First();
+		JsonNode large = RowsOf(TemplateOf(WidgetCard.For(snapshot, WidgetCardSize.Large, Strings(), now: snapshot.UpdatedAt))).First();
 
 		Assert.Equal(large.ToJsonString(), small.ToJsonString());
 		Assert.Equal(2, small["columns"]![1]!["items"]!.AsArray().Count);
@@ -140,14 +145,18 @@ public class WidgetCardTests
 	}
 
 	[Fact]
-	public void A_small_widget_has_no_footer()
+	public void Every_size_has_the_footer_with_the_link_into_the_app()
 	{
 		WidgetSnapshot snapshot = Snapshot(Row("8", "07:43"));
 
-		JsonNode template = TemplateOf(WidgetCard.For(snapshot, WidgetCardSize.Small, 0, Strings(), now: snapshot.UpdatedAt));
+		foreach (WidgetCardSize size in Enum.GetValues<WidgetCardSize>())
+		{
+			JsonNode template = TemplateOf(WidgetCard.For(snapshot, size, Strings(), now: snapshot.UpdatedAt));
+			JsonNode footer = Body(template)[^1]!["columns"]!;
 
-		Assert.Single(RowsOf(template));
-		Assert.Equal("refresh", template["selectAction"]!["verb"]!.GetValue<string>());
+			Assert.Equal("open", footer[1]!["selectAction"]!["verb"]!.GetValue<string>());
+			Assert.Equal("refresh", template["selectAction"]!["verb"]!.GetValue<string>());
+		}
 	}
 
 	[Fact]
@@ -158,7 +167,7 @@ public class WidgetCardTests
 		WidgetRow row = Row("8", "07:43") with { At = now.AddMinutes(3).AddSeconds(20) };
 
 		string Second(DateTimeOffset at) =>
-			RowsOf(TemplateOf(WidgetCard.For(Snapshot(row), WidgetCardSize.Medium, 0, Strings(), now: at))).First()["columns"]![2]!["items"]![1]!["text"]!.GetValue<string>();
+			RowsOf(TemplateOf(WidgetCard.For(Snapshot(row), WidgetCardSize.Medium, Strings(), now: at))).First()["columns"]![2]!["items"]![1]!["text"]!.GetValue<string>();
 
 		Assert.Equal("in 4 min", Second(now));
 		Assert.Equal("in 1 min", Second(now.AddMinutes(3)));
@@ -172,7 +181,7 @@ public class WidgetCardTests
 
 		WidgetRow row = Row("8", "07:43", WidgetDelay.Late, "+3") with { At = now.AddMinutes(3) };
 
-		JsonNode second = RowsOf(TemplateOf(WidgetCard.For(Snapshot(row), WidgetCardSize.Medium, 0, Strings(), now: now))).First()["columns"]![2]!["items"]![1]!;
+		JsonNode second = RowsOf(TemplateOf(WidgetCard.For(Snapshot(row), WidgetCardSize.Medium, Strings(), now: now))).First()["columns"]![2]!["items"]![1]!;
 
 		Assert.Equal("RichTextBlock", second["type"]!.GetValue<string>());
 		Assert.Equal("+3", second["inlines"]![0]!["text"]!.GetValue<string>());
@@ -187,18 +196,16 @@ public class WidgetCardTests
 			Row("7", "23:09") with
 			{
 				Arrival = "23:17",
-				Duration = "8 min",
-				Transfers = "Direct",
-				Lines = "7"
+				Facts = "Pl. 4 \u00b7 8 min \u00b7 Direct"
 			};
 
 		WidgetSnapshot snapshot = Snapshot(journey);
 
-		JsonNode template = TemplateOf(WidgetCard.For(snapshot, WidgetCardSize.Medium, 0, Strings(), now: snapshot.UpdatedAt));
+		JsonNode template = TemplateOf(WidgetCard.For(snapshot, WidgetCardSize.Medium, Strings(), now: snapshot.UpdatedAt));
 		JsonNode main = RowsOf(template).First()["columns"]![1]!["items"]!;
 
 		Assert.Equal("23:09 \u2192 23:17", main[0]!["text"]!.GetValue<string>());
-		Assert.Equal("8 min \u00b7 Direct \u00b7 7", main[1]!["text"]!.GetValue<string>());
+		Assert.Equal("Pl. 4 \u00b7 8 min \u00b7 Direct", main[1]!["text"]!.GetValue<string>());
 	}
 
 	[Fact]
@@ -218,7 +225,7 @@ public class WidgetCardTests
 						now: snapshot.UpdatedAt))).First()["columns"]![0]!["items"]![0]!;
 
 		JsonNode withoutImage =
-			RowsOf(TemplateOf(WidgetCard.For(snapshot, WidgetCardSize.Medium, 0, Strings(), now: snapshot.UpdatedAt))).First()["columns"]![0]!["items"]![0]!;
+			RowsOf(TemplateOf(WidgetCard.For(snapshot, WidgetCardSize.Medium, Strings(), now: snapshot.UpdatedAt))).First()["columns"]![0]!["items"]![0]!;
 
 		Assert.Equal("Image", withImage["type"]!.GetValue<string>());
 		Assert.Equal("40px", withImage["width"]!.GetValue<string>());
@@ -230,7 +237,7 @@ public class WidgetCardTests
 	{
 		WidgetSnapshot snapshot = Snapshot(Row("8", "07:43")) with { IsStale = true };
 
-		JsonNode template = TemplateOf(WidgetCard.For(snapshot, WidgetCardSize.Medium, 0, Strings(), now: snapshot.UpdatedAt));
+		JsonNode template = TemplateOf(WidgetCard.For(snapshot, WidgetCardSize.Medium, Strings(), now: snapshot.UpdatedAt));
 
 		Assert.Equal("Could not refresh", Body(template)[^1]!["columns"]![0]!["items"]![0]!["text"]!.GetValue<string>());
 	}
@@ -240,7 +247,7 @@ public class WidgetCardTests
 	{
 		WidgetSnapshot snapshot = Snapshot() with { Message = "No departures" };
 
-		JsonNode template = TemplateOf(WidgetCard.For(snapshot, WidgetCardSize.Medium, 0, Strings()));
+		JsonNode template = TemplateOf(WidgetCard.For(snapshot, WidgetCardSize.Medium, Strings()));
 
 		Assert.Equal("No departures", Body(template)[0]!["text"]!.GetValue<string>());
 	}

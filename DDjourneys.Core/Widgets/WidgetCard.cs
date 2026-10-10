@@ -49,29 +49,23 @@ public static class WidgetCard
 	/// <summary>A departure further away than this shows no countdown.</summary>
 	private static readonly TimeSpan CountdownLimit = TimeSpan.FromMinutes(60);
 
-	/// <summary>How many rows a widget of this size has room for, within the user's own cap (0: no cap).</summary>
-	public static int RowsFor(WidgetCardSize size, int maxRows)
-	{
-		int fit =
-			size switch
-			{
-				WidgetCardSize.Small => 2,
-				WidgetCardSize.Medium => 5,
-				_ => WidgetConfig.MaxRowsLimit
-			};
-
-		return maxRows > 0 ? Math.Min(fit, maxRows) : fit;
-	}
+	/// <summary>How many rows a widget of this size has: always as many as fit (2, 6 and 10), never fewer by choice.</summary>
+	public static int RowsFor(WidgetCardSize size) =>
+		size switch
+		{
+			WidgetCardSize.Small => 2,
+			WidgetCardSize.Medium => 6,
+			_ => WidgetConfig.MaxRowsLimit
+		};
 
 	/// <summary>
 	/// The card for a snapshot: the board's header, the rows that fit the size (every row with all it has to say, on
-	/// every size), and from medium up one footer line - the time of the last update and the link into the app.
+	/// every size), and on every size one footer line - the time of the last update and the link into the app.
 	/// A tap on the card refreshes it; there are no buttons.
 	/// </summary>
 	public static WidgetCardPayload For(
 		WidgetSnapshot snapshot,
 		WidgetCardSize size,
-		int maxRows,
 		WidgetCardStrings strings,
 		string? titleOverride = null,
 		Func<WidgetRow, WidgetChipImage?>? chips = null,
@@ -86,7 +80,7 @@ public static class WidgetCard
 
 		string title = string.IsNullOrWhiteSpace(titleOverride) ? snapshot.Title : titleOverride;
 
-		IReadOnlyList<WidgetRow> shown = [.. snapshot.Upcoming(at).Take(RowsFor(size, maxRows))];
+		IReadOnlyList<WidgetRow> shown = [.. snapshot.Upcoming(at).Take(RowsFor(size))];
 
 		if (shown.Count == 0)
 		{
@@ -107,20 +101,7 @@ public static class WidgetCard
 			}
 		}
 
-		string stamp = Stamp(snapshot, strings);
-
-		if (size == WidgetCardSize.Small)
-		{
-			// No room for a footer: only a problem is worth a line.
-			if (snapshot.IsStale)
-			{
-				body.Add(Text(strings.CouldNotRefresh, size: "small", color: "warning", spacing: "small"));
-			}
-		}
-		else
-		{
-			body.Add(Footer(stamp, strings, snapshot.IsStale));
-		}
+		body.Add(Footer(Stamp(snapshot, strings), strings, snapshot.IsStale));
 
 		return Payload(body, title, Execute(strings.Refresh, "refresh"));
 	}
@@ -240,7 +221,7 @@ public static class WidgetCard
 			main = Wire.Array(
 				Text($"{row.Time} \u2192 {row.Arrival}", weight: "bolder", wrap: false, spacing: "none"));
 
-			string facts = string.Join(" \u00b7 ", new[] { row.Lead, row.Duration, row.Transfers, row.Lines }.Where(part => part.Length > 0));
+			string facts = string.Join(" \u00b7 ", new[] { row.Lead, row.Facts }.Where(part => part.Length > 0));
 
 			if (facts.Length > 0)
 			{

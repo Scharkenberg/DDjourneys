@@ -45,16 +45,13 @@ public sealed record WidgetRow
 	/// <summary>A journey's arrival time ("23:17"); empty for departures. Rows with an arrival are drawn as journeys on Windows.</summary>
 	public string Arrival { get; init; } = string.Empty;
 
-	/// <summary>A journey's duration ("8 min").</summary>
-	public string Duration { get; init; } = string.Empty;
+	/// <summary>
+	/// A journey's second line, built in one place (<c>WidgetSnapshots.JourneyFacts</c>): the platform of the first ride,
+	/// the duration, then "Direct" or "transfers:" and the lines after the first ("Pl. 4 · 47 min · transfers: 6 › 8 › 77").
+	/// </summary>
+	public string Facts { get; init; } = string.Empty;
 
-	/// <summary>A journey's changes ("Direct", "1 transfer").</summary>
-	public string Transfers { get; init; } = string.Empty;
-
-	/// <summary>The lines of a journey in order ("7 › 333").</summary>
-	public string Lines { get; init; } = string.Empty;
-
-	/// <summary>What comes before the first ride ("Walk 4 min to Kirschenstraße"); empty when the journey starts on the vehicle.</summary>
+	/// <summary>What comes before the first ride ("Walk 4 min"); empty when the journey starts on the vehicle.</summary>
 	public string Lead { get; init; } = string.Empty;
 
 	/// <summary>"+2 min" and the like.</summary>
@@ -142,9 +139,7 @@ public sealed record WidgetSnapshot
 							["Time"] = row.Time,
 							["Delay"] = row.Delay,
 							["Arrival"] = row.Arrival,
-							["Duration"] = row.Duration,
-							["Transfers"] = row.Transfers,
-							["Lines"] = row.Lines,
+							["Facts"] = row.Facts,
 							["Lead"] = row.Lead,
 							["Level"] = (int)row.DelayLevel,
 							["At"] = row.At?.ToString("O", System.Globalization.CultureInfo.InvariantCulture)
@@ -187,9 +182,7 @@ public sealed record WidgetSnapshot
 							Time = StoredJson.String(item, "Time") ?? string.Empty,
 							Delay = StoredJson.String(item, "Delay") ?? string.Empty,
 							Arrival = StoredJson.String(item, "Arrival") ?? string.Empty,
-							Duration = StoredJson.String(item, "Duration") ?? string.Empty,
-							Transfers = StoredJson.String(item, "Transfers") ?? string.Empty,
-							Lines = StoredJson.String(item, "Lines") ?? string.Empty,
+							Facts = StoredJson.String(item, "Facts") ?? string.Empty,
 							Lead = StoredJson.String(item, "Lead") ?? string.Empty,
 							At =
 								DateTimeOffset.TryParse(

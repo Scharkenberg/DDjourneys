@@ -214,6 +214,34 @@
 								</Grid>
 							</Border>
 						</VerticalStackLayout>
+
+						<!--  The title of the widget; empty = the place (shown as the hint)  -->
+						<Border
+							Padding="12,4"
+							BackgroundColor="{DynamicResource Raised}"
+							StrokeThickness="0"
+							support:Dense.MinHeight="{StaticResource HitRow}">
+							<Border.StrokeShape>
+								<RoundRectangle CornerRadius="4" />
+							</Border.StrokeShape>
+							<Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+								<controls:Icon
+									Glyph="Edit"
+									Size="22"
+									VerticalOptions="Center"
+									Color="{DynamicResource Accent}" />
+								<VerticalStackLayout Grid.Column="1" VerticalOptions="Center">
+									<Label StyleClass="Faint" Text="{localization:Tr Widgets.SetupTitleLabel}" />
+									<Entry
+										x:Name="TitleEntry"
+										ClearButtonVisibility="WhileEditing"
+										FontFamily="{DynamicResource FontSemibold}"
+										MaxLength="40"
+										SemanticProperties.Description="{localization:Tr Widgets.SetupTitleLabel}"
+										TextChanged="OnTitleChanged" />
+								</VerticalStackLayout>
+							</Grid>
+						</Border>
 					</VerticalStackLayout>
 				</Border>
 
@@ -252,27 +280,6 @@
 					IsVisible="false"
 					StyleClass="Card">
 					<VerticalStackLayout x:Name="Results" />
-				</Border>
-
-				<Border Padding="{DynamicResource PadCard}" StyleClass="Card">
-					<VerticalStackLayout Spacing="6">
-						<Grid ColumnDefinitions="*,Auto">
-							<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Widgets.SetupRows}" />
-							<Label
-								x:Name="RowsValue"
-								Grid.Column="1"
-								StyleClass="Caption" />
-						</Grid>
-
-						<Slider
-							x:Name="Rows"
-							Maximum="10"
-							Minimum="1"
-							SemanticProperties.Description="{localization:Tr Widgets.SetupRows}"
-							ValueChanged="OnRowsChanged" />
-
-						<Label StyleClass="Faint" Text="{localization:Tr Widgets.SetupRowsHelp}" />
-					</VerticalStackLayout>
 				</Border>
 
 				<HorizontalStackLayout Margin="4,0" Spacing="8">

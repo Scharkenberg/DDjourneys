@@ -124,8 +124,9 @@ public static class WidgetUpdaterWin
 			{
 				WidgetSnapshot? snapshot =
 					await loader.LoadAsync(
-						config,
-						WidgetCard.RowsFor(WindowsWidgets.SizeOf(id), config.MaxRows),
+						// The widget shows as many rows as its size has; the row cap of the Android settings does not apply.
+						config with { MaxRows = 0 },
+						WidgetCard.RowsFor(WindowsWidgets.SizeOf(id)),
 						DeviceLocator.LastFix,
 						limit.Token)
 						.ConfigureAwait(false);
@@ -179,7 +180,6 @@ public static class WidgetUpdaterWin
 				: WidgetCard.For(
 					snapshot,
 					WindowsWidgets.SizeOf(id),
-					config.MaxRows,
 					Strings(),
 					config.Title,
 					WidgetChipImages.For);
@@ -290,7 +290,7 @@ public static class WidgetUpdaterWin
 
 		if (config.IsComplete
 			&& snapshot is not null
-			&& snapshot.Upcoming(DateTimeOffset.UtcNow).Count < WidgetCard.RowsFor(WindowsWidgets.SizeOf(id), config.MaxRows)
+			&& snapshot.Upcoming(DateTimeOffset.UtcNow).Count < WidgetCard.RowsFor(WindowsWidgets.SizeOf(id))
 			&& (!LastFetch.TryGetValue(id, out DateTimeOffset last) || DateTimeOffset.UtcNow - last >= RefillEvery))
 		{
 			_ = RefreshAsync(id);

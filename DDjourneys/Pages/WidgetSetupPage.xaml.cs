@@ -41,7 +41,7 @@ public partial class WidgetSetupPage : PanePage, IQueryAttributable
 	private Location? _stop;
 	private Location? _from;
 	private Location? _to;
-	private int _rows = 5;
+	private string _title = string.Empty;
 	private bool _dirty;
 	private bool _loading;
 	private CancellationTokenSource? _search;
@@ -59,7 +59,6 @@ public partial class WidgetSetupPage : PanePage, IQueryAttributable
 		_locations = locations;
 		_providers = providers;
 
-		Rows.Value = _rows;
 	}
 
 	private static WidgetStrings Strings =>
@@ -198,9 +197,7 @@ public partial class WidgetSetupPage : PanePage, IQueryAttributable
 		text.Add(
 			new Label
 			{
-				Text = complete
-					? $"{kind} · {string.Format(CultureInfo.CurrentCulture, Strings.SetupRowsCount, config!.MaxRows > 0 ? config.MaxRows : 5)}"
-					: kind,
+				Text = kind,
 				StyleClass = ["Caption"],
 				LineBreakMode = LineBreakMode.TailTruncation,
 				MaxLines = 1
@@ -288,7 +285,7 @@ public partial class WidgetSetupPage : PanePage, IQueryAttributable
 		_stop = config?.Stop;
 		_from = config?.From?.Place;
 		_to = config?.To?.Place;
-		_rows = config is { MaxRows: > 0 } ? Math.Clamp(config.MaxRows, 1, WidgetConfig.MaxRowsLimit) : 5;
+		_title = config?.Title ?? string.Empty;
 		_dirty = false;
 
 		string[] ids = PinnedIds();
@@ -300,7 +297,7 @@ public partial class WidgetSetupPage : PanePage, IQueryAttributable
 
 		Editor.IsVisible = true;
 
-		Rows.Value = _rows;
+		TitleEntry.Text = _title;
 		Search.Text = string.Empty;
 
 		_loading = false;
@@ -356,7 +353,8 @@ public partial class WidgetSetupPage : PanePage, IQueryAttributable
 		SetField(FromField, FromCaption, FromValue, Strings.SetupFrom, _from, Field.From);
 		SetField(ToField, ToCaption, ToValue, Strings.SetupTo, _to, Field.To);
 
-		RowsValue.Text = string.Format(CultureInfo.CurrentCulture, Strings.SetupRowsCount, _rows);
+		// What an empty title gives: the place, as the hint of the field.
+		TitleEntry.Placeholder = DefaultTitle();
 
 		RefreshStatus(saved: false);
 	}
@@ -581,33 +579,30 @@ public partial class WidgetSetupPage : PanePage, IQueryAttributable
 		Changed();
 	}
 
-	private void OnRowsChanged(object? sender, ValueChangedEventArgs e)
+	private void OnTitleChanged(object? sender, TextChangedEventArgs e)
 	{
 		if (_loading)
 		{
 			return;
 		}
 
-		int rounded = Math.Clamp((int)Math.Round(e.NewValue), 1, WidgetConfig.MaxRowsLimit);
+		string title = e.NewTextValue?.Trim() ?? string.Empty;
 
-		// The slider is continuous: it settles on whole rows.
-		if (Math.Abs(Rows.Value - rounded) > 0.001)
-		{
-			_loading = true;
-			Rows.Value = rounded;
-			_loading = false;
-		}
-
-		if (rounded == _rows)
+		if (string.Equals(title, _title, StringComparison.Ordinal))
 		{
 			return;
 		}
 
-		_rows = rounded;
+		_title = title;
 
-		RefreshFields();
 		Changed();
 	}
+
+	/// <summary>The title an empty field gives: the stop, or "from → to".</summary>
+	private string DefaultTitle() =>
+		_kind is WidgetKind.Route
+			? $"{(_from is null ? Strings.SetupFrom : StopLabel.NameFor(_from.Name, _from.Place))} \u2192 {(_to is null ? Strings.SetupTo : StopLabel.NameFor(_to.Name, _to.Place))}"
+			: _stop is null ? Strings.SetupStop : StopLabel.NameFor(_stop.Name, _stop.Place);
 
 	// ---------- Saving ----------
 
@@ -663,7 +658,8 @@ public partial class WidgetSetupPage : PanePage, IQueryAttributable
 					{
 						Kind = _kind,
 						ProviderId = provider,
-						MaxRows = _rows,
+						MaxRows = 0,
+						Title = _title,
 						Stop = null,
 						From = new WidgetPlace(_from),
 						To = new WidgetPlace(_to)
@@ -672,7 +668,8 @@ public partial class WidgetSetupPage : PanePage, IQueryAttributable
 					{
 						Kind = _kind,
 						ProviderId = provider,
-						MaxRows = _rows,
+						MaxRows = 0,
+						Title = _title,
 						Stop = _stop,
 						From = null,
 						To = null
