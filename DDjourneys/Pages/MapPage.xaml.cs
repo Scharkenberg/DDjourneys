@@ -346,6 +346,8 @@ public partial class MapPage : PanePage, IQueryAttributable
 				}
 			}
 
+			DiagnosticLog.Write($"[Map] stops layer: {markers.Count} stops for the view at {viewport.Latitude:F5},{viewport.Longitude:F5} zoom {viewport.Zoom:F1}, radius {viewport.RadiusMeters():F0} m");
+
 			await Map.SetLayerAsync(StopsLayer, new MapScene { Markers = markers, Fit = false });
 		}
 		catch (OperationCanceledException)

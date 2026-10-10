@@ -700,6 +700,8 @@ public sealed class ExtrasStrings
 	public required string NetworkMapFailed { get; init; }
 	public required string NetworkMapZoomIn { get; init; }
 	public required string NetworkMapZoomOut { get; init; }
+	public required string MapOpenSummary { get; init; }
+	public required string NetworkMapSummary { get; init; }
 	public required string MapInfo { get; init; }
 	public required string MapGrip { get; init; }
 	public required string TrackFollowing { get; init; }

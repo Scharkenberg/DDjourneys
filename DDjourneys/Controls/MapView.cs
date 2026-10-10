@@ -29,8 +29,8 @@ public sealed partial class MapView : ContentView
 	/// <summary>Height the map starts with when the grip chin can resize it (see <see cref="ResizableByGrip"/>).</summary>
 	private const double DefaultHeight = 320;
 
-	/// <summary>Height of the grip chin where it drags (the touch minimum of the platform guidelines is 44; the bar inside stays slim).</summary>
-	private const double GripHeight = 44;
+	/// <summary>Height of the grip chin where it drags: a little taller than the plain strip, still slim.</summary>
+	private const double GripHeight = 28;
 
 	/// <summary>The grip chin never drags the map below this: the strip itself and a first look at the scene must fit.</summary>
 	private const double MinHeight = 160;
@@ -915,7 +915,9 @@ public sealed partial class MapView : ContentView
 
 		view.CapturePointer(e.Pointer);
 
-		_pressY = e.GetCurrentPoint(view).Position.Y;
+		// The window's coordinates, not the chin's own: the chin moves with the drag, so a position measured
+		// from it would stand still under the finger and the height would never follow.
+		_pressY = e.GetCurrentPoint(null).Position.Y;
 
 		BeginHeightDrag();
 	}
@@ -930,7 +932,7 @@ public sealed partial class MapView : ContentView
 
 		e.Handled = true;
 
-		MoveHeightDrag(e.GetCurrentPoint(view).Position.Y - _pressY);
+		MoveHeightDrag(e.GetCurrentPoint(null).Position.Y - _pressY);
 	}
 
 	private void OnChinReleased(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
@@ -982,7 +984,8 @@ public sealed partial class MapView : ContentView
 					// As long as the finger is down, no parent may intercept the drag.
 					view.Parent?.RequestDisallowInterceptTouchEvent(true);
 
-					_downY = motion.GetY();
+					// Screen coordinates: the chin moves with the drag, a position relative to it would not change.
+					_downY = motion.RawY;
 					_density = view.Resources?.DisplayMetrics?.Density ?? 1;
 
 					_map.BeginHeightDrag();
@@ -990,7 +993,7 @@ public sealed partial class MapView : ContentView
 					return true;
 
 				case Android.Views.MotionEventActions.Move:
-					_map.MoveHeightDrag((motion.GetY() - _downY) / _density);
+					_map.MoveHeightDrag((motion.RawY - _downY) / _density);
 
 					return true;
 

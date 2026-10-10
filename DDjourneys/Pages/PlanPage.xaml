@@ -26,6 +26,11 @@
 
 				<HorizontalStackLayout Grid.Column="1" Spacing="0">
 					<controls:IconButton
+						Clicked="MapClicked"
+						Glyph="Map"
+						SemanticProperties.Description="{localization:Tr Extras.MapTitle}" />
+
+					<controls:IconButton
 						Clicked="DeparturesClicked"
 						Glyph="Clock"
 						IsVisible="{Binding HasDepartures}"

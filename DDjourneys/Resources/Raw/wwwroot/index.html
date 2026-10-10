@@ -692,7 +692,12 @@ window.ddMain = function (engineName) {
 			var html = interactive ? null : popupHtml(m);
 
 			if (entry && entry.signature === signature) {
-				entry.marker.move(m.lat, m.lon);
+				// Where it already is, it stays: setting the position again only makes the engine recompute it.
+				if (entry.lat !== m.lat || entry.lon !== m.lon) {
+					entry.marker.move(m.lat, m.lon);
+					entry.lat = m.lat;
+					entry.lon = m.lon;
+				}
 
 				return;
 			}
@@ -714,7 +719,7 @@ window.ddMain = function (engineName) {
 
 			el.style.zIndex = String(z);
 
-			store[m.id] = { marker: marker, signature: signature };
+			store[m.id] = { marker: marker, signature: signature, lat: m.lat, lon: m.lon };
 		});
 
 		Object.keys(store).forEach(function (id) {
@@ -740,6 +745,15 @@ window.ddMain = function (engineName) {
 		layerPayloads[id] = payload || {};
 
 		if (!map) { return; }
+
+		// A layer that arrives while the map is still moving (a pan, an animation) waits for the move to end:
+		// its markers are then placed against the view the person stopped at, not one that is already gone.
+		// The moveend handler syncs every layer's markers; shapes (zones) go through at once.
+		if (gl && map.isMoving() && !(layerPayloads[id].polygons || []).length) {
+			dd('layer ' + id + ' waits for the map to settle');
+
+			return;
+		}
 
 		applyLayer(id);
 	}

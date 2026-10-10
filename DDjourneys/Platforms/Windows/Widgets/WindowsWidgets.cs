@@ -22,6 +22,9 @@ internal static class WindowsWidgets
 	/// <summary>The class the board CoCreates; the same value as the manifest's com:Class and CreateInstance ClassId.</summary>
 	internal const string ProviderClassId = "8F1D5A53-2A1F-4B0B-B5E1-1D2A6C90F3D7";
 
+	/// <summary>The manifest's id of the route widget (the other definition is the departures widget).</summary>
+	internal const string RouteDefinition = "Route_Widget";
+
 	/// <summary>The widget store (set while the app builds).</summary>
 	internal static IWidgetStore? Store { get; private set; }
 

@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using DDjourneys.Core.Widgets;
 using DDjourneys.Platforms.Windows.LiveJourney;
 using DDjourneys.Support.Widgets;
 using Microsoft.Windows.Widgets.Providers;
@@ -38,9 +39,35 @@ public sealed class DdWidgetProvider : IWidgetProvider
 
 	public void CreateWidget(WidgetContext widgetContext)
 	{
-		if (widgetContext?.Id is { Length: > 0 } id)
+		if (widgetContext?.Id is not { Length: > 0 } id)
 		{
-			_active[id] = false;
+			return;
+		}
+
+		_active[id] = false;
+
+		try
+		{
+			// The picker entry decides the kind: a route widget starts as a route widget in the set-up page.
+			if (WindowsWidgets.Store is { } store
+				&& store.LoadConfig(id) is null)
+			{
+				store.SaveConfig(
+					id,
+					new WidgetConfig
+					{
+						Kind = string.Equals(widgetContext.DefinitionId, WindowsWidgets.RouteDefinition, StringComparison.Ordinal)
+							? WidgetKind.Route
+							: WidgetKind.Departures
+					});
+			}
+
+			// The board expects a card right after a widget was created, not only when it first becomes visible.
+			WidgetUpdaterWin.Serve(id);
+		}
+		catch (Exception ex)
+		{
+			WindowsTrace.Write("Creating the widget failed", ex);
 		}
 	}
 

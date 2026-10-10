@@ -239,6 +239,14 @@ public partial class PlanPage : PanePage, IQueryAttributable
 			Routes.Settings,
 			[]);
 
+	/// <summary>The map on its own: stops around, tariff zones, park &amp; ride, bikes, vehicles (the layers button).</summary>
+	private async void MapClicked(
+		object? sender,
+		EventArgs e) =>
+		await NavigateAsync(
+			Routes.Map,
+			[]);
+
 	private async void DeparturesClicked(
 		object? sender,
 		EventArgs e) =>

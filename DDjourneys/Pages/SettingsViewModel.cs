@@ -33,6 +33,8 @@ public sealed partial class SettingsViewModel : DisposableViewModel
 		OpenStartCommand = new AsyncCommand(OpenStartAsync);
 		OpenProvidersCommand = new AsyncCommand(OpenProvidersAsync);
 		OpenWidgetsCommand = new AsyncCommand(OpenWidgetsAsync);
+		OpenExploreMapCommand = new AsyncCommand(() => Shell.Current.GoToAsync(Routes.Map));
+		OpenNetworkMapCommand = new AsyncCommand(() => Shell.Current.GoToAsync(Routes.NetworkMap));
 		ShareLogCommand = new AsyncCommand(ShareLogAsync);
 		ClearLogCommand = new Command(ClearLog);
 		OpenAboutCommand = new AsyncCommand(OpenAboutAsync);
@@ -139,6 +141,11 @@ public sealed partial class SettingsViewModel : DisposableViewModel
 #endif
 
 	public AsyncCommand OpenWidgetsCommand { get; }
+
+	/// <summary>The map without a scene: stops, tariff zones and the other layers around the centre.</summary>
+	public AsyncCommand OpenExploreMapCommand { get; }
+
+	public AsyncCommand OpenNetworkMapCommand { get; }
 	public AsyncCommand ShareLogCommand { get; }
 	public Command ClearLogCommand { get; }
 	public AsyncCommand OpenAboutCommand { get; }

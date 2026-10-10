@@ -126,6 +126,59 @@
 
 			<Label StyleClass="Section" Text="{localization:Tr Settings.MapSection}" />
 
+			<!--  Where the map and the network plan live: the same pages the planner's map button opens  -->
+			<Border Padding="0" StyleClass="Card">
+				<VerticalStackLayout>
+					<Grid
+						support:Dense.MinHeight="{StaticResource HitRow}"
+						support:Dense.Padding="12,8"
+						support:Motion.Feedback="True"
+						ColumnDefinitions="*,Auto"
+						ColumnSpacing="10">
+						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
+							<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Extras.MapTitle}" />
+							<Label StyleClass="Caption" Text="{localization:Tr Extras.MapOpenSummary}" />
+						</VerticalStackLayout>
+
+						<controls:Icon
+							Grid.Column="1"
+							Glyph="ChevronRight"
+							Size="20"
+							VerticalOptions="Center"
+							Color="{DynamicResource InkMuted}" />
+
+						<Grid.GestureRecognizers>
+							<TapGestureRecognizer Command="{Binding OpenExploreMapCommand}" />
+						</Grid.GestureRecognizers>
+					</Grid>
+
+					<BoxView StyleClass="Divider" />
+
+					<Grid
+						support:Dense.MinHeight="{StaticResource HitRow}"
+						support:Dense.Padding="12,8"
+						support:Motion.Feedback="True"
+						ColumnDefinitions="*,Auto"
+						ColumnSpacing="10">
+						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
+							<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Extras.NetworkMap}" />
+							<Label StyleClass="Caption" Text="{localization:Tr Extras.NetworkMapSummary}" />
+						</VerticalStackLayout>
+
+						<controls:Icon
+							Grid.Column="1"
+							Glyph="ChevronRight"
+							Size="20"
+							VerticalOptions="Center"
+							Color="{DynamicResource InkMuted}" />
+
+						<Grid.GestureRecognizers>
+							<TapGestureRecognizer Command="{Binding OpenNetworkMapCommand}" />
+						</Grid.GestureRecognizers>
+					</Grid>
+				</VerticalStackLayout>
+			</Border>
+
 			<!--  Which library draws the map: CARTO vector (needs a key and WebGL 2) or Leaflet raster (anything)  -->
 			<Border Padding="0" StyleClass="Card">
 				<VerticalStackLayout>
