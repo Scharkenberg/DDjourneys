@@ -51,8 +51,8 @@ public sealed class FareBorrower(
 			// Everything below belongs to the donor provider, whatever the app shows.
 			using IDisposable scope = providers.Override(VvoProviderInfo.Id);
 
-			Location? from = await ResolveAsync(asked?.From ?? journey.Origin ?? journey.From, cancellationToken).ConfigureAwait(false);
-			Location? to = await ResolveAsync(asked?.To ?? journey.Destination ?? journey.To, cancellationToken).ConfigureAwait(false);
+			Location? from = await ResolveAsync(asked?.From ?? Of(journey.Origin ?? journey.From), cancellationToken).ConfigureAwait(false);
+			Location? to = await ResolveAsync(asked?.To ?? Of(journey.Destination ?? journey.To), cancellationToken).ConfigureAwait(false);
 			Location? via = asked?.Via is { } stopOver ? await ResolveAsync(stopOver, cancellationToken).ConfigureAwait(false) : null;
 
 			if (from is null || to is null || (asked?.Via is not null && via is null))
@@ -149,6 +149,17 @@ public sealed class FareBorrower(
 
 		return best;
 	}
+
+	private static Location Of(Station station) =>
+		new()
+		{
+			Id = station.Id,
+			ProviderId = station.ProviderId,
+			Name = station.Name,
+			Place = station.Place,
+			Latitude = station.Latitude,
+			Longitude = station.Longitude
+		};
 
 	private static double Metres(Location a, Location b)
 	{
