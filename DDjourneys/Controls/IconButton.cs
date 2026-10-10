@@ -92,11 +92,8 @@ public sealed partial class IconButton : ContentView
 		// Mouse hover: a soft accent fill behind the icon (nothing moves).
 		var pointer = new PointerGestureRecognizer();
 		pointer.PointerEntered += (_, _) => _surface.SetDynamicResource(BackgroundColorProperty, "AccentSoft");
-		pointer.PointerExited += (_, _) =>
-		{
-			_surface.RemoveDynamicResource(BackgroundColorProperty);
-			_surface.BackgroundColor = Colors.Transparent;
-		};
+		// Back to the transparent token, not RemoveDynamicResource (MAUI keeps one registration per property).
+		pointer.PointerExited += (_, _) => _surface.SetDynamicResource(BackgroundColorProperty, "Clear");
 		_surface.GestureRecognizers.Add(pointer);
 
 		Dense.SetMinHeight(_surface, 40);

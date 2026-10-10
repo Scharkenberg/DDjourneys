@@ -37,15 +37,6 @@ public partial class JourneyPage : PanePage
 		base.OnAppearing();
 		_vm.RefreshFromSettings();
 
-		if (!_vm.ExpertViewEnabled)
-		{
-			ToolbarItems.Remove(ExpertItem);
-		}
-		else if (!ToolbarItems.Contains(ExpertItem))
-		{
-			ToolbarItems.Insert(0, ExpertItem);
-		}
-
 		_vm.StartObservingTracking();
 
 		// "In progress" ends with the ride: the rows are asked again every few seconds while the page shows.
@@ -53,7 +44,13 @@ public partial class JourneyPage : PanePage
 		{
 			_clock = Dispatcher.CreateTimer();
 			_clock.Interval = TimeSpan.FromSeconds(15);
-			_clock.Tick += (_, _) => _vm.TickClock();
+			_clock.Tick += (_, _) =>
+			{
+				if (AppVisibility.IsShown)
+				{
+					_vm.TickClock();
+				}
+			};
 		}
 
 		_clock.Start();

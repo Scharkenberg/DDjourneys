@@ -5,7 +5,8 @@ public sealed record CoursePoint(
 	double Latitude,
 	double Longitude,
 	DateTimeOffset? Time,
-	string? Name = null);
+	string? Name = null,
+	string? Id = null);
 
 
 /// <summary>
@@ -24,6 +25,28 @@ public sealed class TrackTarget
 
 	/// <summary>Stops in travel order; at least two with a position and a time to be matchable.</summary>
 	public required IReadOnlyList<CoursePoint> Course { get; init; }
+
+	/// <summary>
+	/// The vehicle's whole itinerary around the run (the sliding window of chained journeys), when it is
+	/// known: the map shows it with the stops of the followed ride in the colour of its line and the rest
+	/// quiet grey. Built positioned-only, like <see cref="Course"/>, so the ride's span indexes it as is.
+	/// </summary>
+	public IReadOnlyList<CoursePoint>? Itinerary { get; init; }
+
+	/// <summary>
+	/// Where the followed ride sits in <see cref="Itinerary"/>: the boarding stop to the alighting stop,
+	/// or the run's own span when a departure was followed. -1 when the itinerary does not contain them.
+	/// </summary>
+	public int RideStart { get; init; } = -1;
+
+	/// <summary>-1 with <see cref="RideStart"/>; the alighting stop otherwise.</summary>
+	public int RideEnd { get; init; } = -1;
+
+	/// <summary>
+	/// The real line of the route (the provider's map data) when it has one; the map draws it instead of
+	/// straight lines between the stops. Empty or null when the provider has none.
+	/// </summary>
+	public IReadOnlyList<(double Latitude, double Longitude)>? Path { get; init; }
 
 	/// <summary>The line number the live positions use, when the line is a plain number.</summary>
 	public int? LineNumber =>

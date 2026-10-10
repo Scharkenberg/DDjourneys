@@ -123,7 +123,7 @@
 													</DataTrigger>
 												</Border.Triggers>
 
-												<VerticalStackLayout Spacing="8">
+												<VerticalStackLayout Spacing="{DynamicResource SpaceM}">
 
 													<!--  Header: the route, and the card's actions (live badge, map, expand) in one row of equal icon targets  -->
 													<Grid ColumnDefinitions="*,Auto" ColumnSpacing="4">
@@ -140,6 +140,7 @@
 																<controls:StopNameView
 																	Compact="True"
 																	Place="{Binding FromPlace}"
+																	SingleLine="True"
 																	Stop="{Binding FromName}" />
 															</VerticalStackLayout>
 
@@ -160,6 +161,7 @@
 																	Alignment="End"
 																	Compact="True"
 																	Place="{Binding ToPlace}"
+																	SingleLine="True"
 																	Stop="{Binding ToName}" />
 															</VerticalStackLayout>
 
@@ -213,32 +215,34 @@
 
 													<!--  The rides: one line, swipeable when it is longer than the card; the line under way is filled  -->
 													<ScrollView
+														support:Dense.MinHeight="{StaticResource HitIconTight}"
 														HorizontalScrollBarVisibility="Never"
 														IsVisible="{Binding HasLines}"
 														Orientation="Horizontal">
-														<HorizontalStackLayout BindableLayout.ItemsSource="{Binding LineParts}" Spacing="6">
+														<HorizontalStackLayout
+															BindableLayout.ItemsSource="{Binding LineParts}"
+															Spacing="6"
+															VerticalOptions="Center">
 															<BindableLayout.ItemTemplate>
 																<DataTemplate x:DataType="local:LinePart">
 																	<Grid VerticalOptions="Center">
-																		<Border IsVisible="{Binding IsLineIdle}" StyleClass="Chip">
-																			<Label
-																				FontFamily="{DynamicResource FontSemibold}"
-																				FontSize="{StaticResource FontCaption}"
-																				LineBreakMode="NoWrap"
-																				StyleClass="ChipLabel"
-																				Text="{Binding Text}" />
-																		</Border>
+																		<!--  The same chip as on the journey card: the mode's colour and shape; the ride under way has the accent as its outline  -->
 																		<Border
-																			BackgroundColor="{DynamicResource Accent}"
-																			IsVisible="{Binding IsCurrent}"
-																			StyleClass="Chip">
+																			BackgroundColor="{Binding Look.Fill}"
+																			IsVisible="{Binding IsLine}"
+																			Stroke="{Binding Look.Stroke}"
+																			StrokeDashArray="{Binding Look.Dashes}"
+																			StrokeShape="{Binding Look.Shape}"
+																			StrokeThickness="{Binding Look.StrokeThickness}"
+																			StyleClass="Chip"
+																			VerticalOptions="Center">
 																			<Label
 																				FontFamily="{DynamicResource FontSemibold}"
 																				FontSize="{StaticResource FontCaption}"
 																				LineBreakMode="NoWrap"
 																				StyleClass="ChipLabel"
 																				Text="{Binding Text}"
-																				TextColor="{DynamicResource OnAccent}" />
+																				TextColor="{Binding Look.Text}" />
 																		</Border>
 																		<Label
 																			FontSize="{StaticResource FontCaption}"

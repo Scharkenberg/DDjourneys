@@ -43,6 +43,10 @@ public static class FollowedRides
 {
 	private const string Key = "tracking.rides";
 
+	// Parsed once per plan (the overview page asks every few seconds while a journey is under way).
+	private static readonly Lock CacheGate = new();
+	private static readonly Dictionary<string, IReadOnlyList<FollowedRide>> RidesByPlan = new(StringComparer.Ordinal);
+
 	public static void Save(string planId, Journey journey)
 	{
 		ArgumentNullException.ThrowIfNull(journey);
@@ -75,6 +79,11 @@ public static class FollowedRides
 			all[planId] = rides;
 
 			Preferences.Default.Set(Key, all.ToJsonString());
+
+			lock (CacheGate)
+			{
+				RidesByPlan.Remove(planId);
+			}
 		}
 		catch (Exception ex)
 		{
@@ -83,6 +92,26 @@ public static class FollowedRides
 	}
 
 	public static IReadOnlyList<FollowedRide> Load(string planId)
+	{
+		lock (CacheGate)
+		{
+			if (RidesByPlan.TryGetValue(planId, out IReadOnlyList<FollowedRide>? cached))
+			{
+				return cached;
+			}
+		}
+
+		IReadOnlyList<FollowedRide> rides = ParseRides(planId);
+
+		lock (CacheGate)
+		{
+			RidesByPlan[planId] = rides;
+		}
+
+		return rides;
+	}
+
+	private static List<FollowedRide> ParseRides(string planId)
 	{
 		try
 		{
@@ -154,6 +183,14 @@ public static class FollowedRides
 			}
 
 			Preferences.Default.Set(Key, all.ToJsonString());
+
+			lock (CacheGate)
+			{
+				foreach (string id in stale)
+				{
+					RidesByPlan.Remove(id);
+				}
+			}
 		}
 		catch (Exception ex)
 		{

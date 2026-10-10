@@ -20,8 +20,34 @@ public sealed record DepartureRow(
 			? Format.TransportMode(Departure.Line.Mode)
 			: Departure.Line.Name;
 
-	public ChipLook Look =>
-		ModeChips.For(Departure.Line.Mode);
+	// Once per row: the chip look is bound several times, and the line never changes for a departure.
+	public ChipLook Look { get; } = ModeChips.For(Departure.Line.Mode);
+
+	// What the "in 5 min" text said when the row was made: a kept row is only kept while it would still say the same.
+	private readonly string? _shownIn = InTextOf(Departure);
+
+	/// <summary>True when <paramref name="other"/> would look exactly like this row (the row can stay as it is).</summary>
+	public bool Shows(DepartureRow other)
+	{
+		Departure a = Departure;
+		Departure b = other.Departure;
+
+		return ReferenceEquals(a, b)
+			|| (a.Id == b.Id
+				&& a.StopId == b.StopId
+				&& a.IsArrival == b.IsArrival
+				&& a.Scheduled == b.Scheduled
+				&& a.Realtime == b.Realtime
+				&& a.Platform == b.Platform
+				&& a.PlatformKind == b.PlatformKind
+				&& a.State == b.State
+				&& a.Occupancy == b.Occupancy
+				&& a.Line.Name == b.Line.Name
+				&& a.Line.Mode == b.Line.Mode
+				&& a.Line.Destination == b.Line.Destination
+				&& a.RouteChangeIds.SequenceEqual(b.RouteChangeIds)
+				&& _shownIn == other._shownIn);
+	}
 
 	public string Direction =>
 		Departure.Line.Destination ?? string.Empty;
@@ -44,33 +70,32 @@ public sealed record DepartureRow(
 		Format.Time(Departure.Scheduled);
 
 	/// <summary>"in 5 min" / "now" for what leaves within the hour.</summary>
-	public string? InText
+	public string? InText => InTextOf(Departure);
+
+	private static string? InTextOf(Departure departure)
 	{
-		get
+		if (departure.IsCancelled)
 		{
-			if (Departure.IsCancelled)
-			{
-				return null;
-			}
-
-			double minutes =
-				(Departure.Effective - Format.Now()).TotalMinutes;
-
-			if (minutes is < -1 or > 60)
-			{
-				return null;
-			}
-
-			TrackingStrings strings =
-				LocalizationService.Current.CurrentStrings.Tracking;
-
-			return minutes < 1
-				? strings.CourseNow
-				: string.Format(
-					CultureInfo.CurrentCulture,
-					strings.CourseIn,
-					(int)Math.Round(minutes));
+			return null;
 		}
+
+		double minutes =
+			(departure.Effective - Format.Now()).TotalMinutes;
+
+		if (minutes is < -1 or > 60)
+		{
+			return null;
+		}
+
+		TrackingStrings strings =
+			LocalizationService.Current.CurrentStrings.Tracking;
+
+		return minutes < 1
+			? strings.CourseNow
+			: string.Format(
+				CultureInfo.CurrentCulture,
+				strings.CourseIn,
+				(int)Math.Round(minutes));
 	}
 
 	public bool HasIn =>
@@ -1272,12 +1297,13 @@ public sealed partial class DeparturesViewModel : DisposableViewModel
 
 	private void RebuildRows()
 	{
-		Rows.Clear();
+		// The board is refreshed every half minute and hardly changes: rows that show the same stay as they are.
+		List<DepartureRow> board = [.. _current.Select(departure => new DepartureRow(departure))];
 
-		foreach (Departure departure in _current)
-		{
-			Rows.Add(new DepartureRow(departure));
-		}
+		CollectionSync.Merge(
+			Rows,
+			board,
+			static (shown, next) => shown.Shows(next));
 	}
 
 	/// <summary>Favourites first, then recently used stops (stops only: places without a stop id have no departures).</summary>

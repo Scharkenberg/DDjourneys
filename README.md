@@ -24,7 +24,7 @@ Tap a journey to see it as a timeline. Every ride has a line, a direction, the s
 
 Below the line of each ride there are up to three buttons. "Earlier" and "Later" look for another vehicle for that ride alone and keep the rest of your journey as far as it still fits; where it no longer does, the rest is planned again. The button with the map pin opens a map with the vehicle of this ride on it. That works for lines with a plain number, such as tram 11 or bus 61, and only when somebody has reported the position of the vehicle, so a vehicle can be missing even though it is running.
 
-The bell in the top card follows the journey, which is explained further down. The other symbols there share the journey as text or as a picture, open it as a PDF, or hand it to another app. The map symbol shows the whole route on a map without following a vehicle. Tickets and prices are at the bottom; the app shows the single and day ticket the provider quotes for this journey, and nothing else, because the provider quotes nothing else.
+The route at the top of the page stays in place while the rest scrolls. Its icons refresh the journey, share it as text or as a picture and, if you switched on the technical details under Developer options, open them. Pulling the page down refreshes it too: the app asks the provider again and shows the same connection with its current times, or tells you that the provider no longer offers it. The bell in the card below follows the journey, which is explained further down. The other symbols there open it as a PDF or hand it to another app. The map symbol shows the whole route on a map without following a vehicle. Tickets and prices are at the bottom; the app shows the single and day ticket the provider quotes for this journey, and nothing else, because the provider quotes nothing else.
 
 ## Departures
 
@@ -36,7 +36,7 @@ The disruptions page lists what the VVO reports: construction work, diversions, 
 
 ## Following a journey
 
-If you press the bell on a journey, the app watches it for you. Shortly before you leave it sends a notification, and it sends another when something changes, such as a delay that makes you miss a connection or a vehicle that is cancelled. While you are on the way, a notification shows the next stop and when to get off. You can pause or stop following at any time. The page "Followed journeys" lists everything you follow.
+If you press the bell on a journey, the app watches it for you. Shortly before you leave it sends a notification, and it sends another when something changes, such as a delay that makes you miss a connection or a vehicle that is cancelled. While you are on the way, a notification shows the next stop and when to get off. You can pause or stop following at any time. The page "Followed journeys" lists everything you follow, with the lines as the same coloured tags as in the list of journeys; the ride you are on has an outline in the accent colour.
 
 Following works with the VVO provider only. The app hands the journey to a service run by the DVB, which keeps watching it. That service gives the app an anonymous token instead of an account. There is no login, and I never see who you are.
 
@@ -56,7 +56,7 @@ Press and hold the app icon to find two quick actions. "Take me home" plans a jo
 
 ## Settings
 
-Under Appearance you choose light, dark or the system setting, a colour set, a font, and how tightly the screens are packed. On Windows you can also choose a window material. Language is German or English. Route preferences cover the kinds of vehicles, how many changes you accept, how fast you walk, and what you need for accessibility. Options that the selected provider cannot use do not appear. The provider page lets you switch between the VVO and the TRIAS interface of the VVO. The second one is marked as experimental because it does less and I have tested it less.
+Under Appearance you choose light, dark or the system setting, a colour set, a font, and how tightly the screens are packed. On Windows you can also choose a window material: Mica is the calm one and stays close to the colours of the app, Mica Alt is the more pronounced one and lets more of the wallpaper and the accent colour through. Language is German or English. Route preferences cover the kinds of vehicles, how many changes you accept, how fast you walk, and what you need for accessibility. Options that the selected provider cannot use do not appear. The provider page lets you switch between the VVO and the TRIAS interface of the VVO. The second one is marked as experimental because it does less and I have tested it less.
 
 Under Start you can make the app open with the start already filled in and the destination search ready, so that a trip home takes two taps.
 

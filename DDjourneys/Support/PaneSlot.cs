@@ -100,6 +100,9 @@ internal sealed partial class PaneSlot : Grid
 		}
 
 		UpdateActions();
+
+		// The slot hangs outside its page, which is no longer an ancestor of the content: it hears theme changes itself.
+		Theme.Revalidate(this);
 	}
 
 	public PanePage Page { get; }

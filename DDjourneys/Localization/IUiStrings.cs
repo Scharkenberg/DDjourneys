@@ -660,12 +660,14 @@ public sealed class ExtrasStrings
 	public required string MapJourneyTitle { get; init; }
 	public required string MapStopTitle { get; init; }
 	public required string MapNoData { get; init; }
+	public required string JourneyRefreshFailed { get; init; }
 	public required string MapStart { get; init; }
 	public required string MapEnd { get; init; }
 	public required string RunDeparted { get; init; }
 	public required string MapAutoFit { get; init; }
 	public required string MapFitNow { get; init; }
 	public required string MapInfo { get; init; }
+	public required string MapGrip { get; init; }
 	public required string TrackFollowing { get; init; }
 	public required string TrackNotFound { get; init; }
 	public required string TrackNoCourse { get; init; }

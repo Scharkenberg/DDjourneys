@@ -69,10 +69,9 @@ public sealed record TrackedSection(string Title, IReadOnlyList<TrackedRow> Item
 
 /// <summary>Display model of one followed journey. Immutable; the list is rebuilt on every change.</summary>
 /// <summary>One chip of the lines of a followed journey.</summary>
-public sealed record LinePart(string Text, bool IsMark, bool IsCurrent)
+public sealed record LinePart(string Text, bool IsMark, bool IsCurrent, ChipLook? Look = null)
 {
 	public bool IsLine => !IsMark;
-	public bool IsLineIdle => !IsMark && !IsCurrent;
 }
 
 public sealed class TrackedRow
@@ -332,7 +331,8 @@ public sealed partial class TrackedJourneysViewModel : DisposableViewModel, IQue
 			{
 				await Task.Delay(CourseTick, cancellationToken);
 
-				if (_courses.Count > 0 || NeedsClock())
+				if (AppVisibility.IsShown
+					&& (_courses.Count > 0 || NeedsClock()))
 				{
 					RebuildIfAlive();
 				}
@@ -359,9 +359,21 @@ public sealed partial class TrackedJourneysViewModel : DisposableViewModel, IQue
 	{
 		try
 		{
+			bool first = true;
+
 			while (!cancellationToken.IsCancellationRequested)
 			{
-				await RefreshCoreAsync(cancellationToken);
+				// The first pass always asks (the page just opened). After that, with nothing followed there is nothing to
+				// fetch (a new follow brings its own data and raises WatchedChanged); after a failure the page keeps retrying.
+				if (first
+					|| (AppVisibility.IsShown
+						&& (_tracker.Watched.Count > 0
+							|| ErrorText is not null)))
+				{
+					await RefreshCoreAsync(poll: !first, cancellationToken);
+				}
+
+				first = false;
 
 				NotificationsBlocked = !await _tracker.CanNotifyAsync(cancellationToken);
 
@@ -493,7 +505,7 @@ public sealed partial class TrackedJourneysViewModel : DisposableViewModel, IQue
 	{
 		try
 		{
-			await RefreshCoreAsync(CancellationToken.None);
+			await RefreshCoreAsync(poll: false, CancellationToken.None);
 		}
 		finally
 		{
@@ -501,11 +513,12 @@ public sealed partial class TrackedJourneysViewModel : DisposableViewModel, IQue
 		}
 	}
 
-	private async Task RefreshCoreAsync(CancellationToken cancellationToken)
+	private async Task RefreshCoreAsync(bool poll, CancellationToken cancellationToken)
 	{
 		try
 		{
-			await _tracker.RefreshAsync(cancellationToken);
+			// A person's pull or retry asks everything again; the periodic pass only what is due.
+			await (poll ? _tracker.PollAsync(cancellationToken) : _tracker.RefreshAsync(cancellationToken));
 
 			ErrorText = null;
 		}
@@ -679,165 +692,26 @@ public sealed partial class TrackedJourneysViewModel : DisposableViewModel, IQue
 		bool found = false;
 		var parts = new List<LinePart>(lines.Length * 2);
 
+		// The chips look as they do on the journey card: the mode of each ride, from what was stored when the journey was
+		// followed, else guessed from the line's name.
+		Dictionary<string, TransitMode> modes = [];
+
+		foreach (FollowedRide ride in FollowedRides.Load(journey.PlanId))
+		{
+			modes.TryAdd(ride.Line, ride.Mode);
+		}
+
 		for (int i = 0; i < lines.Length; i++)
 		{
 			bool current = underWay && !found && lines[i] == journey.CurrentLine;
 
 			found |= current;
 
-			parts.Add(new LinePart(lines[i], false, current));
+			TransitMode mode = modes.TryGetValue(lines[i], out TransitMode known) ? known : ModeGuess.OfLine(lines[i]);
+
+			parts.Add(new LinePart(lines[i], false, current, current ? ModeChips.Marked(mode) : ModeChips.For(mode)));
 
 			if (marks && i < journey.EnsuredChanges!.Count && journey.EnsuredChanges[i])
-			{
-				parts.Add(new LinePart(strings.GuaranteedChange, true, false));
-			}
-		}
-
-		return parts;
-	}
-
-	/// <summary>Looks up the vehicles of the rides still to come and opens the live page following all of them.</summary>
-	private async Task OpenMapAsync(WatchedJourney journey)
-	{
-		IReadOnlyList<FollowedRide> rides = FollowedRides.Load(journey.PlanId);
-
-		DateTimeOffset limit = DateTimeOffset.UtcNow - TimeSpan.FromMinutes(3);
-
-		// Rides that are over have no vehicle to look for; when all are, show them anyway.
-		List<FollowedRide> pending =
-			[.. rides.Where(ride => ride.Arrival is null || ride.Arrival > limit)];
-
-		var targets = new List<TrackTarget>();
-
-		foreach (FollowedRide ride in pending.Count > 0 ? pending : rides)
-		{
-			try
-			{
-				if (await _runs.ResolveAsync(ride.ToLeg(), ride.Line, _settings.TimeoutSeconds) is { } target)
-				{
-					targets.Add(target);
-				}
-			}
-			catch (Exception ex) when (ex is not OperationCanceledException)
-			{
-				DiagnosticLog.Write($"Looking up the run of line {ride.Line} failed: {ex.Message}");
-			}
-		}
-
-		if (targets.Count == 0)
-		{
-			ErrorText = _localization.CurrentStrings.Extras.TrackNoCourse;
-
-			return;
-		}
-
-		ErrorText = null;
-
-		await Shell.Current.GoToAsync(
-			Routes.Vehicles,
-			new ShellNavigationQueryParameters
-			{
-				[Routes.TrackSet] = (IReadOnlyList<TrackTarget>)targets
-			});
-	}
-
-	/// <summary>The same as chips: a line each, the mark of a guaranteed change between; the line under way is highlighted.</summary>
-	private static List<LinePart> LinePartsOf(WatchedJourney journey, TrackingStrings strings)
-	{
-		string[] lines = [.. journey.Lines.Where(item => !string.IsNullOrWhiteSpace(item))];
-
-		bool marks =
-			journey.EnsuredChanges is { } ensured
-			&& ensured.Count == lines.Length - 1;
-
-		bool underWay = journey.Phase == TrackingPhase.InProgress;
-		bool found = false;
-		var parts = new List<LinePart>(lines.Length * 2);
-
-		for (int i = 0; i < lines.Length; i++)
-		{
-			bool current = underWay && !found && lines[i] == journey.CurrentLine;
-
-			found |= current;
-
-			parts.Add(new LinePart(lines[i], false, current));
-
-			if (marks && journey.EnsuredChanges![i])
-			{
-				parts.Add(new LinePart(strings.GuaranteedChange, true, false));
-			}
-		}
-
-		return parts;
-	}
-
-	/// <summary>Looks up the vehicles of the rides still to come and opens the live page following all of them.</summary>
-	private async Task OpenMapAsync(WatchedJourney journey)
-	{
-		IReadOnlyList<FollowedRide> rides = FollowedRides.Load(journey.PlanId);
-
-		DateTimeOffset limit = DateTimeOffset.UtcNow - TimeSpan.FromMinutes(3);
-
-		// Rides that are over have no vehicle to look for; when all are, show them anyway.
-		List<FollowedRide> pending =
-			[.. rides.Where(ride => ride.Arrival is null || ride.Arrival > limit)];
-
-		var targets = new List<TrackTarget>();
-
-		foreach (FollowedRide ride in pending.Count > 0 ? pending : rides)
-		{
-			try
-			{
-				if (await _runs.ResolveAsync(ride.ToLeg(), ride.Line, _settings.TimeoutSeconds) is { } target)
-				{
-					targets.Add(target);
-				}
-			}
-			catch (Exception ex) when (ex is not OperationCanceledException)
-			{
-				DiagnosticLog.Write($"Looking up the run of line {ride.Line} failed: {ex.Message}");
-			}
-		}
-
-		if (targets.Count == 0)
-		{
-			ErrorText = _localization.CurrentStrings.Extras.TrackNoCourse;
-
-			return;
-		}
-
-		ErrorText = null;
-
-		await Shell.Current.GoToAsync(
-			Routes.Vehicles,
-			new ShellNavigationQueryParameters
-			{
-				[Routes.TrackSet] = (IReadOnlyList<TrackTarget>)targets
-			});
-	}
-
-	/// <summary>The same as chips: a line each, the mark of a guaranteed change between; the line under way is highlighted.</summary>
-	private static List<LinePart> LinePartsOf(WatchedJourney journey, TrackingStrings strings)
-	{
-		string[] lines = [.. journey.Lines.Where(item => !string.IsNullOrWhiteSpace(item))];
-
-		bool marks =
-			journey.EnsuredChanges is { } ensured
-			&& ensured.Count == lines.Length - 1;
-
-		bool underWay = journey.Phase == TrackingPhase.InProgress;
-		bool found = false;
-		var parts = new List<LinePart>(lines.Length * 2);
-
-		for (int i = 0; i < lines.Length; i++)
-		{
-			bool current = underWay && !found && lines[i] == journey.CurrentLine;
-
-			found |= current;
-
-			parts.Add(new LinePart(lines[i], false, current));
-
-			if (marks && journey.EnsuredChanges![i])
 			{
 				parts.Add(new LinePart(strings.GuaranteedChange, true, false));
 			}

@@ -2,6 +2,7 @@ using DDjourneys.Core.Diagnostics;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using DDjourneys.Contract;
+using DDjourneys.Controls;
 using DDjourneys.Core.Models;
 using DDjourneys.Core.Providers;
 using DDjourneys.Core.Providers.Abstractions;
@@ -124,6 +125,8 @@ public sealed partial class JourneyViewModel :
 			new AsyncCommand(
 				OpenMapAsync);
 
+		RefreshCommand = new AsyncCommand(RefreshAsync);
+
 		Actions =
 			new JourneyActions
 			{
@@ -197,6 +200,15 @@ public sealed partial class JourneyViewModel :
 
 	/// <summary>Shows the whole journey on a map.</summary>
 	public AsyncCommand OpenMapCommand { get; }
+
+	/// <summary>Asks the provider again and shows the same journey with its current times (pull to refresh and the toolbar button).</summary>
+	public AsyncCommand RefreshCommand { get; }
+
+	public bool IsRefreshing
+	{
+		get;
+		private set => SetProperty(ref field, value);
+	}
 
 	/// <summary>Opens the printable version of the journey (tr/trippdf).</summary>
 	public AsyncCommand OpenDocumentCommand { get; }
@@ -341,6 +353,9 @@ public sealed partial class JourneyViewModel :
 	}
 
 	public bool ExpertViewEnabled => _settings.ExpertView;
+
+	/// <summary>The technical-details icon in the page header: only while the expert view is enabled.</summary>
+	public IconGlyph ExpertGlyph => ExpertViewEnabled ? IconGlyph.Code : IconGlyph.None;
 
 	public bool IsTrackingAvailable =>
 		_tracker.IsAvailable
@@ -921,9 +936,16 @@ public sealed partial class JourneyViewModel :
 					DiagnosticLog.Write($"Looking up the run of line {row.LineNumber} failed: {ex.Message}");
 				}
 
+				bool fromRun = target is not null;
+
 				target ??= TrackTargets.FromLeg(leg, row.LineNumber);
 
 				AlternativeStatus = string.Empty;
+
+				DiagnosticLog.Write(
+					$"[Live] leg {(_journey is { } shown ? shown.Legs.ToList().FindIndex(item => ReferenceEquals(item, leg)) : -1)}: line {row.LineNumber} "
+					+ $"{leg.From.Name} {leg.ScheduledDeparture:HH:mm} -> {leg.To.Name}, course from {(fromRun ? "the run of the departure" : "the leg")}: "
+					+ $"{(target is { Course.Count: > 0 } ? $"{target.Course[0].Name} -> {target.Course[^1].Name} ({target.Course.Count} points)" : "none")}");
 
 				if (target is not null)
 				{
@@ -948,6 +970,60 @@ public sealed partial class JourneyViewModel :
 		catch (Exception ex)
 		{
 			DiagnosticLog.Write($"Opening the live page failed: {ex.Message}");
+		}
+	}
+
+
+	private async Task RefreshAsync()
+	{
+		if (_journey is not { } current
+			|| _query is not { } query)
+		{
+			return;
+		}
+
+		IsRefreshing = true;
+
+		try
+		{
+			// The same connection again: a search that starts a little before it, and the answer that is this journey
+			// (by its timetable identity, else by its planned start and end).
+			DateTimeOffset start = JourneyWindow.PlannedStart(current) ?? query.DateTime;
+			DateTimeOffset? end = JourneyWindow.PlannedEnd(current);
+			string key = JourneyWindow.IdentityOf(current);
+
+			JourneyResult result =
+				await _journeys.SearchAsync(
+					new JourneyQuery
+					{
+						From = query.From,
+						To = query.To,
+						Via = query.Via,
+						DateTime = start - TimeSpan.FromMinutes(2),
+						SearchMode = JourneySearchMode.Departure,
+						MaxResults = 6,
+						TimeoutSeconds = query.TimeoutSeconds,
+						Routing = query.Routing
+					});
+
+			Journey? fresh =
+				result.Journeys.FirstOrDefault(item => JourneyWindow.IdentityOf(item) == key)
+				?? result.Journeys.FirstOrDefault(item => JourneyWindow.PlannedStart(item) == JourneyWindow.PlannedStart(current) && JourneyWindow.PlannedEnd(item) == end);
+
+			if (fresh is null)
+			{
+				AlternativeStatus = _localization.CurrentStrings.Extras.JourneyRefreshFailed;
+
+				return;
+			}
+
+			AlternativeStatus = string.Empty;
+
+			Load(fresh);
+		}
+		finally
+		{
+			IsRefreshing = false;
 		}
 	}
 
@@ -1037,6 +1113,8 @@ public sealed partial class JourneyViewModel :
 	/// <summary>Rebuilds the timeline if a display setting changed since it was built.</summary>
 	public void RefreshFromSettings()
 	{
+		OnPropertyChanged(nameof(ExpertGlyph));
+
 		if (_journey is not null
 			&& _builtOptions != CurrentOptions())
 		{

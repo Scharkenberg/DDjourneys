@@ -67,6 +67,11 @@ public sealed partial class RunViewModel : DisposableViewModel, IQueryAttributab
 	private readonly LocalizationService _localization;
 	private Departure? _departure;
 	private GeoPosition? _vehicle;
+
+	// The whole answer the run came in: the vehicle's itinerary around the run, and the real line
+	// of the route when the provider has it. Kept with the rows so the live page and the map show them.
+	private IReadOnlyList<RunStop> _window = [];
+	private IReadOnlyList<(double Latitude, double Longitude)> _routePath = [];
 	private CancellationTokenSource? _load;
 
 	public RunViewModel(
@@ -239,7 +244,8 @@ public sealed partial class RunViewModel : DisposableViewModel, IQueryAttributab
 						departure.Line.Mode,
 						Rows.ToList().FindIndex(row => row.IsCurrent),
 						_vehicle,
-						Title),
+						Title,
+						_routePath),
 					Title,
 					this);
 
@@ -270,6 +276,18 @@ public sealed partial class RunViewModel : DisposableViewModel, IQueryAttributab
 				};
 
 			// This run, not the whole line: the live page picks its vehicle out of the line's by the course.
+			// It shows the vehicle's whole itinerary with it — the stops outside the run quiet grey — and
+			// the real line of the route when the provider has it.
+			List<RunStop> window =
+				[.. _window
+					.Where(
+						stop => stop.Station.Latitude is { } lat
+							&& stop.Station.Longitude is { } lon
+							&& !(lat == 0 && lon == 0))];
+
+			(int Start, int End)? ride =
+				RunCourse.Locate(window, _departure?.Scheduled);
+
 			TrackTarget target =
 				new()
 				{
@@ -285,7 +303,21 @@ public sealed partial class RunViewModel : DisposableViewModel, IQueryAttributab
 									row.Stop.Station.Latitude!.Value,
 									row.Stop.Station.Longitude!.Value,
 									row.Stop.Effective,
-									row.Name))]
+									row.Name,
+									row.Stop.Station.Id))],
+					Itinerary =
+						(List<CoursePoint>)
+						[.. window
+							.Select(
+								stop => new CoursePoint(
+									stop.Station.Latitude!.Value,
+									stop.Station.Longitude!.Value,
+									stop.Effective,
+									stop.Station.Name,
+									stop.Station.Id))],
+					RideStart = ride?.Start ?? -1,
+					RideEnd = ride?.End ?? -1,
+					Path = _routePath is { Count: > 1 } ? _routePath : null
 				};
 
 			if (target.IsUsable)
@@ -366,6 +398,8 @@ public sealed partial class RunViewModel : DisposableViewModel, IQueryAttributab
 			Message = string.Empty;
 
 			_vehicle = detail.Vehicle;
+			_window = detail.Stops;
+			_routePath = detail.Path;
 
 			OperatingText =
 				OperatingDaysText.Describe(

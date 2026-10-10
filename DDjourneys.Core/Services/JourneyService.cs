@@ -171,10 +171,34 @@ public sealed class JourneyService
 
 				if (native.Outcome == JourneyOutcome.Found)
 				{
-					return JourneyResult.Success(JourneyWindow.Order(native.Journeys, query.SearchMode));
-				}
+					// The provider's answer counts only for what is really new on the wanted side of the list (a session
+					// continuation may repeat the journeys on screen or move the wrong way); the rest is windowed below.
+					List<Journey> fresh = JourneyWindow.Beyond(shown, native.Journeys, query.SearchMode, previous);
 
-				if (native.Outcome == JourneyOutcome.Failed)
+					DiagnosticLog.Write($"[Page] {(previous ? "earlier" : "later")}: provider gave {native.Journeys.Count}, {fresh.Count} new");
+
+					if (fresh.Count >= count)
+					{
+						return JourneyResult.Success(JourneyWindow.Nearest(fresh, query.SearchMode, previous, count));
+					}
+
+					if (fresh.Count > 0)
+					{
+						PageResult more =
+							await JourneyWindow.PageAsync(
+								(next, token) => SearchAsync(provider, next, token),
+								query,
+								[.. shown, .. fresh],
+								previous,
+								count - fresh.Count,
+								cancellationToken)
+							.ConfigureAwait(false);
+
+						return JourneyResult.Success(
+							JourneyWindow.Nearest([.. fresh, .. more.Journeys], query.SearchMode, previous, count));
+					}
+				}
+				else if (native.Outcome == JourneyOutcome.Failed)
 				{
 					outcomes.Add(native);
 				}
@@ -361,31 +385,6 @@ public sealed class JourneyService
 		return native is { Outcome: JourneyOutcome.Failed }
 			? native
 			: JourneyResult.Success([]);
-	}
-
-
-	/// <summary>Downloads the printable version of the journey; null when it is not available.</summary>
-	public async Task<JourneyDocument?> GetJourneyDocumentAsync(
-		JourneyQuery query,
-		Journey journey,
-		CancellationToken cancellationToken = default)
-	{
-		ArgumentNullException.ThrowIfNull(query);
-		ArgumentNullException.ThrowIfNull(journey);
-
-		IJourneyExtrasProvider? provider =
-			_all
-				.OfType<IJourneyExtrasProvider>()
-				.FirstOrDefault(
-					candidate => candidate is IJourneyProvider journeyProvider
-						&& (_registry?.IsSelected(journeyProvider) ?? true)
-						&& IsSuitable(journeyProvider, journey));
-
-		return provider is null
-			? null
-			: await provider
-				.GetJourneyDocumentAsync(query, journey, cancellationToken)
-				.ConfigureAwait(false);
 	}
 
 
