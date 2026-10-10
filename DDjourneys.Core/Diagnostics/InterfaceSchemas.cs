@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using DDjourneys.Core.Contract;
+using DDjourneys.Core.Providers.Vvo;
 using DDjourneys.Core.Storage;
 
 namespace DDjourneys.Core.Diagnostics;
@@ -70,21 +71,34 @@ public static class InterfaceSchemas
 	/// <summary>Raster tiles of the Leaflet engine (first choice; CARTO's raster tiles are the fallback).</summary>
 	public const string OsmTileUrl = "https://tile.openstreetmap.org/";
 
+	/// <summary>The DVB Liniennetzplan page, read for the current standard plan (JPG and PDF links).</summary>
+	public const string DvbNetworkMapUrl = VvoNetworkMap.PageUrl;
+
+	/// <summary>Park &amp; ride occupancy of the VVO, as an open-data file.</summary>
+	public const string VvoPurUrl = "https://www.vvo-online.de/open_data/PuR.JSON";
+
+	/// <summary>Shared bikes of MOBIbike Dresden (Nextbike), as GBFS discovery names them.</summary>
+	public const string GbfsUrl = "https://gbfs.nextbike.net/maps/gbfs/v2/nextbike_dx/gbfs.json";
+
 	/// <summary>
 	/// Revisions the app keeps itself. Changing how the app reads or writes the interface means raising it here and
 	/// adding a line to the history below.
 	/// </summary>
 	public static class Revision
 	{
-		// History: r1 = first schema of the interface list (October 2026). Map bridge r2 = the page's diagnostics (log: messages), r3 = the page loads MapLibre only after its own check and reports unsupported:reason, r4 = the page waits for the app (boot, ddBoot start with engine carto|leaflet and force). Carto r2 = raster tiles for the Leaflet engine (OpenStreetMap tiles first, CARTO raster as fallback).
+		// History: r1 = first schema of the interface list (October 2026). Map bridge r2 = the page's diagnostics (log: messages), r3 = the page loads MapLibre only after its own check and reports unsupported:reason, r4 = the page waits for the app (boot, ddBoot start with engine carto|leaflet and force), r5 = per-layer sends (ddMapCall layer/layers with a layer id, the overlay command is gone), polygon payloads (tariff zones) and the reserved marker kinds parking and bike of the Tier 2 city layers. Carto r2 = raster tiles for the Leaflet engine (OpenStreetMap tiles first, CARTO raster as fallback).
 		public const int VvoWebApi = 1;
 		public const int Schutzengel = 1;
 		public const int Tlms = 1;
 		public const int OpenData = 1;
 		public const int Carto = 2;
-		public const int MapBridge = 4;
+		public const int MapBridge = 5;
 		public const int OsmTiles = 1;
+		public const int DvbNetworkMap = 1;
+		public const int VvoPur = 1;
+		public const int Gbfs = 1;
 		public const int WidgetData = 1;
+		public const int WidgetCardWin = 1;
 	}
 
 	/// <summary>Interfaces that exist in the core library; the app adds its own (see <c>AppInterfaces</c>).</summary>
@@ -119,17 +133,33 @@ public static class InterfaceSchemas
 			R(Revision.OsmTiles), OsmTileUrl,
 			"Leaflet engine, first source; dark mode inverts the picture by CSS; replaced by CARTO raster when it delivers no tile"),
 		new(
+			"dvb-networkmap", InterfaceKind.External, "DVB Liniennetzplan page",
+			R(Revision.DvbNetworkMap), DvbNetworkMapUrl,
+			"the page is read for dvb_lnp_n_st_n_jpg.jpg / _pdf.pdf links; the plan is DVB's, downloaded on demand and credited, never bundled"),
+		new(
+			"vvo-pur", InterfaceKind.External, "VVO park & ride occupancy",
+			R(Revision.VvoPur), VvoPurUrl,
+			"open-data file of about 56 sites with live free counts (one observed sample, field list unverified); the per-space sensor block is only read for sites without a count of their own"),
+		new(
+			"gbfs", InterfaceKind.External, "Shared bikes (GBFS)",
+			R(Revision.Gbfs), GbfsUrl,
+			"GBFS 2.x, discovery-first; station_information cached an hour, station_status at most a minute (the feed's ttl when smaller); Lime reserved for v1.1 (dockless: free_bike_status)"),
+		new(
 			"storage-lists", InterfaceKind.Internal, "Stored lists (places, routes)",
 			Number(StoredJson.CurrentVersion), string.Empty,
 			"versioned envelope; unreadable entries are skipped one by one"),
 		new(
 			"map-bridge", InterfaceKind.Internal, "Map page messages",
 			R(Revision.MapBridge), string.Empty,
-			"ddMapCall(command, json) and the raw messages boot, ready, open, tap, view, point, error, auto, log, unsupported"),
+			"ddMapCall(command, json) or ddMapCall('layer', id, json) for the layer/layers commands, and the raw messages boot, ready, layers, open, tap, view, point, error, auto, log, unsupported"),
 		new(
 			"widget-data", InterfaceKind.Internal, "Widget settings and snapshot",
 			R(Revision.WidgetData), string.Empty,
-			"WidgetConfig and WidgetSnapshot as JSON in the preferences"),
+			"WidgetConfig and WidgetSnapshot as JSON in the preferences (Android) or the application data settings (Windows); the formats are the same"),
+		new(
+			"widget-card-win", InterfaceKind.Internal, "Windows widget cards",
+			R(Revision.WidgetCardWin), string.Empty,
+			"the Adaptive Card of a Windows widget: literal rows (like the docs' weather example), the host's semantic colours for the statuses, two actions (refresh, open) and a set-up card"),
 		new(
 			"contract", InterfaceKind.Contract, "External contract (links, intents, protocol launches)",
 			Number(ContractVersion.Current) + " (oldest answered: " + Number(ContractVersion.Oldest) + ")",

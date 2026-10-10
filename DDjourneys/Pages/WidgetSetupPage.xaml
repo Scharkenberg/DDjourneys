@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<support:PanePage
+	x:Class="DDjourneys.Pages.WidgetSetupPage"
+	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+	xmlns:controls="clr-namespace:DDjourneys.Controls"
+	xmlns:local="clr-namespace:DDjourneys.Pages"
+	xmlns:localization="clr-namespace:DDjourneys.Localization"
+	xmlns:support="clr-namespace:DDjourneys.Support"
+	Title="{localization:Tr Widgets.SetupTitle}">
+
+	<ScrollView>
+		<VerticalStackLayout Padding="{DynamicResource PadPage}" Spacing="{DynamicResource SpaceM}">
+
+			<Label StyleClass="Section" Text="{localization:Tr Widgets.SetupSummary}" />
+			<Label StyleClass="Caption" Text="{localization:Tr Widgets.SetupHint}" />
+
+			<Label StyleClass="Subtitle" Text="{localization:Tr Widgets.SetupPick}" />
+			<VerticalStackLayout x:Name="Pinned" Spacing="4" />
+
+			<VerticalStackLayout x:Name="Editor" IsVisible="false" Spacing="10">
+				<BoxView StyleClass="Divider" />
+
+				<Label x:Name="EditorTitle" StyleClass="Title" />
+
+				<Label StyleClass="Section" Text="{localization:Tr Widgets.SetupKind}" />
+				<FlexLayout Wrap="Wrap" AlignContent="Start" AlignItems="Start">
+					<Button x:Name="KindDepartures" StyleClass="ChipButton" Clicked="OnKindDepartures" />
+					<Button x:Name="KindRoute" Margin="8,0,0,0" StyleClass="ChipButton" Clicked="OnKindRoute" />
+				</FlexLayout>
+
+				<Label x:Name="StopCaption" StyleClass="Section" />
+				<Entry
+					x:Name="Search"
+					Placeholder="{localization:Tr Widgets.SetupSearch}"
+					TextColor="{DynamicResource Ink}"
+					PlaceholderColor="{DynamicResource InkMuted}"
+					Completed="OnSearchCompleted" />
+				<VerticalStackLayout x:Name="Results" Spacing="2" />
+
+				<Label StyleClass="Section" Text="{localization:Tr Widgets.SetupRows}" />
+				<Stepper x:Name="Rows" Minimum="1" Maximum="10" Increment="1" ValueChanged="OnRowsChanged" />
+
+				<Button x:Name="Save" StyleClass="Tonal" Clicked="OnSave" />
+			</VerticalStackLayout>
+
+			<Label x:Name="SavedNote" StyleClass="Caption" IsVisible="false" />
+		</VerticalStackLayout>
+	</ScrollView>
+</support:PanePage>

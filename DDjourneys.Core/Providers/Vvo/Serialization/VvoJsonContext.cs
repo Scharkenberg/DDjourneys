@@ -1,12 +1,14 @@
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
+using DDjourneys.Core.Providers.Shared;
 using DDjourneys.Core.Providers.Vvo.Models;
 using DDjourneys.Core.Providers.Vvo.Requests;
 
 namespace DDjourneys.Core.Providers.Vvo.Serialization;
 
 /// <summary>
-/// Source-generated JSON metadata for every VVO WebAPI request and response: no runtime reflection,
+/// Source-generated JSON metadata for every VVO request and response (and, since Tier 2, the park &amp; ride
+and GBFS roots): no runtime reflection,
 /// so it survives trimming and AOT on Android.
 /// </summary>
 [JsonSourceGenerationOptions(
@@ -41,6 +43,11 @@ namespace DDjourneys.Core.Providers.Vvo.Serialization;
 [JsonSerializable(typeof(VvoStopLinesRequest))]
 [JsonSerializable(typeof(VvoMapPinsRequest))]
 [JsonSerializable(typeof(VvoMapPolygonsRequest))]
+[JsonSerializable(typeof(VvoParkingSite[]))]
+[JsonSerializable(typeof(VvoParkingSiteLive[]))]
+[JsonSerializable(typeof(GbfsDiscovery))]
+[JsonSerializable(typeof(GbfsStationInformation))]
+[JsonSerializable(typeof(GbfsStationStatus))]
 internal sealed partial class VvoJsonContext : JsonSerializerContext
 {
 }

@@ -34,6 +34,14 @@ public static class Routes
 
 	/// <summary>The map page, and its query keys: a <c>MapScene</c> and the page title.</summary>
 	public const string Map = "map";
+	public const string NetworkMap = "networkmap";
+
+	/// <summary>The Windows widget set-up page (registered on Windows only).</summary>
+	public const string WidgetSetup = "widgetsetup";
+	public const string WidgetId = "WidgetId";
+
+	/// <summary>Reserved key of the map layer panel: the network map link row posts it when tapped.</summary>
+	public const string NetworkMapLayer = "networkmap";
 	public const string MapScene = "MapScene";
 	public const string MapTitle = "MapTitle";
 

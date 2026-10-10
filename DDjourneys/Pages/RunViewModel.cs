@@ -94,6 +94,10 @@ public sealed partial class RunViewModel : DisposableViewModel, IQueryAttributab
 		OpenMapCommand =
 			new AsyncCommand(
 				OpenMapAsync);
+
+		OpenLineMapCommand =
+			new AsyncCommand(
+				OpenLineMapAsync);
 	}
 
 	/// <summary>Pull to refresh.</summary>
@@ -105,9 +109,17 @@ public sealed partial class RunViewModel : DisposableViewModel, IQueryAttributab
 	/// </summary>
 	public AsyncCommand OpenMapCommand { get; }
 
+	/// <summary>Shows the course of the whole line (the window already loaded, no extra request).</summary>
+	public AsyncCommand OpenLineMapCommand { get; }
+
 	/// <summary>At least two stops of the run have a position.</summary>
 	public bool CanShowMap =>
 		Rows.Count(row => row.Stop.Station.Latitude is not null && row.Stop.Station.Longitude is not null) >= 2;
+
+	/// <summary>The whole line can be drawn: the run's window carries a geometry or positioned stops.</summary>
+	public bool CanShowLineMap =>
+		_routePath is { Count: > 1 }
+		|| _window.Count(stop => stop.Station.Latitude is not null && stop.Station.Longitude is not null) >= 2;
 
 	/// <summary>The line is a plain number, so its vehicles can be looked up on the live page.</summary>
 	public bool CanShowLive =>
@@ -260,6 +272,42 @@ public sealed partial class RunViewModel : DisposableViewModel, IQueryAttributab
 		}
 	}
 
+	/// <summary>The whole line: the run's window, already loaded, drawn as the line's course.</summary>
+	private async Task OpenLineMapAsync()
+	{
+		if (_departure is not { } departure)
+		{
+			return;
+		}
+
+		LineCourse? course =
+			LineCourseService.FromDetail(
+				departure,
+				new RunDetail(_window)
+				{
+					Vehicle = _vehicle,
+					Path = _routePath
+				});
+
+		if (course is null)
+		{
+			return;
+		}
+
+		string title =
+			string.Format(
+				CultureInfo.CurrentCulture,
+				_localization.CurrentStrings.Extras.LineCourseTitle,
+				course.LineName,
+				course.FirstTerminus ?? string.Empty,
+				course.LastTerminus ?? string.Empty);
+
+		await MapScenes.OpenAsync(
+			MapScenes.FromLineCourse(course),
+			title,
+			this);
+	}
+
 	private async Task ShowLiveAsync()
 	{
 		if (!CanShowLive)
@@ -407,6 +455,7 @@ public sealed partial class RunViewModel : DisposableViewModel, IQueryAttributab
 					_localization.CurrentStrings.Extras);
 
 			OnPropertyChanged(nameof(CanShowMap));
+			OnPropertyChanged(nameof(CanShowLineMap));
 		}
 		catch (OperationCanceledException)
 		{

@@ -147,6 +147,119 @@ public sealed class LegAlternativesAndViaTests
 		Assert.Contains(joined.Transfers, item => item.PreviousLegIndex == 1 && item.NextLegIndex is null);
 	}
 
+	[Fact]
+	public void A_transfer_at_the_stop_over_measures_the_gap_between_the_legs()
+	{
+		Journey journey = Trip(Ride(A, B, "11", 10, 0, 20), Ride(B, C, "61", 10, 26, 15));
+
+		Assert.Equal(TimeSpan.FromMinutes(6), ViaRouting.DwellOf(journey, ToLocation(B)));
+	}
+
+	[Fact]
+	public void A_stop_of_a_ride_measures_the_stop_s_own_dwell()
+	{
+
+		Journey journey =
+			new()
+			{
+				Legs = [new JourneyLeg
+				{
+					Mode = TransitMode.Tram,
+					From = A,
+					To = C,
+					Line = new TransitLine { Name = "5", Mode = TransitMode.Tram },
+					ScheduledDeparture = Day.AddHours(10),
+					ScheduledArrival = Day.AddHours(10).AddMinutes(30),
+					Stops =
+					[
+						new StopTime { Station = A, ScheduledDeparture = Day.AddHours(10) },
+						new StopTime { Station = B, ScheduledArrival = Day.AddHours(10).AddMinutes(12), ScheduledDeparture = Day.AddHours(10).AddMinutes(16) },
+						new StopTime { Station = C, ScheduledArrival = Day.AddHours(10).AddMinutes(30) }
+					]
+				}],
+				From = A,
+				To = C
+			};
+
+		Assert.Equal(TimeSpan.FromMinutes(4), ViaRouting.DwellOf(journey, ToLocation(B)));
+	}
+
+	[Fact]
+	public void A_pass_through_that_does_not_stop_has_no_dwell()
+	{
+		Journey journey =
+			new()
+			{
+				Legs = [new JourneyLeg
+				{
+					Mode = TransitMode.Tram,
+					From = A,
+					To = C,
+					Line = new TransitLine { Name = "5", Mode = TransitMode.Tram },
+					ScheduledDeparture = Day.AddHours(10),
+					ScheduledArrival = Day.AddHours(10).AddMinutes(30),
+					Stops = [new StopTime { Station = B }]
+				}],
+				From = A,
+				To = C
+			};
+
+		Assert.Equal(TimeSpan.Zero, ViaRouting.DwellOf(journey, ToLocation(B)));
+	}
+
+	[Fact]
+	public void The_dwell_filter_starts_at_two_minutes_and_keeps_the_unmeasurable()
+	{
+		Journey staying = Trip(Ride(A, B, "11", 10, 0, 20), Ride(B, C, "61", 10, 30, 15));
+		Journey passingThrough = Trip(Ride(A, B, "11", 10, 0, 20), Ride(B, C, "61", 10, 21, 15));
+		Journey startingThere = Trip(Ride(B, C, "61", 10, 0, 15));
+
+		Assert.True(ViaRouting.KeepsDwell(staying, ToLocation(B), 1));
+		Assert.True(ViaRouting.KeepsDwell(staying, ToLocation(B), 0));
+		Assert.True(ViaRouting.KeepsDwell(passingThrough, ToLocation(B), 1));
+		Assert.False(ViaRouting.KeepsDwell(passingThrough, ToLocation(B), 3));
+		Assert.True(ViaRouting.KeepsDwell(staying, ToLocation(B), 10));
+		Assert.True(ViaRouting.KeepsDwell(startingThere, ToLocation(B), 30));
+	}
+
+	[Fact]
+	public async Task The_two_search_fallback_fits_its_join_to_the_asked_stay()
+	{
+		DateTimeOffset askedForTail = default;
+
+		Task<JourneyResult> Search(JourneyQuery query, CancellationToken token)
+		{
+			if (query.From.Id == "2" && query.To.Id == "3")
+			{
+				askedForTail = query.DateTime;
+			}
+
+			return Task.FromResult(
+				query switch
+				{
+					{ From.Id: "1", To.Id: "2" } => JourneyResult.Success([Trip(Ride(A, B, "11", 10, 0, 20))]),
+					{ From.Id: "2", To.Id: "3" } => JourneyResult.Success([Trip(Ride(B, C, "61", 10, 30, 15))]),
+					_ => JourneyResult.Success([])
+				});
+		}
+
+		JourneyQuery query =
+			new()
+			{
+				From = ToLocation(A),
+				To = ToLocation(C),
+				Via = ToLocation(B),
+				DateTime = Day.AddHours(10),
+				MaxResults = 3,
+				Routing = new RoutingPreferences { ViaMinutes = 5 }
+			};
+
+		IReadOnlyList<Journey> built = await ViaRouting.ComposeAsync(Search, query);
+
+		Assert.NotEmpty(built);
+		Assert.Equal(Day.AddHours(10).AddMinutes(20).AddMinutes(5), askedForTail);
+	}
+
 	private static JourneyQuery Query(Location? via = null) =>
 		new()
 		{

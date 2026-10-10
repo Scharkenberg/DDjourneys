@@ -269,6 +269,7 @@ public sealed partial class DeparturesViewModel : DisposableViewModel
 	private const int NearbyRadius = 600;
 
 	private readonly DepartureService _departures;
+	private readonly LineCourseService _lineCourses;
 	private readonly NetworkService _network;
 	private readonly OpenDataService _openData;
 	private readonly LocationService _locations;
@@ -290,6 +291,7 @@ public sealed partial class DeparturesViewModel : DisposableViewModel
 
 	public DeparturesViewModel(
 		DepartureService departures,
+		LineCourseService lineCourses,
 		NetworkService network,
 		OpenDataService openData,
 		LocationService locations,
@@ -301,6 +303,7 @@ public sealed partial class DeparturesViewModel : DisposableViewModel
 		ArgumentNullException.ThrowIfNull(providers);
 
 		ArgumentNullException.ThrowIfNull(departures);
+		ArgumentNullException.ThrowIfNull(lineCourses);
 		ArgumentNullException.ThrowIfNull(network);
 		ArgumentNullException.ThrowIfNull(openData);
 		ArgumentNullException.ThrowIfNull(locations);
@@ -309,6 +312,7 @@ public sealed partial class DeparturesViewModel : DisposableViewModel
 		ArgumentNullException.ThrowIfNull(settings);
 
 		_departures = departures;
+		_lineCourses = lineCourses;
 		_network = network;
 		_openData = openData;
 		_locations = locations;
@@ -405,6 +409,12 @@ public sealed partial class DeparturesViewModel : DisposableViewModel
 			new AsyncCommand(
 				OpenMapAsync);
 
+		OpenLineMapCommand =
+			new AsyncCommand<StopLineRow>(
+				row => row is not null && Stop is not null
+					? OpenLineMapAsync(row)
+					: Task.CompletedTask);
+
 		RefreshQuickPicks();
 	}
 
@@ -445,6 +455,9 @@ public sealed partial class DeparturesViewModel : DisposableViewModel
 
 	/// <summary>Shows the stop, the stops near the passenger and the service points on a map.</summary>
 	public AsyncCommand OpenMapCommand { get; }
+
+	/// <summary>Shows the course of the whole line on the map (both directions when they can be told apart).</summary>
+	public AsyncCommand<StopLineRow> OpenLineMapCommand { get; }
 
 	public ObservableCollection<AccessRow> Accessibility { get; } = [];
 
@@ -736,6 +749,61 @@ public sealed partial class DeparturesViewModel : DisposableViewModel
 	/// Stop ids, lines and boards belong to one provider: after a switch nothing of the old one is kept, and the
 	/// quick picks are those of the new provider's favourites and recents.
 	/// </summary>
+	/// <summary>Where this line actually goes: the next run of the line from this stop's board, both
+	/// directions when they can be told apart, as one map.</summary>
+	private async Task OpenLineMapAsync(StopLineRow row)
+	{
+		if (Stop is not { } stop)
+		{
+			return;
+		}
+
+		try
+		{
+			var station =
+				new Station
+				{
+					Id = stop.Id ?? string.Empty,
+					ProviderId = stop.ProviderId,
+					Name = stop.Name,
+					Place = stop.Place,
+					Latitude = stop.Latitude,
+					Longitude = stop.Longitude
+				};
+
+			IReadOnlyList<LineCourse> courses =
+				await _lineCourses.BothDirectionsAsync(
+					new TransitLine { Name = row.Line.Name, Mode = row.Line.Mode },
+					station,
+					_settings.TimeoutSeconds);
+
+			if (courses.Count == 0)
+			{
+				Message = _localization.CurrentStrings.Extras.LineMapNone;
+
+				return;
+			}
+
+			LineCourse first = courses[0];
+
+			string title =
+				string.Format(
+					CultureInfo.CurrentCulture,
+					_localization.CurrentStrings.Extras.LineCourseTitle,
+					first.LineName,
+					first.FirstTerminus ?? string.Empty,
+					first.LastTerminus ?? string.Empty);
+
+			await MapScenes.OpenAsync(
+				MapScenes.FromLineCourses(courses),
+				title);
+		}
+		catch (Exception ex)
+		{
+			DiagnosticLog.Write($"[Departures] line map for {row.Line.Name} failed: {ex.Message}");
+		}
+	}
+
 	private void OnProviderChanged(object? sender, string providerId) =>
 		MainThread.BeginInvokeOnMainThread(
 			() =>

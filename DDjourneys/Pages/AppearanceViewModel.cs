@@ -16,7 +16,8 @@ public sealed partial class AppearanceViewModel : DisposableViewModel
 		[
 			new(Theme.ModeSystem, false),
 			new(Theme.ModeLight, false),
-			new(Theme.ModeDark, false)
+			new(Theme.ModeDark, false),
+			new(Theme.ModeSun, false)
 		];
 
 		Colors = [.. ColorCatalog.All.Select(o => new AppearanceChoice(o.Id, true))];
@@ -126,6 +127,7 @@ public sealed partial class AppearanceViewModel : DisposableViewModel
 			{
 				Theme.ModeLight => s.ModeLightDescription,
 				Theme.ModeDark => s.ModeDarkDescription,
+				Theme.ModeSun => s.ModeSunDescription,
 				_ => s.ModeSystemDescription
 			};
 
@@ -203,6 +205,7 @@ public sealed partial class AppearanceViewModel : DisposableViewModel
 		{
 			Theme.ModeLight => s.ThemeLight,
 			Theme.ModeDark => s.ThemeDark,
+			Theme.ModeSun => s.ThemeSun,
 			_ => s.ThemeSystem
 		};
 

@@ -13,7 +13,7 @@
 		<ScrollView>
 			<VerticalStackLayout Padding="{DynamicResource PadPage}" Spacing="{DynamicResource SpaceM}">
 
-				<Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+				<Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="10">
 					<Border
 						BackgroundColor="{Binding Look.Fill}"
 						StrokeDashArray="{Binding Look.Dashes}"
@@ -44,6 +44,14 @@
 						HorizontalOptions="End"
 						IsVisible="{Binding CanShowMap}"
 						SemanticProperties.Description="{localization:Tr Extras.MapShow}"
+						VerticalOptions="Center" />
+					<controls:IconButton
+						Grid.Column="3"
+						Command="{Binding OpenLineMapCommand}"
+						Glyph="Route"
+						HorizontalOptions="End"
+						IsVisible="{Binding CanShowLineMap}"
+						SemanticProperties.Description="{localization:Tr Extras.RunWholeLine}"
 						VerticalOptions="Center" />
 				</Grid>
 

@@ -25,6 +25,9 @@
     <Compile Include="..\DDjourneys\Tracking\Schutzengel\SchutzengelPlans.cs" Link="Schutzengel\SchutzengelPlans.cs" />
     <Compile Include="..\DDjourneys\Tracking\Schutzengel\SchutzengelTripProgress.cs" Link="Schutzengel\SchutzengelTripProgress.cs" />
     <Compile Include="..\DDjourneys\Platforms\Windows\NoOpJourneyTracker.cs" Link="Platforms\Windows\NoOpJourneyTracker.cs" />
+    <Compile Include="..\DDjourneys\Support\FareLinks.cs" Link="Support\FareLinks.cs" />
+    <Compile Include="..\DDjourneys\Support\Widgets\IWidgetStore.cs" Link="Support\Widgets\IWidgetStore.cs" />
+    <Compile Include="..\DDjourneys\Support\Widgets\KeyValueWidgetStore.cs" Link="Support\Widgets\KeyValueWidgetStore.cs" />
 	<Compile Include="..\DDjourneys\Tracking\Schutzengel\SchutzengelRawDataTranslator.cs" Link="Schutzengel\SchutzengelRawDataTranslator.cs" />
 	<Compile Include="..\DDjourneys\Tracking\Schutzengel\SchutzengelWireCodes.cs" Link="Schutzengel\SchutzengelWireCodes.cs" />
 	<Compile Include="..\DDjourneys\Tracking\Schutzengel\SchutzengelTariffMapper.cs" Link="Schutzengel\SchutzengelTariffMapper.cs" />

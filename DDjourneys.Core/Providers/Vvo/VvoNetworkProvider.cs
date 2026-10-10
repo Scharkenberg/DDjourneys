@@ -291,6 +291,22 @@ public sealed class VvoNetworkProvider :
 	}
 
 	/// <inheritdoc />
+	/// <inheritdoc />
+	public async Task<IReadOnlyList<TariffZoneShape>> GetTariffZonesAsync(
+		CancellationToken cancellationToken = default)
+	{
+		IReadOnlyList<ZonePolygon> zones =
+			await LoadZonesAsync(cancellationToken)
+				.ConfigureAwait(false);
+
+		// Zone-number order: the same picture on every load, whatever the wire order was.
+		return
+			(IReadOnlyList<TariffZoneShape>)[.. zones
+					.Select(ToShape)
+					.OfType<TariffZoneShape>()
+					.OrderBy(shape => shape.Number, StringComparer.OrdinalIgnoreCase)];
+	}
+
 	public async Task<TariffZone?> FindTariffZoneAsync(
 		double latitude,
 		double longitude,
@@ -372,15 +388,56 @@ public sealed class VvoNetworkProvider :
 		int seconds) =>
 		TimeSpan.FromSeconds(Math.Clamp(seconds, 5, 60));
 
+	/// <summary>A zone polygon as a map shape: the ring in WGS84, the centre as the label position.</summary>
+	private static TariffZoneShape? ToShape(ZonePolygon zone)
+	{
+		if (!int.TryParse(
+				zone.Zone.Number,
+				NumberStyles.Integer,
+				CultureInfo.InvariantCulture,
+				out int number))
+		{
+			return null;
+		}
+
+		(double Latitude, double Longitude) centre =
+			zone.Centre is { } at
+				? VvoCoordinateConverter.FromGk4(at.X, at.Y)
+				: Centroid(zone._ring);
+
+		return new TariffZoneShape(
+			number,
+			zone.Zone.Name,
+			zone.Zone.Color,
+			centre.Latitude,
+			centre.Longitude,
+			(IReadOnlyList<(double Latitude, double Longitude)>)[.. zone._ring
+				.Select(point => VvoCoordinateConverter.FromGk4(point.X, point.Y))]);
+	}
+
+	private static (double Latitude, double Longitude) Centroid((double X, double Y)[] ring)
+	{
+		double x = 0, y = 0;
+
+		foreach ((double X, double Y) point in ring)
+		{
+			x += point.X;
+			y += point.Y;
+		}
+
+		return VvoCoordinateConverter.FromGk4(x / ring.Length, y / ring.Length);
+	}
+
 	/// <summary>A tariff zone with its outline in GK4 (easting, northing).</summary>
 	private sealed class ZonePolygon
 	{
 		private readonly (double X, double Y)[] _ring;
 
-		private ZonePolygon(TariffZone zone, (double X, double Y)[] ring)
+		private ZonePolygon(TariffZone zone, (double X, double Y)[] ring, (double X, double Y)? centre)
 		{
 			Zone = zone;
 			_ring = ring;
+			Centre = centre;
 			Area = Math.Abs(SignedArea(ring));
 		}
 
@@ -439,6 +496,26 @@ public sealed class VvoNetworkProvider :
 				}
 			}
 
+			// The centre (the first pair) goes the same way as a ring point, so the label lands inside the zone.
+			(double X, double Y)? centre = null;
+
+			if (numbers.Length >= 2
+				&& !double.IsNaN(numbers[0])
+				&& !double.IsNaN(numbers[1]))
+			{
+				if (numbers[0] < 1000)
+				{
+					if (VvoCoordinateConverter.TryToGk4(numbers[0], numbers[1], out (double Easting, double Northing) at))
+					{
+						centre = (at.Easting, at.Northing);
+					}
+				}
+				else
+				{
+					centre = (numbers[1], numbers[0]);
+				}
+			}
+
 			if (ring.Count < 3)
 			{
 				return null;
@@ -451,7 +528,8 @@ public sealed class VvoNetworkProvider :
 					Name = fields[1].Trim(),
 					Color = string.IsNullOrWhiteSpace(fields[2]) ? null : fields[2].Trim()
 				},
-				[.. ring]);
+				[.. ring],
+				centre);
 		}
 
 		/// <summary>Ray casting.</summary>

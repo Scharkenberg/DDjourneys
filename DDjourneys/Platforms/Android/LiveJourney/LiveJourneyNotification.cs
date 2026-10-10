@@ -28,6 +28,7 @@ internal static class LiveJourneyNotification
 	internal const string ActionStop = TrackingActions.Stop;
 	internal const string ActionDismissed = TrackingActions.Dismissed;
 	internal const string ActionOpen = TrackingActions.Open;
+	internal const string ActionReplan = TrackingActions.Replan;
 	internal const string ExtraPlanId = TrackingActions.PlanIdKey;
 
 	/// <summary>
@@ -183,6 +184,14 @@ internal static class LiveJourneyNotification
 
 				builder.AddAction(
 					CreateAction(context, Strings.NotifActionStop, ActionStop, content.PlanId, global::Android.Resource.Drawable.IcMenuCloseClearCancel));
+
+					// Android 12+ forbids starting an activity from a notification-triggered receiver: this button
+					// goes to the activity directly (the trampoline rule), like the tap on the notification itself.
+					if (content.Phase == TrackingPhase.AtRisk)
+					{
+						builder.AddAction(
+							CreateActivityAction(context, Strings.Replan, ActionReplan, content.PlanId, global::Android.Resource.Drawable.IcMenuSearch));
+					}
 			}
 		}
 
@@ -374,7 +383,14 @@ internal static class LiveJourneyNotification
 				builder.SetContentIntent(open);
 			}
 
-			Manager?.Notify(AlertId(planId, kind), builder.Build());
+		// The recovery search on a problem alert: straight to the activity (the trampoline rule again).
+		if (kind == JourneyAlertKind.Problem)
+		{
+			builder.AddAction(
+				CreateActivityAction(context, Strings.Replan, ActionReplan, planId, global::Android.Resource.Drawable.IcMenuSearch));
+		}
+
+		Manager?.Notify(AlertId(planId, kind), builder.Build());
 
 			RefreshSummary();
 		}
@@ -550,6 +566,39 @@ internal static class LiveJourneyNotification
 			launch,
 			PendingIntentFlags.UpdateCurrent | PendingIntentFlags.Immutable);
 	}
+
+	/// <summary>
+	/// An action whose tap starts the activity instead of a broadcast, like <see cref="OpenAppIntent(Context, string?)"/>:
+	/// actions that open the app's own navigation must never go through the receiver (Android 12+ forbids
+	/// notification receivers that start activities - the trampoline rule).
+	/// </summary>
+	private static PendingIntent ActivityIntent(Context context, string action, string planId)
+	{
+		Intent target =
+				new Intent(context, typeof(global::DDjourneys.Platforms.Android.MainActivity))
+						.SetAction(action)!
+						.PutExtra(ExtraPlanId, planId)!
+						.SetFlags(ActivityFlags.NewTask | ActivityFlags.SingleTop | ActivityFlags.ClearTop)!;
+
+		return PendingIntent.GetActivity(
+			context,
+			RequestCode(action, planId),
+			target,
+			PendingIntentFlags.UpdateCurrent | PendingIntentFlags.Immutable)!
+	}
+
+	/// <summary>Like <see cref="CreateAction"/>, but the intent starts the activity instead of a broadcast.</summary>
+	private static Notification.Action CreateActivityAction(
+		Context context,
+		string label,
+		string action,
+		string planId,
+		int iconResource) =>
+		new Notification.Action.Builder(
+				Icon.CreateWithResource(context, iconResource),
+				label,
+				ActivityIntent(context, action, planId))
+			.Build()!;
 
 	private static PendingIntent? ActionIntent(Context context, string action, string planId)
 	{

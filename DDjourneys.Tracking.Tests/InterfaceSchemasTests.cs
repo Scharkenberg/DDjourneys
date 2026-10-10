@@ -47,7 +47,7 @@ public sealed class InterfaceSchemasTests
 	[Fact]
 	public void The_app_owned_revisions_read_r_and_a_number()
 	{
-		foreach (string id in new[] { "vvo-webapi", "schutzengel", "tlms", "opendata-dresden", "carto", "map-bridge", "widget-data" })
+		foreach (string id in new[] { "vvo-webapi", "schutzengel", "tlms", "opendata-dresden", "carto", "dvb-networkmap", "vvo-pur", "gbfs", "map-bridge", "widget-data", "widget-card-win" })
 		{
 			Assert.Matches("^r[1-9][0-9]*$", InterfaceSchemas.Core.Single(item => item.Id == id).Version);
 		}

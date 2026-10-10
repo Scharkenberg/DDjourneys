@@ -9,6 +9,8 @@ using DDjourneys.Core.Providers.Abstractions;
 using DDjourneys.Core.Providers.Vvo;
 using DDjourneys.Core.Tracking;
 using DDjourneys.Core.Providers.Vvo.Models;
+using DDjourneys.Core.Services;
+using DDjourneys.Core.Storage;
 using DDjourneys.Core.Tracking.Live;
 using DDjourneys.Localization;
 using DDjourneys.Support;
@@ -97,6 +99,13 @@ internal sealed partial class SchutzengelJourneyTracker : IJourneyTracker, ITrac
 
 	private readonly Func<int>? _defaultLeadMinutes;
 
+	// The recovery search of a missed connection (null on the test setup: the fallback opens the overview).
+	private readonly LocationService? _locations;
+	private readonly PlannerLauncher? _planner;
+	private readonly TrackedJourneyNavigator? _navigator;
+
+	private static readonly TimeSpan RecoveryLookupTimeout = TimeSpan.FromSeconds(8);
+
 	private CancellationTokenSource? _loopCancellation;
 	private Task? _loop;
 	private bool _runWanted;
@@ -110,9 +119,15 @@ internal sealed partial class SchutzengelJourneyTracker : IJourneyTracker, ITrac
 		ITrackingRuntime runtime,
 		INotificationAccess access,
 		HttpClient? http = null,
-		Func<int>? defaultLeadMinutes = null)
+		Func<int>? defaultLeadMinutes = null,
+		LocationService? locations = null,
+		PlannerLauncher? planner = null,
+		TrackedJourneyNavigator? navigator = null)
 	{
 		_defaultLeadMinutes = defaultLeadMinutes;
+		_locations = locations;
+		_planner = planner;
+		_navigator = navigator;
 		_provider = journeyProvider ?? throw new ArgumentNullException(nameof(journeyProvider));
 		_bridge = bridge ?? throw new ArgumentNullException(nameof(bridge));
 		_surface = surface ?? throw new ArgumentNullException(nameof(surface));
@@ -397,6 +412,7 @@ internal sealed partial class SchutzengelJourneyTracker : IJourneyTracker, ITrac
 			TrackingActions.Pause => SetActiveAsync(planId, false),
 			TrackingActions.Resume => SetActiveAsync(planId, true),
 			TrackingActions.Stop => DeleteAsync(planId),
+			TrackingActions.Replan => RecoverAsync(planId),
 			TrackingActions.Dismissed =>
 				RunAsync(
 					() =>
@@ -437,6 +453,96 @@ internal sealed partial class SchutzengelJourneyTracker : IJourneyTracker, ITrac
 		lock (_runtimeGate)
 		{
 			_serviceRunning = false;
+		}
+	}
+
+	// ----- Recovery search of a missed connection -----
+
+	/// <summary>
+	/// "Find alternatives" for a followed journey whose connection is endangered or lost: the planner is filled
+	/// from the interchange stop where the connection broke (the risk station), or the stored start, or where the
+	/// passenger is; the destination is the stored one, or the journey's destination name. Everything is quiet and
+	/// logged - one fallback that fails never blocks the next. Without a destination there is nothing to search
+	/// for: the overview opens instead.
+	/// </summary>
+	private async Task RecoverAsync(string planId)
+	{
+		try
+		{
+			string? riskStation = null;
+			string? destinationName = null;
+
+			await _gate.WaitAsync().ConfigureAwait(false);
+
+			try
+			{
+				if (_entries.TryGetValue(planId, out WatchEntry? entry))
+				{
+					riskStation = entry.Snapshot.Risk?.Station;
+					destinationName = entry.Summary?.Destination;
+				}
+			}
+			finally
+			{
+				_gate.Release();
+			}
+
+			FollowedEndpoint? endpoints = FollowedEndpoints.Find(planId);
+
+			Location? from =
+				await ResolveStopAsync(riskStation).ConfigureAwait(false)
+				?? endpoints?.From
+				?? await (_planner?.NearMeAsync() ?? Task.FromResult<Location?>(null)).ConfigureAwait(false);
+
+			Location? to =
+				endpoints?.To
+				?? await ResolveStopAsync(destinationName).ConfigureAwait(false);
+
+			if (to is null || _planner is null)
+			{
+				Log($"Recovery of plan {planId} without a destination: opening the overview instead");
+
+				_navigator?.Request(planId);
+
+				if (_navigator is { } navigator)
+				{
+					await navigator.DeliverAsync().ConfigureAwait(false);
+				}
+
+				return;
+			}
+
+			await PlannerLauncher.RecoverAsync(from, to, endpoints?.Via).ConfigureAwait(false);
+
+			Log($"Recovery of plan {planId} started at {from?.Name ?? "?"}");
+		}
+		catch (Exception ex) when (ex is not OperationCanceledException)
+		{
+			Log($"Recovery search failed: {ex.Message}");
+		}
+	}
+
+	/// <summary>A stop by its name, the exact station first, then any station (the tolerant matching of the contract).</summary>
+	private async Task<Location?> ResolveStopAsync(string? name)
+	{
+		if (_locations is null || string.IsNullOrWhiteSpace(name))
+		{
+			return null;
+		}
+
+		try
+		{
+			IReadOnlyList<Location> found =
+				await _locations.SearchAsync(name, RecoveryLookupTimeout, cancellationToken: CancellationToken.None).ConfigureAwait(false);
+
+			return found.FirstOrDefault(stop => stop.IsStation && string.Equals(stop.Name, name, StringComparison.OrdinalIgnoreCase))
+				?? found.FirstOrDefault(stop => stop.IsStation);
+		}
+		catch (Exception ex) when (ex is not OperationCanceledException)
+		{
+			Log($"Looking up '{name}' for the recovery failed: {ex.Message}");
+
+			return null;
 		}
 	}
 
@@ -799,6 +905,9 @@ internal sealed partial class SchutzengelJourneyTracker : IJourneyTracker, ITrac
 	private void Forget(string planId)
 	{
 		_entries.Remove(planId);
+
+		// The ends of the journey went with it; a recovery search has nothing to add to anymore.
+		FollowedEndpoints.Forget(planId);
 		_dismissed.Remove(planId);
 		_dismissedNotices.Remove(planId);
 

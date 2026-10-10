@@ -469,7 +469,9 @@ public sealed class JourneyService
 
 		if (direct.Outcome == JourneyOutcome.Found)
 		{
-			Journey[] passing = [.. direct.Journeys.Where(journey => ViaRouting.Passes(journey, via))];
+					Journey[] passing = [.. direct.Journeys
+						.Where(journey => ViaRouting.Passes(journey, via)
+							&& ViaRouting.KeepsDwell(journey, via, query.Routing.ViaMinutes))];
 
 			if (passing.Length > 0)
 			{
@@ -490,7 +492,12 @@ public sealed class JourneyService
 
 		if (built.Count > 0)
 		{
-			return JourneyResult.Success(built);
+			Journey[] waiting = [.. built.Where(journey => ViaRouting.KeepsDwell(journey, via, query.Routing.ViaMinutes))];
+
+			if (waiting.Length > 0)
+			{
+				return JourneyResult.Success(waiting);
+			}
 		}
 
 		// Nothing either way: what the provider said about the stop-over is the answer (a failure stays a failure).

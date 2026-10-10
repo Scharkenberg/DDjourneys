@@ -1,5 +1,7 @@
 ﻿using DDjourneys.Platforms.Windows;
 using DDjourneys.Platforms.Windows.LiveJourney;
+using DDjourneys.Platforms.Windows.Widgets;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 
 // To learn more about WinUI, the WinUI project structure,
@@ -58,6 +60,11 @@ namespace DDjourneys.WinUI
 					});
 
 				WindowsNotificationHost.Initialize(app.Services);
+
+				// The Widgets Board: the class object it CoCreates, and the store and loader behind it.
+				WindowsWidgets.Initialize(
+					app.Services.GetRequiredService<Support.Widgets.IWidgetStore>(),
+					app.Services.GetRequiredService<Support.Widgets.WidgetLoader>());
 
 				_ = WindowsJumpList.UpdateAsync();
 

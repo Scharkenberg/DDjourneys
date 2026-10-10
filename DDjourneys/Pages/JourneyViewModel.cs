@@ -93,6 +93,12 @@ public sealed partial class JourneyViewModel :
 			new Command(
 				() => FaresExpanded = !FaresExpanded);
 
+		OpenFareCommand =
+			new AsyncCommand<FareRow>(
+				row => row.Link is { } link
+					? Launcher.Default.OpenAsync(link)
+					: Task.CompletedTask);
+
 
 		ShareCommand =
 			new AsyncCommand(
@@ -493,6 +499,9 @@ public sealed partial class JourneyViewModel :
 		// The followed journey's map (and its vehicles) needs the rides with their boarding stops.
 		FollowedRides.Save(watched.PlanId, _journey);
 
+		// A missed connection is recovered from these ends; the notification's search needs them.
+		FollowedEndpoints.Save(watched.PlanId, _query?.From, _query?.To, _query?.Via);
+
 		UpdateFollowState();
 
 		if (!await _tracker.CanNotifyAsync())
@@ -773,6 +782,8 @@ public sealed partial class JourneyViewModel :
 
 
 	public Command ToggleFaresCommand { get; }
+
+	public AsyncCommand<FareRow> OpenFareCommand { get; }
 
 
 	public void ApplyQueryAttributes(
@@ -1250,7 +1261,12 @@ public sealed partial class JourneyViewModel :
 						IsPreferred =
 							ReferenceEquals(
 								fare,
-								preferred)
+								preferred),
+
+						Link =
+							FareLinks.For(
+								fare,
+								_providers.SelectedId)
 					})];
 
 		FaresSummaryName =

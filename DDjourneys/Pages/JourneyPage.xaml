@@ -801,7 +801,7 @@
 										SemanticProperties.Description="{Binding AccessibilityText}"
 										StrokeShape="RoundRectangle 8"
 										StrokeThickness="0">
-										<Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+										<Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="12">
 											<VerticalStackLayout Spacing="0" VerticalOptions="Center">
 												<Label LineBreakMode="WordWrap" Text="{Binding Name}" />
 												<Label
@@ -815,6 +815,17 @@
 												FontFamily="{DynamicResource FontSemibold}"
 												Text="{Binding PriceText}"
 												VerticalOptions="Center" />
+											<!--  Where the authority or the provider names a sale page: an honest hand-off, the app sells nothing  -->
+											<controls:IconButton
+												Grid.Column="2"
+												Color="{DynamicResource InkMuted}"
+												Command="{Binding Source={RelativeSource AncestorType={x:Type local:JourneyViewModel}}, x:DataType=local:JourneyViewModel, Path=OpenFareCommand}"
+												CommandParameter="{Binding .}"
+												Glyph="External"
+												IsVisible="{Binding HasLink}"
+												SemanticProperties.Description="{localization:Tr Extras.FareBuy}"
+												Size="18"
+												TargetSize="{StaticResource HitButton}" />
 										</Grid>
 									</Border>
 								</DataTemplate>

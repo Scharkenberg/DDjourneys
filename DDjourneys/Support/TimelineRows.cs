@@ -388,6 +388,12 @@ public sealed class FareRow
 	/// <summary>The ticket for the passenger set in the options (the one cards and shares name).</summary>
 	public bool IsPreferred { get; init; }
 
+	/// <summary>Where this ticket is sold, when the provider or the transport authority names a page.</summary>
+	public Uri? Link { get; init; }
+
+	public bool HasLink =>
+		Link is not null;
+
 	public string AccessibilityText =>
 		HasDetail
 			? $"{Name}, {Detail}, {PriceText}"

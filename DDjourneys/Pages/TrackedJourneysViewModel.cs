@@ -4,6 +4,7 @@ using System.Windows.Input;
 using DDjourneys.Core.Models;
 using DDjourneys.Core.Services;
 using DDjourneys.Core.Tracking;
+using DDjourneys.Core.Tracking.Live;
 using DDjourneys.Controls;
 using DDjourneys.Localization;
 using DDjourneys.Support;
@@ -106,6 +107,9 @@ public sealed class TrackedRow
 	public required bool HasMap { get; init; }
 	public required string StatusText { get; init; }
 	public required bool IsProblem { get; init; }
+
+	/// <summary>The connection is broken (at risk or cancelled): the recovery search is offered.</summary>
+	public required bool ShowReplan { get; init; }
 	public required bool IsCancelled { get; init; }
 	public required bool IsNormalStatus { get; init; }
 	public required double Progress { get; init; }
@@ -144,6 +148,9 @@ public sealed class TrackedRow
 	public bool HasCourseHint => IsCourseVisible && Course.Count == 0;
 
 	public required ICommand ToggleExpandedCommand { get; init; }
+
+	/// <summary>Find alternatives for the broken connection (the same path as the notification button).</summary>
+	public required ICommand ReplanCommand { get; init; }
 	public required ICommand PauseResumeCommand { get; init; }
 	public required ICommand StopCommand { get; init; }
 	public required ICommand ToggleStartAlertCommand { get; init; }
@@ -857,6 +864,8 @@ public sealed partial class TrackedJourneysViewModel : DisposableViewModel, IQue
 			MapCommand = new AsyncCommand(() => OpenMapAsync(journey), null, ShowError),
 			StatusText = status,
 			IsProblem = problem,
+			ShowReplan = problem || cancelled,
+			ReplanCommand = new AsyncCommand(() => _bridge.HandleActionAsync(TrackingActions.Replan, journey.PlanId), null, ShowError),
 			IsCancelled = cancelled,
 			IsNormalStatus = !problem && !cancelled,
 			Progress = Math.Clamp(journey.Progress, 0, 1),

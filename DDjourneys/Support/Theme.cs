@@ -1,4 +1,6 @@
 using DDjourneys.Core.Diagnostics;
+using DDjourneys.Core.Providers.Abstractions;
+using DDjourneys.Core.Theming;
 using System.Collections;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
@@ -21,6 +23,7 @@ public static class Theme
 	public const string ModeSystem = "system";
 	public const string ModeLight = "light";
 	public const string ModeDark = "dark";
+	public const string ModeSun = "sun";
 
 	private static readonly string[] BrushKeys = ["Outline", "Accent", "Surface", "Raised", "Ink", "InkMuted", "AccentSoft", "OnAccent"];
 
@@ -61,10 +64,25 @@ public static class Theme
 				? Colors.Black
 				: Colors.White;
 
+	/// <summary>What is in effect: the chosen mode, or what the sun mode resolved to (diagnostics).</summary>
+	public static string EffectiveMode =>
+		Mode == ModeSun
+			? IsDark ? ModeDark + " (sun)" : ModeLight + " (sun)"
+			: Mode;
+
 	/// <summary>Whether the palette currently in effect is a dark one.</summary>
 	public static bool IsDark { get; private set; }
 
 	public static string Mode { get; private set; } = ModeSystem;
+
+	/// <summary>The provider's central city, where the sun mode reads sunrise and sunset from. Set by the app start.</summary>
+	public static Func<MapCenter?>? SunCenter { get; set; }
+
+	/// <summary>How long before sunrise and after sunset the switch happens (the sky is lit first and last).</summary>
+	private static readonly TimeSpan TwilightOffset = TimeSpan.FromMinutes(20);
+
+	private static readonly Lock SunGate = new();
+	private static System.Threading.Timer? _sunTimer;
 
 	public static string ColorId { get; private set; } = ColorCatalog.DefaultId;
 
@@ -446,9 +464,66 @@ public static class Theme
 		mode?.ToLowerInvariant() switch
 		{
 			ModeLight => ModeLight,
+			ModeSun => ModeSun,
 			ModeDark => ModeDark,
 			_ => ModeSystem
 		};
+
+	/// <summary>
+	/// Night in the sun mode: the sun is down (with the twilight margin) at the provider's central
+	/// city. Without a centre to compute from, the OS decides, like in the system mode.
+	/// </summary>
+	private static bool SunIsDark()
+	{
+		if (SunCenter?.Invoke() is not { } center)
+		{
+			return _app?.PlatformAppTheme == AppTheme.Dark;
+		}
+
+		return !SunTimes.IsDaylight(center.Latitude, center.Longitude, DateTimeOffset.Now, TwilightOffset);
+	}
+
+	/// <summary>
+	/// One timer for the next sun boundary (sunrise or sunset, minus the twilight margin): its callback
+	/// re-applies the theme and arms the next one. Resume re-applies too (Theme.Refresh), so sleep and
+	/// clock drift need no polling. Anything but the sun mode disposes the timer.
+	/// </summary>
+	private static void UpdateSunTimer()
+	{
+		lock (SunGate)
+		{
+			_sunTimer?.Dispose();
+			_sunTimer = null;
+
+			if (Mode != ModeSun
+				|| SunCenter?.Invoke() is not { } center
+				|| SunTimes.NextBoundary(center.Latitude, center.Longitude, DateTimeOffset.Now) is not { } boundary)
+			{
+				return;
+			}
+
+			TimeSpan due = boundary - TwilightOffset - DateTimeOffset.Now;
+
+			if (due < TimeSpan.Zero)
+			{
+				due = TimeSpan.Zero;
+			}
+
+			// The timer fires on a thread pool thread: views are touched on the UI thread only (hard rule).
+			_sunTimer = new System.Threading.Timer(
+				_ => MainThread.BeginInvokeOnMainThread(
+					() =>
+					{
+						if (Mode == ModeSun)
+						{
+							Apply();
+						}
+					}),
+				null,
+				due,
+				Timeout.InfiniteTimeSpan);
+		}
+	}
 
 	private static async Task ChangeAsync(Func<bool> mutate, bool notify = false)
 	{
@@ -515,10 +590,14 @@ public static class Theme
 			//    "system" hands control back to the OS by clearing UserAppTheme.
 			//    This must happen BEFORE the mode is resolved: RequestedTheme keeps
 			//    returning the previously forced mode until it is cleared.
+			// The sun mode is forced like light and dark: the OS setting is irrelevant to it.
+			bool sunDark = Mode == ModeSun && SunIsDark();
+
 			AppTheme native = Mode switch
 			{
 				ModeLight => AppTheme.Light,
 				ModeDark => AppTheme.Dark,
+				ModeSun => sunDark ? AppTheme.Dark : AppTheme.Light,
 				_ => AppTheme.Unspecified
 			};
 
@@ -532,6 +611,7 @@ public static class Theme
 			{
 				ModeLight => false,
 				ModeDark => true,
+				ModeSun => sunDark,
 				_ => _app.PlatformAppTheme == AppTheme.Dark
 			};
 
@@ -620,6 +700,10 @@ public static class Theme
 		finally
 		{
 			_applying = false;
+
+			// Every exit path re-arms the sun boundary timer: entering the sun mode without a colour
+			// change (already dark) must arm it too, not only a visible change.
+			UpdateSunTimer();
 		}
 	}
 

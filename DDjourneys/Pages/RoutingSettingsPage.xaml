@@ -82,6 +82,35 @@
 				</VerticalStackLayout>
 			</Border>
 
+			<Label StyleClass="Section" Text="{localization:Tr Routing.SectionVia}" />
+
+			<!--  Stay at the stop over: chips, not a radio list, because nine options must wrap  -->
+			<Border Padding="12" StyleClass="Card">
+				<VerticalStackLayout Spacing="{DynamicResource SpaceS}">
+					<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Routing.ViaMinutes}" />
+					<Label StyleClass="Caption" Text="{localization:Tr Routing.ViaMinutesHint}" />
+					<FlexLayout AlignContent="Start" AlignItems="Start" BindableLayout.ItemsSource="{Binding ViaStay.Options}" Wrap="Wrap">
+						<BindableLayout.ItemTemplate>
+							<DataTemplate x:DataType="support:ChoiceOption">
+								<Border
+									Margin="0,0,8,8"
+									Padding="12,6"
+									StyleClass="ChipButton"
+									support:Themed.Background="Clear"
+									support:Themed.IsOn="{Binding IsSelected}"
+									support:Themed.OnBackground="AccentSoft"
+									SemanticProperties.Description="{Binding Title}">
+										<Label FontFamily="{DynamicResource FontSemibold}" Text="{Binding Title}" />
+									<Border.GestureRecognizers>
+										<TapGestureRecognizer Command="{Binding SelectCommand}" />
+									</Border.GestureRecognizers>
+								</Border>
+							</DataTemplate>
+						</BindableLayout.ItemTemplate>
+					</FlexLayout>
+				</VerticalStackLayout>
+			</Border>
+
 			<Label StyleClass="Section" Text="{localization:Tr Routing.SectionWalking}" />
 
 			<Border Padding="0" StyleClass="Card">

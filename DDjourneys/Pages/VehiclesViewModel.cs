@@ -132,12 +132,10 @@ public sealed partial class VehiclesViewModel : DisposableViewModel, IQueryAttri
 	/// them may still be under way, the vehicle may report yet.</summary>
 	private static readonly TimeSpan TripOverAfter = TimeSpan.FromMinutes(5);
 
-	/// <summary>The pauses between the reconnects of a broken stream; the last one repeats.</summary>
-	private static readonly TimeSpan[] ReconnectPauses =
-		[TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(20)];
-
 	private readonly VehicleService _vehicles;
+	private readonly VehicleStreamHub _hub;
 	private readonly LocalizationService _localization;
+	private VehicleStreamSubscription? _vehicleSubscription;
 	private readonly Dictionary<string, VehicleRow> _byKey = [];
 	private CancellationTokenSource? _stream;
 	private DateTimeOffset _startedAt;
@@ -163,18 +161,26 @@ public sealed partial class VehiclesViewModel : DisposableViewModel, IQueryAttri
 
 	public VehiclesViewModel(
 		VehicleService vehicles,
+		VehicleStreamHub hub,
 		ProviderRegistry providers)
 	{
 		ArgumentNullException.ThrowIfNull(vehicles);
+		ArgumentNullException.ThrowIfNull(hub);
 		ArgumentNullException.ThrowIfNull(providers);
 
 		_vehicles = vehicles;
+		_hub = hub;
 		_localization = LocalizationService.Current;
 
 		// Positions, lines and the followed run belong to one provider: a switch stops the stream and drops them.
 		Subscribe(
 			() => providers.SelectionChanged += OnProviderChanged,
 			() => providers.SelectionChanged -= OnProviderChanged);
+
+		// The one shared stream tells the page where it stands; the page maps it to its own texts.
+		Subscribe(
+			() => hub.StateChanged += OnHubStateChanged,
+			() => hub.StateChanged -= OnHubStateChanged);
 
 		StartCommand =
 			new AsyncCommand(
@@ -534,123 +540,57 @@ public sealed partial class VehiclesViewModel : DisposableViewModel, IQueryAttri
 	}
 
 	/// <summary>
-	/// Runs the stream until it is cancelled — and does not stop there: a stream that ended (the service
-	/// closed it, or it failed) is reconnected after a pause, for as long as the page watches. Rows, the
-	/// filter and the matches stay untouched, so a restart after a pause continues with them.
+	/// Attaches to the one shared stream (the hub) and applies what arrives until it is cancelled. The
+	/// reconnect ladder lives in the hub now; the line filter is applied here, client-side, because the
+	/// shared stream is unfiltered - a set lookup per position.
 	/// </summary>
 	private async Task ConnectAsync(CancellationTokenSource cts, IReadOnlyList<int> lines)
 	{
-		ExtrasStrings strings = _localization.CurrentStrings.Extras;
-
 		try
 		{
-			int failures = 0;
+			_vehicleSubscription?.Dispose();
+			_vehicleSubscription = _hub.Subscribe();
 
-			while (!cts.IsCancellationRequested && !IsDisposed)
+			await foreach (LiveVehicle vehicle in _vehicleSubscription.Reader.ReadAllAsync(cts.Token))
 			{
-				bool delivered = false;
-
-				try
-				{
-					await foreach (LiveVehicle vehicle in
-						_vehicles.StreamAsync(
-							new VehicleFilter { Lines = lines },
-							cts.Token))
-					{
-						if (cts.IsCancellationRequested || IsDisposed)
-						{
-							return;
-						}
-
-						delivered = true;
-
-						if (_slots.Count > 0)
-						{
-							ApplyTracked(vehicle);
-
-							continue;
-						}
-
-						if (HasStatus)
-						{
-							Status = string.Empty;
-						}
-
-						Apply(vehicle);
-					}
-				}
-				catch (OperationCanceledException)
-				{
-				}
-				catch (Exception ex)
-				{
-					DiagnosticLog.Write($"Live vehicles failed: {ex}");
-				}
-
 				if (cts.IsCancellationRequested || IsDisposed)
 				{
 					return;
 				}
 
-				// The stream ended without the page asking: say so, wait, and connect again. A stream that
-				// carried positions gets another go at once; a page nobody leaves keeps trying with a pause.
-				Status = strings.LiveError;
+				if (_slots.Count > 0)
+				{
+					ApplyTracked(vehicle);
 
-				if (delivered)
-				{
-					failures = 0;
-				}
-				else
-				{
-					failures++;
+					continue;
 				}
 
-				TimeSpan pause = ReconnectPauses[Math.Min(failures, ReconnectPauses.Length - 1)];
+				if (lines.Count > 0 && !lines.Contains(vehicle.Line))
+				{
+					continue;
+				}
 
-				try
+				if (HasStatus)
 				{
-					await Task.Delay(pause, cts.Token);
+					Status = string.Empty;
 				}
-				catch (OperationCanceledException)
-				{
-					return;
-				}
+
+				Apply(vehicle);
 			}
+		}
+		catch (OperationCanceledException)
+		{
 		}
 		finally
 		{
+			_vehicleSubscription?.Dispose();
+			_vehicleSubscription = null;
+
 			if (ReferenceEquals(_stream, cts))
 			{
 				IsStreaming = false;
 			}
 		}
-	}
-
-	/// <summary>
-	/// The page is no longer seen: the stream stops receiving (rows and matches stay as they are). While the page
-	/// is hidden the positions would cost battery for a picture nobody looks at.
-	/// </summary>
-	public void PauseStream()
-	{
-		_stream?.Cancel();
-		_stream = null;
-	}
-
-	/// <summary>The page is seen again: a stream that was paused continues where it left off.</summary>
-	public void ResumeStream()
-	{
-		if (IsDisposed
-			|| !IsStreaming
-			|| _stream is not null)
-		{
-			return;
-		}
-
-		var cts = new CancellationTokenSource();
-		_stream = cts;
-		_startedAt = DateTimeOffset.UtcNow;
-
-		_ = ConnectAsync(cts, _activeLines);
 	}
 
 	/// <summary>
@@ -807,6 +747,32 @@ public sealed partial class VehiclesViewModel : DisposableViewModel, IQueryAttri
 				_target = null;
 				Rows.Clear();
 			});
+
+	/// <summary>Where the one shared stream stands, as the page says it (connecting, delivering, broken).</summary>
+	private void OnHubStateChanged(VehicleStreamState state) =>
+			MainThread.BeginInvokeOnMainThread(
+					() =>
+					{
+						if (IsDisposed || !IsStreaming)
+						{
+							return;
+						}
+
+						ExtrasStrings strings = _localization.CurrentStrings.Extras;
+
+						if (state == VehicleStreamState.Degraded)
+						{
+							Status = strings.LiveError;
+						}
+						else if (state == VehicleStreamState.Connecting && HasStatus)
+						{
+							Status = strings.LiveConnecting;
+						}
+						else if (state == VehicleStreamState.Live && Status == strings.LiveConnecting)
+						{
+							Status = string.Empty;
+						}
+						});
 
 	private void Stop()
 	{

@@ -13,8 +13,12 @@ namespace DDjourneys.Core.Services;
 /// </summary>
 public static class ViaRouting
 {
-	/// <summary>Time to change vehicles at the stop-over when the journey stays there at all.</summary>
+	/// <summary>Time to change vehicles at the stop-over when the journey stays there at all: the floor.</summary>
 	public static readonly TimeSpan Stay = TimeSpan.FromMinutes(1);
+
+	/// <summary>The stay at the stop-over the routing asks for: its minutes, never less than <see cref="Stay"/>.</summary>
+	public static TimeSpan StayFor(RoutingPreferences routing) =>
+		TimeSpan.FromMinutes(Math.Max(Stay.TotalMinutes, routing.ViaMinutes));
 
 	/// <summary>A stop closer to the stop-over than this is the stop-over (platforms of one stop lie apart).</summary>
 	public const double SameStopMeters = 120;
@@ -50,6 +54,61 @@ public static class ViaRouting
 	}
 
 	/// <summary>
+	/// How long the journey stays at the stop-over. The gap between the legs around it when it changes
+	/// vehicles (or walks) there; the stop's own dwell when it stays on board; zero when it only passes
+	/// through without stopping. Null when there is no stay to measure (the journey starts or ends there,
+	/// or the timetable shows no stop at all) - a dwell the timetable cannot prove is not a broken one.
+	/// </summary>
+	public static TimeSpan? DwellOf(Journey journey, Location via)
+	{
+		ArgumentNullException.ThrowIfNull(journey);
+		ArgumentNullException.ThrowIfNull(via);
+
+		if (Matches(journey.From, via)
+			|| Matches(journey.To, via))
+		{
+			return null;
+		}
+
+		for (int i = 0; i < journey.Legs.Count; i++)
+		{
+			JourneyLeg leg = journey.Legs[i];
+
+			// The journey changes vehicles (or walks) at the stop-over: the gap between the legs around it.
+			if (Matches(leg.To, via)
+				&& journey.Legs.Skip(i + 1).FirstOrDefault(next => Matches(next.From, via)) is { } onward
+				&& leg.EffectiveArrival is { } at
+				&& onward.EffectiveDeparture is { } from)
+			{
+				return from >= at
+					? from - at
+					: TimeSpan.Zero;
+			}
+
+			// The vehicle stays on board through the stop-over: the stop's own dwell there.
+			if (leg.Stops.FirstOrDefault(stop => Matches(stop.Station, via)) is { } halt)
+			{
+				return halt.EffectiveDeparture is { } from
+					&& halt.EffectiveArrival is { } at
+					&& from >= at
+					? from - at
+					: TimeSpan.Zero;
+			}
+		}
+
+		return null;
+	}
+
+	/// <summary>
+	/// True when the journey waits at the stop-over as long as the routing asks: from two minutes on,
+	/// with one minute of tolerance for scheduled rounding. A dwell the timetable cannot show (null)
+	/// counts as kept - a journey the app cannot judge is not dropped for it.
+	/// </summary>
+	public static bool KeepsDwell(Journey journey, Location via, int viaMinutes) =>
+		viaMinutes <= 1
+		|| DwellOf(journey, via) is not { } dwell
+		|| dwell >= TimeSpan.FromMinutes(viaMinutes - 1);
+
 	/// Journeys that pass <paramref name="query"/>'s stop-over, built from two searches with
 	/// <paramref name="search"/> (one provider's ordinary search, which is asked without a stop-over).
 	/// </summary>
@@ -128,13 +187,13 @@ public static class ViaRouting
 
 			JourneyResult head =
 				await search(
-					Sub(query, query.From, via, JourneySearchMode.Arrival, departs - Stay, 3),
+					Sub(query, query.From, via, JourneySearchMode.Arrival, departs - StayFor(query.Routing), 3),
 					cancellationToken)
 				.ConfigureAwait(false);
 
 			Journey? best =
 				head.Journeys
-					.Where(journey => journey.Legs.Count > 0 && JourneyWindow.PlannedEnd(journey) <= departs - Stay + LegAlternatives.Tolerance)
+					.Where(journey => journey.Legs.Count > 0 && JourneyWindow.PlannedEnd(journey) <= departs - StayFor(query.Routing) + LegAlternatives.Tolerance)
 					.OrderByDescending(journey => JourneyWindow.PlannedStart(journey))
 					.FirstOrDefault();
 
@@ -149,13 +208,13 @@ public static class ViaRouting
 
 		JourneyResult tail =
 			await search(
-				Sub(query, via, query.To, JourneySearchMode.Departure, arrives + Stay, 3),
+				Sub(query, via, query.To, JourneySearchMode.Departure, arrives + StayFor(query.Routing), 3),
 				cancellationToken)
 			.ConfigureAwait(false);
 
 		Journey? next =
 			tail.Journeys
-				.Where(journey => journey.Legs.Count > 0 && JourneyWindow.PlannedStart(journey) >= arrives + Stay - LegAlternatives.Tolerance)
+				.Where(journey => journey.Legs.Count > 0 && JourneyWindow.PlannedStart(journey) >= arrives + StayFor(query.Routing) - LegAlternatives.Tolerance)
 				.OrderBy(journey => JourneyWindow.PlannedEnd(journey))
 				.FirstOrDefault();
 

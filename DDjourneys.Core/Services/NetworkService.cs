@@ -79,6 +79,12 @@ public sealed class NetworkService
 			? provider.GetNearbyStopsAsync(latitude, longitude, radiusMeters, cancellationToken)
 			: Task.FromResult<IReadOnlyList<NearbyStop>>([]);
 
+	public Task<IReadOnlyList<TariffZoneShape>> GetTariffZonesAsync(
+		CancellationToken cancellationToken = default) =>
+		Provider is { } provider
+			? provider.GetTariffZonesAsync(cancellationToken)
+			: Task.FromResult<IReadOnlyList<TariffZoneShape>>([]);
+
 	public Task<TariffZone?> FindTariffZoneAsync(
 		double latitude,
 		double longitude,

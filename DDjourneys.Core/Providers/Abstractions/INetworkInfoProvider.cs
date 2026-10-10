@@ -26,6 +26,13 @@ public interface INetworkInfoProvider
 		int radiusMeters = 500,
 		CancellationToken cancellationToken = default);
 
+	/// <summary>
+	/// The tariff zones as shapes for the map, in zone-number order; empty when the provider publishes no
+	/// outlines (the default: only the VVO WebAPI has <c>map/polygons</c>).
+	/// </summary>
+	Task<IReadOnlyList<TariffZoneShape>> GetTariffZonesAsync(CancellationToken cancellationToken = default)
+		=> Task.FromResult<IReadOnlyList<TariffZoneShape>>([]);
+
 	/// <summary>The tariff zone a position lies in, or null.</summary>
 	Task<TariffZone?> FindTariffZoneAsync(
 		double latitude,

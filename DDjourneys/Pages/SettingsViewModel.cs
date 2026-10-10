@@ -32,6 +32,7 @@ public sealed partial class SettingsViewModel : DisposableViewModel
 		OpenRoutingCommand = new AsyncCommand(OpenRoutingAsync);
 		OpenStartCommand = new AsyncCommand(OpenStartAsync);
 		OpenProvidersCommand = new AsyncCommand(OpenProvidersAsync);
+		OpenWidgetsCommand = new AsyncCommand(OpenWidgetsAsync);
 		ShareLogCommand = new AsyncCommand(ShareLogAsync);
 		ClearLogCommand = new Command(ClearLog);
 		OpenAboutCommand = new AsyncCommand(OpenAboutAsync);
@@ -128,6 +129,16 @@ public sealed partial class SettingsViewModel : DisposableViewModel
 	public AsyncCommand OpenRoutingCommand { get; }
 	public AsyncCommand OpenStartCommand { get; }
 	public AsyncCommand OpenProvidersCommand { get; }
+
+	/// <summary>Whether this build has a Windows Widgets Board to feed (the row is hidden without it).</summary>
+	public bool ShowWindowsWidgets =>
+#if WINDOWS
+		true;
+#else
+		false;
+#endif
+
+	public AsyncCommand OpenWidgetsCommand { get; }
 	public AsyncCommand ShareLogCommand { get; }
 	public Command ClearLogCommand { get; }
 	public AsyncCommand OpenAboutCommand { get; }
@@ -486,6 +497,9 @@ public sealed partial class SettingsViewModel : DisposableViewModel
 
 	private static Task OpenAboutAsync() =>
 		Shell.Current.GoToAsync(Routes.About);
+
+	private static Task OpenWidgetsAsync() =>
+		Shell.Current.GoToAsync(Routes.WidgetSetup);
 
 	private async Task CopyInterfacesAsync()
 	{

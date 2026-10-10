@@ -198,6 +198,14 @@
 																</HorizontalStackLayout>
 															</Border>
 
+															<!--  The connection is broken: find alternatives, like the notification button  -->
+															<controls:IconButton
+																Command="{Binding ReplanCommand}"
+																Glyph="Detour"
+																IsVisible="{Binding ShowReplan}"
+																SemanticProperties.Description="{localization:Tr Tracking.Replan}"
+																TargetSize="{StaticResource HitIconTight}" />
+
 															<controls:IconButton
 																Command="{Binding MapCommand}"
 																Glyph="MapPin"

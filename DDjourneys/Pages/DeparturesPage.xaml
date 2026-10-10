@@ -306,7 +306,7 @@
 											<Grid
 												Grid.Row="1"
 												support:Dense.Padding="12,8"
-												ColumnDefinitions="68,*"
+												ColumnDefinitions="68,*,Auto"
 												ColumnSpacing="10">
 												<Border
 													BackgroundColor="{Binding Look.Fill}"
@@ -331,6 +331,13 @@
 													Grid.Column="1"
 													StyleClass="Caption"
 													Text="{Binding DirectionsText}" />
+												<controls:IconButton
+													Grid.Column="2"
+													Command="{Binding Source={RelativeSource AncestorType={x:Type local:DeparturesViewModel}}, x:DataType=local:DeparturesViewModel, Path=OpenLineMapCommand}"
+													CommandParameter="{Binding .}"
+													Glyph="Route"
+													SemanticProperties.Description="{localization:Tr Extras.RunWholeLine}"
+													VerticalOptions="Center" />
 											</Grid>
 										</Grid>
 									</DataTemplate>

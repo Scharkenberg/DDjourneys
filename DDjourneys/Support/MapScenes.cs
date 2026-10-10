@@ -47,6 +47,21 @@ public static class MapScenes
 		LocalizationService.Current.CurrentStrings.Extras;
 
 	/// <summary>
+	/// One tariff zone as a map polygon: the provider's own colour (the accent when it names none) over a
+	/// quiet outline that also survives pale zone colours on a pale basemap, and the zone number as its label.
+	/// The ring is simplified once here, not on every send.
+	/// </summary>
+	public static MapPolygon ZonePolygon(TariffZoneShape shape, bool dark, int maxPoints = 256) =>
+		new(
+			PolylineSimplify.SimplifyRing(shape.Ring, maxPoints),
+			shape.Color is { Length: > 1 } ? shape.Color : ThemeRef("@Accent", "#0b6e8a"),
+			dark ? 0.14 : 0.10,
+			ThemeRef("@Outline", "#9e9e9e"),
+			shape.Number.ToString(System.Globalization.CultureInfo.InvariantCulture),
+			shape.CenterLat,
+			shape.CenterLon);
+
+	/// <summary>
 	/// Opens the map page with a scene; says so (returns false) when there is nothing to show. <paramref name="from"/>
 	/// (the asking page or view model) lets the map open beside it in a wide window (see <see cref="Panes"/>).
 	/// </summary>
@@ -85,6 +100,9 @@ public static class MapScenes
 		&& !(lat == 0 && lon == 0)
 			? (lat, lon)
 			: null;
+
+	private static (double Latitude, double Longitude) ToPosition(RunStop stop) =>
+			(stop.Station.Latitude ?? 0, stop.Station.Longitude ?? 0);
 
 	private static (double Latitude, double Longitude)? Position(Station? station) =>
 		station is null
@@ -480,6 +498,105 @@ public static class MapScenes
 
 	// ----- Live vehicles -----
 
+	/// <summary>
+	/// The course of a whole line on the map: the full geometry of the window (weight 5, the mode's colour -
+	/// the path already covers the window, no stretching), its de-duplicated stops as small knots, the termini
+	/// as labelled pins and the reported vehicle. A second course (the other direction) rides along dashed at
+	/// half strength; it shares most stops with the first, so only the first carries knots.
+	/// </summary>
+	public static MapScene FromLineCourse(LineCourse course, bool fit = true) =>
+			FromLineCourses([course], fit);
+
+	public static MapScene FromLineCourses(IReadOnlyList<LineCourse> courses, bool fit = true)
+	{
+		ArgumentNullException.ThrowIfNull(courses);
+
+		List<MapMarker> markers = [];
+		List<MapLine> lines = [];
+
+		for (int index = 0; index < courses.Count; index++)
+		{
+			LineCourse course = courses[index];
+			string color = ModeColor(course.Mode);
+			bool further = index > 0;
+
+			List<RunStop> located =
+				[.. course.Stops.Where(stop => stop.Station.Latitude is not null && stop.Station.Longitude is not null)];
+
+			// The geometry: the window's path when there is one, else the stops as a polyline.
+			IReadOnlyList<(double Latitude, double Longitude)> geometry =
+				course.Path is { Count: > 1 }
+						? course.Path
+						: (List<(double Latitude, double Longitude)>)[.. located.Select(ToPosition)];
+
+			if (geometry.Count > 1)
+			{
+				lines.Add(new MapLine(geometry, color, further, 5, further ? 0.4 : 1));
+			}
+
+			if (located.Count > 0)
+			{
+				RunStop from = located[0];
+				RunStop to = located[^1];
+
+				markers.Add(
+					new MapMarker(
+						$"line{index}-start",
+						from.Station.Latitude!.Value,
+						from.Station.Longitude!.Value,
+						course.FirstTerminus ?? from.Station.Name,
+						MapMarkerKind.Start,
+						color));
+
+				markers.Add(
+					new MapMarker(
+						$"line{index}-end",
+						to.Station.Latitude!.Value,
+						to.Station.Longitude!.Value,
+						course.LastTerminus ?? to.Station.Name,
+						MapMarkerKind.End,
+						color));
+			}
+
+			// The stops in between: quiet knots whose popup names the stop and its time.
+			if (!further)
+			{
+				for (int stopIndex = 1; stopIndex < located.Count - 1; stopIndex++)
+				{
+					RunStop stop = located[stopIndex];
+
+					markers.Add(
+						new MapMarker(
+							$"k{stopIndex}",
+							stop.Station.Latitude!.Value,
+							stop.Station.Longitude!.Value,
+							string.Empty,
+							MapMarkerKind.Knot,
+							DullColor,
+							stop.Station.Name,
+							Format.Time(stop.Effective)));
+				}
+
+				if (course.Vehicle is { } vehicle
+						&& Position(vehicle.Latitude, vehicle.Longitude) is { } reported)
+				{
+					markers.Add(
+						new MapMarker(
+							"vehicle",
+							reported.Latitude,
+							reported.Longitude,
+							course.LineName,
+							MapMarkerKind.Vehicle,
+							color,
+							string.Format(CultureInfo.CurrentCulture, Strings.LiveLine, course.LineName),
+							Strings.VehicleReported));
+				}
+			}
+		}
+
+		return new MapScene { Lines = lines, Markers = markers, Fit = fit };
+	}
+
 	public static string DelayColor(TimeSpan? delay) =>
 		delay is not { } value
 			? ThemeRef("InkMuted", "#607D8B")
@@ -489,9 +606,45 @@ public static class MapScenes
 					? ThemeRef("Delay", "#9A5B00")
 					: ThemeRef("OnTime", "#15803D");
 
+	/// <summary>
+	/// The colour of a park &amp; ride site by how full it is: green while a fifth of it is free (and at least
+	/// five spaces), amber while it is filling up, red when it is full, grey while nothing live is known. A site
+	/// without numbers never gets a colour that sounds like a verdict.
+	/// </summary>
+	public static string ParkingColor(ParkingSite site)
+	{
+		if (!site.HasLive || site.Total <= 0)
+		{
+			return ThemeRef("InkMuted", "#607D8B");
+		}
+
+		return site.Free == 0
+			? ThemeRef("Cancelled", "#B91C1C")
+			: site.Free > Math.Max(5, site.Total * 0.2)
+				? ThemeRef("OnTime", "#15803D")
+				: ThemeRef("Delay", "#9A5B00");
+	}
+
+	/// <summary>
+	/// The colour of a shared-bike station: green from three bikes, amber for one or two, grey when it is
+	/// empty, not renting or unknown (a failed status feed shows stations, not wrong numbers).
+	/// </summary>
+	public static string BikeColor(SharedStation station)
+	{
+		if (station.IsRenting is false || station.Bikes <= 0)
+		{
+			return ThemeRef("InkMuted", "#607D8B");
+		}
+
+		return station.Bikes >= 3
+			? ThemeRef("OnTime", "#15803D")
+			: ThemeRef("Delay", "#9A5B00");
+	}
+
 	public static MapScene FromVehicles(
 		IEnumerable<LiveVehicle> vehicles,
-		bool fit)
+		bool fit,
+		string? idPrefix = null)
 	{
 		ArgumentNullException.ThrowIfNull(vehicles);
 
@@ -512,7 +665,7 @@ public static class MapScenes
 									: Format.Delay(vehicle.Delay) ?? strings.LiveOnTime;
 
 							return new MapMarker(
-								vehicle.Key,
+								idPrefix is null ? vehicle.Key : $"{idPrefix}{vehicle.Key}",
 								vehicle.Latitude,
 								vehicle.Longitude,
 								vehicle.Line.ToString(CultureInfo.InvariantCulture),

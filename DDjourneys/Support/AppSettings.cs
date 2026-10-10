@@ -35,7 +35,7 @@ public sealed class AppSettings
 
 	// ----- App -----
 
-	/// <summary>Light/dark mode: "system", "light" or "dark".</summary>
+	/// <summary>Light/dark mode: "system", "light", "dark" or "sun" (follows sunrise and sunset).</summary>
 	public string ThemeMode
 	{
 		get => Read("themeMode", "system");
@@ -324,6 +324,38 @@ public sealed class AppSettings
 		}
 	}
 
+	/// <summary>Show the provider's tariff zones on the map. Provider-scoped: only a provider that publishes zone outlines has them.</summary>
+	public bool MapZones
+	{
+		get => Read(Scoped("mapZones"), true);
+		set => Write(Scoped("mapZones"), value);
+	}
+
+	/// <summary>Show park &amp; ride sites with their free spaces on the map. City data: the pref is
+	/// global, not provider-scoped (both shipped providers cover the same region).
+	/// </summary>
+	public bool MapParking
+	{
+		get => Read("mapParking", false);
+		set => Write("mapParking", value);
+	}
+
+	/// <summary>Show shared-bike stations with their live counts on the map. City data like park &amp; ride:
+	/// global, not provider-scoped.</summary>
+	public bool MapBikes
+	{
+		get => Read("mapBikes", false);
+		set => Write("mapBikes", value);
+	}
+
+	/// <summary>Show the vehicles around on the map, live from the shared TLMS stream. City data like the
+	/// other layers: global, not provider-scoped.</summary>
+	public bool MapVehicles
+	{
+		get => Read("mapVehicles", false);
+		set => Write("mapVehicles", value);
+	}
+
 	/// <summary>The library that draws the map: "carto" (vector, needs a key) or "leaflet" (raster tiles, no key).</summary>
 	public MapEngine MapEngine
 	{
@@ -460,6 +492,13 @@ public sealed class AppSettings
 	{
 		get => Read(Scoped("extraCharge"), ExtraChargeFilter.Any);
 		set => Write(Scoped("extraCharge"), value);
+
+	/// <summary>Minutes to stay at the stop-over. 0 and 1 are the same thing: one minute is the floor ("Any").</summary>
+	public int ViaMinutes
+	{
+		get => Math.Clamp(Read(Scoped("viaMinutes"), 1), 0, 60);
+		set => Write(Scoped("viaMinutes"), Math.Clamp(value, 0, 60));
+	}
 	}
 
 	/// <summary>The routing options as sent with every journey search.</summary>
@@ -477,7 +516,8 @@ public sealed class AppSettings
 			FewestTransfers = FewestTransfers,
 			Optimisation = Optimisation,
 			Entrance = Entrance,
-			ExtraCharge = ExtraCharge,
+					ExtraCharge = ExtraCharge,
+					ViaMinutes = ViaMinutes
 			Passenger = Passenger
 		};
 
@@ -495,6 +535,7 @@ public sealed class AppSettings
 		Optimisation = RouteOptimisation.Fastest;
 		Entrance = EntranceNeed.Any;
 		ExtraCharge = ExtraChargeFilter.Any;
+		ViaMinutes = 1;
 		Passenger = PassengerCategory.Adult;
 	}
 

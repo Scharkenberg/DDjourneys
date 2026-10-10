@@ -273,12 +273,14 @@ public sealed class SettingsStrings
 	public required string ThemeSystem { get; init; }
 	public required string ThemeLight { get; init; }
 	public required string ThemeDark { get; init; }
+	public required string ThemeSun { get; init; }
 	public required string AppearanceTitle { get; init; }
 	public required string AppearanceHint { get; init; }
 	public required string ModeHeader { get; init; }
 	public required string ModeSystemDescription { get; init; }
 	public required string ModeLightDescription { get; init; }
 	public required string ModeDarkDescription { get; init; }
+	public required string ModeSunDescription { get; init; }
 	public required string PureBlack { get; init; }
 	public required string PureBlackDescription { get; init; }
 	public required string ColorsHeader { get; init; }
@@ -437,6 +439,10 @@ public sealed class RoutingStrings
 	public required string EntranceSmallStep { get; init; }
 	public required string EntranceNoStep { get; init; }
 	public required string SectionExtraCharge { get; init; }
+	public required string SectionVia { get; init; }
+	public required string ViaMinutes { get; init; }
+	public required string ViaMinutesHint { get; init; }
+	public required string ViaAny { get; init; }
 	public required string ExtraChargeAny { get; init; }
 	public required string ExtraChargeNone { get; init; }
 	public required string ExtraChargeLocal { get; init; }
@@ -550,6 +556,7 @@ public sealed class TrackingStrings
 	public required string NotifMonitoring { get; init; }
 	public required string NotifActionPause { get; init; }
 	public required string NotifActionStop { get; init; }
+	public required string Replan { get; init; }
 	public required string NotifStartAlertTitle { get; init; }
 	public required string NotifStartAlertText { get; init; }
 	public required string NotifChangeAlertTitle { get; init; }
@@ -583,6 +590,7 @@ public sealed class ExtrasStrings
 	public required string LiveRun { get; init; }
 	public required string LiveSecondsAgo { get; init; }
 	public required string LiveMinutesAgo { get; init; }
+	public required string LiveHoursAgo { get; init; }
 	public required string LiveOnTime { get; init; }
 	public required string LiveSourceGps { get; init; }
 	public required string LiveSourceTelegram { get; init; }
@@ -617,6 +625,7 @@ public sealed class ExtrasStrings
 	public required string FareZones { get; init; }
 	public required string FareValidFor { get; init; }
 	public required string FareNotAll { get; init; }
+	public required string FareBuy { get; init; }
 	public required string ShortcutHome { get; init; }
 	public required string ShortcutDepartures { get; init; }
 	public required string ShortcutNoHome { get; init; }
@@ -666,6 +675,28 @@ public sealed class ExtrasStrings
 	public required string RunDeparted { get; init; }
 	public required string MapAutoFit { get; init; }
 	public required string MapFitNow { get; init; }
+	public required string MapLayers { get; init; }
+	public required string MapZones { get; init; }
+	public required string MapParking { get; init; }
+	public required string MapBikes { get; init; }
+	public required string MapVehicles { get; init; }
+	public required string VehicleSeen { get; init; }
+	public required string VehicleFollowLine { get; init; }
+	public required string RunWholeLine { get; init; }
+	public required string LineCourseTitle { get; init; }
+	public required string LineMapNone { get; init; }
+	public required string BikesCounts { get; init; }
+	public required string BikesDocks { get; init; }
+	public required string BikesOpenApp { get; init; }
+	public required string ParkingCounts { get; init; }
+	public required string ParkingShort { get; init; }
+	public required string ParkingUpdated { get; init; }
+	public required string NetworkMap { get; init; }
+	public required string NetworkMapRefresh { get; init; }
+	public required string NetworkMapOpenPdf { get; init; }
+	public required string NetworkMapCredit { get; init; }
+	public required string NetworkMapStale { get; init; }
+	public required string NetworkMapFailed { get; init; }
 	public required string MapInfo { get; init; }
 	public required string MapGrip { get; init; }
 	public required string TrackFollowing { get; init; }
@@ -740,4 +771,23 @@ public sealed class WidgetStrings
 	public required string Done { get; init; }
 	public required string LocationHint { get; init; }
 	public required string OpenSettings { get; init; }
+	public required string CardRefresh { get; init; }
+	public required string CardOpen { get; init; }
+	public required string CardSetUp { get; init; }
+	public required string SetupTitle { get; init; }
+	public required string SetupSummary { get; init; }
+	public required string SetupHint { get; init; }
+	public required string SetupPick { get; init; }
+	public required string SetupNone { get; init; }
+	public required string SetupKind { get; init; }
+	public required string SetupKindDepartures { get; init; }
+	public required string SetupKindRoute { get; init; }
+	public required string SetupStop { get; init; }
+	public required string SetupFrom { get; init; }
+	public required string SetupTo { get; init; }
+	public required string SetupSearch { get; init; }
+	public required string SetupRows { get; init; }
+	public required string SetupSave { get; init; }
+	public required string SetupSaved { get; init; }
+	public required string EditorFor { get; init; }
 }

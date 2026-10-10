@@ -5,6 +5,8 @@ using DDjourneys.Core.Diagnostics;
 using DDjourneys.Core.Providers;
 using DDjourneys.Core.Providers.Abstractions;
 using DDjourneys.Core.Providers.OpenData;
+using DDjourneys.Core.Providers.Parking;
+using DDjourneys.Core.Providers.Shared;
 using DDjourneys.Core.Providers.Tlms;
 using DDjourneys.Core.Providers.Trias;
 using DDjourneys.Core.Providers.Vvo;
@@ -124,8 +126,13 @@ public static class MauiProgram
 			services => services.GetRequiredService<VvoNetworkProvider>());
 		builder.Services.AddSingleton<ILiveVehicleProvider, TlmsVehicleProvider>();
 		builder.Services.AddSingleton<VehicleService>();
+		builder.Services.AddSingleton<VehicleStreamHub>();
 		builder.Services.AddSingleton<IOpenDataProvider, DresdenOpenDataProvider>();
 		builder.Services.AddSingleton<OpenDataService>();
+		builder.Services.AddSingleton<IParkingProvider, VvoParkingProvider>();
+		builder.Services.AddSingleton<ParkingService>();
+		builder.Services.AddSingleton<GbfsClient>();
+		builder.Services.AddSingleton<SharedMobilityService>();
 		builder.Services.AddSingleton<IStopAreaProvider>(
 			services => services.GetRequiredService<TriasProvider>());
 		builder.Services.AddSingleton<IStopAreaProvider>(
@@ -133,8 +140,17 @@ public static class MauiProgram
 		builder.Services.AddSingleton<StopAreaService>();
 		builder.Services.AddSingleton<Support.PlannerLauncher>();
 		builder.Services.AddSingleton<DepartureService>();
+		builder.Services.AddSingleton<LineCourseService>();
 		builder.Services.AddSingleton<LegRunResolver>();
 		builder.Services.AddSingleton<Support.Widgets.WidgetLoader>();
+#if WINDOWS
+		builder.Services.AddSingleton<Support.Widgets.IWidgetStore>(
+			services => new Support.Widgets.KeyValueWidgetStore(
+				new PreferencesKeyValueStore()));
+		builder.Services.AddTransient<Pages.WidgetSetupPage>();
+#elif ANDROID
+		builder.Services.AddSingleton<Support.Widgets.IWidgetStore, Platforms.Android.Widgets.AndroidWidgetStore>();
+#endif
 		builder.Services.AddSingleton<NetworkService>();
 
 		builder.Services.AddSingleton<JourneyProviderDiagnostics>();
@@ -172,7 +188,10 @@ public static class MauiProgram
 				services.GetRequiredService<ILiveJourneySurface>(),
 				services.GetRequiredService<ITrackingRuntime>(),
 				services.GetRequiredService<INotificationAccess>(),
-				defaultLeadMinutes: () => services.GetRequiredService<AppSettings>().DefaultLeadMinutes));
+				defaultLeadMinutes: () => services.GetRequiredService<AppSettings>().DefaultLeadMinutes,
+				locations: services.GetRequiredService<LocationService>(),
+				planner: services.GetRequiredService<Support.PlannerLauncher>(),
+				navigator: services.GetRequiredService<Tracking.TrackedJourneyNavigator>()));
 
 		builder.Services.AddSingleton(
 			services => new Lazy<IJourneyTracker>(() => services.GetRequiredService<IJourneyTracker>()));
@@ -231,6 +250,8 @@ public static class MauiProgram
 		builder.Services.AddTransient<DeparturesViewModel>();
 		builder.Services.AddTransient<VehiclesPage>();
 		builder.Services.AddTransient<MapPage>();
+		builder.Services.AddSingleton<Support.NetworkMapStore>();
+		builder.Services.AddTransient<NetworkMapPage>();
 		builder.Services.AddTransient<VehiclesViewModel>();
 		builder.Services.AddTransient<RunPage>();
 		builder.Services.AddTransient<RunViewModel>();
@@ -241,7 +262,14 @@ public static class MauiProgram
 		builder.Services.AddTransient<RoutingSettingsPage>();
 		builder.Services.AddTransient<RoutingSettingsViewModel>();
 
-		return builder.Build();
+		var provider = builder.Build();
+
+		// The sun mode follows the selected provider's central city; switching providers re-evaluates it.
+		ProviderRegistry providers = provider.GetRequiredService<ProviderRegistry>();
+		Theme.SunCenter = () => providers.Selected?.Center;
+		providers.SelectionChanged += (_, _) => Theme.Refresh();
+
+		return provider;
 	}
 
 #if WINDOWS && DEBUG

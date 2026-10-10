@@ -50,7 +50,10 @@ public sealed partial class MapView : ContentView
 	private readonly Grid _grid;
 	private readonly Button _settingsButton;
 	private readonly Label _noticeText;
-	private MapScene? _overlay;
+	private readonly Dictionary<string, MapScene> _layers = new(StringComparer.Ordinal);
+
+	// The layer panel's rows, re-pushed when the page (re)boots: they arrive before the map is ready.
+	private (string Title, IReadOnlyList<MapLayerRow> Rows)? _layerRows;
 	private (bool Explore, bool Pick, double? Latitude, double? Longitude, int Zoom)? _mode;
 
 	// The grip chin: the strip under the map, and the handle that drags its height (see ResizableByGrip).
@@ -244,23 +247,65 @@ public sealed partial class MapView : ContentView
 	/// <summary>The visible area changed (after a pan or zoom, debounced by the page).</summary>
 	public event EventHandler<MapViewport>? ViewportChanged;
 
-	/// <summary>A marker of the overlay (see <see cref="SetOverlayAsync"/>) was tapped: its id.</summary>
+	/// <summary>A marker of a layer (see <see cref="SetLayerAsync"/>) was tapped: its id.</summary>
 	public event EventHandler<string>? MarkerTapped;
 
 	/// <summary>The map was tapped in pick mode: the point.</summary>
 	public event EventHandler<(double Latitude, double Longitude)>? PointTapped;
 
+	/// <summary>A row of the map's layer switch panel; a link row announces its tap instead of toggling.</summary>
+	public sealed record MapLayerRow(string Id, string Label, bool Checked, bool Link = false);
+
+	/// <summary>The rows of the map's layer panel were used: their ids and states (false clears a layer).</summary>
+	public event EventHandler<IReadOnlyDictionary<string, bool>>? LayersChanged;
+
 	/// <summary>
-	/// Markers on top of the scene that the page loads itself (stops in the viewport). They are tappable: a tap raises
-	/// <see cref="MarkerTapped"/> instead of opening a popup.
+	/// One layer of the map: markers on top of the scene (stops in the viewport, later live vehicles), filled
+	/// areas (tariff zones) and lines - sent once per change, never on every viewport change. Layer ids are
+	/// marker-id namespaces ("stops"; Tier 2 adds "parking", "bikes", "vehicles"). An empty scene clears the
+	/// layer. Markers of a layer are tappable: a tap raises <see cref="MarkerTapped"/> instead of a popup.
 	/// </summary>
-	public Task SetOverlayAsync(MapScene overlay)
+	public Task SetLayerAsync(string id, MapScene layer)
 	{
-		ArgumentNullException.ThrowIfNull(overlay);
+		ArgumentNullException.ThrowIfNull(id);
 
-		_overlay = overlay;
+		ArgumentNullException.ThrowIfNull(layer);
 
-		return PushOverlayAsync();
+		_layers[id] = layer;
+
+		return PushLayerAsync(id);
+	}
+
+	/// <summary>
+	/// The rows of the map's layer panel (the labels are localised here, the page owns no strings). Without
+	/// rows the panel disappears; a link row (no checkbox) posts its id on tap for the host page to act on.
+	/// </summary>
+	public Task SetLayersAsync(string title, IReadOnlyList<MapLayerRow> rows)
+	{
+		ArgumentNullException.ThrowIfNull(title);
+
+		ArgumentNullException.ThrowIfNull(rows);
+
+		_layerRows = (title, rows);
+
+		var state = new Dictionary<string, bool>();
+
+		foreach (MapLayerRow row in rows.Where(row => !row.Link))
+		{
+			state[row.Id] = row.Checked;
+		}
+
+		string json =
+			System.Text.Json.JsonSerializer.Serialize(
+				new Dictionary<string, object?>
+				{
+					["label"] = title,
+					["rows"] = rows.Select(row => new Dictionary<string, object?> { ["id"] = row.Id, ["label"] = row.Label, ["link"] = row.Link }).ToList(),
+					["state"] = state
+				},
+				WebBridge.StringInfo);
+
+		return CallAsync("layers", json);
 	}
 
 	/// <summary>
@@ -492,6 +537,11 @@ public sealed partial class MapView : ContentView
 			{
 				Preferences.Default.Set(AutoFitKey, message == "auto:true");
 			}
+			else if (message.StartsWith("layers:", StringComparison.Ordinal))
+			{
+				// The layer panel was used: every row's state, so the page host stays stateless.
+				TryRaiseLayersChanged(message[7..]);
+			}
 			else if (message.StartsWith("error:", StringComparison.Ordinal))
 			{
 				DiagnosticLog.Write($"[Map JS] {message[6..]}");
@@ -527,11 +577,16 @@ public sealed partial class MapView : ContentView
 
 		_ready = true;
 
-		DiagnosticLog.Write($"[Map] init answered ({_created.ElapsedMilliseconds} ms), pushing scene, mode and overlay");
+		DiagnosticLog.Write($"[Map] init answered ({_created.ElapsedMilliseconds} ms), pushing scene, mode and layers");
 
 		await PushSceneAsync();
 		await PushModeAsync();
-		await PushOverlayAsync();
+		await PushLayersAsync();
+
+		if (_layerRows is { } panel)
+		{
+			await SetLayersAsync(panel.Title, panel.Rows);
+		}
 
 		if (_pendingFocus is { } id)
 		{
@@ -681,7 +736,29 @@ public sealed partial class MapView : ContentView
 			await CallAsync("set", scene.ToJson(Theme.IsDark, MapScenes.Resolve, fit: false));
 		}
 
-		await PushOverlayAsync();
+		await PushLayersAsync();
+	}
+
+	private void TryRaiseLayersChanged(string json)
+	{
+		try
+		{
+			var states = new Dictionary<string, bool>(StringComparer.Ordinal);
+
+			using (JsonDocument document = JsonDocument.Parse(json))
+			{
+				foreach (JsonProperty property in document.RootElement.EnumerateObject())
+				{
+					states[property.Name] = property.Value.ValueKind == JsonValueKind.True || (property.Value.ValueKind == JsonValueKind.False && property.Value.GetBoolean());
+				}
+			}
+
+			MainThread.BeginInvokeOnMainThread(() => LayersChanged?.Invoke(this, states));
+		}
+		catch (Exception ex)
+		{
+			DiagnosticLog.Write($"[Map] layer states '{json}' failed: {ex.Message}");
+		}
 	}
 
 	// The page reports on a background thread; listeners touch views, so they are called on the UI thread.
@@ -703,15 +780,23 @@ public sealed partial class MapView : ContentView
 		MainThread.BeginInvokeOnMainThread(() => ViewportChanged?.Invoke(this, viewport));
 	}
 
-	private async Task PushOverlayAsync()
+	private async Task PushLayerAsync(string id)
 	{
 		if (!_ready
-			|| _overlay is not { } overlay)
+			|| !_layers.TryGetValue(id, out MapScene? layer))
 		{
 			return;
 		}
 
-		await CallAsync("overlay", overlay.ToJson(Theme.IsDark, MapScenes.Resolve));
+		await CallAsync("layer", id, layer.ToJson(Theme.IsDark, MapScenes.Resolve));
+	}
+
+	private async Task PushLayersAsync()
+	{
+		foreach (string id in _layers.Keys)
+		{
+			await PushLayerAsync(id);
+		}
 	}
 
 	private async Task PushModeAsync()
@@ -750,6 +835,9 @@ public sealed partial class MapView : ContentView
 
 	private Task CallAsync(string command, string? json) =>
 		WebBridge.CallAsync(_web, "ddMapCall", command, json, "Map");
+
+	private Task CallAsync(string command, string argument, string? json) =>
+		WebBridge.CallAsync(_web, "ddMapCall", command, argument, json, "Map");
 
 #if WINDOWS
 	private Microsoft.UI.Xaml.UIElement? _chinView;

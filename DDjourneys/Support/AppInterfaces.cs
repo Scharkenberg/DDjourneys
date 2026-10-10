@@ -17,8 +17,16 @@ public static class AppInterfaces
 			string.Empty,
 			string.Join(", ", AppStorage.Migrations.OrderBy(step => step.Version).Select(step => $"{step.Version} {step.Name}")));
 
+	/// <summary>The ends of followed journeys (key <c>tracking.endpoints</c>): from/via/to per plan, for a recovery search.</summary>
+	public static InterfaceSchema TrackingEndpoints { get; } =
+			new(
+				"tracking-endpoints", InterfaceKind.Internal, "Stored followed-journey endpoints",
+				"r1",
+				"tracking.endpoints",
+				"StoredJson envelope, one entry per plan: PlanId, From/To/Via as location objects (absent when unknown).");
+
 	public static IReadOnlyList<InterfaceSchema> All { get; } =
-		(List<InterfaceSchema>)[.. InterfaceSchemas.Core, Storage];
+		(List<InterfaceSchema>)[.. InterfaceSchemas.Core, Storage, TrackingEndpoints];
 
 	/// <summary>The build, the system and the interface list as plain text.</summary>
 	public static string Report() =>

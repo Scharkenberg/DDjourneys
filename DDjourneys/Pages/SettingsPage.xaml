@@ -255,6 +255,36 @@
 
 					<BoxView StyleClass="Divider" />
 
+					<!--  Windows only: the widgets of the Widgets Board  -->
+					<Grid
+						support:Dense.MinHeight="{StaticResource HitRow}"
+						support:Dense.Padding="12,8"
+						support:Motion.Feedback="True"
+						IsVisible="{Binding ShowWindowsWidgets}"
+						ColumnDefinitions="*,Auto"
+						ColumnSpacing="10">
+						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
+							<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Widgets.SetupTitle}" />
+							<Label
+								LineBreakMode="TailTruncation"
+								StyleClass="Caption"
+								Text="{localization:Tr Widgets.SetupSummary}" />
+						</VerticalStackLayout>
+
+						<controls:Icon
+							Grid.Column="1"
+							Glyph="ChevronRight"
+							Size="20"
+							VerticalOptions="Center"
+							Color="{DynamicResource InkMuted}" />
+
+						<Grid.GestureRecognizers>
+							<TapGestureRecognizer Command="{Binding OpenWidgetsCommand}" />
+						</Grid.GestureRecognizers>
+					</Grid>
+
+					<BoxView StyleClass="Divider" />
+
 					<VerticalStackLayout support:Dense.Padding="12,8" Spacing="4">
 						<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.Results}" />
 

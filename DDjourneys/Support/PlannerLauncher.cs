@@ -17,6 +17,10 @@ public sealed class PlannerLauncher(
 {
 	private static readonly TimeSpan Wait = TimeSpan.FromSeconds(8);
 
+	private static readonly TimeSpan NavigationRetry = TimeSpan.FromMilliseconds(250);
+
+	private const int NavigationAttempts = 40;
+
 	/// <summary>Journey to this place, from where the passenger is.</summary>
 	public async Task ToAsync(Location destination)
 	{
@@ -37,6 +41,61 @@ public sealed class PlannerLauncher(
 		return OpenAsync(
 			new ResolvedPlan(origin, null, null, true, null, false),
 			askFor: Ask.Destination);
+	}
+
+	/// <summary>
+	/// A recovery search (a missed connection): the planner is filled and searched at once, leaving now. A cold
+	/// start delivers before the shell exists, so the navigation waits like the tracked-journey navigator. Without
+	/// a start the planner asks for it instead of searching.
+	/// </summary>
+	public static async Task RecoverAsync(Location? from, Location to, Location? via)
+	{
+		ArgumentNullException.ThrowIfNull(to);
+
+		for (int tries = 0; tries < NavigationAttempts; tries++)
+		{
+			try
+			{
+				if (await MainThread.InvokeOnMainThreadAsync(() => TryRecoverAsync(from, to, via)).ConfigureAwait(false))
+				{
+					return;
+				}
+			}
+			catch (Exception ex)
+			{
+				DiagnosticLog.Write($"[Live] recovery navigation not ready yet: {ex.Message}");
+			}
+
+			await Task.Delay(NavigationRetry).ConfigureAwait(false);
+		}
+	}
+
+	private static async Task<bool> TryRecoverAsync(Location? from, Location to, Location? via)
+	{
+		if (Shell.Current is not { CurrentPage: not null } shell)
+		{
+			return false;
+		}
+
+		await Panes.ToStartAsync(shell);
+
+		if (shell.CurrentPage is not PlanPage page)
+		{
+			return false;
+		}
+
+		page.ApplyContract(
+			new ResolvedPlan(
+				from,
+				to,
+				When: null,
+				IsNow: true,
+				Mode: JourneySearchMode.Departure,
+				Search: from is not null,
+				Via: via,
+				AskMissing: from is null));
+
+		return true;
 	}
 
 	/// <summary>The stop nearest to the device, else nearest to the last known position, else null.</summary>

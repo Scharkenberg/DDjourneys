@@ -43,6 +43,33 @@ public static class WebBridge
 		}
 	}
 
+	/// <summary>The form with an argument between the command and the json (the map's layer command: id and payload).</summary>
+	public static async Task CallAsync(
+		HybridWebView web,
+		string function,
+		string command,
+		string argument,
+		string? json,
+		string log)
+	{
+		ArgumentNullException.ThrowIfNull(web);
+		ArgumentNullException.ThrowIfNull(argument);
+
+		try
+		{
+			await MainThread.InvokeOnMainThreadAsync(
+				() => web.InvokeJavaScriptAsync<string>(
+					function,
+					StringInfo,
+					[command, argument, json],
+					[StringInfo, StringInfo, StringInfo]));
+		}
+		catch (Exception ex)
+		{
+			DiagnosticLog.Write($"[{log}] '{command}' failed: {ex.Message}");
+		}
+	}
+
 	/// <summary>
 	/// Paints the frame of the web view in the theme background, on the control and on the native web view, so the
 	/// page never shows its own white (or the previous theme) before or around its content.

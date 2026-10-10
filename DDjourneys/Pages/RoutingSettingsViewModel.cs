@@ -53,6 +53,23 @@ public sealed partial class RoutingSettingsViewModel : DisposableViewModel
 				() => (int)_settings.MaxTransfers,
 				value => _settings.MaxTransfers = (MaxTransfers)value);
 
+		ViaStay =
+			new ChoiceGroup(
+				(List<(int Code, Func<string> Title)>)
+				[
+					(1, () => Strings.ViaAny),
+					(3, () => "3"),
+					(5, () => "5"),
+					(10, () => "10"),
+					(15, () => "15"),
+					(20, () => "20"),
+					(30, () => "30"),
+					(45, () => "45"),
+					(60, () => "60")
+				],
+				() => Math.Max(1, _settings.ViaMinutes),
+				value => _settings.ViaMinutes = value);
+
 		Pace =
 			new ChoiceGroup(
 				(List<(int Code, Func<string> Title)>)
@@ -175,6 +192,9 @@ public sealed partial class RoutingSettingsViewModel : DisposableViewModel
 	public IReadOnlyList<ToggleOption> Modes { get; }
 
 	public ChoiceGroup Transfers { get; }
+
+	/// <summary>How long the journey stays at the stop-over (client-side; every provider).</summary>
+	public ChoiceGroup ViaStay { get; }
 
 	public ChoiceGroup Pace { get; }
 
@@ -308,6 +328,7 @@ public sealed partial class RoutingSettingsViewModel : DisposableViewModel
 		}
 
 		Transfers.Refresh();
+		ViaStay.Refresh();
 		Pace.Refresh();
 		Accessibility.Refresh();
 		Entrance.Refresh();

@@ -33,8 +33,8 @@
 		<ApplicationId>dev.Scharkenberg.DDjourneys</ApplicationId>
 
 		<!-- Versions -->
-		<ApplicationDisplayVersion>0.8.6</ApplicationDisplayVersion>
-		<ApplicationVersion>13</ApplicationVersion>
+		<ApplicationDisplayVersion>0.9.0</ApplicationDisplayVersion>
+		<ApplicationVersion>1</ApplicationVersion>
 
 		<!-- To develop, package, and publish an app to the Microsoft Store, see: https://aka.ms/MauiTemplateUnpackaged -->
 		<WindowsPackageType>MSIX</WindowsPackageType>
@@ -81,6 +81,9 @@
 	<MauiIcon Include="Resources\AppIcon\appicon_windows.svg" Color="#121016">
 	  <CopyToOutputDirectory>Always</CopyToOutputDirectory>
 	</MauiIcon>
+	<!-- The widget picker art of the Widgets Board registration (Package.appxmanifest, Assets\Widgets): placeholder
+	     pictures until the owner screenshots real widgets on device. -->
+	<Content Include="Platforms\Windows\Assets\Widgets\*.png" TargetPath="Assets\Widgets\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

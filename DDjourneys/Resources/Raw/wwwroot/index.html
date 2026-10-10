@@ -250,6 +250,25 @@ body.dark .maplibregl-ctrl-group button .maplibregl-ctrl-icon { filter: invert(1
 	border-radius: var(--radius); padding: 4px 8px; font-size: .85rem; line-height: 1.3; }
 .dd-attr.open > div { display: block; }
 .dd-attr a { color: var(--ink); text-decoration: underline; }
+/* Layers: the map's own switch panel, filled by the app; hidden entirely while it has no rows. */
+.dd-layers { position: relative; }
+.dd-layers > button { background: var(--surface); border: 0; cursor: pointer; width: 30px; height: 30px; padding: 0; display: none; align-items: center; justify-content: center; }
+.dd-layers > button svg { width: 18px; height: 18px; stroke: var(--ink); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.dd-layers > button svg .solid { fill: var(--ink); stroke: none; }
+.dd-layers > div { display: none; position: absolute; right: 0; top: 34px; min-width: 200px; background: var(--surface); color: var(--ink); border: 1px solid var(--outline);
+	border-radius: var(--radius); padding: 4px; z-index: 5; }
+.dd-layers.open > div { display: block; }
+.dd-layers .row { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 36px; padding: 6px 10px; border: 0; background: none; color: var(--ink);
+	font: 600 .95rem/1.2 var(--font); text-align: left; cursor: pointer; border-radius: var(--radius); }
+.dd-layers .row:hover { background: var(--accent-soft); }
+.dd-layers .row i { width: 16px; height: 16px; border: 2px solid var(--ink-muted); border-radius: 4px; box-sizing: border-box; flex: none; }
+.dd-layers .row.on i { background: var(--accent); border-color: var(--accent); }
+.dd-layers .row.link i { display: none; }
+/* Zone numbers on the map: quiet, and only from this zoom on (see updateLabelZoom). */
+.dd-zlicon { background: none; border: 0; }
+.dd-zone-label { position: absolute; transform: translate(-50%, -50%); font: 700 calc(.8rem * var(--fs))/1 var(--font); color: var(--ink);
+	text-shadow: 0 0 3px var(--bg), 0 0 3px var(--bg), 0 0 3px var(--bg); pointer-events: none; display: none; }
+.zz .dd-zone-label { display: block; }
 .dd-fit { margin: 0 0 10px 10px; }
 .dd-fit button { display: flex; align-items: center; gap: 6px; min-height: 32px; height: auto; padding: 0 10px 0 8px; border: 1px solid var(--outline); border-radius: var(--radius); background: var(--surface);
 	color: var(--ink); font-family: inherit; font-weight: 600; font-size: .95rem; line-height: 1; cursor: pointer; }
@@ -281,6 +300,16 @@ body.dark .maplibregl-ctrl-group button .maplibregl-ctrl-icon { filter: invert(1
 .dd-knot { width: 8px; height: 8px; border-radius: 50%; background: var(--surface); border: 2px solid var(--outline); opacity: .9; }
 .dd-poi { width: 12px; height: 12px; background: var(--accent); border: 2px solid var(--surface); transform: translate(-50%, -50%) rotate(45deg) !important; box-shadow: 0 0 0 1px var(--outline); }
 .dd-veh { font-weight: 700; font-size: 1.05rem; line-height: 1.5rem; height: 1.8rem; min-width: 2.4rem; padding: 0 .5rem; text-align: center; white-space: nowrap; border-radius: var(--radius-card); border: 2px solid var(--surface); box-shadow: 0 0 0 1px rgba(0,0,0,.4), 0 1px 5px rgba(0,0,0,.5); transform: translate(-50%, -50%); position: absolute; left: 0; top: 0; box-sizing: border-box; }
+/* A park &amp; ride site (square with a P) or a bike station (Tier 2): the site is named from zoom 13 and
+   carries its counts from zoom 14 - the short form below, the full form at the stops' zoom (see .zz/.zl). */
+.dd-parking { width: 18px; height: 18px; border-radius: 5px; background: var(--surface); border: 2px solid var(--accent); box-shadow: 0 0 0 1px var(--surface); font: 700 .7rem/1 var(--font); line-height: 14px; text-align: center; color: var(--ink); }
+.dd-lbl.dd-site .s, .dd-lbl.dd-site .f { display: none; }
+.zz .dd-m .dd-lbl.dd-site { display: block; }
+.zz .dd-lbl.dd-site .s { display: inline; }
+.zl .dd-lbl.dd-site .s { display: none; }
+.zl .dd-lbl.dd-site .f { display: inline; }
+.dd-bike { width: 18px; height: 18px; border-radius: 50%; background: var(--surface); border: 2px solid var(--accent); box-shadow: 0 0 0 1px var(--surface); }
+.dd-bike svg { display: block; width: 12px; height: 12px; margin: 1px auto 0; stroke: var(--ink); stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
 </style>
 </head>
 <body>
@@ -292,9 +321,14 @@ window.ddMain = function (engineName) {
 	var map = null, key = '', theme = null, styleName = null, styleReady = false;
 	var autoFit = true, labels = { autoFit: 'Auto-fit', fitNow: 'Fit', info: 'Map data' }, autoButton = null;
 	var scene = { markers: [], lines: [] }, wantFit = false;
-	var markers = {}, overlayMarkers = {}, overlay = [], explore = false, pickMode = false, pendingCenter = null, viewTimer = 0;
+	var markers = {}, explore = false, pickMode = false, pendingCenter = null, viewTimer = 0;
 	var errors = 0, firstRender = false, firstStyle = false, firstIdle = false;
-	var engine = engineName, gl = engine === 'carto', eng = null, tiles = null, lineGroup = null, programmatic = 0;
+	var engine = engineName, gl = engine === 'carto', eng = null, tiles = null, lineGroup = null, shapeGroup = null, programmatic = 0;
+
+	// Layers: one group per id (markers, polygons, labels), sent once by the app instead of on every viewport
+	// change. Layer ids are marker-id namespaces: "stops" for the stops in view, Tier 2 uses p:/b:/v: prefixes.
+	var layerPayloads = {}, layerStores = {}, layerPolyGroups = {}, layerLabelMarkers = {};
+	var layerRows = null, layerState = {}, layerTitle = '', layerButton = null, layerPanel = null;
 
 	function dd(text) { if (window.ddLog) { window.ddLog(text); } }
 
@@ -576,6 +610,12 @@ window.ddMain = function (engineName) {
 		});
 	}
 
+	// A park &amp; ride site or a bike station (Tier 2): named from zoom 13, the counts from zoom 14; the CSS in
+	// the header picks the short or the full form, so this only builds the two spans.
+	function siteLabel(m) {
+		return '<span class="dd-lbl dd-site"><span class="s">' + esc(m.label || '') + '</span><span class="f">' + esc(m.title || '') + '</span></span>';
+	}
+
 	function markerElement(m) {
 		var el = document.createElement('div');
 		var color = esc(m.color || '');
@@ -589,6 +629,12 @@ window.ddMain = function (engineName) {
 			case 'vehicle':
 				var fill = m.color || (theme && theme.accent) || '#0b6e8a';
 				inner = '<div class="dd-veh" style="background:' + esc(fill) + ';color:' + readableInk(fill) + '">' + esc(m.label) + '</div>';
+				break;
+			case 'parking':
+				inner = '<i class="dd-parking"' + style + '>P</i>' + siteLabel(m);
+				break;
+			case 'bike':
+				inner = '<i class="dd-bike"' + style + '><svg viewBox="0 0 24 24"><circle cx="6" cy="17" r="3.6"/><circle cx="18" cy="17" r="3.6"/><path d="M6.5 17l3.5-7h5l3 7M9.5 12h6"/></svg></i>' + label;
 				break;
 			case 'knot': inner = '<i class="dd-knot"></i>'; break;
 			case 'start': inner = '<i class="dd-start" style="background:var(--accent)"></i>' + label; el.className += ' always'; break;
@@ -664,7 +710,140 @@ window.ddMain = function (engineName) {
 
 	function applyMarkers() {
 		syncMarkers(markers, scene.markers, false);
-		syncMarkers(overlayMarkers, overlay, true);
+		applyLayerMarkers();
+	}
+
+	// ---- layers (per-id groups; static data arrives once, only what moves is sent again) ----
+	function setLayer(id, payload) {
+		if (!id) { return; }
+
+		layerPayloads[id] = payload || {};
+
+		if (!map) { return; }
+
+		applyLayer(id);
+	}
+
+	function applyLayerMarkers() {
+		Object.keys(layerPayloads).forEach(function (id) { applyLayer(id); });
+	}
+
+	function applyLayer(id) {
+		if (!map) { return; }
+
+		var payload = layerPayloads[id] || {};
+
+		if (!layerStores[id]) { layerStores[id] = {}; }
+
+		syncMarkers(layerStores[id], inView(payload.markers || []), true);
+
+		drawLayerShapes(id);
+	}
+
+	// A large layer (the sharing bikes are 500+) only keeps the markers in view, so the DOM never holds
+	// them all at once; small layers (stops, parking, vehicles capped) go through unchanged. Called again
+	// on every moveend, so what left the view goes and what entered arrives (the id-stable diff pays for it).
+	var LAYER_CULL = 120;
+
+	function inView(list) {
+		if (!map || !list || list.length <= LAYER_CULL) { return list; }
+
+		var bounds = map.getBounds();
+
+		return list.filter(function (m) {
+			return gl ? bounds.contains([m.lon, m.lat]) : bounds.contains([m.lat, m.lon]);
+		});
+	}
+
+	function drawAllLayerShapes() {
+		Object.keys(layerPayloads).forEach(drawLayerShapes);
+	}
+
+	function drawLayerShapes(id) {
+		if (!map) { return; }
+
+		var polys = (layerPayloads[id] || {}).polygons || [];
+
+		if (gl) { drawLayerShapesGL(id, polys); } else { drawLayerShapesLeaflet(id, polys); }
+	}
+
+	function drawLayerShapesGL(id, polys) {
+		var fillId = 'dd-' + id + '-fill', lineId = 'dd-' + id + '-line';
+
+		[fillId, lineId].forEach(function (lid) { if (map.getLayer(lid)) { map.removeLayer(lid); } });
+		if (map.getSource('dd-' + id)) { map.removeSource('dd-' + id); }
+
+		removeLayerLabels(id);
+
+		if (!polys.length || !styleReady) { return; }
+
+		var features = polys.map(function (poly) {
+			var ring = poly.points.map(function (pt) { return [pt[1], pt[0]]; });
+
+			// A GeoJSON ring is closed; the payload's ring may arrive open.
+			if (ring.length && (ring[0][0] !== ring[ring.length - 1][0] || ring[0][1] !== ring[ring.length - 1][1])) { ring.push([ring[0][0], ring[0][1]]); }
+
+			return {
+				type: 'Feature',
+				properties: { fill: poly.color, op: poly.opacity == null ? 0.12 : poly.opacity, outline: poly.outline || poly.color },
+				geometry: { type: 'Polygon', coordinates: [ring] }
+			};
+		});
+
+		map.addSource('dd-' + id, { type: 'geojson', data: { type: 'FeatureCollection', features: features } });
+
+		// Under the route lines when there are any, and always under the first basemap label.
+		var before = map.getLayer('dd-casing') ? 'dd-casing' : firstLabelLayer();
+
+		map.addLayer({ id: fillId, type: 'fill', source: 'dd-' + id,
+			paint: { 'fill-color': ['get', 'fill'], 'fill-opacity': ['get', 'op'] } }, before);
+		map.addLayer({ id: lineId, type: 'line', source: 'dd-' + id, layout: { 'line-join': 'round' },
+			paint: { 'line-color': ['get', 'outline'], 'line-width': 1, 'line-opacity': 0.55 } }, before);
+
+		addLayerLabels(id, polys);
+	}
+
+	function drawLayerShapesLeaflet(id, polys) {
+		if (!shapeGroup) { shapeGroup = L.layerGroup().addTo(map); }
+
+		if (!layerPolyGroups[id]) { layerPolyGroups[id] = L.layerGroup().addTo(shapeGroup); }
+
+		layerPolyGroups[id].clearLayers();
+		removeLayerLabels(id);
+
+		polys.forEach(function (poly) {
+			var latlngs = poly.points.map(function (pt) { return [pt[0], pt[1]]; });
+
+			L.polygon(latlngs, { color: poly.outline || poly.color, weight: 1, opacity: 0.55, fillColor: poly.color,
+				fillOpacity: poly.opacity == null ? 0.12 : poly.opacity, interactive: false }).addTo(layerPolyGroups[id]);
+		});
+
+		addLayerLabels(id, polys);
+	}
+
+	// The number inside a zone (or whatever label a polygon carries): a plain element on top, zoom-gated by CSS.
+	function addLayerLabels(id, polys) {
+		layerLabelMarkers[id] = [];
+
+		polys.forEach(function (poly) {
+			if (!poly.label || !poly.at) { return; }
+
+			var el = document.createElement('div');
+			el.className = 'dd-zone-label';
+			el.textContent = poly.label;
+
+			var mk = gl
+				? new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat([poly.at[1], poly.at[0]]).addTo(map)
+				: L.marker([poly.at[0], poly.at[1]], { icon: L.divIcon({ html: el, className: 'dd-zlicon', iconSize: [0, 0], iconAnchor: [0, 0] }), interactive: false, keyboard: false }).addTo(map);
+
+			layerLabelMarkers[id].push(mk);
+		});
+	}
+
+	function removeLayerLabels(id) {
+		(layerLabelMarkers[id] || []).forEach(function (mk) { mk.remove(); });
+
+		layerLabelMarkers[id] = [];
 	}
 
 	// The visible area, reported after every move so C# can load what is in it.
@@ -694,6 +873,7 @@ window.ddMain = function (engineName) {
 
 	function updateLabelZoom() {
 		document.body.classList.toggle('zl', map.getZoom() >= 14.2);
+		document.body.classList.toggle('zz', map.getZoom() >= 13);
 	}
 
 	// A minimal MapLibre control built from a class name and a function that fills its box.
@@ -730,6 +910,72 @@ window.ddMain = function (engineName) {
 		refreshAuto();
 	}
 
+	// The layers button (top right, beside zoom and fit): opens the app-provided rows. Checkbox rows
+	// toggle their layer; plain link rows only announce their tap (C# decides what happens then).
+	function buildLayers(box) {
+		layerPanel = document.createElement('div');
+		layerButton = document.createElement('button');
+		layerButton.type = 'button';
+		layerButton.innerHTML = '<svg viewBox="0 0 24 24"><path class="solid" d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg>';
+		layerButton.style.display = 'none';
+		layerButton.addEventListener('click', function (e) { e.stopPropagation(); box.classList.toggle('open'); });
+		document.addEventListener('click', function () { box.classList.remove('open'); });
+		map.on('movestart', function () { box.classList.remove('open'); });
+		box.appendChild(layerPanel);
+		box.appendChild(layerButton);
+		refreshLayerRows();
+	}
+
+	function refreshLayerRows() {
+		if (!layerButton || !layerPanel) { return; }
+
+		var rows = layerRows || [];
+
+		layerButton.style.display = rows.length ? 'flex' : 'none';
+		layerButton.title = layerTitle;
+		layerButton.setAttribute('aria-label', layerTitle);
+		layerPanel.innerHTML = '';
+
+		rows.forEach(function (row) {
+			var b = document.createElement('button');
+			var check = !row.link;
+
+			b.type = 'button';
+			b.className = 'row' + (check && layerState[row.id] ? ' on' : '') + (check ? '' : ' link');
+			b.textContent = row.label;
+
+			if (check) {
+				b.setAttribute('role', 'checkbox');
+				b.setAttribute('aria-checked', layerState[row.id] ? 'true' : 'false');
+			}
+
+			b.appendChild(document.createElement('i'));
+			b.addEventListener('click', function (e) {
+				e.stopPropagation();
+
+				if (check) {
+					layerState[row.id] = !layerState[row.id];
+					refreshLayerRows();
+				}
+
+				postLayers(check ? null : row.id);
+			});
+
+			layerPanel.appendChild(b);
+		});
+	}
+
+	// Every change posts all rows, so C# stays stateless; a plain row posts its own id as well.
+	function postLayers(linkId) {
+		var state = {};
+
+		Object.keys(layerState).forEach(function (rowId) { state[rowId] = layerState[rowId]; });
+
+		if (linkId) { state[linkId] = true; }
+
+		send('layers:' + JSON.stringify(state));
+	}
+
 	function buildAttribution(box, html) {
 		var b = document.createElement('button');
 		b.type = 'button';
@@ -745,7 +991,7 @@ window.ddMain = function (engineName) {
 		document.addEventListener('click', function () { box.classList.remove('open'); });
 	}
 
-	var ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a> &middot; ';
+	var ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a> &middot; P+R: VVO &middot; Bikes: Nextbike &middot; ';
 
 	function refreshAuto() {
 		if (!autoButton) { return; }
@@ -804,6 +1050,7 @@ window.ddMain = function (engineName) {
 		map.touchZoomRotate.disableRotation();
 		map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
 		map.addControl(control('maplibregl-ctrl maplibregl-ctrl-group dd-fitnow', buildFitNow), 'top-right');
+		map.addControl(control('maplibregl-ctrl maplibregl-ctrl-group dd-layers', buildLayers), 'top-right');
 
 		// Lower left: the top of the map is covered by the page's hints (tracking banner and the like).
 		map.addControl(control('maplibregl-ctrl dd-fit', buildAuto), 'bottom-left');
@@ -821,6 +1068,7 @@ window.ddMain = function (engineName) {
 		map.on('moveend', function () {
 			clearTimeout(viewTimer);
 			viewTimer = setTimeout(reportView, 300);
+			applyLayerMarkers();
 		});
 
 		map.on('click', function (e) {
@@ -833,6 +1081,7 @@ window.ddMain = function (engineName) {
 
 			recolor();
 			drawLines();
+			drawAllLayerShapes();
 
 			if (wantFit) { wantFit = false; fit(); }
 
@@ -872,7 +1121,7 @@ window.ddMain = function (engineName) {
 
 		map.getPanes().tilePane.style.filter = invert ? 'invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9)' : '';
 
-		if (attrDiv) { attrDiv.innerHTML = tileSources[tileIndex].attribution + ' &middot; <a href="https://leafletjs.com">Leaflet</a>'; }
+		if (attrDiv) { attrDiv.innerHTML = tileSources[tileIndex].attribution + ' &middot; <a href="https://leafletjs.com">Leaflet</a> &middot; P+R: VVO &middot; Bikes: Nextbike'; }
 	}
 
 	function makeTiles() {
@@ -938,12 +1187,15 @@ window.ddMain = function (engineName) {
 
 		makeTiles();
 
+		// Polygons of the layers lie under the route lines: their group is added first.
+		shapeGroup = L.layerGroup().addTo(map);
 		lineGroup = L.layerGroup().addTo(map);
 		styleName = theme.dark ? 'dark' : 'light';
 		styleReady = true;
 
 		L.control.zoom({ position: 'topright' }).addTo(map);
 		lfControl('topright', 'leaflet-bar dd-fitnow', buildFitNow);
+		lfControl('topright', 'leaflet-bar dd-layers', buildLayers);
 		lfControl('bottomleft', 'dd-fit', buildAuto);
 		lfControl('bottomright', 'dd-attr', function (box) { buildAttribution(box, ''); attrDiv = box.firstChild; applyTileLook(); });
 
@@ -955,6 +1207,7 @@ window.ddMain = function (engineName) {
 		map.on('moveend', function () {
 			clearTimeout(viewTimer);
 			viewTimer = setTimeout(reportView, 300);
+			applyLayerMarkers();
 		});
 
 		map.on('click', function (e) {
@@ -1095,11 +1348,16 @@ window.ddMain = function (engineName) {
 	}
 
 	// The one entry point C# calls (HybridWebView.InvokeJavaScriptAsync).
-	window.ddMapCall = function (command, json) {
-		dd('ddMapCall ' + command + (json ? ' (' + json.length + ' chars)' : ''));
+	// The one entry point C# calls (HybridWebView.InvokeJavaScriptAsync). The layer command carries a
+	// layer id between the command and the json; every other command passes (command, json) only.
+	window.ddMapCall = function (command, a, b) {
+		var id = b === undefined ? null : a;
+		var json = b === undefined ? a : b;
+
+		dd('ddMapCall ' + command + (id ? ' ' + id : '') + (json ? ' (' + json.length + ' chars)' : ''));
 
 		try {
-			return mapCall(command, json);
+			return mapCall(command, json, id);
 		} catch (e) {
 			dd('ddMapCall ' + command + ' threw: ' + (e && e.stack ? e.stack : e));
 			send('error:' + command + ': ' + (e && e.message));
@@ -1107,7 +1365,7 @@ window.ddMain = function (engineName) {
 		}
 	};
 
-	function mapCall(command, json) {
+	function mapCall(command, json, id) {
 		var arg = json ? JSON.parse(json) : null;
 
 		switch (command) {
@@ -1128,9 +1386,15 @@ window.ddMain = function (engineName) {
 				reportView();
 				break;
 
-			case 'overlay':
-				overlay = (arg && arg.markers) || [];
-				applyMarkers();
+			case 'layer':
+				setLayer(id, arg);
+				break;
+
+			case 'layers':
+				layerRows = (arg && arg.rows) || [];
+				layerState = (arg && arg.state) || {};
+				layerTitle = (arg && arg.label) || '';
+				refreshLayerRows();
 				break;
 
 			case 'center':
