@@ -21,9 +21,9 @@ public static partial class PdfPages
 	/// The part to draw is taken from the page's crop box, the frame <c>SourceRect</c> shares its units with
 	/// (Microsoft's PdfDocument sample does the same with the trim box).
 	/// </summary>
-	private sealed class WindowsPdfPage(PdfPage page) : IPdfPage
+	private sealed partial class WindowsPdfPage(PdfPage page) : IPdfPage
 	{
-		private readonly Rect _box = page.Dimensions.CropBox;
+		private readonly Windows.Foundation.Rect _box = page.Dimensions.CropBox;
 
 		public double Aspect => _box.Height > 0 ? _box.Width / _box.Height : 1;
 
@@ -39,7 +39,7 @@ public static partial class PdfPages
 			var options =
 				new PdfPageRenderOptions
 				{
-					SourceRect = new Rect(
+					SourceRect = new Windows.Foundation.Rect(
 						_box.X + left * _box.Width,
 						_box.Y + top * _box.Height,
 						width * _box.Width,

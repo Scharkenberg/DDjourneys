@@ -15,9 +15,10 @@ public readonly record struct PlanZoom(bool CanZoomIn, bool CanZoomOut);
 /// </summary>
 public sealed partial class PlanView : ContentView
 {
-	// Addresses carry the plan version, so the web view may keep what it got for a while (back-and-forth pans).
+	// Never kept by the web view: the status is sent before the tile is drawn, so a tile that failed is an empty 200,
+	// and a cached empty answer would stay a hole. The tiles live in the app's own disk cache instead.
 	private static readonly IReadOnlyDictionary<string, string> Caching =
-		new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["Cache-Control"] = "private, max-age=3600" };
+		new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["Cache-Control"] = "no-store" };
 
 	private readonly HybridWebView _web;
 	private IPlanTiles? _tiles;

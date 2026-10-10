@@ -21,6 +21,8 @@ html:not(.themed) body { visibility: hidden; }
 html.dark .leaflet-tile-pane, html.dark .leaflet-paper-pane, html.dark .leaflet-overlay-pane img { filter: brightness(.9); }
 .leaflet-container { font: inherit; }
 .leaflet-tile { image-rendering: auto; }
+/* Scaled levels (fractional zoom) leave hairline gaps between tiles: each tile reaches half a pixel into the next. */
+.plan-tiles img.leaflet-tile { width: calc(var(--tile) + 0.5px) !important; height: calc(var(--tile) + 0.5px) !important; }
 </style>
 </head>
 <body>
@@ -99,6 +101,24 @@ html.dark .leaflet-tile-pane, html.dark .leaflet-paper-pane, html.dark .leaflet-
 	}
 
 	// ---- plan ----
+	// A tile that came back empty (drawing failed, request cut off) is asked for again, twice, a little later; Leaflet
+	// keeps the img and its load handler, so a late success counts as loaded. Without it the hole stays, and the tiles
+	// of the level before show through it at their own scale.
+	var RETRIES = 3;
+
+	function retry(tile, coords) {
+		var tries = (tile._tries || 0) + 1;
+		if (tries > RETRIES || !tiles) { return false; }
+		tile._tries = tries;
+		var layer = tiles;
+		setTimeout(function () {
+			if (layer !== tiles || !tile.isConnected) { return; }
+			var url = layer.getTileUrl(coords);
+			tile.src = url + (url.indexOf('?') < 0 ? '?' : '&') + 'try=' + tries;
+		}, 300 * tries * tries);
+		return true;
+	}
+
 	function clear() {
 		if (map) { map.remove(); map = null; }
 		tiles = image = paper = null;
@@ -151,12 +171,15 @@ html.dark .leaflet-tile-pane, html.dark .leaflet-paper-pane, html.dark .leaflet-
 				maxZoom: levels + (plan.overZoom || 0),
 				bounds: bounds,
 				noWrap: true,
-				keepBuffer: 3,
-				updateWhenZooming: false
+				keepBuffer: 4,
+				updateWhenZooming: false,
+				className: 'plan-tiles'
 			});
 
+			document.documentElement.style.setProperty('--tile', plan.tileSize + 'px');
+
 			tiles.on('tileload', function () { loaded++; });
-			tiles.on('tileerror', function () { failed++; });
+			tiles.on('tileerror', function (e) { retry(e.tile, e.coords) || failed++; });
 			// The first complete view decides: the plan is up, or nothing of it could be drawn.
 			tiles.on('load', function () { announce(loaded > 0 || failed === 0); });
 			tiles.addTo(map);
