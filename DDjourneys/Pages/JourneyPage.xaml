@@ -837,6 +837,21 @@
 							StyleClass="Caption"
 							Text="{Binding FaresZonesText}" />
 
+						<!--  The zones the ticket counts, seen: the fare zone plan with both ends of the journey marked.  -->
+						<Border HorizontalOptions="Start" StyleClass="ChipButton">
+							<HorizontalStackLayout Spacing="6">
+								<controls:Icon
+									Glyph="Map"
+									Size="16"
+									VerticalOptions="Center"
+									Color="{DynamicResource Accent}" />
+								<Label Text="{localization:Tr Extras.ZonePlanShow}" VerticalOptions="Center" />
+							</HorizontalStackLayout>
+							<Border.GestureRecognizers>
+								<TapGestureRecognizer Command="{Binding ShowZonePlanCommand}" />
+							</Border.GestureRecognizers>
+						</Border>
+
 						<Label
 							IsVisible="{Binding HasFaresNotes}"
 							LineBreakMode="WordWrap"

@@ -35,6 +35,7 @@ public sealed partial class SettingsViewModel : DisposableViewModel
 		OpenWidgetsCommand = new AsyncCommand(OpenWidgetsAsync);
 		OpenExploreMapCommand = new AsyncCommand(() => Shell.Current.GoToAsync(Routes.Map));
 		OpenNetworkMapCommand = new AsyncCommand(() => Shell.Current.GoToAsync(Routes.NetworkMap));
+		OpenZonePlanCommand = new AsyncCommand(() => Shell.Current.GoToAsync(Routes.ZonePlan));
 		ShareLogCommand = new AsyncCommand(ShareLogAsync);
 		ClearLogCommand = new Command(ClearLog);
 		OpenAboutCommand = new AsyncCommand(OpenAboutAsync);
@@ -146,6 +147,7 @@ public sealed partial class SettingsViewModel : DisposableViewModel
 	public AsyncCommand OpenExploreMapCommand { get; }
 
 	public AsyncCommand OpenNetworkMapCommand { get; }
+	public AsyncCommand OpenZonePlanCommand { get; }
 	public AsyncCommand ShareLogCommand { get; }
 	public Command ClearLogCommand { get; }
 	public AsyncCommand OpenAboutCommand { get; }

@@ -160,6 +160,97 @@ public class GbfsTests
 		Assert.Equal("https://www.nextbike.de/de/dresden/", albertplatz.WebUri!.ToString());
 	}
 
+	/// <summary>Trimmed from the live MOBIbike 2.3 feeds (October 2026): flags are JSON booleans, most stations are virtual.</summary>
+	private const string LiveInformation =
+		"""
+		{"last_updated":1791679074,"ttl":60,"version":"2.3","data":{"stations":[
+			{"station_id":"6768","name":"MOBIpunkt Fetscherplatz","short_name":"43004","lat":51.046605,"lon":13.771298,"region_id":"685",
+			 "rental_uris":{"android":"https://app.nextbike.net/station?id=6768","ios":"https://app.nextbike.net/station?id=6768","web":"https://nxtb.it/p/6768"},
+			 "is_virtual_station":false,"capacity":8},
+			{"station_id":"4711","name":"Albertplatz","short_name":"43100","lat":51.0638,"lon":13.7477,"region_id":"685","is_virtual_station":true,
+			 "station_area":{"type":"MultiPolygon","coordinates":[]}}
+		]}}
+		""";
+
+	private const string LiveStatus =
+		"""
+		{"last_updated":1791679074,"ttl":60,"version":"2.3","data":{"stations":[
+			{"station_id":"6768","num_bikes_available":2,"vehicle_types_available":[{"vehicle_type_id":"196","count":1},{"vehicle_type_id":"275","count":1}],
+			 "num_docks_available":6,"is_installed":true,"is_renting":true,"is_returning":true,"last_reported":1791679074},
+			{"station_id":"4711","num_bikes_available":0,"vehicle_types_available":[],"num_docks_available":0,"is_installed":true,"is_renting":true,"is_returning":true,"last_reported":1791679074}
+		]}}
+		""";
+
+	private const string LiveTypes =
+		"""
+		{"last_updated":1791679074,"ttl":60,"data":{"vehicle_types":[
+			{"vehicle_type_id":"196","name":"Classic Bike","form_factor":"bicycle","rider_capacity":1,"propulsion_type":"human"},
+			{"vehicle_type_id":"275","name":"E-Bike","form_factor":"bicycle","rider_capacity":1,"propulsion_type":"electric_assist"},
+			{"vehicle_type_id":"1","form_factor":"scooter","propulsion_type":"electric","max_range_meters":24140}
+		]}}
+		""";
+
+	private const string LiveFree =
+		"""
+		{"last_updated":1791679068,"ttl":60,"version":"2.2","data":{"bikes":[
+			{"bike_id":"at-station","lat":51.0466,"lon":13.7713,"is_reserved":false,"is_disabled":false,"vehicle_type_id":"196","station_id":"6768"},
+			{"bike_id":"free-1","lat":51.0293,"lon":13.7191,"is_reserved":false,"is_disabled":false,"current_range_meters":16061,"vehicle_type_id":"3","last_reported":1791679068,"vehicle_type":"e-bike"},
+			{"bike_id":"free-2","lat":51.03,"lon":13.72,"is_reserved":false,"is_disabled":false,"vehicle_type_id":"1"},
+			{"bike_id":"reserved","lat":51.03,"lon":13.72,"is_reserved":true,"is_disabled":false},
+			{"bike_id":"broken","lat":51.03,"lon":13.72,"is_reserved":false,"is_disabled":1}
+		]}}
+		""";
+
+	[Fact]
+	public void Boolean_flags_virtual_stations_and_e_bikes_are_read()
+	{
+		IReadOnlyList<SharedStation> joined = GbfsClient.Join(
+			Read<GbfsStationInformation>(LiveInformation),
+			Read<GbfsStationStatus>(LiveStatus),
+			"MOBIbike",
+			types: Read<GbfsVehicleTypes>(LiveTypes),
+			operatorId: "nextbike",
+			appPackage: "de.nextbike");
+
+		Assert.Equal(2, joined.Count);
+
+		SharedStation punkt = joined[0];
+		Assert.False(punkt.IsVirtual);
+		Assert.Equal(2, punkt.Bikes);
+		Assert.Equal(1, punkt.EBikes);
+		Assert.Equal(6, punkt.Docks);
+		Assert.Equal(8, punkt.Capacity);
+		Assert.True(punkt.IsRenting);
+		Assert.True(punkt.HasStatus);
+		Assert.Equal("de.nextbike", punkt.AppPackage);
+		Assert.Equal("https://app.nextbike.net/station?id=6768", punkt.AppUri!.ToString());
+
+		SharedStation area = joined[1];
+		Assert.True(area.IsVirtual);
+		Assert.Equal(0, area.Bikes);
+		Assert.Null(area.Docks);
+		Assert.Null(area.Capacity);
+	}
+
+	[Fact]
+	public void Free_vehicles_leave_out_the_docked_the_reserved_and_the_disabled()
+	{
+		IReadOnlyList<SharedVehicle> vehicles = GbfsClient.Vehicles(
+			Read<GbfsFreeBikeStatus>(LiveFree),
+			Read<GbfsVehicleTypes>(LiveTypes),
+			"lime",
+			"Lime",
+			appPackage: "com.limebike");
+
+		Assert.Equal(new[] { "free-1", "free-2" }, vehicles.Select(vehicle => vehicle.Id));
+
+		// No type "3" in the list: Lime's own word decides.
+		Assert.Equal(SharedKind.EBike, vehicles[0].Kind);
+		Assert.Equal(16061, vehicles[0].RangeMeters);
+		Assert.Equal(SharedKind.Scooter, vehicles[1].Kind);
+		Assert.All(vehicles, static vehicle => Assert.Equal("com.limebike", vehicle.AppPackage));
+	}
+
 	[Fact]
 	public void Posix_timestamps_are_told_apart_by_their_size()
 	{

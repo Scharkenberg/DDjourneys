@@ -103,9 +103,9 @@ public class ParkingTests
 
 		IReadOnlyList<ParkingSite> mapped = VvoParkingProvider.MapSites(sites, live);
 
-		// Prohlis: every sensor is occupied or out of service, so the counts would lie.
+		// Prohlis: every sensor is occupied or out of service, so the counts would lie; the capacity stays.
 		ParkingSite prohlis = mapped[3];
-		Assert.Equal(0, prohlis.Total);
+		Assert.Equal(40, prohlis.Total);
 		Assert.Equal(0, prohlis.Free);
 		Assert.False(prohlis.HasLive);
 	}
@@ -134,9 +134,50 @@ public class ParkingTests
 		Assert.Equal(2, live[3].LiveData.Count);
 	}
 
+	/// <summary>Two sites exactly as the live file had them (October 2026): ppid a number, German local time, -1 = not counted.</summary>
+	private const string LiveSample =
+		"""
+		[{"info":"47 Stellplätze, , ","LiveData":[{"status":0,"lon":13.52423669470234,"tag":"disabled","lat":51.2906737360856},{"status":1,"lon":13.5243,"tag":"","lat":51.2906}],
+		  "dtg":"11.10.2026-02:37:19","lon":13.524244,"name":"P+R Großenhain","number_free_ago":36,"number_total":47,"number_free_now":36,"ppid":3663,"id":"VVO-2104107924","lat":51.290963},
+		 {"info":"10 Stellplätze, , ","LiveData":[],"dtg":"","lon":13.515315,"name":"P+R Zabeltitz","number_free_ago":0,"number_total":10,"number_free_now":-1,"ppid":0,"id":"VVO-2104107933","lat":51.349508}]
+		""";
+
+	[Fact]
+	public void The_live_file_shape_is_read()
+	{
+		VvoParkingSite[] sites = (VvoParkingSite[])JsonSerializer.Deserialize(LiveSample, VvoJson.TypeInfo(typeof(VvoParkingSite[]))!)!;
+		VvoParkingSiteLive[] live = (VvoParkingSiteLive[])JsonSerializer.Deserialize(LiveSample, VvoJson.TypeInfo(typeof(VvoParkingSiteLive[]))!)!;
+
+		Assert.Equal("3663", sites[0].Ppid);
+
+		IReadOnlyList<ParkingSite> mapped = VvoParkingProvider.MapSites(sites, live);
+
+		Assert.Equal(2, mapped.Count);
+
+		ParkingSite großenhain = mapped[0];
+		Assert.Equal("VVO-2104107924", großenhain.Id);
+		Assert.Equal(47, großenhain.Total);
+		Assert.Equal(36, großenhain.Free);
+		Assert.True(großenhain.HasLive);
+		Assert.Equal(DateTimeOffset.Parse("2026-10-11T00:37:19Z"), großenhain.LiveAt);
+
+		// -1 is "not counted": the capacity, no live numbers (never "P+R -1").
+		ParkingSite zabeltitz = mapped[1];
+		Assert.Equal(10, zabeltitz.Total);
+		Assert.Equal(0, zabeltitz.Free);
+		Assert.False(zabeltitz.HasLive);
+	}
+
 	[Fact]
 	public void Timestamps_are_parsed_tolerantly()
 	{
+		// The file's own form, in Dresden time (summer: UTC+2, winter: UTC+1).
+		Assert.Equal(
+			DateTimeOffset.Parse("2026-10-11T00:37:19Z"),
+			VvoParkingProvider.ParseTimestamp("11.10.2026-02:37:19"));
+		Assert.Equal(
+			DateTimeOffset.Parse("2026-12-01T07:00:00Z"),
+			VvoParkingProvider.ParseTimestamp("01.12.2026-08:00:00"));
 		Assert.Equal(
 			DateTimeOffset.Parse("2026-10-05T07:41:00Z"),
 			VvoParkingProvider.ParseTimestamp("2026-10-05T07:41:00Z"));

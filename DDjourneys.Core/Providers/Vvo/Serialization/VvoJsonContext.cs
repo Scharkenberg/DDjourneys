@@ -48,6 +48,8 @@ namespace DDjourneys.Core.Providers.Vvo.Serialization;
 [JsonSerializable(typeof(GbfsDiscovery))]
 [JsonSerializable(typeof(GbfsStationInformation))]
 [JsonSerializable(typeof(GbfsStationStatus))]
+[JsonSerializable(typeof(GbfsFreeBikeStatus))]
+[JsonSerializable(typeof(GbfsVehicleTypes))]
 internal sealed partial class VvoJsonContext : JsonSerializerContext
 {
 }

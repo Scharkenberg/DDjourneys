@@ -1,0 +1,226 @@
+<ContentPage
+	x:Class="DDjourneys.Pages.ZonePlanPage"
+	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+	xmlns:controls="clr-namespace:DDjourneys.Controls"
+	xmlns:support="clr-namespace:DDjourneys.Support"
+	xmlns:localization="clr-namespace:DDjourneys.Localization"
+	Title="{localization:Tr Extras.ZonePlan}">
+
+	<Grid RowDefinitions="Auto,Auto,*,Auto" RowSpacing="0">
+
+		<!--  Which plan (segmented), then the tools at the trailing edge.  -->
+		<Grid
+			support:Dense.Padding="12,4"
+			ColumnDefinitions="*,Auto"
+			ColumnSpacing="8">
+			<Border
+				Padding="3"
+				BackgroundColor="{DynamicResource Raised}"
+				HorizontalOptions="Start"
+				MaximumWidthRequest="320"
+				StrokeThickness="0"
+				VerticalOptions="Center">
+				<Border.StrokeShape>
+					<RoundRectangle CornerRadius="6" />
+				</Border.StrokeShape>
+
+				<Grid ColumnDefinitions="*,*" ColumnSpacing="3">
+					<Border
+						x:Name="SegRegion"
+						Padding="12,7"
+						support:Themed.Background="Clear"
+						support:Themed.OnBackground="Accent"
+						StrokeThickness="0">
+						<Border.StrokeShape>
+							<RoundRectangle CornerRadius="4" />
+						</Border.StrokeShape>
+						<Border.GestureRecognizers>
+							<TapGestureRecognizer Tapped="RegionTapped" />
+						</Border.GestureRecognizers>
+						<Label
+							x:Name="SegRegionLabel"
+							support:Themed.OnText="OnAccent"
+							support:Themed.Text="Ink"
+							FontFamily="{DynamicResource FontSemibold}"
+							HorizontalOptions="Center"
+							LineBreakMode="TailTruncation"
+							Text="{localization:Tr Extras.ZonePlanRegion}" />
+					</Border>
+
+					<Border
+						x:Name="SegDresden"
+						Grid.Column="1"
+						Padding="12,7"
+						support:Themed.Background="Clear"
+						support:Themed.OnBackground="Accent"
+						StrokeThickness="0">
+						<Border.StrokeShape>
+							<RoundRectangle CornerRadius="4" />
+						</Border.StrokeShape>
+						<Border.GestureRecognizers>
+							<TapGestureRecognizer Tapped="DresdenTapped" />
+						</Border.GestureRecognizers>
+						<Label
+							x:Name="SegDresdenLabel"
+							support:Themed.OnText="OnAccent"
+							support:Themed.Text="Ink"
+							FontFamily="{DynamicResource FontSemibold}"
+							HorizontalOptions="Center"
+							LineBreakMode="TailTruncation"
+							Text="{localization:Tr Extras.ZonePlanDresden}" />
+					</Border>
+				</Grid>
+			</Border>
+
+			<HorizontalStackLayout
+				Grid.Column="1"
+				Spacing="2"
+				VerticalOptions="Center">
+				<controls:IconButton
+					x:Name="SearchButton"
+					Clicked="SearchClicked"
+					Glyph="Search"
+					IsEnabled="False"
+					SemanticProperties.Description="{localization:Tr Extras.ZonePlanSearch}"
+					TargetSize="{StaticResource HitIcon}" />
+
+				<controls:IconButton
+					x:Name="LocateButton"
+					Clicked="LocateClicked"
+					Glyph="Locate"
+					IsEnabled="False"
+					SemanticProperties.Description="{localization:Tr Extras.ZonePlanLocate}"
+					TargetSize="{StaticResource HitIcon}" />
+
+				<controls:IconButton
+					x:Name="ZoomOutButton"
+					Clicked="ZoomOutClicked"
+					Glyph="Minus"
+					IsEnabled="False"
+					SemanticProperties.Description="{localization:Tr Extras.NetworkMapZoomOut}"
+					TargetSize="{StaticResource HitIcon}" />
+
+				<controls:IconButton
+					x:Name="ZoomInButton"
+					Clicked="ZoomInClicked"
+					Glyph="Plus"
+					IsEnabled="False"
+					SemanticProperties.Description="{localization:Tr Extras.NetworkMapZoomIn}"
+					TargetSize="{StaticResource HitIcon}" />
+			</HorizontalStackLayout>
+		</Grid>
+
+		<!--  Find a stop: the field opens under the tools, the matches lie over the plan.  -->
+		<Grid
+			x:Name="SearchPanel"
+			Grid.Row="1"
+			support:Dense.Padding="12,0,12,6"
+			ColumnDefinitions="*,Auto"
+			ColumnSpacing="4"
+			IsVisible="False">
+			<Entry
+				x:Name="SearchEntry"
+				ClearButtonVisibility="WhileEditing"
+				Completed="SearchCompleted"
+				Placeholder="{localization:Tr Extras.ZonePlanSearchHint}"
+				ReturnType="Search"
+				TextChanged="SearchTextChanged" />
+
+			<controls:IconButton
+				Grid.Column="1"
+				Clicked="SearchCloseClicked"
+				Glyph="Close"
+				SemanticProperties.Description="{localization:Tr Common.Cancel}"
+				TargetSize="{StaticResource HitIcon}" />
+		</Grid>
+
+		<Grid Grid.Row="2" BackgroundColor="{DynamicResource Bg}">
+			<controls:PlanView
+				x:Name="Plan"
+				Opacity="0"
+				Shown="PlanShown"
+				StopTapped="PlanStopTapped"
+				ZoomChanged="PlanZoomChanged" />
+
+			<ActivityIndicator
+				x:Name="Busy"
+				HeightRequest="32"
+				HorizontalOptions="Center"
+				IsRunning="True"
+				VerticalOptions="Center"
+				WidthRequest="32"
+				Color="{DynamicResource Accent}" />
+
+			<VerticalStackLayout
+				x:Name="Message"
+				Padding="24"
+				HorizontalOptions="Center"
+				IsVisible="false"
+				Spacing="{DynamicResource SpaceM}"
+				VerticalOptions="Center">
+				<Label
+					FontFamily="{DynamicResource FontSemibold}"
+					HorizontalTextAlignment="Center"
+					Text="{localization:Tr Extras.ZonePlanFailed}" />
+
+				<Button
+					Clicked="RetryClicked"
+					HorizontalOptions="Center"
+					StyleClass="Tonal"
+					Text="{localization:Tr Common.TryAgain}" />
+			</VerticalStackLayout>
+
+			<Border
+				x:Name="Stale"
+				Margin="12"
+				Padding="12,6"
+				HorizontalOptions="Start"
+				InputTransparent="True"
+				IsVisible="false"
+				StrokeShape="RoundRectangle 12"
+				StyleClass="Card"
+				VerticalOptions="Start">
+				<Label StyleClass="Caption" Text="{localization:Tr Extras.ZonePlanStale}" />
+			</Border>
+
+			<!--  The matches of the search: a card over the top of the plan.  -->
+			<Border
+				x:Name="Matches"
+				Margin="12,0,12,0"
+				Padding="4"
+				IsVisible="False"
+				MaximumWidthRequest="480"
+				StrokeShape="RoundRectangle 12"
+				StyleClass="Card"
+				VerticalOptions="Start">
+				<ScrollView MaximumHeightRequest="360">
+					<VerticalStackLayout x:Name="MatchList" Spacing="0" />
+				</ScrollView>
+			</Border>
+
+			<!--  A short word now and then (locating, nothing near), at the bottom, gone by itself.  -->
+			<Border
+				x:Name="Toast"
+				Margin="16,0,16,16"
+				Padding="14,8"
+				HorizontalOptions="Center"
+				InputTransparent="True"
+				IsVisible="False"
+				StrokeShape="RoundRectangle 14"
+				StyleClass="Card"
+				VerticalOptions="End">
+				<Label
+					x:Name="ToastLabel"
+					HorizontalTextAlignment="Center"
+					LineBreakMode="WordWrap" />
+			</Border>
+		</Grid>
+
+		<Label
+			Grid.Row="3"
+			Margin="12,6,12,10"
+			StyleClass="Caption"
+			Text="{localization:Tr Extras.ZonePlanCredit}" />
+	</Grid>
+</ContentPage>

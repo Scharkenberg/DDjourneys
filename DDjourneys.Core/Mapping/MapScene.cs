@@ -33,8 +33,14 @@ public enum MapMarkerKind
 	/// <summary>A park &amp; ride site: a small square with a P, coloured by how full it is.</summary>
 	Parking,
 
-	/// <summary>A shared-bike station: a small disc with a bike, coloured by how many are free.</summary>
-	Bike
+	/// <summary>A virtual bike station (an area without docks): a dashed disc with a bike and the count beside it.</summary>
+	Bike,
+
+	/// <summary>A physical bike station with docks (a MOBIpunkt): a solid rounded square with a bike and the count.</summary>
+	Dock,
+
+	/// <summary>A shared vehicle standing free: a small disc in the operator's colour; the label is its glyph (b, e, c, s).</summary>
+	Shared
 }
 
 
@@ -88,6 +94,9 @@ public sealed class MapScene
 	/// <summary>Zoom to everything after applying; false keeps the view the user has chosen.</summary>
 	public bool Fit { get; init; } = true;
 
+	/// <summary>For a layer: the map zoom from which its markers are shown (dense layers stay off the city view).</summary>
+	public double? MinZoom { get; init; }
+
 	public bool IsEmpty =>
 		Markers.Count == 0
 		&& Lines.Count == 0
@@ -105,6 +114,8 @@ public sealed class MapScene
 			MapMarkerKind.Knot => "knot",
 			MapMarkerKind.Parking => "parking",
 			MapMarkerKind.Bike => "bike",
+			MapMarkerKind.Dock => "dock",
+			MapMarkerKind.Shared => "shared",
 			_ => "stop"
 		};
 
@@ -130,6 +141,11 @@ public sealed class MapScene
 			writer.WriteStartObject();
 			writer.WriteBoolean("dark", dark);
 			writer.WriteBoolean("fit", fit ?? Fit);
+
+			if (MinZoom is { } minZoom)
+			{
+				writer.WriteNumber("minZoom", minZoom);
+			}
 
 			writer.WriteStartArray("markers");
 

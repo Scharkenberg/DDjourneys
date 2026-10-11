@@ -12,4 +12,9 @@
 	<uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 	<uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
 	<uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
+	<!-- The rental apps the map hands bikes over to (Android 11 package visibility: without this they always look missing). -->
+	<queries>
+		<package android:name="de.nextbike" />
+		<package android:name="com.limebike" />
+	</queries>
 </manifest>

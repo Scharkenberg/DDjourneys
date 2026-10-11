@@ -331,8 +331,17 @@ body.dark .maplibregl-ctrl-group button .maplibregl-ctrl-icon { filter: invert(1
 .zz .dd-lbl.dd-site .s { display: inline; }
 .zl .dd-lbl.dd-site .s { display: none; }
 .zl .dd-lbl.dd-site .f { display: inline; }
-.dd-bike { width: 18px; height: 18px; border-radius: 50%; background: var(--surface); border: 2px solid var(--accent); box-shadow: 0 0 0 1px var(--surface); }
+.dd-bike { position: relative; width: 18px; height: 18px; border-radius: 50%; background: var(--surface); border: 2px dashed var(--accent); box-shadow: 0 0 0 1px var(--surface); }
 .dd-bike svg { display: block; width: 12px; height: 12px; margin: 1px auto 0; stroke: var(--ink); stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+/* A MOBIpunkt (physical station with docks): solid and square, a size up - told apart from the virtual stations at a glance. */
+.dd-bike.dock { width: 20px; height: 20px; border-radius: 6px; border-style: solid; border-width: 2.5px; }
+.dd-bike.dock svg { width: 13px; height: 13px; margin-top: 1.5px; }
+/* Bikes there right now: a badge in the colour of the verdict; none when the station is empty (the ring is grey then). */
+.dd-bike b { position: absolute; right: -9px; top: -9px; min-width: 15px; height: 15px; padding: 0 3px; box-sizing: border-box; border-radius: 8px;
+	font: 700 .62rem/15px var(--font); text-align: center; border: 1px solid var(--surface); }
+/* A vehicle standing free: a small disc in the operator's colour with the vehicle's glyph. */
+.dd-shared { display: block; width: 15px; height: 15px; border-radius: 50%; border: 1.5px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.35), 0 1px 3px rgba(0,0,0,.3); }
+.dd-shared svg { display: block; width: 11px; height: 11px; margin: 2px auto 0; fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
 </style>
 </head>
 <body>
@@ -639,6 +648,27 @@ window.ddMain = function (engineName) {
 		return '<span class="dd-lbl dd-site"><span class="s">' + esc(m.label || '') + '</span><span class="f">' + esc(m.title || '') + '</span></span>';
 	}
 
+	var BIKE_SVG = '<svg viewBox="0 0 24 24"><circle cx="6" cy="17" r="3.6"/><circle cx="18" cy="17" r="3.6"/><path d="M6.5 17l3.5-7h5l3 7M9.5 12h6"/></svg>';
+	var SCOOTER_SVG = '<svg viewBox="0 0 24 24"><circle cx="5.5" cy="18" r="2.6"/><circle cx="18.5" cy="18" r="2.6"/><path d="M8 18h8M15 5h3l2 13"/></svg>';
+
+	// A bike station: the ring says what kind (dashed: virtual, square: MOBIpunkt) and how good (its colour); the
+	// badge says how many bikes are there right now (the label carries the number, empty when unknown).
+	function bikeStation(m) {
+		var color = esc(m.color || '');
+		var count = parseInt(m.label, 10);
+		var badge = count > 0
+			? '<b style="background:' + color + ';color:' + readableInk(m.color || '#607d8b') + '">' + (count > 99 ? '99+' : count) + '</b>'
+			: '';
+		return '<i class="dd-bike' + (m.kind === 'dock' ? ' dock' : '') + '"' + (color ? ' style="border-color:' + color + '"' : '') + '>' + BIKE_SVG + badge + '</i>';
+	}
+
+	// A vehicle standing free: the operator's colour, the glyph of the vehicle (label 's' is a scooter).
+	function sharedVehicle(m) {
+		var fill = m.color || '#607d8b';
+		var ink = readableInk(fill);
+		return '<i class="dd-shared" style="background:' + esc(fill) + '">' + (m.label === 's' ? SCOOTER_SVG : BIKE_SVG).replace('<svg ', '<svg style="stroke:' + ink + '" ') + '</i>';
+	}
+
 	function markerElement(m) {
 		var el = document.createElement('div');
 		var color = esc(m.color || '');
@@ -657,7 +687,11 @@ window.ddMain = function (engineName) {
 				inner = '<i class="dd-parking"' + style + '>P</i>' + siteLabel(m);
 				break;
 			case 'bike':
-				inner = '<i class="dd-bike"' + style + '><svg viewBox="0 0 24 24"><circle cx="6" cy="17" r="3.6"/><circle cx="18" cy="17" r="3.6"/><path d="M6.5 17l3.5-7h5l3 7M9.5 12h6"/></svg></i>' + label;
+			case 'dock':
+				inner = bikeStation(m) + siteLabel(m);
+				break;
+			case 'shared':
+				inner = sharedVehicle(m);
 				break;
 			case 'knot': inner = '<i class="dd-knot"></i>'; break;
 			case 'start': inner = '<i class="dd-start" style="background:var(--accent)"></i>' + label; el.className += ' always'; break;
@@ -711,7 +745,7 @@ window.ddMain = function (engineName) {
 			if (entry) { entry.marker.remove(); }
 
 			var el = markerElement(m);
-			var z = m.kind === 'vehicle' ? 3 : (m.kind === 'knot' ? 0 : (m.kind === 'stop' ? 1 : 2));
+			var z = m.kind === 'vehicle' ? 3 : (m.kind === 'knot' ? 0 : (m.kind === 'stop' || m.kind === 'shared' ? 1 : 2));
 			var marker = eng.marker(el, m, html, interactive, z);
 
 			if (interactive) {
@@ -775,7 +809,10 @@ window.ddMain = function (engineName) {
 
 		if (!layerStores[id]) { layerStores[id] = {}; }
 
-		syncMarkers(layerStores[id], inView(payload.markers || []), true);
+		// A dense layer (vehicles standing free) waits for a close view: below its zoom nothing of it is drawn.
+		var hidden = payload.minZoom && map.getZoom() < payload.minZoom;
+
+		syncMarkers(layerStores[id], hidden ? [] : inView(payload.markers || []), true);
 	}
 
 	// A layer arrived: its markers and, only when it has (or had) any, its shapes.
@@ -1081,7 +1118,7 @@ window.ddMain = function (engineName) {
 		document.addEventListener('click', function () { box.classList.remove('open'); });
 	}
 
-	var ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a> &middot; P+R: VVO &middot; Bikes: Nextbike &middot; ';
+	var ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a> &middot; P+R: VVO &middot; Bikes: Nextbike, Lime &middot; ';
 
 	function refreshAuto() {
 		if (!autoButton) { return; }
@@ -1211,7 +1248,7 @@ window.ddMain = function (engineName) {
 
 		map.getPanes().tilePane.style.filter = invert ? 'invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9)' : '';
 
-		if (attrDiv) { attrDiv.innerHTML = tileSources[tileIndex].attribution + ' &middot; <a href="https://leafletjs.com">Leaflet</a> &middot; P+R: VVO &middot; Bikes: Nextbike'; }
+		if (attrDiv) { attrDiv.innerHTML = tileSources[tileIndex].attribution + ' &middot; <a href="https://leafletjs.com">Leaflet</a> &middot; P+R: VVO &middot; Bikes: Nextbike, Lime'; }
 	}
 
 	function makeTiles() {

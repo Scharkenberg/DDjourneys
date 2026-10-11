@@ -253,6 +253,8 @@ public static class MauiProgram
 		builder.Services.AddTransient<MapPage>();
 		builder.Services.AddSingleton<Support.NetworkMapStore>();
 		builder.Services.AddTransient<NetworkMapPage>();
+		builder.Services.AddSingleton<Support.ZonePlanStore>();
+		builder.Services.AddTransient<ZonePlanPage>();
 		builder.Services.AddTransient<VehiclesViewModel>();
 		builder.Services.AddTransient<RunPage>();
 		builder.Services.AddTransient<RunViewModel>();

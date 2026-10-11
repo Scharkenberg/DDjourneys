@@ -696,6 +696,19 @@ public sealed class ExtrasStrings
 	public required string ParkingCounts { get; init; }
 	public required string ParkingShort { get; init; }
 	public required string ParkingUpdated { get; init; }
+	public required string BikesEBikes { get; init; }
+	public required string BikesCargo { get; init; }
+	public required string BikesDockStation { get; init; }
+	public required string BikesVirtualStation { get; init; }
+	public required string BikesEmpty { get; init; }
+	public required string LiveCountMissing { get; init; }
+	public required string ParkingSpaces { get; init; }
+	public required string SharedBike { get; init; }
+	public required string SharedEBike { get; init; }
+	public required string SharedCargo { get; init; }
+	public required string SharedScooter { get; init; }
+	public required string SharedRange { get; init; }
+	public required string MapSharedZoomHint { get; init; }
 	public required string NetworkMap { get; init; }
 	public required string NetworkMapRefresh { get; init; }
 	public required string NetworkMapOpenPdf { get; init; }
@@ -706,6 +719,21 @@ public sealed class ExtrasStrings
 	public required string NetworkMapZoomOut { get; init; }
 	public required string MapOpenSummary { get; init; }
 	public required string NetworkMapSummary { get; init; }
+	public required string ZonePlan { get; init; }
+	public required string ZonePlanSummary { get; init; }
+	public required string ZonePlanRegion { get; init; }
+	public required string ZonePlanDresden { get; init; }
+	public required string ZonePlanSearch { get; init; }
+	public required string ZonePlanSearchHint { get; init; }
+	public required string ZonePlanNoMatch { get; init; }
+	public required string ZonePlanLocate { get; init; }
+	public required string ZonePlanLocating { get; init; }
+	public required string ZonePlanNotNear { get; init; }
+	public required string ZonePlanFailed { get; init; }
+	public required string ZonePlanStale { get; init; }
+	public required string ZonePlanCredit { get; init; }
+	public required string ZonePlanShow { get; init; }
+	public required string ZonePlanSwitched { get; init; }
 	public required string MapInfo { get; init; }
 	public required string MapGrip { get; init; }
 	public required string TrackFollowing { get; init; }

@@ -41,10 +41,19 @@ public partial class MapPage : PanePage, IQueryAttributable
 	private const string ZonesLayer = "zones";
 	private const string ParkingLayer = "parking";
 	private const string BikesLayer = "bikes";
+
+	/// <summary>The vehicles standing free (Lime, MOBIbikes in the street): a second map layer of the bikes switch, from <see cref="SharedMinZoom"/> on.</summary>
+	private const string SharedLayer = "shared";
+
+	/// <summary>About two thousand vehicles in the city: drawn only where a street view makes them useful.</summary>
+	private const double SharedMinZoom = 15;
 	private const string VehiclesLayer = "vehicles";
 
 	/// <summary>The map layer panel's link row for the network map (a reserved key, see <see cref="Routes.NetworkMapLayer"/>).</summary>
 	private const string NetworkMapRow = Routes.NetworkMapLayer;
+
+	/// <summary>The link row for the VVO's interactive fare zone plan (<see cref="Routes.ZonePlanLayer"/>).</summary>
+	private const string ZonePlanRow = Routes.ZonePlanLayer;
 
 	private IReadOnlyList<TariffZoneShape> _zoneShapes = [];
 	private bool _zonesPrepared;
@@ -58,6 +67,10 @@ public partial class MapPage : PanePage, IQueryAttributable
 	private readonly Dictionary<string, SharedStation> _bikeStations = [];
 	private IReadOnlyList<SharedStation>? _bikesSource;
 	private bool _bikesDark;
+
+	private readonly Dictionary<string, SharedVehicle> _sharedVehicles = [];
+	private IReadOnlyList<SharedVehicle>? _sharedSource;
+	private bool _sharedDark;
 
 	private bool _appeared;
 
@@ -408,7 +421,9 @@ public partial class MapPage : PanePage, IQueryAttributable
 		{
 			_settings.MapBikes = bikes;
 			_bikesSource = null;
+			_sharedSource = null;
 			_ = SendBikesAsync();
+			UpdateHint(_viewport);
 		}
 
 		if (states.TryGetValue(VehiclesLayer, out bool vehicles)
@@ -429,6 +444,12 @@ public partial class MapPage : PanePage, IQueryAttributable
 			&& networkMap)
 		{
 			_ = Shell.Current.GoToAsync(Routes.NetworkMap);
+		}
+
+		if (states.TryGetValue(ZonePlanRow, out bool zonePlan)
+			&& zonePlan)
+		{
+			_ = Shell.Current.GoToAsync(Routes.ZonePlan);
 		}
 	}
 
@@ -488,6 +509,7 @@ public partial class MapPage : PanePage, IQueryAttributable
 		rows.Add(new(ParkingLayer, strings.MapParking, _settings.MapParking));
 		rows.Add(new(BikesLayer, strings.MapBikes, _settings.MapBikes));
 		rows.Add(new(VehiclesLayer, strings.MapVehicles, _settings.MapVehicles));
+		rows.Add(new(ZonePlanRow, strings.ZonePlan, Checked: false, Link: true));
 		rows.Add(new(NetworkMapRow, strings.NetworkMap, Checked: false, Link: true));
 
 		return rows;
@@ -577,14 +599,12 @@ public partial class MapPage : PanePage, IQueryAttributable
 							$"p:{site.Id}",
 							site.Lat,
 							site.Lon,
-							site.Total > 0
+							site.HasLive && site.Total > 0
 								? string.Format(CultureInfo.CurrentCulture, strings.ParkingShort, site.Free)
 								: site.Name,
 							MapMarkerKind.Parking,
 							MapScenes.ParkingColor(site),
-							site.Total > 0
-								? $"{site.Name} · {string.Format(CultureInfo.CurrentCulture, strings.ParkingCounts, site.Free, site.Total)}"
-								: site.Name,
+							$"{site.Name} · {ParkingText(site)}",
 							site.LiveAt is { } liveAt
 								? string.Format(CultureInfo.CurrentCulture, strings.ParkingUpdated, AgeText(liveAt))
 								: null))]
@@ -607,6 +627,18 @@ public partial class MapPage : PanePage, IQueryAttributable
 		}
 	}
 
+	/// <summary>"12 of 47 free" with a live count; "47 spaces · no live count" without one; "no live count" knowing nothing.</summary>
+	private static string ParkingText(ParkingSite site)
+	{
+		ExtrasStrings strings = Strings;
+
+		return site.HasLive && site.Total > 0
+			? string.Format(CultureInfo.CurrentCulture, strings.ParkingCounts, site.Free, site.Total)
+			: site.Total > 0
+				? $"{string.Format(CultureInfo.CurrentCulture, strings.ParkingSpaces, site.Total)} · {strings.LiveCountMissing}"
+				: strings.LiveCountMissing;
+	}
+
 	/// <summary>How long ago a live count was taken, as text for the info line.</summary>
 	private static string AgeText(DateTimeOffset at)
 	{
@@ -627,12 +659,10 @@ public partial class MapPage : PanePage, IQueryAttributable
 		ExtrasStrings strings = Strings;
 
 		string title =
-			site.Total > 0
-				? $"{site.Name}: {string.Format(CultureInfo.CurrentCulture, strings.ParkingCounts, site.Free, site.Total)}"
-					+ (site.LiveAt is { } liveAt
-						? $" · {string.Format(CultureInfo.CurrentCulture, strings.ParkingUpdated, AgeText(liveAt))}"
-						: string.Empty)
-				: site.Name;
+			$"{site.Name}: {ParkingText(site)}"
+				+ (site.LiveAt is { } liveAt
+					? $" · {string.Format(CultureInfo.CurrentCulture, strings.ParkingUpdated, AgeText(liveAt))}"
+					: string.Empty);
 
 		string choice =
 			await DisplayActionSheetAsync(
@@ -676,9 +706,11 @@ public partial class MapPage : PanePage, IQueryAttributable
 	}
 
 	/// <summary>
-	/// The shared-bikes layer: the whole list in one send, when the switch turns on, when the counts changed
-	/// or the theme did - never per pan or zoom (the service keeps the skeleton for an hour and the counts for
-	/// a minute at most); the page culls the markers to the viewport engine-side.
+	/// The bikes switch: two map layers, each sent whole when the switch turns on, when the counts changed or the
+	/// theme did - never per pan or zoom (the service keeps the skeleton for an hour and the counts for a minute at
+	/// most). The stations (MOBIpunkte square, virtual stations dashed, the bikes there as a badge) from the city
+	/// view on; the vehicles standing free only from <see cref="SharedMinZoom"/> on (the page holds them back below
+	/// it and culls them to the view above it).
 	/// </summary>
 	private async Task SendBikesAsync()
 	{
@@ -691,12 +723,20 @@ public partial class MapPage : PanePage, IQueryAttributable
 		{
 			_bikeStations.Clear();
 			_bikesSource = null;
+			_sharedVehicles.Clear();
+			_sharedSource = null;
 
 			_ = Map.SetLayerAsync(BikesLayer, MapScene.Empty);
+			_ = Map.SetLayerAsync(SharedLayer, MapScene.Empty);
 
 			return;
 		}
 
+		await Task.WhenAll(SendStationsAsync(), SendSharedAsync());
+	}
+
+	private async Task SendStationsAsync()
+	{
 		try
 		{
 			IReadOnlyList<SharedStation> stations = await _bikes.GetStationsAsync();
@@ -716,13 +756,13 @@ public partial class MapPage : PanePage, IQueryAttributable
 					Fit = false,
 					Markers =
 						(List<MapMarker>)[.. stations.Select(station => new MapMarker(
-							$"b:{station.Operator}:{station.StationId}",
+							StationKey(station),
 							station.Lat,
 							station.Lon,
-							string.Empty,
-							MapMarkerKind.Bike,
+							station.HasStatus ? station.Bikes.ToString(CultureInfo.InvariantCulture) : string.Empty,
+							station.IsVirtual ? MapMarkerKind.Bike : MapMarkerKind.Dock,
 							MapScenes.BikeColor(station),
-							$"{station.Name} · {station.Bikes}",
+							$"{station.Name} · {BikesText(station)}",
 							station.UpdatedAt is { } reported
 								? string.Format(CultureInfo.CurrentCulture, Strings.ParkingUpdated, AgeText(reported))
 								: null))]
@@ -734,29 +774,87 @@ public partial class MapPage : PanePage, IQueryAttributable
 
 			foreach (SharedStation station in stations)
 			{
-				_bikeStations[$"b:{station.Operator}:{station.StationId}"] = station;
+				_bikeStations[StationKey(station)] = station;
 			}
 
 			await Map.SetLayerAsync(BikesLayer, layer);
 		}
 		catch (Exception ex)
 		{
-			DiagnosticLog.Write($"[Map] shared bikes failed: {ex.Message}");
+			DiagnosticLog.Write($"[Map] bike stations failed: {ex.Message}");
 		}
 	}
 
-	/// <summary>
-	/// The things to do at a shared-bike station: a journey to it, or renting. The rental link opens the
-	/// operator's app only when the app is installed - a deep link that dies without it is a dead end - and
-	/// falls back to the web page, then to the operator's own site.
-	/// </summary>
-	private async Task OfferBikesAsync(SharedStation station)
+	private async Task SendSharedAsync()
+	{
+		try
+		{
+			IReadOnlyList<SharedVehicle> vehicles = await _bikes.GetVehiclesAsync();
+
+			bool dark = Theme.IsDark;
+
+			if (ReferenceEquals(vehicles, _sharedSource)
+				&& dark == _sharedDark)
+			{
+				return;
+			}
+
+			MapScene layer =
+				new()
+				{
+					Fit = false,
+					MinZoom = SharedMinZoom,
+					Markers =
+						(List<MapMarker>)[.. vehicles.Select(vehicle => new MapMarker(
+							SharedKey(vehicle),
+							vehicle.Lat,
+							vehicle.Lon,
+							vehicle.Kind == SharedKind.Scooter ? "s" : "b",
+							MapMarkerKind.Shared,
+							MapScenes.SharedColor(vehicle.OperatorId),
+							SharedText(vehicle)))]
+				};
+
+			_sharedSource = vehicles;
+			_sharedDark = dark;
+			_sharedVehicles.Clear();
+
+			foreach (SharedVehicle vehicle in vehicles)
+			{
+				_sharedVehicles[SharedKey(vehicle)] = vehicle;
+			}
+
+			await Map.SetLayerAsync(SharedLayer, layer);
+		}
+		catch (Exception ex)
+		{
+			DiagnosticLog.Write($"[Map] vehicles standing free failed: {ex.Message}");
+		}
+	}
+
+	private static string StationKey(SharedStation station) =>
+		$"b:{station.OperatorId}:{station.StationId}";
+
+	private static string SharedKey(SharedVehicle vehicle) =>
+		$"s:{vehicle.OperatorId}:{vehicle.Id}";
+
+	/// <summary>What a station has: "3 bikes available, 1 of them cargo bikes · 5 free docks", or that nobody knows.</summary>
+	private static string BikesText(SharedStation station)
 	{
 		ExtrasStrings strings = Strings;
 
+		if (!station.HasStatus)
+		{
+			return strings.LiveCountMissing;
+		}
+
 		var parts = new List<string>
 		{
-			string.Format(CultureInfo.CurrentCulture, strings.BikesCounts, station.Bikes)
+			station.Bikes > 0
+				? string.Format(CultureInfo.CurrentCulture, strings.BikesCounts, station.Bikes)
+					+ (station.EBikes > 0 ? ", " + string.Format(CultureInfo.CurrentCulture, strings.BikesEBikes, station.EBikes) : string.Empty)
+					+ (station.CargoBikes > 0 ? ", " + string.Format(CultureInfo.CurrentCulture, strings.BikesCargo, station.CargoBikes) : string.Empty)
+				: strings.BikesEmpty
 		};
 
 		if (station.Docks is { } docks)
@@ -764,21 +862,75 @@ public partial class MapPage : PanePage, IQueryAttributable
 			parts.Add(string.Format(CultureInfo.CurrentCulture, strings.BikesDocks, docks));
 		}
 
+		return string.Join(" · ", parts);
+	}
+
+	/// <summary>"Lime · E-bike · 16 km range".</summary>
+	private static string SharedText(SharedVehicle vehicle)
+	{
+		ExtrasStrings strings = Strings;
+
+		string kind = vehicle.Kind switch
+		{
+			SharedKind.EBike => strings.SharedEBike,
+			SharedKind.CargoBike => strings.SharedCargo,
+			SharedKind.Scooter => strings.SharedScooter,
+			_ => strings.SharedBike
+		};
+
+		return vehicle.RangeMeters is { } range
+			? $"{vehicle.Operator} · {kind} · {string.Format(CultureInfo.CurrentCulture, strings.SharedRange, Math.Max(1, (int)Math.Round(range / 1000d)))}"
+			: $"{vehicle.Operator} · {kind}";
+	}
+
+	/// <summary>
+	/// A bike station: what it is (a MOBIpunkt with docks or a virtual station), what it has, and the two things to
+	/// do - go there, or rent in the operator's app (Nextbike's own on Android, its store page when missing).
+	/// </summary>
+	private async Task OfferBikesAsync(SharedStation station)
+	{
+		ExtrasStrings strings = Strings;
+
+		var parts = new List<string>
+		{
+			station.IsVirtual ? strings.BikesVirtualStation : strings.BikesDockStation,
+			BikesText(station)
+		};
+
 		if (station.UpdatedAt is { } reported)
 		{
 			parts.Add(string.Format(CultureInfo.CurrentCulture, strings.ParkingUpdated, AgeText(reported)));
 		}
 
-		string title = $"{station.Operator} · {station.Name}: {string.Join(" · ", parts)}";
+		await OfferRentalAsync(
+			$"{station.Operator} · {station.Name}{Environment.NewLine}{string.Join(" · ", parts)}",
+			station.Lat,
+			station.Lon,
+			station.Operator,
+			station.AppUri,
+			station.AppPackage,
+			station.WebUri ?? station.Website);
+	}
 
-		Uri? app = station.AppUri;
-		Uri? page = station.WebUri ?? station.Website;
+	private Task OfferSharedAsync(SharedVehicle vehicle) =>
+		OfferRentalAsync(
+			SharedText(vehicle),
+			vehicle.Lat,
+			vehicle.Lon,
+			vehicle.Operator,
+			vehicle.AppUri,
+			vehicle.AppPackage,
+			vehicle.WebUri ?? vehicle.Website);
 
+	private async Task OfferRentalAsync(string title, double latitude, double longitude, string operatorName, Uri? link, string? package, Uri? web)
+	{
+		ExtrasStrings strings = Strings;
+		string rent = string.Format(CultureInfo.CurrentCulture, strings.BikesOpenApp, operatorName);
 		var buttons = new List<string> { strings.MapJourneyToHere };
 
-		if (app is not null || page is not null)
+		if (link is not null || package is not null || web is not null)
 		{
-			buttons.Add(strings.BikesOpenApp);
+			buttons.Add(rent);
 		}
 
 		string choice =
@@ -790,7 +942,7 @@ public partial class MapPage : PanePage, IQueryAttributable
 
 		if (choice == strings.MapJourneyToHere)
 		{
-			Location? to = await PlaceNearAsync(station.Lat, station.Lon);
+			Location? to = await PlaceNearAsync(latitude, longitude);
 
 			if (to is null)
 			{
@@ -801,24 +953,9 @@ public partial class MapPage : PanePage, IQueryAttributable
 
 			await _planner.ToAsync(to);
 		}
-		else if (choice == strings.BikesOpenApp)
+		else if (choice == rent)
 		{
-			Uri? open = null;
-
-			if (app is not null
-					&& await Launcher.Default.CanOpenAsync(app))
-			{
-				open = app;
-			}
-			else
-			{
-				open = page;
-			}
-
-			if (open is not null)
-			{
-				await Launcher.Default.OpenAsync(open);
-			}
+			await RentalApps.OpenAsync(link, package, web);
 		}
 	}
 
@@ -856,7 +993,9 @@ public partial class MapPage : PanePage, IQueryAttributable
 				? Strings.MapZoomHint
 				: _pick && _centered
 					? Strings.MapPickHint
-					: null;
+					: _wantsExplore && _settings.MapBikes && viewport is { Zoom: < SharedMinZoom }
+						? Strings.MapSharedZoomHint
+						: null;
 
 		HintLabel.Text = text;
 		Hint.IsVisible = text is not null;
@@ -994,6 +1133,10 @@ public partial class MapPage : PanePage, IQueryAttributable
 			else if (_bikeStations.TryGetValue(id, out SharedStation? station))
 			{
 				await OfferBikesAsync(station);
+			}
+			else if (_sharedVehicles.TryGetValue(id, out SharedVehicle? shared))
+			{
+				await OfferSharedAsync(shared);
 			}
 			else if (_vehicleLayer.TryGet(id, out LiveVehicle vehicle))
 			{

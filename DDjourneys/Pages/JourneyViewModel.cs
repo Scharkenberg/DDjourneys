@@ -102,6 +102,9 @@ public sealed partial class JourneyViewModel :
 			new Command(
 				() => FaresExpanded = !FaresExpanded);
 
+		ShowZonePlanCommand =
+			new AsyncCommand(ShowZonePlanAsync);
+
 		OpenFareCommand =
 			new AsyncCommand<FareRow>(
 				row => row.Link is { } link
@@ -835,6 +838,31 @@ public sealed partial class JourneyViewModel :
 	public Command ToggleFaresCommand { get; }
 
 	public AsyncCommand<FareRow> OpenFareCommand { get; }
+
+	public AsyncCommand ShowZonePlanCommand { get; }
+
+	/// <summary>The fare zone plan with the journey's ends marked: where the first ride boards and the last one alights.</summary>
+	private Task ShowZonePlanAsync()
+	{
+		if (_journey is not { } journey)
+		{
+			return Task.CompletedTask;
+		}
+
+		List<JourneyLeg> rides = [.. journey.Rides];
+		Station from = rides.Count > 0 ? rides[0].From : journey.From;
+		Station to = rides.Count > 0 ? rides[^1].To : journey.To;
+
+		return Shell.Current.GoToAsync(
+			Routes.ZonePlan,
+			new ShellNavigationQueryParameters
+			{
+				[Routes.ZonePlanTarget] =
+					new ZonePlanTarget(
+						new ZonePlanStopRef(from.Id, from.Name, from.Place),
+						new ZonePlanStopRef(to.Id, to.Name, to.Place))
+			});
+	}
 
 
 	public void ApplyQueryAttributes(

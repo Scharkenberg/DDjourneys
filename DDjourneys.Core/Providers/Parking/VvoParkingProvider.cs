@@ -12,9 +12,9 @@ namespace DDjourneys.Core.Providers.Parking;
 
 /// <summary>
 /// The park &amp; ride occupancy of the VVO, as its open-data file publishes it. The list is small (about fifty
-/// sites), so it is fetched whole. Sites that carry no count of their own are counted from their per-space
-/// sensors instead (a second, usually unnecessary pass over the same bytes); a site whose sensors are all
-/// defect or out of service shows no numbers rather than wrong ones.
+/// sites), so it is fetched whole. Sites that carry no count of their own ("number_free_now": -1, or none) are
+/// counted from their per-space sensors instead (a second pass over the same bytes); a site whose sensors are all
+/// defect or out of service shows its capacity but no live numbers rather than wrong ones.
 /// </summary>
 public sealed partial class VvoParkingProvider(ApiClient apiClient) : IParkingProvider
 {
@@ -92,18 +92,19 @@ public sealed partial class VvoParkingProvider(ApiClient apiClient) : IParkingPr
 		string name = First(site.Name, site.Info) ?? id;
 
 		DateTimeOffset? at = ParseTimestamp(site.Dtg);
-		int total = site.Total ?? 0;
+		int total = Math.Max(0, site.Total ?? 0);
 
-		if (site.FreeNow is { } free)
+		// -1 is the file's "not counted": a count only from zero up, and never more than the site holds.
+		if (site.FreeNow is >= 0 and int free)
 		{
-			return new ParkingSite(id, name, latitude, longitude, total, free, at);
+			return new ParkingSite(id, name, latitude, longitude, total, total > 0 ? Math.Min(free, total) : free, at);
 		}
 
-		// No count of its own: usable sensors only. A site whose sensors are all defect or out of
-		// service has no live data; wrong numbers are worse than none.
+		// No count of its own: usable sensors only. A site whose sensors are all defect or out of service has
+		// no live data (its capacity stays: "47 spaces" is still worth knowing); wrong numbers are worse than none.
 		if (live?.LiveData is not { Count: > 0 } sensors)
 		{
-			return new ParkingSite(id, name, latitude, longitude, 0, 0, null);
+			return new ParkingSite(id, name, latitude, longitude, total, 0, null);
 		}
 
 		List<VvoParkingSensor> usable =
@@ -113,7 +114,7 @@ public sealed partial class VvoParkingProvider(ApiClient apiClient) : IParkingPr
 
 		if (usable.Count == 0)
 		{
-			return new ParkingSite(id, name, latitude, longitude, 0, 0, null);
+			return new ParkingSite(id, name, latitude, longitude, total, 0, null);
 		}
 
 		return new ParkingSite(
@@ -126,12 +127,28 @@ public sealed partial class VvoParkingProvider(ApiClient apiClient) : IParkingPr
 			at);
 	}
 
-	/// <summary>When the counts were taken: ISO first, then the VVO /Date(ms)/ house style, else unknown.</summary>
+	/// <summary>
+	/// When the counts were taken: the file's own German local time first ("11.10.2026-02:37:19", Dresden time),
+	/// then ISO, then the VVO /Date(ms)/ house style, else unknown. The German form must go first: read as ISO by
+	/// a lenient parser, 11.10. could become the 10th of November.
+	/// </summary>
 	internal static DateTimeOffset? ParseTimestamp(string? dtg)
 	{
 		if (string.IsNullOrWhiteSpace(dtg))
 		{
 			return null;
+		}
+
+		if (DateTime.TryParseExact(
+				dtg.Trim(),
+				GermanFormats,
+				CultureInfo.InvariantCulture,
+				DateTimeStyles.None,
+				out DateTime local))
+		{
+			TimeZoneInfo zone = DresdenZone.Value;
+
+			return new DateTimeOffset(local, zone.GetUtcOffset(local));
 		}
 
 		if (DateTimeOffset.TryParse(
@@ -150,6 +167,26 @@ public sealed partial class VvoParkingProvider(ApiClient apiClient) : IParkingPr
 				? DateTimeOffset.FromUnixTimeMilliseconds(milliseconds)
 				: null;
 	}
+
+	private static readonly string[] GermanFormats = ["dd.MM.yyyy-HH:mm:ss", "dd.MM.yyyy HH:mm:ss", "dd.MM.yyyy-HH:mm", "dd.MM.yyyy HH:mm"];
+
+	private static readonly Lazy<TimeZoneInfo> DresdenZone =
+		new(
+			() =>
+			{
+				foreach (string zoneId in new[] { "Europe/Berlin", "W. Europe Standard Time" })
+				{
+					try
+					{
+						return TimeZoneInfo.FindSystemTimeZoneById(zoneId);
+					}
+					catch (Exception ex) when (ex is TimeZoneNotFoundException or InvalidTimeZoneException)
+					{
+					}
+				}
+
+				return TimeZoneInfo.Local;
+			});
 
 	private static string? First(params string?[] values)
 	{

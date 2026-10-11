@@ -628,9 +628,10 @@ public static class MapScenes
 	/// </summary>
 	public static string ParkingColor(ParkingSite site)
 	{
-		// No numbers at all, or numbers that are hours old: nothing to colour (the info line says the age).
+		// No live count (the capacity alone says nothing about now), or one that is hours old: nothing to colour.
 		if (site.Total <= 0
-			|| (site.LiveAt is { } taken && DateTimeOffset.UtcNow - taken > TimeSpan.FromMinutes(90)))
+			|| site.LiveAt is not { } taken
+			|| DateTimeOffset.UtcNow - taken > TimeSpan.FromMinutes(90))
 		{
 			return ThemeRef("InkMuted", "#607D8B");
 		}
@@ -648,7 +649,7 @@ public static class MapScenes
 	/// </summary>
 	public static string BikeColor(SharedStation station)
 	{
-		if (station.IsRenting is false || station.Bikes <= 0)
+		if (!station.HasStatus || station.IsRenting is false || station.Bikes <= 0)
 		{
 			return ThemeRef("InkMuted", "#607D8B");
 		}
@@ -657,6 +658,18 @@ public static class MapScenes
 			? ThemeRef("OnTime", "#15803D")
 			: ThemeRef("Delay", "#9A5B00");
 	}
+
+	/// <summary>
+	/// The colour of a vehicle standing free: its operator's (Lime green, Nextbike blue), so two fleets on one street
+	/// are told apart. Brand colours, not theme colours: they name the operator in any theme.
+	/// </summary>
+	public static string SharedColor(string operatorId) =>
+		operatorId switch
+		{
+			"lime" => "#0FA84B",
+			"nextbike" => "#0071B9",
+			_ => ThemeRef("InkMuted", "#607D8B")
+		};
 
 	public static MapScene FromVehicles(
 		IEnumerable<LiveVehicle> vehicles,

@@ -36,12 +36,19 @@ public static class Routes
 	public const string Map = "map";
 	public const string NetworkMap = "networkmap";
 
+	/// <summary>The VVO's interactive plans (fare zones, Dresden network); query key: a <c>ZonePlanTarget</c> (a journey's ends).</summary>
+	public const string ZonePlan = "zoneplan";
+	public const string ZonePlanTarget = "ZonePlanTarget";
+
 	/// <summary>The Windows widget set-up page (registered on Windows only).</summary>
 	public const string WidgetSetup = "widgetsetup";
 	public const string WidgetId = "WidgetId";
 
 	/// <summary>Reserved key of the map layer panel: the network map link row posts it when tapped.</summary>
 	public const string NetworkMapLayer = "networkmap";
+
+	/// <summary>Reserved key of the map layer panel: the fare zone plan link row.</summary>
+	public const string ZonePlanLayer = "zoneplan";
 	public const string MapScene = "MapScene";
 	public const string MapTitle = "MapTitle";
 

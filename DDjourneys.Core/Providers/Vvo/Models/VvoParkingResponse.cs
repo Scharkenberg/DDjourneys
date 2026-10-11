@@ -1,22 +1,27 @@
 using System.Text.Json.Serialization;
+using DDjourneys.Core.Api;
 
 namespace DDjourneys.Core.Providers.Vvo.Models;
 
 /// <summary>
-/// One park &amp; ride site of the VVO open-data file (one observed sample, never re-verified from this
-/// container: every field is optional and unknown keys are ignored). The per-space sensor list is deliberately
-/// not part of this shape: it is most of the file's bytes and is only read, in a second pass, for the few
-/// sites that carry no count of their own.
+/// One park &amp; ride site of the VVO open-data file (checked against the live file, October 2026: 56 sites,
+/// "ppid" a NUMBER, "dtg" German local time "11.10.2026-02:37:19" or empty, "number_free_now" -1 when the site
+/// counts nothing). Every field is optional, unknown keys are ignored, and the text fields read any scalar (a
+/// wrong type made the whole file unreadable before). The per-space sensor list is deliberately not part of this
+/// shape: it is most of the file's bytes and is only read, in a second pass, for the sites without a count.
 /// </summary>
 public class VvoParkingSite
 {
 	[JsonPropertyName("id")]
+	[JsonConverter(typeof(LenientStringConverter))]
 	public string? Id { get; init; }
 
 	[JsonPropertyName("ppid")]
+	[JsonConverter(typeof(LenientStringConverter))]
 	public string? Ppid { get; init; }
 
 	[JsonPropertyName("name")]
+	[JsonConverter(typeof(LenientStringConverter))]
 	public string? Name { get; init; }
 
 	/// <summary>WGS84 decimals, as delivered (no GK4 conversion here).</summary>
@@ -27,6 +32,7 @@ public class VvoParkingSite
 	public double? Longitude { get; init; }
 
 	[JsonPropertyName("info")]
+	[JsonConverter(typeof(LenientStringConverter))]
 	public string? Info { get; init; }
 
 	[JsonPropertyName("number_total")]
@@ -40,6 +46,7 @@ public class VvoParkingSite
 
 	/// <summary>When the counts were taken. The format is not documented (ISO, /Date(ms)/, something else), so it stays a string.</summary>
 	[JsonPropertyName("dtg")]
+	[JsonConverter(typeof(LenientStringConverter))]
 	public string? Dtg { get; init; }
 }
 

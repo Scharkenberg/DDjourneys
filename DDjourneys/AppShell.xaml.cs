@@ -32,6 +32,7 @@ public partial class AppShell : Shell
 		Routing.RegisterRoute(Routes.Vehicles, typeof(VehiclesPage));
 		Routing.RegisterRoute(Routes.Map, typeof(MapPage));
 		Routing.RegisterRoute(Routes.NetworkMap, typeof(NetworkMapPage));
+		Routing.RegisterRoute(Routes.ZonePlan, typeof(ZonePlanPage));
 #if WINDOWS
 		Routing.RegisterRoute(Routes.WidgetSetup, typeof(WidgetSetupPage));
 #endif
