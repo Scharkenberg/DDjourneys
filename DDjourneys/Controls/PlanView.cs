@@ -6,6 +6,38 @@ namespace DDjourneys.Controls;
 /// <summary>Whether the plan can be zoomed further in and out (for the page's zoom buttons).</summary>
 public readonly record struct PlanZoom(bool CanZoomIn, bool CanZoomOut);
 
+/// <summary>A stop of the plan: its id, its place on the sheet in plan pixels of the deepest level, and its label.</summary>
+public sealed record PlanStop(string Id, double X, double Y, string Title);
+
+/// <summary>The marks the host can place on a stop of the plan.</summary>
+public enum PlanMark
+{
+	/// <summary>Where a journey starts.</summary>
+	From,
+
+	/// <summary>Where it ends.</summary>
+	To,
+
+	/// <summary>The stop nearest to the passenger.</summary>
+	Here,
+
+	/// <summary>The stop picked to be looked at.</summary>
+	Focus
+}
+
+/// <summary>What the view does after a mark was placed.</summary>
+public enum PlanFit
+{
+	/// <summary>Nothing; the view stays as it is.</summary>
+	None,
+
+	/// <summary>Every mark that stands, in view.</summary>
+	All,
+
+	/// <summary>This mark centred, close enough to read it and its neighbours.</summary>
+	Center
+}
+
 /// <summary>
 /// Shows a plan of any size (a network map, a fare zone plan) in a <see cref="HybridWebView"/> with Leaflet
 /// (Resources/Raw/wwwroot/plan.html): pinch, pan with inertia, double tap, wheel and keys, clamped to the sheet.
@@ -26,6 +58,9 @@ public sealed partial class PlanView : ContentView
 	private bool _ready;
 	private bool _hadPlan;
 	private bool _subscribed;
+	private IReadOnlyList<PlanStop>? _stops;
+	private double _stopScale;
+	private Dictionary<PlanMark, (string? Id, string? Title, PlanFit Fit)>? _marks;
 
 	public PlanView()
 	{
@@ -69,12 +104,19 @@ public sealed partial class PlanView : ContentView
 	/// </summary>
 	public event EventHandler? PlanLost;
 
+	/// <summary>A stop of the plan was tapped (its id); the plan page marks it focused in the web view itself.</summary>
+	public event EventHandler<string>? StopTapped;
+
 	/// <summary>Shows a plan; the view takes ownership of <paramref name="tiles"/> (the previous plan is disposed).</summary>
 	public Task ShowAsync(IPlanTiles tiles)
 	{
 		ArgumentNullException.ThrowIfNull(tiles);
 
 		_hadPlan = true;
+
+		// A plan shown anew starts empty: its stops and marks are the page's to send again.
+		_stops = null;
+		_marks = null;
 
 		IPlanTiles? previous = Interlocked.Exchange(ref _tiles, tiles);
 
@@ -84,6 +126,33 @@ public sealed partial class PlanView : ContentView
 		}
 
 		return _ready ? PushPlanAsync(tiles) : Task.CompletedTask;
+	}
+
+	/// <summary>
+	/// The stops of the plan, tap targets drawn on the sheet from <paramref name="tapScale"/> on (CSS pixels per plan
+	/// pixel; below it a tap zooms in towards them instead). Replaces the stops sent before; they are kept while the
+	/// page is not ready yet and sent once it is. A plan shown after them starts without stops.
+	/// </summary>
+	public Task SetStopsAsync(IReadOnlyList<PlanStop> stops, double tapScale)
+	{
+		ArgumentNullException.ThrowIfNull(stops);
+
+		_stops = stops;
+		_stopScale = tapScale;
+
+		return _ready ? PushStopsAsync() : Task.CompletedTask;
+	}
+
+	/// <summary>
+	/// Places the mark of one kind on a stop (a null id takes it away) and moves the view as <paramref name="fit"/>
+	/// asks. The marks are kept while the page is not ready yet and replayed once it is; a plan shown after them
+	/// starts without marks.
+	/// </summary>
+	public Task MarkAsync(PlanMark mark, string? id, string? title, PlanFit fit = PlanFit.None)
+	{
+		(_marks ??= new())[mark] = (id, title, fit);
+
+		return _ready ? PushMarkAsync(mark, id, title, fit) : Task.CompletedTask;
 	}
 
 	/// <summary>Zooms by whole steps (positive: in), animated, around the centre.</summary>
@@ -140,6 +209,8 @@ public sealed partial class PlanView : ContentView
 			_life = new CancellationTokenSource();
 
 			Interlocked.Exchange(ref _tiles, null)?.Dispose();
+			_stops = null;
+			_marks = null;
 
 			if (_subscribed)
 			{
@@ -180,6 +251,8 @@ public sealed partial class PlanView : ContentView
 				if (Volatile.Read(ref _tiles) is { } tiles)
 				{
 					await PushPlanAsync(tiles);
+					await PushStopsAsync();
+					await PushMarksAsync();
 				}
 				else if (_hadPlan)
 				{
@@ -196,6 +269,14 @@ public sealed partial class PlanView : ContentView
 				var zoom = new PlanZoom(message[5] == '1', message[7] == '1');
 
 				MainThread.BeginInvokeOnMainThread(() => ZoomChanged?.Invoke(this, zoom));
+			}
+			else if (message.StartsWith("pin:", StringComparison.Ordinal))
+			{
+				// The page marks the stop focused in the web view itself ('unpin', the letting go of that mark, needs
+				// no C# side yet).
+				string id = message[4..];
+
+				MainThread.BeginInvokeOnMainThread(() => StopTapped?.Invoke(this, id));
 			}
 			else if (message.StartsWith("error:", StringComparison.Ordinal))
 			{
@@ -219,6 +300,77 @@ public sealed partial class PlanView : ContentView
 					writer.WritePropertyName("plan");
 					tiles.Spec.Write(writer);
 				}));
+
+	private Task PushStopsAsync() =>
+		_stops is { } stops
+			? CallAsync(
+				"stops",
+				PlanAddress.Json(
+					writer =>
+					{
+						writer.WriteNumber("minScale", _stopScale);
+						writer.WriteStartArray("pins");
+
+						foreach (PlanStop stop in stops)
+						{
+							writer.WriteStartArray();
+							writer.WriteStringValue(stop.Id);
+							writer.WriteNumberValue(stop.X);
+							writer.WriteNumberValue(stop.Y);
+							writer.WriteStringValue(stop.Title);
+							writer.WriteEndArray();
+						}
+
+						writer.WriteEndArray();
+					}))
+			: Task.CompletedTask;
+
+	/// <summary>The marks in the order they were placed: the end state is that of placing them one by one.</summary>
+	private async Task PushMarksAsync()
+	{
+		if (_marks is null)
+		{
+			return;
+		}
+
+		foreach (KeyValuePair<PlanMark, (string? Id, string? Title, PlanFit Fit)> placed in _marks)
+		{
+			await PushMarkAsync(placed.Key, placed.Value.Id, placed.Value.Title, placed.Value.Fit);
+		}
+	}
+
+	private Task PushMarkAsync(PlanMark mark, string? id, string? title, PlanFit fit) =>
+		CallAsync(
+			"mark",
+			PlanAddress.Json(
+				writer =>
+				{
+					writer.WriteString("kind", KindOf(mark));
+
+					if (id is { } stopId)
+					{
+						writer.WriteString("id", stopId);
+
+						if (title is { } label)
+						{
+							writer.WriteString("label", label);
+						}
+					}
+
+					if (fit != PlanFit.None)
+					{
+						writer.WriteString("fit", fit == PlanFit.All ? "all" : "center");
+					}
+				}));
+
+	private static string KindOf(PlanMark mark) =>
+		mark switch
+		{
+			PlanMark.From => "from",
+			PlanMark.To => "to",
+			PlanMark.Here => "here",
+			_ => "focus"
+		};
 
 	private Task CallAsync(string command, string? json) =>
 		WebBridge.CallAsync(_web, "ddPlanCall", command, json, "Plan");

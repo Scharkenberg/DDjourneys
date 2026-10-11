@@ -160,7 +160,7 @@ public sealed partial class ZonePlanPage : ContentPage, IQueryAttributable
 			Stale.IsVisible = !plan.Fresh;
 
 			await Plan.ShowAsync(plan.Tiles);
-			await Plan.SetStopsAsync([.. plan.Pins.Select(pin => new PlanStop(pin.Id, pin.X, pin.Y, pin.Title))], StopScale);
+			await Plan.SetStopsAsync((PlanStop[])[.. plan.Pins.Select(pin => new PlanStop(pin.Id, pin.X, pin.Y, pin.Title))], StopScale);
 			await PlaceMarksAsync();
 
 			SearchButton.IsEnabled = true;

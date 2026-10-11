@@ -80,24 +80,27 @@ public static class InterfaceSchemas
 	/// <summary>Shared bikes of MOBIbike Dresden (Nextbike), as GBFS discovery names them.</summary>
 	public const string GbfsUrl = "https://gbfs.nextbike.net/maps/gbfs/v2/nextbike_dx/gbfs.json";
 
+	/// <summary>Free e-bikes of Lime in Dresden, as GBFS discovery names them (the v2 partner feed).</summary>
+	public const string LimeGbfsUrl = "https://data.lime.bike/api/partners/v2/gbfs/dresden/gbfs";
+
 	/// <summary>
 	/// Revisions the app keeps itself. Changing how the app reads or writes the interface means raising it here and
 	/// adding a line to the history below.
 	/// </summary>
 	public static class Revision
 	{
-		// History: r1 = first schema of the interface list (October 2026). Map bridge r2 = the page's diagnostics (log: messages), r3 = the page loads MapLibre only after its own check and reports unsupported:reason, r4 = the page waits for the app (boot, ddBoot start with engine carto|leaflet and force), r5 = per-layer sends (ddMapCall layer/layers with a layer id, the overlay command is gone), polygon payloads (tariff zones) and the reserved marker kinds parking and bike of the Tier 2 city layers. Carto r2 = raster tiles for the Leaflet engine (OpenStreetMap tiles first, CARTO raster as fallback). Plan bridge r1 = the plan page's own protocol (ddPlanCall and its messages, the /_plan/ tile addresses).
+		// History: r1 = first schema of the interface list (October 2026). Map bridge r2 = the page's diagnostics (log: messages), r3 = the page loads MapLibre only after its own check and reports unsupported:reason, r4 = the page waits for the app (boot, ddBoot start with engine carto|leaflet and force), r5 = per-layer sends (ddMapCall layer/layers with a layer id, the overlay command is gone), polygon payloads (tariff zones) and the reserved marker kinds parking and bike of the Tier 2 city layers. Carto r2 = raster tiles for the Leaflet engine (OpenStreetMap tiles first, CARTO raster as fallback). Plan bridge r1 = the plan page's own protocol (ddPlanCall and its messages, the /_plan/ tile addresses). Gbfs r2 = Lime's dockless feed read (free_bike_status and vehicle_types of the v2 partner feed). Plan bridge r2 = the zone plan's stops and marks (the stops and mark commands, the pin and unpin messages).
 		public const int VvoWebApi = 1;
 		public const int Schutzengel = 1;
 		public const int Tlms = 1;
 		public const int OpenData = 1;
 		public const int Carto = 2;
 		public const int MapBridge = 5;
-		public const int PlanBridge = 1;
+		public const int PlanBridge = 2;
 		public const int OsmTiles = 1;
 		public const int DvbNetworkMap = 1;
 		public const int VvoPur = 1;
-		public const int Gbfs = 1;
+		public const int Gbfs = 2;
 		public const int WidgetData = 2;
 		public const int WidgetCardWin = 2;
 	}
@@ -144,7 +147,7 @@ public static class InterfaceSchemas
 		new(
 			"gbfs", InterfaceKind.External, "Shared bikes (GBFS)",
 			R(Revision.Gbfs), GbfsUrl,
-			"GBFS 2.x, discovery-first; station_information cached an hour, station_status at most a minute (the feed's ttl when smaller); Lime reserved for v1.1 (dockless: free_bike_status)"),
+			"GBFS 2.x, discovery-first; station_information cached an hour, station_status at most a minute (the feed's ttl when smaller); Lime dockless: free_bike_status and vehicle_types of the v2 partner feed (data.lime.bike)"),
 		new(
 			"storage-lists", InterfaceKind.Internal, "Stored lists (places, routes)",
 			Number(StoredJson.CurrentVersion), string.Empty,
@@ -156,7 +159,7 @@ public static class InterfaceSchemas
 		new(
 			"plan-bridge", InterfaceKind.Internal, "Plan page messages",
 			R(Revision.PlanBridge), string.Empty,
-			"ddPlanCall(command, json) for init (theme and the plan's geometry), theme, zoom, fit and clear, the raw messages ready, shown, failed, zoom, error, and the tile addresses /_plan/{key}/{level}/{x}/{y}?r={ratio} and /_plan/{key}/image, answered no-store (an empty tile is retried by the page)"),
+			"ddPlanCall(command, json) for init (theme and the plan's geometry), theme, zoom, fit, clear, stops and mark, the raw messages ready, shown, failed, zoom, pin, unpin, error, and the tile addresses /_plan/{key}/{level}/{x}/{y}?r={ratio} and /_plan/{key}/image, answered no-store (an empty tile is retried by the page)"),
 		new(
 			"widget-data", InterfaceKind.Internal, "Widget settings and snapshot",
 			R(Revision.WidgetData), string.Empty,

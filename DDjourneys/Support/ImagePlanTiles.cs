@@ -32,7 +32,7 @@ public sealed class ImagePlanTiles : IPlanTiles
 				string key = $"{name}-{PlanAddress.Fingerprint(path)}";
 
 				// Past the picture's own pixels, so its small print can be read (blurred, but legible).
-				var spec = new PlanSpec(key, info.Width, info.Height, [1d], OverZoom: 1.5, Image: true);
+				var spec = new PlanSpec(key, info.Width, info.Height, (double[])[1d], OverZoom: 1.5, Image: true);
 
 				return new ImagePlanTiles(path, spec, type);
 			},
