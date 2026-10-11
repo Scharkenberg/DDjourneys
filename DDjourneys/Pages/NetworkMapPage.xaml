@@ -51,7 +51,8 @@
 				x:Name="Plan"
 				Opacity="0"
 				Shown="PlanShown"
-				ZoomChanged="PlanZoomChanged" />
+				ZoomChanged="PlanZoomChanged"
+				PlanLost="ReloadPlan" />
 
 			<ActivityIndicator
 				x:Name="Busy"

@@ -116,13 +116,15 @@ public sealed class PdfPlanTiles : IPlanTiles
 
 	private async Task<byte[]?> DrawAsync(PlanTile tile, string file)
 	{
+		byte[]? png = null;
+
 		try
 		{
 			var job = new Job(tile, new TaskCompletionSource<byte[]?>(TaskCreationOptions.RunContinuationsAsynchronously));
 
 			Enqueue(job);
 
-			byte[]? png = await job.Done.Task.ConfigureAwait(false);
+			png = await job.Done.Task.ConfigureAwait(false);
 
 			if (png is not null)
 			{
@@ -131,18 +133,18 @@ public sealed class PdfPlanTiles : IPlanTiles
 				await File.WriteAllBytesAsync(part, png).ConfigureAwait(false);
 				File.Move(part, file, overwrite: true);
 			}
-
-			return png;
 		}
 		catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
 		{
 			// Not kept on disk is no reason not to show it: the drawing is lost, not the tile.
-			return null;
+			DiagnosticLog.Write($"[Plan] tile {tile.Level}/{tile.X}/{tile.Y}@{tile.Ratio} not cached: {ex.Message}");
 		}
 		finally
 		{
 			_running.TryRemove(file, out _);
 		}
+
+		return png;
 	}
 
 	/// <summary>

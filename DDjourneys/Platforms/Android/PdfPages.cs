@@ -42,7 +42,8 @@ public static partial class PdfPages
 
 	/// <summary>
 	/// <c>PdfRenderer</c> is not thread-safe and allows one open page per renderer: the page stays open for the
-	/// life of this object and every call holds the lock. Parallel rendering takes several instances.
+	/// life of this object and every call holds the lock. Rendering is serial app-wide anyway: the plan tiles
+	/// draw one tile at a time, never two in parallel.
 	/// </summary>
 	private sealed class AndroidPdfPage(ParcelFileDescriptor descriptor, PdfRenderer renderer, PdfRenderer.Page page) : IPdfPage
 	{

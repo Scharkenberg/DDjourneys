@@ -67,7 +67,8 @@ public sealed class FareLinksTests
 				Name = "Single"
 			};
 
-		Assert.Null(FareLinks.For(broken, "vvo"));
-		Assert.Null(FareLinks.For(none, "trias"));
+		// A provider without a page of its own has nothing; the VVO always has its authority page.
+		Assert.Null(FareLinks.For(broken, "other"));
+		Assert.Null(FareLinks.For(none, "other"));
 	}
 }

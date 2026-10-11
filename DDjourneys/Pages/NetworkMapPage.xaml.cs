@@ -1,5 +1,6 @@
 using DDjourneys.Controls;
 using DDjourneys.Core.Diagnostics;
+using DDjourneys.Localization;
 using DDjourneys.Support;
 
 namespace DDjourneys.Pages;
@@ -54,6 +55,17 @@ public sealed partial class NetworkMapPage : ContentPage
 	private void ZoomOutClicked(object? sender, EventArgs e) =>
 		_ = Plan.ZoomAsync(-1);
 
+	/// <summary>
+	/// The plan view was rebuilt (its web view torn down and re-created, e.g. by a window change): the plan it
+	/// showed went with the old instance, and the remembered key would keep the reload from showing it again.
+	/// </summary>
+	private void ReloadPlan(object? sender, EventArgs e)
+	{
+		_key = null;
+
+		Load(refresh: false);
+	}
+
 	private void PlanZoomChanged(object? sender, PlanZoom zoom)
 	{
 		ZoomInButton.IsEnabled = zoom.CanZoomIn;
@@ -96,7 +108,9 @@ public sealed partial class NetworkMapPage : ContentPage
 			NetworkMapFile pdf = await _maps.GetPdfAsync();
 
 			await Launcher.Default.OpenAsync(
-				new OpenFileRequest("Liniennetzplan", new ReadOnlyFile(pdf.Path, "application/pdf")));
+				new OpenFileRequest(
+					LocalizationService.Current.CurrentStrings.Extras.NetworkMap,
+					new ReadOnlyFile(pdf.Path, "application/pdf")));
 		}
 		catch (Exception ex) when (ex is not OperationCanceledException)
 		{
