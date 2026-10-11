@@ -341,15 +341,15 @@ public sealed class VvoNetworkProvider :
 		return result;
 	}
 
+	/// <summary>A stop pin is named by its DHID ("de:14612:243", seen in the log) or a plain number.</summary>
+	private static bool IsStopId(string id) =>
+		int.TryParse(id, out _) || id.StartsWith("de:", StringComparison.OrdinalIgnoreCase);
+
 	/// <summary>
 	/// A map pin as a stop. The layout of a pin is not documented: the name is the first text field that is neither
 	/// the id nor a number, the position the first two numbers in the GK4 range (either order), a stop has a DHID
 	/// id and a type that is empty or says stop.
 	/// </summary>
-	/// <summary>A stop pin is named by its DHID ("de:14612:243", seen in the log) or a plain number.</summary>
-	private static bool IsStopId(string id) =>
-		int.TryParse(id, out _) || id.StartsWith("de:", StringComparison.OrdinalIgnoreCase);
-
 	private static Location? PinToStop(string pin)
 	{
 		string[] fields = pin.Split('|');
