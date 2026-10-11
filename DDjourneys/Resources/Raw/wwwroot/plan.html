@@ -54,6 +54,8 @@ html.dark .leaflet-tile-pane, html.dark .leaflet-paper-pane, html.dark .leaflet-
 	var hover = window.matchMedia && window.matchMedia('(hover: hover)').matches;
 
 	function send(text) { try { window.HybridWebView.SendRawMessage(text); } catch (e) { } }
+	// Lines for the app's log ("Log to file"): what the page was told and what its tiles did.
+	function log(text) { send('log:' + text); }
 	window.addEventListener('error', function (e) { send('error:' + e.message); });
 
 	// ---- theme ----
@@ -290,14 +292,24 @@ html.dark .leaflet-tile-pane, html.dark .leaflet-paper-pane, html.dark .leaflet-
 			});
 
 			tiles.on('tileload', function () { loaded++; });
-			tiles.on('tileerror', function (e) { retry(e.tile, e.coords) || failed++; });
-			// The first complete view decides: the plan is up, or nothing of it could be drawn.
-			tiles.on('load', function () { announce(loaded > 0 || failed === 0); });
+			tiles.on('tileerror', function (e) {
+				if (failed < 3) { log('tile error ' + (e.tile && e.tile.src)); }
+				retry(e.tile, e.coords) || failed++;
+			});
+			// The first complete view decides: the plan is up (some tile drew), or nothing of it could be drawn. A view
+			// that asked for no tile at all is no plan either: the white sheet under the tiles must never count as shown.
+			tiles.on('load', function () {
+				log('tiles: ' + loaded + ' loaded, ' + failed + ' failed');
+				announce(loaded > 0);
+			});
 			tiles.addTo(map);
 		}
 
 		map.fitBounds(bounds, { animate: false, padding: [12, 12] });
 		updateMinZoom();
+
+		log('plan ' + plan.key + ' ' + plan.width + 'x' + plan.height + ', ' + (plan.image ? 'image' : plan.scales.length + ' levels, tile ' + plan.tileSize + (plan.retina ? ', ratio ' + r : '')) +
+			'; view ' + map.getSize().x + 'x' + map.getSize().y + ', zoom ' + map.getZoom().toFixed(2) + ' (min ' + map.getMinZoom().toFixed(2) + ', max ' + map.getMaxZoom() + ')');
 
 		map.on('zoomend', reportZoom);
 		map.on('zoomend', syncStops);

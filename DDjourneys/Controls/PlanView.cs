@@ -174,6 +174,12 @@ public sealed partial class PlanView : ContentView
 		if (tiles is null
 			|| !PlanAddress.TryRead(e.Uri, tiles.Spec.Key, out PlanTile tile, out bool image))
 		{
+			// A plan address that is nobody's (no plan, or another plan's key) becomes a 404 in the page: said once per kind.
+			if (e.Uri.AbsolutePath.StartsWith(PlanAddress.Prefix, StringComparison.Ordinal))
+			{
+				DiagnosticLog.Write($"[Plan] request not answered ({(tiles is null ? "no plan" : "other key than " + tiles.Spec.Key)}): {e.Uri.AbsolutePath}");
+			}
+
 			return;
 		}
 
@@ -191,7 +197,31 @@ public sealed partial class PlanView : ContentView
 			200,
 			"OK",
 			headers,
-			image ? tiles.OpenImageAsync(cancellationToken) : tiles.OpenTileAsync(tile, cancellationToken));
+			Logged(image ? tiles.OpenImageAsync(cancellationToken) : tiles.OpenTileAsync(tile, cancellationToken), e.Uri.AbsolutePath));
+	}
+
+	private int _answered;
+
+	/// <summary>Passes the answer on; the first ones, and every one that came back empty or failed, go to the log.</summary>
+	private async Task<Stream?> Logged(Task<Stream?> answer, string path)
+	{
+		try
+		{
+			Stream? stream = await answer.ConfigureAwait(false);
+
+			if (stream is null || Interlocked.Increment(ref _answered) <= 4)
+			{
+				DiagnosticLog.Write($"[Plan] {path}: {(stream is null ? "nothing" : stream.CanSeek ? stream.Length + " bytes" : "a stream")}");
+			}
+
+			return stream;
+		}
+		catch (Exception ex) when (ex is not OperationCanceledException)
+		{
+			DiagnosticLog.Write($"[Plan] {path} failed: {ex.Message}");
+
+			throw;
+		}
 	}
 
 	private void OnHandlerChanged(object? sender, EventArgs e)
@@ -277,6 +307,10 @@ public sealed partial class PlanView : ContentView
 				string id = message[4..];
 
 				MainThread.BeginInvokeOnMainThread(() => StopTapped?.Invoke(this, id));
+			}
+			else if (message.StartsWith("log:", StringComparison.Ordinal))
+			{
+				DiagnosticLog.Write($"[Plan JS] {message[4..]}");
 			}
 			else if (message.StartsWith("error:", StringComparison.Ordinal))
 			{

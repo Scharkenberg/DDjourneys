@@ -3,6 +3,7 @@ using DDjourneys.Core.Api;
 using DDjourneys.Core.Diagnostics;
 using DDjourneys.Core.Models;
 using DDjourneys.Core.Providers.Abstractions;
+using DDjourneys.Core.Services;
 using Location = DDjourneys.Core.Models.Location;
 using System.Globalization;
 using System.Xml.Linq;
@@ -189,6 +190,25 @@ public sealed class TriasProvider :
 
 	// ---------- Stops in an area ----------
 
+	/// <summary>How far apart the position queries of a wide view are (one answer is the nearest 40 stops, a few hundred metres in town).</summary>
+	private const int GridSpacingMeters = 1500;
+
+	/// <summary>Most cells one view may cost.</summary>
+	private const int GridCellLimit = 36;
+
+	private readonly TtlCache<List<Location>> _cells = new(TimeSpan.FromMinutes(10), 512);
+
+	/// <summary>Until when the area restriction is not asked: this server answered it with nothing.</summary>
+	private long _circleUselessUntil;
+
+	private static readonly TimeSpan CircleRetry = TimeSpan.FromMinutes(10);
+
+	/// <summary>
+	/// The stops of the area a map shows. The primary way is the area restriction of the location request (a circle,
+	/// TRIAS takes up to 2000 m); a server that answers it with nothing is remembered for ten minutes and, like a view
+	/// wider than the circle, is covered by position queries on a grid over the view (each the nearest 40 stops of its
+	/// cell), merged by stop. The answer is the whole view, never just the few stops around its centre.
+	/// </summary>
 	public async Task<IReadOnlyList<NearbyStop>> GetStopsAroundAsync(
 		double latitude,
 		double longitude,
@@ -196,48 +216,187 @@ public sealed class TriasProvider :
 		int limit,
 		CancellationToken cancellationToken = default)
 	{
-		// TRIAS LocationByArea takes at most 2000 m; a wider view (the VVO box answers 10 km) is asked in slices
-		// no wider than that, so the stops list stays as complete as the dialect allows.
-		int radius = Math.Clamp(radiusMeters, 100, 2000);
+		int radius = Math.Clamp(radiusMeters, 100, 10_000);
 
-		XDocument response =
-			await _client
-				.SendAsync(
-					TriasRequestKind.Locations,
-					dialect => TriasRequests.LocationByArea(latitude, longitude, radius, limit, dialect),
-					cancellationToken,
-					Timeout(10))
-				.ConfigureAwait(false);
+		var found = new Dictionary<string, Location>(StringComparer.Ordinal);
 
-		IReadOnlyList<Location> places = TriasMapper.MapLocations(response);
-
-		// A server that does not know the area restriction answers with an error or nothing: the stops around the centre.
-		if (places.Count == 0)
+		void Add(IEnumerable<Location> places)
 		{
-			response =
-				await _client
-					.SendAsync(
-						TriasRequestKind.Locations,
-						dialect => TriasRequests.LocationByPosition(latitude, longitude, PlaceKinds.Stops, Math.Min(limit, 40), dialect),
-						cancellationToken,
-						Timeout(10))
-					.ConfigureAwait(false);
+			foreach (Location place in places)
+			{
+				if (place.Kind == PlaceKind.Stop
+					&& place.Latitude is not null
+					&& place.Longitude is not null)
+				{
+					string key = place.StopKey ?? place.Id ?? $"{place.Latitude:F5},{place.Longitude:F5}";
 
-			places = TriasMapper.MapLocations(response);
+					found.TryAdd(key, place);
+				}
+			}
 		}
 
+		int circle = 0;
+		bool asked = false;
+
+		if (DateTime.UtcNow.Ticks >= Interlocked.Read(ref _circleUselessUntil))
+		{
+			asked = true;
+
+			try
+			{
+				XDocument response =
+					await _client
+						.SendAsync(
+							TriasRequestKind.Locations,
+							dialect => TriasRequests.LocationByArea(latitude, longitude, Math.Min(radius, 2000), Math.Min(limit, 100), dialect),
+							cancellationToken,
+							Timeout(10))
+						.ConfigureAwait(false);
+
+				Add(TriasMapper.MapLocations(response));
+
+				circle = found.Count;
+			}
+			catch (Exception ex) when (ex is not OperationCanceledException)
+			{
+				DiagnosticLog.Write($"[Stops] TRIAS area request failed: {ex.Message}");
+			}
+
+			if (circle == 0)
+			{
+				Interlocked.Exchange(ref _circleUselessUntil, DateTime.UtcNow.Add(CircleRetry).Ticks);
+
+				DiagnosticLog.Write("[Stops] TRIAS answers the area restriction with nothing: position queries on a grid for the next 10 minutes");
+			}
+		}
+
+		// The circle covers at most 2000 m: a wider view, and a server without the restriction, are covered by the grid.
+		int cells = 0;
+
+		if (circle == 0 || radius > 2000)
+		{
+			cells = await AddGridAsync(latitude, longitude, radius, Add, cancellationToken).ConfigureAwait(false);
+		}
+
+		DiagnosticLog.Write($"[Stops] TRIAS view {latitude:F5},{longitude:F5} radius {radius} m: area {(asked ? circle.ToString(CultureInfo.InvariantCulture) : "skipped")}, grid {cells} cells, {found.Count} stops");
+
 		return
-			[.. places
-				.Where(place => place.Kind == PlaceKind.Stop && place.Latitude is not null && place.Longitude is not null)
+			[.. found.Values
 				.Select(
 					place => new NearbyStop
 					{
 						Stop = place,
 						DistanceMeters = (int)Math.Round(GeoMath.DistanceMeters(latitude, longitude, place.Latitude!.Value, place.Longitude!.Value))
 					})
-				.Where(stop => stop.DistanceMeters <= radiusMeters * 1.5)
+				.Where(stop => stop.DistanceMeters <= radius * 1.5)
 				.OrderBy(stop => stop.DistanceMeters)
 				.Take(limit)];
+	}
+
+	/// <summary>
+	/// The nearest stops of the centres of a grid over the box (a few queries at a time); returns how many cells the
+	/// box touches. The grid is fixed to the map, not to the view: panning reuses the cells it already has (kept ten
+	/// minutes, never an empty answer), only the cells that came into view are asked for.
+	/// </summary>
+	private async Task<int> AddGridAsync(
+		double latitude,
+		double longitude,
+		int radius,
+		Action<IEnumerable<Location>> add,
+		CancellationToken cancellationToken)
+	{
+		const double MetresPerDegreeLatitude = 111_320d;
+
+		double stepLatitude = GridSpacingMeters / MetresPerDegreeLatitude;
+
+		// The longitude step follows the latitude band (whole degrees), so the grid does not shift while the view moves.
+		double stepLongitude = GridSpacingMeters / (MetresPerDegreeLatitude * Math.Cos(Math.Round(latitude) * Math.PI / 180));
+
+		double spanLatitude = radius / MetresPerDegreeLatitude;
+		double spanLongitude = radius / (MetresPerDegreeLatitude * Math.Cos(latitude * Math.PI / 180));
+
+		int firstRow = (int)Math.Floor((latitude - spanLatitude) / stepLatitude);
+		int lastRow = (int)Math.Floor((latitude + spanLatitude) / stepLatitude);
+		int firstColumn = (int)Math.Floor((longitude - spanLongitude) / stepLongitude);
+		int lastColumn = (int)Math.Floor((longitude + spanLongitude) / stepLongitude);
+
+		var cells = new List<(int Row, int Column, double Latitude, double Longitude, double Distance)>();
+
+		for (int row = firstRow; row <= lastRow; row++)
+		{
+			for (int column = firstColumn; column <= lastColumn; column++)
+			{
+				double cellLatitude = (row + 0.5) * stepLatitude;
+				double cellLongitude = (column + 0.5) * stepLongitude;
+
+				cells.Add((row, column, cellLatitude, cellLongitude, GeoMath.DistanceMeters(latitude, longitude, cellLatitude, cellLongitude)));
+			}
+		}
+
+		// A very wide view costs the cells nearest its centre, not a request storm.
+		(int Row, int Column, double Latitude, double Longitude, double Distance)[] chosen =
+			[.. cells.OrderBy(cell => cell.Distance).Take(GridCellLimit)];
+
+		using var gate = new SemaphoreSlim(4);
+		var answers = new List<Location>[chosen.Length];
+
+		await Task.WhenAll(
+			chosen.Select(
+				async (cell, index) =>
+				{
+					string key = string.Create(CultureInfo.InvariantCulture, $"{cell.Row}:{cell.Column}");
+
+					if (_cells.TryGet(key, out List<Location>? cached))
+					{
+						answers[index] = cached;
+
+						return;
+					}
+
+					await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+
+					try
+					{
+						XDocument response =
+							await _client
+								.SendAsync(
+									TriasRequestKind.Locations,
+									dialect => TriasRequests.LocationByPosition(cell.Latitude, cell.Longitude, PlaceKinds.Stops, 40, dialect),
+									cancellationToken,
+									Timeout(10))
+								.ConfigureAwait(false);
+
+						List<Location> places = [.. TriasMapper.MapLocations(response)];
+
+						if (places.Count > 0)
+						{
+							_cells.Set(key, places);
+						}
+
+						answers[index] = places;
+					}
+					catch (Exception ex) when (ex is not OperationCanceledException)
+					{
+						DiagnosticLog.Write($"[Stops] TRIAS grid cell {key} failed: {ex.Message}");
+
+						answers[index] = [];
+					}
+					finally
+					{
+						gate.Release();
+					}
+				}))
+			.ConfigureAwait(false);
+
+		foreach (List<Location>? places in answers)
+		{
+			if (places is not null)
+			{
+				add(places);
+			}
+		}
+
+		return chosen.Length;
 	}
 
 	// ---------- Departures ----------

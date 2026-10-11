@@ -295,8 +295,12 @@ public sealed class VvoNetworkProvider :
 
 		if (response is null)
 		{
+			DiagnosticLog.Write($"[Stops] VVO map/pins gave no answer for the box around {latitude:F5},{longitude:F5} ({radius} m)");
+
 			return [];
 		}
+
+		DiagnosticLog.Write($"[Stops] VVO map/pins: {response.Pins.Count} pins for the box around {latitude:F5},{longitude:F5} ({radius} m), status {response.Status?.Code ?? "none"}");
 
 		// Pins are written like PointFinder entries; a stop pin has a numeric id.
 		return
