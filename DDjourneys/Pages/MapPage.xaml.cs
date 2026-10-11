@@ -981,9 +981,11 @@ public partial class MapPage : PanePage, IQueryAttributable
 			Strings.MapNothingHere,
 			LocalizationService.Current.CurrentStrings.Common.Ok);
 
+	/// <summary>A stop the scene already draws is the same stop: its own markers count, the knots of a line course
+	/// as much as the stop rings of a journey (without the knots, a line map drew two spots on every stop).</summary>
 	private bool IsInScene(double latitude, double longitude) =>
 		_scene.Markers.Any(
-			marker => marker.Kind is MapMarkerKind.Stop or MapMarkerKind.Current or MapMarkerKind.Start or MapMarkerKind.End
+			marker => marker.Kind is MapMarkerKind.Stop or MapMarkerKind.Knot or MapMarkerKind.Current or MapMarkerKind.Start or MapMarkerKind.End
 				&& GeoMath.DistanceMeters(latitude, longitude, marker.Latitude, marker.Longitude) < SameStopMeters);
 
 	private void UpdateHint(MapViewport? viewport)

@@ -23,7 +23,7 @@ public sealed class TrackTarget
 
 	public string? Direction { get; init; }
 
-	/// <summary>Stops in travel order; at least two with a position and a time to be matchable.</summary>
+	/// <summary>Stops in travel order; at least two with a position (times only decide the vehicle match).</summary>
 	public required IReadOnlyList<CoursePoint> Course { get; init; }
 
 	/// <summary>
@@ -58,7 +58,12 @@ public sealed class TrackTarget
 			? number
 			: null;
 
+	/// <summary>
+	/// Usable as soon as the course has two positioned points: the map draws the line and its stops from that alone.
+	/// Times are only needed to pick the one vehicle out of the line's (<see cref="RunMatcher"/> skips untimed
+	/// segments), so a course without them is still shown, just not auto-matched.
+	/// </summary>
 	public bool IsUsable =>
 		LineNumber is not null
-		&& Course.Count(point => point.Time is not null) >= 2;
+		&& Course.Count >= 2;
 }

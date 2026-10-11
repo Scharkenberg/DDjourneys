@@ -272,7 +272,9 @@ public sealed class VvoNetworkProvider :
 			return [];
 		}
 
-		int radius = Math.Clamp(radiusMeters, 100, 2000);
+		// The whole view, not a kilometre-capped circle around its centre: a box of the view's own size keeps
+		// every stop that is on screen, and the same stop stays in the answer while only the view's edge moves.
+		int radius = Math.Clamp(radiusMeters, 100, 10_000);
 
 		// GK4 is metric (scale 1 on the central meridian, about 1.0001 in Saxony): a box in metres is a box here.
 		static string Metres(double value) =>
@@ -316,9 +318,10 @@ public sealed class VvoNetworkProvider :
 										stop.Latitude!.Value,
 										stop.Longitude!.Value))
 						})
-				.Where(nearby => nearby.DistanceMeters <= radius * 1.25)
-				.OrderBy(nearby => nearby.DistanceMeters)
-				.Take(20)];
+				// The farthest corner of the box is sqrt(2) * radius from its centre: 1.45 keeps the corners (a circle
+				// of 1.25 cut them off, which looked like stops missing at the edges of the view).
+				.Where(nearby => nearby.DistanceMeters <= radius * 1.45)
+				.OrderBy(nearby => nearby.DistanceMeters)];
 	}
 
 	/// <inheritdoc />

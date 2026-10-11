@@ -7,6 +7,7 @@ using DDjourneys.Core.Providers;
 using DDjourneys.Core.Services;
 using DDjourneys.Localization;
 using DDjourneys.Support;
+using Location = DDjourneys.Core.Models.Location;
 
 namespace DDjourneys.Pages;
 
@@ -135,6 +136,8 @@ public sealed partial class VehiclesViewModel : DisposableViewModel, IQueryAttri
 	private readonly VehicleService _vehicles;
 	private readonly VehicleStreamHub _hub;
 	private readonly LocalizationService _localization;
+	private readonly LocationService _locations;
+	private readonly LineCourseService _lineCourses;
 	private VehicleStreamSubscription? _vehicleSubscription;
 	private readonly Dictionary<string, VehicleRow> _byKey = [];
 	private CancellationTokenSource? _stream;
@@ -159,18 +162,31 @@ public sealed partial class VehiclesViewModel : DisposableViewModel, IQueryAttri
 	// The lines of the running stream: a resume continues with them, not with whatever is typed but not started.
 	private IReadOnlyList<int> _activeLines = [];
 
+	// The course of the watched lines under the vehicle pills (the connecting line with its stops), fetched once
+	// from the departure board of a stop one of the line's vehicles stands at. Without a followed trip the map
+	// would show nothing but spots.
+	private IReadOnlyList<MapMarker>? _courseMarkers;
+	private IReadOnlyList<MapLine>? _courseLines;
+	private bool _courseTried;
+
 	public VehiclesViewModel(
 		VehicleService vehicles,
 		VehicleStreamHub hub,
-		ProviderRegistry providers)
+		ProviderRegistry providers,
+		LocationService locations,
+		LineCourseService lineCourses)
 	{
 		ArgumentNullException.ThrowIfNull(vehicles);
 		ArgumentNullException.ThrowIfNull(hub);
 		ArgumentNullException.ThrowIfNull(providers);
+		ArgumentNullException.ThrowIfNull(locations);
+		ArgumentNullException.ThrowIfNull(lineCourses);
 
 		_vehicles = vehicles;
 		_hub = hub;
 		_localization = LocalizationService.Current;
+		_locations = locations;
+		_lineCourses = lineCourses;
 
 		// Positions, lines and the followed run belong to one provider: a switch stops the stream and drops them.
 		Subscribe(
@@ -374,6 +390,9 @@ public sealed partial class VehiclesViewModel : DisposableViewModel, IQueryAttri
 			row.Refresh();
 		}
 
+		// The course of the watched lines is asked for once, when the first positions are there to ask at.
+		LoadCourse();
+
 		if (_dirty)
 		{
 			PublishScene();
@@ -459,9 +478,108 @@ public sealed partial class VehiclesViewModel : DisposableViewModel, IQueryAttri
 			this,
 			_slots.Count > 0
 				? MapScenes.FromTracks((List<TrackTarget>)[.. _slots.Select(slot => slot.Target)], (List<LiveVehicle?>)[.. _slots.Select(slot => slot.Matched)], false)
-				: MapScenes.FromVehicles(
+				: WithCourse(
+					MapScenes.FromVehicles(
 					Rows.Select(row => row.Vehicle),
-					fit));
+						fit)));
+	}
+
+	/// <summary>
+	/// The course of the watched lines under the vehicle pills: the stops the line connects, quietly drawn under
+	/// the positions (a map of only spots says nothing about where the line goes).
+	/// </summary>
+	private MapScene WithCourse(MapScene vehicles) =>
+		_courseLines is not { Count: > 0 }
+			? vehicles
+			: new MapScene
+			{
+				Markers = [.. (_courseMarkers ?? []), .. vehicles.Markers],
+				Lines = _courseLines,
+				Fit = vehicles.Fit
+			};
+
+	/// <summary>Asks once for the courses of the watched lines: a vehicle of the line stands on it, so the stop
+	/// next to it carries the line's departure board, and the board carries the course (both directions).</summary>
+	private void LoadCourse()
+	{
+		if (_courseTried
+			|| _target is not null
+			|| _activeLines.Count == 0
+			|| Rows.Count == 0)
+		{
+			return;
+		}
+
+		_courseTried = true;
+
+		_ = LoadCourseAsync();
+	}
+
+	private async Task LoadCourseAsync()
+	{
+		try
+		{
+			var markers = new List<MapMarker>();
+			var lines = new List<MapLine>();
+
+			foreach (int line in _activeLines.Take(3))
+			{
+				VehicleRow? standing = Rows.FirstOrDefault(row => row.Vehicle.Line == line);
+
+				if (standing is null)
+				{
+					continue;
+				}
+
+				IReadOnlyList<Location> near = await _locations
+					.SearchByCoordinatesAsync(standing.Vehicle.Latitude, standing.Vehicle.Longitude, TimeSpan.FromSeconds(8))
+					.ConfigureAwait(false);
+
+				Location? at = near.FirstOrDefault(place => place.IsStation) ?? near.FirstOrDefault();
+
+				if (at is null)
+				{
+					continue;
+				}
+
+				IReadOnlyList<LineCourse> courses = await _lineCourses
+					.BothDirectionsAsync(
+						new TransitLine { Name = line.ToString(CultureInfo.InvariantCulture), Mode = TransitMode.Unknown },
+						new Station
+						{
+							Id = at.Id ?? string.Empty,
+							ProviderId = at.ProviderId,
+							Name = at.Name,
+							Place = at.Place,
+							Latitude = at.Latitude,
+							Longitude = at.Longitude
+						},
+						15)
+					.ConfigureAwait(false);
+
+				if (courses.Count == 0)
+				{
+					continue;
+				}
+
+				MapScene course = MapScenes.FromLineCourses(courses, fit: false);
+
+				// Ids of their own namespace: whatever a vehicle key is built of, it is not this.
+				markers.AddRange(course.Markers.Select(marker => marker with { Id = $"c{line}:{marker.Id}" }));
+				lines.AddRange(course.Lines);
+			}
+
+			if (lines.Count > 0)
+			{
+				_courseMarkers = markers;
+				_courseLines = lines;
+				_dirty = true;
+			}
+		}
+		catch (Exception ex)
+		{
+			DiagnosticLog.Write($"[Vehicles] line course failed: {ex.Message}");
+		}
 	}
 
 	private static (IReadOnlyList<int> Lines, IReadOnlyList<string> Ignored) ParseLines(string text)
@@ -505,6 +623,9 @@ public sealed partial class VehiclesViewModel : DisposableViewModel, IQueryAttri
 		Rows.Clear();
 		_byKey.Clear();
 		_previous.Clear();
+		_courseMarkers = null;
+		_courseLines = null;
+		_courseTried = _target is not null;
 
 		foreach (Slot slot in _slots)
 		{

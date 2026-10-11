@@ -196,11 +196,15 @@ public sealed class TriasProvider :
 		int limit,
 		CancellationToken cancellationToken = default)
 	{
+		// TRIAS LocationByArea takes at most 2000 m; a wider view (the VVO box answers 10 km) is asked in slices
+		// no wider than that, so the stops list stays as complete as the dialect allows.
+		int radius = Math.Clamp(radiusMeters, 100, 2000);
+
 		XDocument response =
 			await _client
 				.SendAsync(
 					TriasRequestKind.Locations,
-					dialect => TriasRequests.LocationByArea(latitude, longitude, radiusMeters, limit, dialect),
+					dialect => TriasRequests.LocationByArea(latitude, longitude, radius, limit, dialect),
 					cancellationToken,
 					Timeout(10))
 				.ConfigureAwait(false);

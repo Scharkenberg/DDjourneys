@@ -19,6 +19,14 @@ public sealed partial class NetworkMapPage : ContentPage
 	private CancellationTokenSource? _load;
 	private string? _key;
 
+	// The plan on its way in: until the view answers (shown or failed), a watchdog makes sure the page never
+	// stays a silent white sheet — the JPG stands in first, the message with a retry after that.
+	private CancellationTokenSource? _await;
+	private bool _awaiting;
+	private bool _fellBack;
+
+	private static readonly TimeSpan WatchPlan = TimeSpan.FromSeconds(30);
+
 	public NetworkMapPage(NetworkMapStore maps)
 	{
 		InitializeComponent();
@@ -74,12 +82,23 @@ public sealed partial class NetworkMapPage : ContentPage
 
 	private async void PlanShown(object? sender, bool shown)
 	{
+		_awaiting = false;
+		_await?.Cancel();
+
 		Busy.IsRunning = false;
 		Busy.IsVisible = false;
 
 		if (!shown)
 		{
 			DiagnosticLog.Write("[Network map] the plan could not be drawn");
+
+			// The vector PDF did not draw: the JPG is a coarser plan than none at all.
+			if (!_fellBack)
+			{
+				await FallBackAsync();
+
+				return;
+			}
 
 			_key = null;
 			Message.IsVisible = true;
@@ -97,6 +116,87 @@ public sealed partial class NetworkMapPage : ContentPage
 		{
 			Plan.Opacity = 1;
 		}
+	}
+
+	/// <summary>Shows a plan and keeps watch: a view that says nothing for half a minute counts as failed
+	/// (a web view that never loaded leaves the page white — the JPG stands in before the message).</summary>
+	private async Task ShowAsync(IPlanTiles tiles)
+	{
+		_awaiting = true;
+		_fellBack = tiles is ImagePlanTiles;
+
+		_await?.Cancel();
+
+		var watch = new CancellationTokenSource();
+
+		_await = watch;
+
+		await Plan.ShowAsync(tiles);
+
+		_ = WatchAsync(watch);
+	}
+
+	private async Task WatchAsync(CancellationTokenSource watch)
+	{
+		try
+		{
+			await Task.Delay(WatchPlan, watch.Token);
+		}
+		catch (TaskCanceledException)
+		{
+			return;
+		}
+
+		if (!_awaiting
+			|| !ReferenceEquals(_await, watch))
+		{
+			return;
+		}
+
+		DiagnosticLog.Write("[Network map] the view stayed silent; showing the JPG instead");
+
+		await FallBackAsync();
+	}
+
+	/// <summary>The plan at full size as a picture, when the vector plan did not draw; the message after that.</summary>
+	private async Task FallBackAsync()
+	{
+		if (_fellBack)
+		{
+			GiveUp();
+
+			return;
+		}
+
+		_fellBack = true;
+
+		try
+		{
+			NetworkMapFile jpg = await _maps.GetJpgAsync();
+
+			IPlanTiles tiles = await ImagePlanTiles.OpenAsync(jpg.Path, PlanName, CancellationToken.None);
+
+			_key = tiles.Spec.Key;
+
+			await ShowAsync(tiles);
+		}
+		catch (Exception ex) when (ex is not OperationCanceledException)
+		{
+			DiagnosticLog.Write($"[Network map] the JPG did not show either: {ex.Message}");
+
+			GiveUp();
+		}
+	}
+
+	private void GiveUp()
+	{
+		_awaiting = false;
+		_await?.Cancel();
+		_key = null;
+		Busy.IsRunning = false;
+		Busy.IsVisible = false;
+		Message.IsVisible = true;
+		Plan.Opacity = 0;
 	}
 
 	private async void OpenPdfClicked(object? sender, EventArgs e)
@@ -164,7 +264,7 @@ public sealed partial class NetworkMapPage : ContentPage
 
 			_key = tiles.Spec.Key;
 
-			await Plan.ShowAsync(tiles);
+			await ShowAsync(tiles);
 		}
 		catch (OperationCanceledException)
 		{
