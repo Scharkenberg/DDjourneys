@@ -302,33 +302,98 @@ public sealed class VvoNetworkProvider :
 
 		DiagnosticLog.Write($"[Stops] VVO map/pins: {response.Pins.Count} pins for the box around {latitude:F5},{longitude:F5} ({radius} m), status {response.Status?.Code ?? "none"}");
 
-		// Pins are written like PointFinder entries; a stop pin has a numeric id.
-		return
-			[.. response.Pins
-				.Select(VvoPoint.Parse)
-				.Where(point => point.IsStop && !string.IsNullOrWhiteSpace(point.Name))
-				.Select(VvoLocationProvider.Map)
-				.Where(stop => stop.Latitude is not null && stop.Longitude is not null)
+		List<Location> stops = [];
+		int unreadable = 0;
+
+		foreach (string pin in response.Pins)
+		{
+			if (PinToStop(pin) is { } stop)
+			{
+				stops.Add(stop);
+			}
+			else
+			{
+				unreadable++;
+			}
+		}
+
+		// The 1.45 factor: the farthest corner of the box is sqrt(2) * radius from its centre (a circle of 1.25 cut
+		// the corners off, which looked like stops missing at the edges of the view).
+		List<NearbyStop> result =
+			[.. stops
 				.Select(
 					stop =>
 						new NearbyStop
 						{
 							Stop = stop,
-							DistanceMeters =
-								(int)Math.Round(
-									GeoMath.DistanceMeters(
-										latitude,
-										longitude,
-										stop.Latitude!.Value,
-										stop.Longitude!.Value))
+							DistanceMeters = (int)Math.Round(GeoMath.DistanceMeters(latitude, longitude, stop.Latitude!.Value, stop.Longitude!.Value))
 						})
-				// The farthest corner of the box is sqrt(2) * radius from its centre: 1.45 keeps the corners (a circle
-				// of 1.25 cut them off, which looked like stops missing at the edges of the view).
 				.Where(nearby => nearby.DistanceMeters <= radius * 1.45)
 				.OrderBy(nearby => nearby.DistanceMeters)];
+
+		DiagnosticLog.Write($"[Stops] VVO map/pins read: {stops.Count} stops of {response.Pins.Count} pins ({unreadable} not stops), {result.Count} inside the box");
+
+		if (result.Count == 0 && response.Pins.Count > 0)
+		{
+			DiagnosticLog.Write($"[Stops] VVO map/pins sample: {string.Join(" ;; ", response.Pins.Take(3))}");
+		}
+
+		return result;
 	}
 
-	/// <inheritdoc />
+	/// <summary>
+	/// A map pin as a stop. The layout of a pin is not documented: the name is the first text field that is neither
+	/// the id nor a number, the position the first two numbers in the GK4 range (either order), a stop has a numeric
+	/// id and a type that is empty or says stop.
+	/// </summary>
+	private static Location? PinToStop(string pin)
+	{
+		string[] fields = pin.Split('|');
+
+		if (fields.Length < 4 || !int.TryParse(fields[0], out _))
+		{
+			return null;
+		}
+
+		string type = fields[1].Trim();
+
+		if (type.Length > 0 && !type.Equals("stop", StringComparison.OrdinalIgnoreCase) && !type.Equals("s", StringComparison.OrdinalIgnoreCase))
+		{
+			return null;
+		}
+
+		string? name =
+			fields.Skip(2)
+				.Select(field => field.Trim())
+				.FirstOrDefault(field => field.Length > 0 && !double.TryParse(field, NumberStyles.Float, CultureInfo.InvariantCulture, out _));
+
+		string? place = fields.Length > 3 && fields[2].Trim() is { Length: > 0 } p && p != name ? p : null;
+
+		List<string> numbers =
+			[.. fields.Skip(2).Where(field => double.TryParse(field, NumberStyles.Float, CultureInfo.InvariantCulture, out double v) && v >= 100_000)];
+
+		if (string.IsNullOrWhiteSpace(name)
+			|| numbers.Count < 2
+			|| !VvoCoordinateConverter.TryFromPointFields(numbers[0], numbers[1], out (double Latitude, double Longitude) position))
+		{
+			return null;
+		}
+
+		// The place column comes before the name in a PointFinder entry; when it is the name's field, none.
+		int nameIndex = Array.IndexOf(fields, name);
+
+		return new Location
+		{
+			Id = fields[0],
+			ProviderId = VvoProviderInfo.Id,
+			Name = name,
+			Kind = PlaceKind.Stop,
+			Place = nameIndex > 2 ? VvoPlaces.Resolve(fields[2], PlaceKind.Stop) : place ?? string.Empty,
+			Latitude = position.Latitude,
+			Longitude = position.Longitude
+		};
+	}
+
 	/// <inheritdoc />
 	public async Task<IReadOnlyList<TariffZoneShape>> GetTariffZonesAsync(
 		CancellationToken cancellationToken = default)
