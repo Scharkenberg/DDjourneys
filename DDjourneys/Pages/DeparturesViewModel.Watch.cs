@@ -5,10 +5,9 @@ namespace DDjourneys.Pages;
 
 public sealed partial class DeparturesViewModel
 {
-	public Command<StopLineRow> ToggleWatchCommand { get; set; }
-
-	private void InitializeWatchCommands() =>
-		ToggleWatchCommand = new Command<StopLineRow>(ToggleWatchLine);
+	/// <summary>Created on first use: a partial file cannot set a get-only property from the main file's constructor.</summary>
+	public Command<StopLineRow> ToggleWatchCommand =>
+		field ??= new Command<StopLineRow>(ToggleWatchLine);
 
 	private void ToggleWatchLine(StopLineRow? row)
 	{

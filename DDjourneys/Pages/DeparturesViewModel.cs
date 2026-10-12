@@ -580,8 +580,6 @@ public sealed partial class DeparturesViewModel : DisposableViewModel
 					? OpenLineMapAsync(row)
 					: Task.CompletedTask);
 
-		InitializeWatchCommands();
-
 		ToggleLineCommand =
 			new Command<LineFilterChip>(
 				chip =>
