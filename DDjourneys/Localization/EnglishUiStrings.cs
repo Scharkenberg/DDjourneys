@@ -475,7 +475,11 @@ public sealed class EnglishUiStrings : IUiStrings
 		OccupancyOverloaded = "Overloaded",
 
 		// B5 — ride companion
-		PaceTight = "Tight at your pace — the walk takes about {0}"
+		PaceTight = "Tight at your pace — the walk takes about {0}",
+
+		// B9 — bike feeder
+		BikeSummary = "{0:0.0} km · +{1} m ↑ · −{2} m ↓ · {3}",
+		BikeFeederHint = "No bike route to a stop could be planned, so the journey starts as an ordinary one"
 	};
 
 	public SettingsStrings Settings { get; } = new()
@@ -525,6 +529,24 @@ public sealed class EnglishUiStrings : IUiStrings
 		DensityNormalDescription = "Balanced spacing",
 		DensityTouch = "Large touch targets",
 		DensityTouchDescription = "Taller rows and buttons, more room between them",
+		// B11 — accessibility & language
+		TextSizeHeader = "Text size",
+		TextSizeNormal = "Normal",
+		TextSizeNormalDescription = "The text as the app is designed",
+		TextSizeLarge = "Large",
+		TextSizeLargeDescription = "About a sixth bigger than normal",
+		TextSizeLargest = "Largest",
+		TextSizeLargestDescription = "For reading at arm's length or further away",
+		LineColoursHeader = "Line colours",
+		LineColoursDescription = "The colours of the transport modes, remapped so they stay distinct with that kind of colour vision",
+		LineColoursStandard = "Standard",
+		LineColoursDeuteranopia = "Deuteranopia-safe",
+		LineColoursProtanopia = "Protanopia-safe",
+		LineColoursTritanopia = "Tritanopia-safe",
+		SimpleCards = "Simple journey cards",
+		SimpleCardsDescription = "Each journey as one big line: the time and only the next step",
+		PresetLargeSimple = "Large & simple",
+		PresetLargeSimpleDescription = "Largest text, roomy controls and the simple journey cards - a starting point; every setting stays adjustable",
 		MaterialHeader = "Window material (Windows)",
 		MaterialNone = "None",
 		MaterialNoneDescription = "Solid colours, no material",
@@ -689,6 +711,13 @@ public sealed class EnglishUiStrings : IUiStrings
 		ExtraChargeAny = "No restriction",
 		ExtraChargeNone = "Without supplement",
 		ExtraChargeLocal = "Local transport only",
+
+		// B9 — bike feeder
+		SectionBike = "Cycling",
+		BikeFeeder = "Bike to the stop",
+		BikeFeederPrivacy = "The bike route to the stop is planned by the BRouter service at brouter.de, which receives the start and the stop you board at",
+		BikeFeederRadius = "Search radius",
+		BikeFeederRadiusText = "Stops up to {0} km away",
 		SectionVia = "Stop over",
 		ViaMinutes = "Stay at the stop over",
 		ViaMinutesHint = "On journeys through the stop over. Any means one minute, the shortest stay there is.",
@@ -833,7 +862,10 @@ public sealed class EnglishUiStrings : IUiStrings
 		Ferry = "Ferry",
 		CableCar = "Cable car",
 		Taxi = "Taxi",
-		OnDemand = "On-demand"
+		OnDemand = "On-demand",
+
+		// B9 — bike feeder
+		Bike = "Bike"
 	};
 
 	public WidgetStrings Widgets { get; } = new()

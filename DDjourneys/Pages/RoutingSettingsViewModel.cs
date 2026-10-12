@@ -274,6 +274,10 @@ public sealed partial class RoutingSettingsViewModel : DisposableViewModel
 
 	public const double MaxFootpath = AppSettings.MaxFootpathMinutes;
 
+	public const double MinBikeRadius = Core.Services.BikeFeeder.MinRadiusKm;
+
+	public const double MaxBikeRadius = Core.Services.BikeFeeder.MaxRadiusKm;
+
 	public double FootpathMinutes
 	{
 		get => _settings.FootpathMinutes;
@@ -295,6 +299,49 @@ public sealed partial class RoutingSettingsViewModel : DisposableViewModel
 		string.Format(
 			Strings.FootpathDescription,
 			_settings.FootpathMinutes);
+
+	/// <summary>The feeder applies to the next search; the radius row appears only while it is on.</summary>
+	public bool BikeFeeder
+	{
+		get => _settings.BikeFeeder;
+
+		set
+		{
+			if (value != _settings.BikeFeeder)
+			{
+				_settings.BikeFeeder = value;
+
+				OnPropertyChanged();
+				OnPropertyChanged(nameof(ShowBikeRadius));
+			}
+		}
+	}
+
+	/// <summary>The radius row of the feeder: hidden while the feeder is off.</summary>
+	public bool ShowBikeRadius => _settings.BikeFeeder;
+
+	public double BikeRadiusKm
+	{
+		get => _settings.BikeFeederRadiusKm;
+
+		set
+		{
+			int rounded = (int)Math.Round(value);
+
+			if (rounded != _settings.BikeFeederRadiusKm)
+			{
+				_settings.BikeFeederRadiusKm = rounded;
+			}
+
+			OnPropertyChanged();
+			OnPropertyChanged(nameof(BikeRadiusText));
+		}
+	}
+
+	public string BikeRadiusText =>
+		string.Format(
+			Strings.BikeFeederRadiusText,
+			_settings.BikeFeederRadiusKm);
 
 	private ExtrasStrings ExtraStrings =>
 		_localization.CurrentStrings.Extras;
@@ -362,5 +409,9 @@ public sealed partial class RoutingSettingsViewModel : DisposableViewModel
 
 		OnPropertyChanged(nameof(FootpathMinutes));
 		OnPropertyChanged(nameof(FootpathText));
+		OnPropertyChanged(nameof(BikeFeeder));
+		OnPropertyChanged(nameof(ShowBikeRadius));
+		OnPropertyChanged(nameof(BikeRadiusKm));
+		OnPropertyChanged(nameof(BikeRadiusText));
 	}
 }

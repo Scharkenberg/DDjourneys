@@ -63,6 +63,27 @@ public sealed class AppSettings
 		set => Write("uiDensity", value);
 	}
 
+	/// <summary>App-side text size id: "normal", "large" or "largest" (B11; scales the type-scale tokens).</summary>
+	public string TextSize
+	{
+		get => Read("textSize", TextSizeProfile.NormalId);
+		set => Write("textSize", value);
+	}
+
+	/// <summary>Id of the line-colour set: "standard", "deuteranopia", "protanopia" or "tritanopia" (B11).</summary>
+	public string ModeColourSet
+	{
+		get => Read("modeColourSet", Core.Theming.ModeColorSets.StandardId);
+		set => Write("modeColourSet", value);
+	}
+
+	/// <summary>Journey cards reduced to the time and the next step, in huge type (B11).</summary>
+	public bool SimpleCards
+	{
+		get => Read("simpleCards", false);
+		set => Write("simpleCards", value);
+	}
+
 	/// <summary>Windows window material: "none", "mica", "micaalt" or "acrylic" (see MaterialProfile; ignored elsewhere).</summary>
 	public string WindowMaterial
 	{
@@ -544,6 +565,24 @@ public sealed class AppSettings
 		set => Write(Scoped("viaMinutes"), Math.Clamp(value, 0, 60));
 	}
 
+	/// <summary>
+	/// The passenger rides a bike to the first stop: the planner puts a real bike track in front of the
+	/// transit part (BRouter, see <c>DDjourneys.Core.Services.BikeFeeder</c>). Off by default; the app is
+	/// honest when the feeder cannot run and shows the ordinary journey.
+	/// </summary>
+	public bool BikeFeeder
+	{
+		get => Read(Scoped("bikeFeeder"), false);
+		set => Write(Scoped("bikeFeeder"), value);
+	}
+
+	/// <summary>Within which radius around the start stops are considered for boarding by bike, kilometres (1..5).</summary>
+	public int BikeFeederRadiusKm
+	{
+		get => Math.Clamp(Read(Scoped("bikeFeederRadius"), 2), Core.Services.BikeFeeder.MinRadiusKm, Core.Services.BikeFeeder.MaxRadiusKm);
+		set => Write(Scoped("bikeFeederRadius"), Math.Clamp(value, Core.Services.BikeFeeder.MinRadiusKm, Core.Services.BikeFeeder.MaxRadiusKm));
+	}
+
 	/// <summary>The routing options as sent with every journey search.</summary>
 	public RoutingPreferences Routing =>
 		new()
@@ -561,7 +600,9 @@ public sealed class AppSettings
 			Entrance = Entrance,
 			ExtraCharge = ExtraCharge,
 			ViaMinutes = ViaMinutes,
-			Passenger = Passenger
+			Passenger = Passenger,
+			BikeFeeder = BikeFeeder,
+			BikeFeederRadiusKm = BikeFeederRadiusKm
 		};
 
 	public void ResetRoutingDefaults()
@@ -580,6 +621,8 @@ public sealed class AppSettings
 		ExtraCharge = ExtraChargeFilter.Any;
 		ViaMinutes = 1;
 		Passenger = PassengerCategory.Adult;
+		BikeFeeder = false;
+		BikeFeederRadiusKm = 2;
 	}
 
 	public void ResetJourneyDefaults()

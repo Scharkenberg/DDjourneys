@@ -38,6 +38,7 @@ public enum IconGlyph
 	Globe,
 	Code,
 	Walk,
+	Bike,
 	History,
 	Locate,
 	Home,
@@ -193,6 +194,14 @@ internal static class IconPaths
 				new("M13.4 4.6 A1.8 1.8 0 1 0 13.4 8.2 A1.8 1.8 0 1 0 13.4 4.6 Z "
 					+ "M11 21 L13 15.5 L9.8 12.8 L10.6 9.2 L14.2 10.6 L16.6 13.4 "
 					+ "M10.6 9.2 L7.4 11 L6 14 M13 15.5 L16.2 21"),
+
+			// A bicycle: two wheels, a frame with a seat and a handlebar, on the same half-unit grid.
+			[IconGlyph.Bike] =
+				new("M2.9 17.4 A3.5 3.5 0 1 0 9.9 17.4 A3.5 3.5 0 1 0 2.9 17.4 Z "
+					+ "M14.1 17.4 A3.5 3.5 0 1 0 21.1 17.4 A3.5 3.5 0 1 0 14.1 17.4 Z "
+					+ "M6.4 17.4 L12 15.4 L10.6 9.4 L16.8 9.4 L17.6 17.4 "
+					+ "M12 15.4 L17.6 17.4 M6.4 17.4 L10.6 9.4 "
+					+ "M8.6 8.2 H12.2 M15 8.2 H18"),
 
 			[IconGlyph.History] =
 				new("M4.4 8.6 A8 8 0 1 0 12 4 M4.4 8.6 H9.4 M4.4 8.6 V3.6 M12 7.6 V12.4 L15.6 14.6"),

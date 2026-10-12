@@ -83,13 +83,16 @@ public static class InterfaceSchemas
 	/// <summary>Free e-bikes of Lime in Dresden, as GBFS discovery names them (the v2 partner feed).</summary>
 	public const string LimeGbfsUrl = "https://data.lime.bike/api/partners/v2/gbfs/dresden/gbfs";
 
+	/// <summary>BRouter: the public routing service that plans the bike track to the boarding stop.</summary>
+	public const string BrouterUrl = "https://brouter.de/brouter";
+
 	/// <summary>
 	/// Revisions the app keeps itself. Changing how the app reads or writes the interface means raising it here and
 	/// adding a line to the history below.
 	/// </summary>
 	public static class Revision
 	{
-		// History: r1 = first schema of the interface list (October 2026). Map bridge r2 = the page's diagnostics (log: messages), r3 = the page loads MapLibre only after its own check and reports unsupported:reason, r4 = the page waits for the app (boot, ddBoot start with engine carto|leaflet and force), r5 = per-layer sends (ddMapCall layer/layers with a layer id, the overlay command is gone), polygon payloads (tariff zones) and the reserved marker kinds parking and bike of the Tier 2 city layers. Carto r2 = raster tiles for the Leaflet engine (OpenStreetMap tiles first, CARTO raster as fallback). Plan bridge r1 = the plan page's own protocol (ddPlanCall and its messages, the /_plan/ tile addresses). Gbfs r2 = Lime's dockless feed read (free_bike_status and vehicle_types of the v2 partner feed). Plan bridge r2 = the zone plan's stops and marks (the stops and mark commands, the pin and unpin messages). VvoWebApi r2 = a trip answer's named ticket list is read (Tickets with Name, Price and the fare zone texts, beyond the two route prices), on-demand runs are recognised by their mot type (Alita, HailedSharedTaxi) and their booking contact (BookingLink) is carried on the leg. Map bridge r6 = offline city tiles: the Leaflet engine asks for a cached tile after a network tile fails (raw message tile:{z}/{x}/{y}), the app answers ddMapCall('tile', {z, x, y, data}) with a data: URL or a miss, and the init carries the note label for serving from the cache (labels.offlineTile).
+		// History: r1 = first schema of the interface list (October 2026). Map bridge r2 = the page's diagnostics (log: messages), r3 = the page loads MapLibre only after its own check and reports unsupported:reason, r4 = the page waits for the app (boot, ddBoot start with engine carto|leaflet and force), r5 = per-layer sends (ddMapCall layer/layers with a layer id, the overlay command is gone), polygon payloads (tariff zones) and the reserved marker kinds parking and bike of the Tier 2 city layers. Carto r2 = raster tiles for the Leaflet engine (OpenStreetMap tiles first, CARTO raster as fallback). Plan bridge r1 = the plan page's own protocol (ddPlanCall and its messages, the /_plan/ tile addresses). Gbfs r2 = Lime's dockless feed read (free_bike_status and vehicle_types of the v2 partner feed). Plan bridge r2 = the zone plan's stops and marks (the stops and mark commands, the pin and unpin messages). VvoWebApi r2 = a trip answer's named ticket list is read (Tickets with Name, Price and the fare zone texts, beyond the two route prices), on-demand runs are recognised by their mot type (Alita, HailedSharedTaxi) and their booking contact (BookingLink) is carried on the leg. Map bridge r6 = offline city tiles: the Leaflet engine asks for a cached tile after a network tile fails (raw message tile:{z}/{x}/{y}), the app answers ddMapCall('tile', {z, x, y, data}) with a data: URL or a miss, and the init carries the note label for serving from the cache (labels.offlineTile). Brouter r1 = the GeoJSON track answer of the bike feeder (track-length, filtered ascend, total-time, the [lon, lat, elevation] coordinates).
 		public const int VvoWebApi = 2;
 		public const int Schutzengel = 1;
 		public const int Tlms = 1;
@@ -101,6 +104,7 @@ public static class InterfaceSchemas
 		public const int DvbNetworkMap = 2;
 		public const int VvoPur = 1;
 		public const int Gbfs = 2;
+		public const int Brouter = 1;
 		public const int WidgetData = 2;
 		public const int WidgetCardWin = 2;
 	}
@@ -148,6 +152,10 @@ public static class InterfaceSchemas
 			"gbfs", InterfaceKind.External, "Shared bikes (GBFS)",
 			R(Revision.Gbfs), GbfsUrl,
 			"GBFS 2.x, discovery-first; station_information cached an hour, station_status at most a minute (the feed's ttl when smaller); Lime dockless: free_bike_status and vehicle_types of the v2 partner feed (data.lime.bike)"),
+		new(
+			"brouter", InterfaceKind.External, "BRouter bike routes",
+			R(Revision.Brouter), BrouterUrl,
+			"one GET with lonlats (lon first, pipe-separated), profile trekking; the GeoJSON track answer is read for track-length, filtered ascend and total-time, and for the [lon, lat, elevation] coordinates (the path and the hills of the feeder leg)"),
 		new(
 			"storage-lists", InterfaceKind.Internal, "Stored lists (places, routes)",
 			Number(StoredJson.CurrentVersion), string.Empty,

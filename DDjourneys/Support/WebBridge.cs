@@ -120,13 +120,13 @@ public static class WebBridge
 					Hex("Ink", "#E9EFF1"), Hex("InkMuted", "#A2B3BC"), Hex("Accent", "#5CC0DA"), Hex("AccentSoft", "#1B3E4A"),
 					Hex("OnTime", "#4ADE80"),
 					Theme.Font,
-					SystemAccessibility.TextScale)
+					SystemAccessibility.TextScale * Theme.TextFactor)
 				: new MapTheme(
 					false,
 					Hex("Bg", "#F2F4F5"), Hex("Surface", "#FFFFFF"), Hex("Raised", "#DFE6E9"), Hex("Outline", "#B4C1C7"),
 					Hex("Ink", "#0F1A1F"), Hex("InkMuted", "#4A5960"), Hex("Accent", "#0B6E8A"), Hex("AccentSoft", "#D3E9F0"),
 					Hex("OnTime", "#15803D"),
 					Theme.Font,
-					SystemAccessibility.TextScale);
+					SystemAccessibility.TextScale * Theme.TextFactor);
 	}
 }

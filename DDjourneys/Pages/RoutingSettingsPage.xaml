@@ -187,6 +187,42 @@
 				</VerticalStackLayout>
 			</Border>
 
+			<Label StyleClass="Section" Text="{localization:Tr Routing.SectionBike}" />
+
+			<!--  Bike to the stop: the feeder is off by default; the radius only matters while it is on  -->
+			<Border Padding="0" StyleClass="Card">
+				<VerticalStackLayout>
+					<Grid
+						ColumnDefinitions="*,Auto"
+						ColumnSpacing="12"
+						support:Dense.MinHeight="{StaticResource HitRow}"
+						support:Dense.Padding="12,8">
+						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
+							<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Routing.BikeFeeder}" />
+							<Label StyleClass="Caption" Text="{localization:Tr Routing.BikeFeederPrivacy}" />
+						</VerticalStackLayout>
+						<Switch
+							Grid.Column="1"
+							IsToggled="{Binding BikeFeeder}"
+							SemanticProperties.Description="{localization:Tr Routing.BikeFeeder}"
+							VerticalOptions="Center" />
+					</Grid>
+					<BoxView StyleClass="Divider" />
+					<VerticalStackLayout
+						IsVisible="{Binding ShowBikeRadius}"
+						support:Dense.Padding="12,8"
+						Spacing="4">
+						<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Routing.BikeFeederRadius}" />
+						<Label StyleClass="Caption" Text="{Binding BikeRadiusText}" />
+						<Slider
+							Maximum="{x:Static local:RoutingSettingsViewModel.MaxBikeRadius}"
+							Minimum="{x:Static local:RoutingSettingsViewModel.MinBikeRadius}"
+							SemanticProperties.Description="{localization:Tr Routing.BikeFeederRadius}"
+							Value="{Binding BikeRadiusKm}" />
+					</VerticalStackLayout>
+				</VerticalStackLayout>
+			</Border>
+
 			<Label StyleClass="Section" Text="{localization:Tr Routing.SectionAccessibility}" />
 
 			<Border Padding="0" StyleClass="Card">

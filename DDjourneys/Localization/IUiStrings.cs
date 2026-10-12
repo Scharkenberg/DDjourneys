@@ -273,6 +273,10 @@ public sealed class JourneyStrings
 
 	// B5 — ride companion
 	public required string PaceTight { get; init; }
+
+	// B9 — bike feeder
+	public required string BikeSummary { get; init; }
+	public required string BikeFeederHint { get; init; }
 }
 
 public sealed class SettingsStrings
@@ -322,6 +326,25 @@ public sealed class SettingsStrings
 	public required string DensityNormalDescription { get; init; }
 	public required string DensityTouch { get; init; }
 	public required string DensityTouchDescription { get; init; }
+
+	// B11 — accessibility & language
+	public required string TextSizeHeader { get; init; }
+	public required string TextSizeNormal { get; init; }
+	public required string TextSizeNormalDescription { get; init; }
+	public required string TextSizeLarge { get; init; }
+	public required string TextSizeLargeDescription { get; init; }
+	public required string TextSizeLargest { get; init; }
+	public required string TextSizeLargestDescription { get; init; }
+	public required string LineColoursHeader { get; init; }
+	public required string LineColoursDescription { get; init; }
+	public required string LineColoursStandard { get; init; }
+	public required string LineColoursDeuteranopia { get; init; }
+	public required string LineColoursProtanopia { get; init; }
+	public required string LineColoursTritanopia { get; init; }
+	public required string SimpleCards { get; init; }
+	public required string SimpleCardsDescription { get; init; }
+	public required string PresetLargeSimple { get; init; }
+	public required string PresetLargeSimpleDescription { get; init; }
 	public required string MaterialHeader { get; init; }
 	public required string MaterialNone { get; init; }
 	public required string MaterialNoneDescription { get; init; }
@@ -445,6 +468,9 @@ public sealed class TransportStrings
 	public required string CableCar { get; init; }
 	public required string Taxi { get; init; }
 	public required string OnDemand { get; init; }
+
+	// B9 — bike feeder
+	public required string Bike { get; init; }
 }
 
 public sealed class RoutingStrings
@@ -501,6 +527,13 @@ public sealed class RoutingStrings
 	public required string ExtraChargeAny { get; init; }
 	public required string ExtraChargeNone { get; init; }
 	public required string ExtraChargeLocal { get; init; }
+
+	// B9 — bike feeder
+	public required string SectionBike { get; init; }
+	public required string BikeFeeder { get; init; }
+	public required string BikeFeederPrivacy { get; init; }
+	public required string BikeFeederRadius { get; init; }
+	public required string BikeFeederRadiusText { get; init; }
 }
 
 public sealed class ProviderStrings

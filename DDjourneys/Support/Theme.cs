@@ -90,6 +90,13 @@ public static class Theme
 
 	public static string Font { get; private set; } = FontCatalog.SystemId;
 
+	/// <summary>The app-side text size (B11): "normal", "large" or "largest"; scales the type-scale tokens.</summary>
+	public static string TextSize { get; private set; } = Core.Theming.TextSizeProfile.NormalId;
+
+	/// <summary>The factor of <see cref="TextSize"/> on the type-scale tokens and the row scaling.</summary>
+	public static double TextFactor =>
+		Core.Theming.TextSizeProfile.FactorOf(TextSize);
+
 	public static void Initialize(Application app, AppSettings settings)
 	{
 		ArgumentNullException.ThrowIfNull(app);
@@ -104,7 +111,10 @@ public static class Theme
 		ColorId = ColorCatalog.Find(settings.ThemeColor).Id;
 		PureBlack = settings.ThemePureBlack;
 		Font = FontCatalog.Normalize(settings.FontFace);
+		TextSize = Core.Theming.TextSizeProfile.Normalize(settings.TextSize);
 		Material.Initialize(settings);
+
+		ModeColorSet.Initialize(app, settings);
 
 		app.RequestedThemeChanged += (_, _) =>
 		{
@@ -192,6 +202,25 @@ public static class Theme
 
 				Font = value;
 				_settings?.FontFace = value;
+
+				return true;
+			});
+	}
+
+	public static Task SetTextSizeAsync(string id)
+	{
+		string value = Core.Theming.TextSizeProfile.Normalize(id);
+
+		return ChangeAsync(
+			() =>
+			{
+				if (value == TextSize)
+				{
+					return false;
+				}
+
+				TextSize = value;
+				_settings?.TextSize = value;
 
 				return true;
 			});
@@ -655,6 +684,15 @@ public static class Theme
 			changed |= SetText(resources, "FontRegular", regular);
 			changed |= SetText(resources, "FontSemibold", semibold);
 
+			// The type-scale tokens scale with the app-side text size (B11); the styles read them as
+			// DynamicResource, so a change reaches every styled label.
+			double factor = TextFactor;
+
+			foreach ((string key, double size) in Core.Theming.TextSizeProfile.Tokens)
+			{
+				changed |= SetDouble(resources, key, Math.Round(size * factor, 1));
+			}
+
 			bool darkChanged = IsDark != dark;
 			IsDark = dark;
 
@@ -705,6 +743,21 @@ public static class Theme
 			// change (already dark) must arm it too, not only a visible change.
 			UpdateSunTimer();
 		}
+	}
+
+	private static bool SetDouble(ResourceDictionary resources, string key, double value)
+	{
+		if (Current.TryGetValue(key, out object? old) && old is double number && Math.Abs(number - value) < 0.01)
+		{
+			return false;
+		}
+
+		Retire(key, old);
+		Current[key] = value;
+		ChangedKeys.Add(key);
+		resources[key] = value;
+
+		return true;
 	}
 
 	private static bool SetText(ResourceDictionary resources, string key, string value)

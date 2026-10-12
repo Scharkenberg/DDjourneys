@@ -157,7 +157,13 @@ public static class MauiProgram
 		builder.Services.AddSingleton<NetworkService>();
 
 		builder.Services.AddSingleton<JourneyProviderDiagnostics>();
-		builder.Services.AddSingleton<JourneyService>();
+		builder.Services.AddSingleton<BrouterClient>();
+		builder.Services.AddSingleton<JourneyService>(
+			services => new JourneyService(
+				services.GetRequiredService<IEnumerable<IJourneyProvider>>(),
+				services.GetRequiredService<ProviderRegistry>(),
+				services.GetRequiredService<StopAreaService>(),
+				services.GetRequiredService<BrouterClient>()));
 		builder.Services.AddSingleton<FareBorrower>();
 
 		builder.Services.AddSingleton<ILocationProvider, VvoLocationProvider>();

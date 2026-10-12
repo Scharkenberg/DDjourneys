@@ -22,6 +22,12 @@ public static class LocalizationInitializer
 				"Deutsch",
 				new GermanUiStrings()));
 
+		localization.Register(
+			new LocalizationPack(
+				"cs",
+				"Čeština",
+				new CzechUiStrings()));
+
 		if (!localization.TrySetLanguage(settings.LanguageCode))
 		{
 			localization.SetLanguage("en");

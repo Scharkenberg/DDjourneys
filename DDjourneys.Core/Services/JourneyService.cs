@@ -32,6 +32,8 @@ public sealed class JourneyService
 {
 	private readonly IEnumerable<IJourneyProvider> _all;
 	private readonly ProviderRegistry? _registry;
+	private readonly StopAreaService? _stops;
+	private readonly BrouterClient? _brouter;
 
 
 	/// <summary>
@@ -41,13 +43,17 @@ public sealed class JourneyService
 	/// <param name="registry">When given, only the provider the user selected is asked.</param>
 	public JourneyService(
 		IEnumerable<IJourneyProvider> providers,
-		ProviderRegistry? registry = null)
+		ProviderRegistry? registry = null,
+		StopAreaService? stops = null,
+		BrouterClient? brouter = null)
 	{
 		ArgumentNullException.ThrowIfNull(
 			providers);
 
 		_all = providers;
 		_registry = registry;
+		_stops = stops;
+		_brouter = brouter;
 	}
 
 
@@ -86,7 +92,7 @@ public sealed class JourneyService
 			}
 
 			JourneyResult result =
-				await SearchAsync(
+				await SearchWithFeederAsync(
 					provider,
 					query,
 					cancellationToken)
@@ -97,7 +103,7 @@ public sealed class JourneyService
 				// Exactly the requested number when the timetable allows: top up or cut.
 				IReadOnlyList<Journey> window =
 					await JourneyWindow.FillAsync(
-						(next, token) => SearchAsync(provider, next, token),
+						(next, token) => SearchWithFeederAsync(provider, next, token),
 						query,
 						result.Journeys,
 						query.MaxResults,
@@ -158,10 +164,12 @@ public sealed class JourneyService
 			}
 
 			// A stop-over is applied by this service (see SearchAsync), so the pages are windows of that search, not the
-			// provider's own continuation, which knows nothing of journeys that were put together here.
+			// provider's own continuation, which knows nothing of journeys that were put together here. The same holds
+			// for the bike feeder (see SearchWithFeederAsync): a feeder journey carries no session of its own.
 			if (provider is IJourneyContinuationProvider continuation
 				&& shown.Count > 0
-				&& query.Via is null)
+				&& query.Via is null
+				&& !shown.Any(BikeFeeder.IsFeeder))
 			{
 				List<Journey> orderedShown = JourneyWindow.Order(shown, query.SearchMode);
 				Journey edge = previous ? orderedShown[0] : orderedShown[^1];
@@ -186,7 +194,7 @@ public sealed class JourneyService
 					{
 						PageResult more =
 							await JourneyWindow.PageAsync(
-								(next, token) => SearchAsync(provider, next, token),
+								(next, token) => SearchWithFeederAsync(provider, next, token),
 								query,
 								[.. shown, .. fresh],
 								previous,
@@ -206,7 +214,7 @@ public sealed class JourneyService
 
 			PageResult page =
 				await JourneyWindow.PageAsync(
-					(next, token) => SearchAsync(provider, next, token),
+					(next, token) => SearchWithFeederAsync(provider, next, token),
 					query,
 					shown,
 					previous,
@@ -437,6 +445,65 @@ public sealed class JourneyService
 	/// id (hand-made or stored before ids existed) are not held against it, and neither are free-form
 	/// places without a stop id: the provider itself decides whether it can resolve those.
 	/// </summary>
+	/// <summary>
+	/// A search of one provider with the bike feeder applied when the query asks for it (see <see cref="BikeFeeder"/>):
+	/// the feeder composes the journeys (a real bike leg in front of the transit part); when it cannot run, the ordinary
+	/// search of this provider answers, and when no bike track led to any stop its journeys carry the feeder's notice
+	/// (a marker the app words in the user's language - the core library has no strings). A stop-over query skips the
+	/// feeder: the two special modes are not stacked on one search.
+	/// </summary>
+	private async Task<JourneyResult> SearchWithFeederAsync(
+		IJourneyProvider provider,
+		JourneyQuery query,
+		CancellationToken cancellationToken)
+	{
+		if (_stops is null
+			|| _brouter is null
+			|| query.Via is not null
+			|| !BikeFeeder.Applies(query))
+		{
+			return await SearchAsync(provider, query, cancellationToken).ConfigureAwait(false);
+		}
+
+		BikeFeederResult feeder =
+			await BikeFeeder
+				.ComposeAsync(
+					provider.SearchAsync,
+					_stops.GetStopsAsync,
+					_brouter.RouteAsync,
+					query,
+					cancellationToken)
+				.ConfigureAwait(false);
+
+		if (feeder.Journeys.Count > 0)
+		{
+			// Exactly the requested number when the timetable allows: top up or cut (the window searches run
+			// through this same method, so the feeder applies to every step of them).
+			IReadOnlyList<Journey> window =
+				await JourneyWindow.FillAsync(
+					(next, token) => SearchWithFeederAsync(provider, next, token),
+					query,
+					feeder.Journeys,
+					query.MaxResults,
+					cancellationToken)
+				.ConfigureAwait(false);
+
+			return JourneyResult.Success(window);
+		}
+
+		JourneyResult ordinary = await SearchAsync(provider, query, cancellationToken).ConfigureAwait(false);
+
+		// No bike track led to any stop: the ordinary journeys carry the honest hint (the marker is replaced by the
+		// localized sentence where the app shows notices). When the feeder found no transit, it stays quiet: nothing
+		// was wrong with the bike, the ordinary search simply answers more.
+		return feeder.Outcome == BikeFeederOutcome.NoBikeRoute
+			&& ordinary.Outcome == JourneyOutcome.Found
+			? JourneyResult.Success(
+				[.. ordinary.Journeys.Select(journey => BikeFeeder.WithNotice(journey, BikeFeeder.UnavailableNotice))],
+				ordinary.Notices)
+			: ordinary;
+	}
+
 	/// <summary>
 	/// A search of one provider that applies the stop-over itself when the query has one: the provider is asked with it,
 	/// and only journeys that really pass the place are kept; when there are none (the provider ignores the stop-over,

@@ -9,9 +9,12 @@ namespace DDjourneys.Pages;
 public sealed partial class AppearanceViewModel : DisposableViewModel
 {
 	private readonly LocalizationService _localization = LocalizationService.Current;
+	private readonly AppSettings _settings;
 
-	public AppearanceViewModel()
+	public AppearanceViewModel(AppSettings settings)
 	{
+		_settings = settings;
+
 		Modes =
 		[
 			new(Theme.ModeSystem, false),
@@ -26,6 +29,10 @@ public sealed partial class AppearanceViewModel : DisposableViewModel
 
 		Densities = [.. DensityProfile.All.Select(d => new AppearanceChoice(d.Id, false))];
 
+		TextSizes = [.. Core.Theming.TextSizeProfile.Ids.Select(id => new AppearanceChoice(id, false))];
+
+		LineColours = [.. Core.Theming.ModeColorSets.Ids.Select(id => new AppearanceChoice(id, false))];
+
 		Materials = [.. MaterialProfile.Materials.Where(Material.IsSupported).Select(id => new AppearanceChoice(id, false))];
 
 		MaterialSurfaces = [.. MaterialProfile.Coverages.Select(id => new AppearanceChoice(id, false))];
@@ -36,6 +43,16 @@ public sealed partial class AppearanceViewModel : DisposableViewModel
 		SelectModeCommand = new AsyncCommand<string>(id => ApplyAsync(() => Theme.SetModeAsync(id ?? Theme.ModeSystem)));
 		SelectColorCommand = new AsyncCommand<string>(id => ApplyAsync(() => Theme.SetColorAsync(id ?? ColorCatalog.DefaultId)));
 		SelectFontCommand = new AsyncCommand<string>(id => ApplyAsync(() => Theme.SetFontAsync(id ?? FontCatalog.SystemId)));
+
+		SelectTextSizeCommand = new AsyncCommand<string>(id => ApplyAsync(() => Theme.SetTextSizeAsync(id ?? Core.Theming.TextSizeProfile.NormalId)));
+
+		SelectLineColoursCommand = new AsyncCommand<string>(
+			id =>
+			{
+				ModeColorSet.Set(Application.Current ?? throw new InvalidOperationException("No application."), _settings, id ?? Core.Theming.ModeColorSets.StandardId);
+
+				return Task.CompletedTask;
+			});
 
 		SelectDensityCommand = new AsyncCommand<string>(
 			id =>
@@ -71,6 +88,12 @@ public sealed partial class AppearanceViewModel : DisposableViewModel
 
 	public List<AppearanceChoice> Densities { get; }
 
+	/// <summary>The app-side text size (B11): normal, large, largest.</summary>
+	public List<AppearanceChoice> TextSizes { get; }
+
+	/// <summary>The line-colour set (B11): the standard colours or a colour-vision-safe remap.</summary>
+	public List<AppearanceChoice> LineColours { get; }
+
 	/// <summary>Window materials this device can show (Windows 11); none elsewhere.</summary>
 	public List<AppearanceChoice> Materials { get; }
 
@@ -88,6 +111,10 @@ public sealed partial class AppearanceViewModel : DisposableViewModel
 
 	public AsyncCommand<string> SelectDensityCommand { get; }
 
+	public AsyncCommand<string> SelectTextSizeCommand { get; }
+
+	public AsyncCommand<string> SelectLineColoursCommand { get; }
+
 	/// <summary>Pure black surfaces in dark mode (two-way bound to a switch).</summary>
 	public bool PureBlack
 	{
@@ -100,6 +127,58 @@ public sealed partial class AppearanceViewModel : DisposableViewModel
 			}
 
 			_ = ApplyAsync(() => Theme.SetPureBlackAsync(value));
+		}
+	}
+
+	/// <summary>Journey cards reduced to the time and the next step (B11); one of the three settings of the preset.</summary>
+	public bool SimpleCards
+	{
+		get => _settings.SimpleCards;
+
+		set
+		{
+			if (value == _settings.SimpleCards)
+			{
+				return;
+			}
+
+			_settings.SimpleCards = value;
+
+			OnPropertyChanged();
+			OnPropertyChanged(nameof(LargeSimple));
+		}
+	}
+
+	/// <summary>
+	/// The "Large &amp; simple" preset (B11): applies largest text, the roomy density and the simple journey
+	/// cards at once. A preset, not a fork: every one of the three settings stays adjustable on its own, and
+	/// switching the preset off returns them to the normal combination.
+	/// </summary>
+	public bool LargeSimple
+	{
+		get =>
+			Theme.TextSize == Core.Theming.TextSizeProfile.LargestId
+			&& Density.Profile.Id == DensityProfile.TouchId
+			&& _settings.SimpleCards;
+
+		set
+		{
+			if (value == LargeSimple)
+			{
+				return;
+			}
+
+			string textSize = value ? Core.Theming.TextSizeProfile.LargestId : Core.Theming.TextSizeProfile.NormalId;
+			string density = value ? DensityProfile.TouchId : DensityProfile.NormalId;
+
+			_settings.SimpleCards = value;
+
+			_ = ApplyAsync(
+				async () =>
+				{
+					await Theme.SetTextSizeAsync(textSize);
+					Density.Set(density);
+				});
 		}
 	}
 
@@ -194,7 +273,34 @@ public sealed partial class AppearanceViewModel : DisposableViewModel
 			surfaces.IsSelected = surfaces.Id == Material.Surfaces;
 		}
 
+		foreach (AppearanceChoice size in TextSizes)
+		{
+			(size.Title, size.Description) = size.Id switch
+			{
+				Core.Theming.TextSizeProfile.LargeId => (s.TextSizeLarge, s.TextSizeLargeDescription),
+				Core.Theming.TextSizeProfile.LargestId => (s.TextSizeLargest, s.TextSizeLargestDescription),
+				_ => (s.TextSizeNormal, s.TextSizeNormalDescription)
+			};
+
+			size.IsSelected = size.Id == Theme.TextSize;
+		}
+
+		foreach (AppearanceChoice set in LineColours)
+		{
+			(set.Title, set.Description) = set.Id switch
+			{
+				Core.Theming.ModeColorSets.DeuteranopiaId => (s.LineColoursDeuteranopia, s.LineColoursDescription),
+				Core.Theming.ModeColorSets.ProtanopiaId => (s.LineColoursProtanopia, s.LineColoursDescription),
+				Core.Theming.ModeColorSets.TritanopiaId => (s.LineColoursTritanopia, s.LineColoursDescription),
+				_ => (s.LineColoursStandard, s.LineColoursDescription)
+			};
+
+			set.IsSelected = set.Id == Core.Theming.ModeColorSets.IdOf(ModeColorSet.Current);
+		}
+
 		OnPropertyChanged(nameof(PureBlack));
+		OnPropertyChanged(nameof(SimpleCards));
+		OnPropertyChanged(nameof(LargeSimple));
 	}
 
 	private static bool IsGerman(LocalizationService localization) =>

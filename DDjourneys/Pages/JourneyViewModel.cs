@@ -1682,6 +1682,7 @@ public sealed partial class JourneyViewModel :
 				journey)
 			{
 				Passenger = _settings.Passenger,
+				Simple = _settings.SimpleCards,
 				MapCommand = OpenMapCommand,
 				Actions = Actions
 			};
@@ -1760,10 +1761,14 @@ public sealed partial class JourneyViewModel :
 						new NoticeRow
 						{
 							Text =
-								n,
+								WordNotice(
+									n,
+									options.Technical),
 
 							Description =
-								n,
+								WordNotice(
+									n,
+									options.Technical),
 
 							Expanded =
 								options.ExpandNotices,
@@ -1793,6 +1798,19 @@ public sealed partial class JourneyViewModel :
 		LoadError =
 			null;
 	}
+
+
+	/// <summary>
+	/// One notice the app added itself while planning, in the user's language. The core library carries only
+	/// a stable marker (it has no strings); the technical view shows the marker as it is.
+	/// </summary>
+	private static string WordNotice(
+		string notice,
+		bool technical) =>
+		!technical
+		&& string.Equals(notice, BikeFeeder.UnavailableNotice, StringComparison.Ordinal)
+			? LocalizationService.Current.CurrentStrings.Journey.BikeFeederHint
+		: notice;
 
 
 	private void OnLocalizationChanged(

@@ -79,5 +79,7 @@ public enum TransitMode
 
 	Taxi,
 
-	OnDemand
+	OnDemand,
+
+	Bike
 }

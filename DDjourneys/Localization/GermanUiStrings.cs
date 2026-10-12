@@ -484,7 +484,11 @@ public sealed class GermanUiStrings : IUiStrings
 		OccupancyOverloaded = "Überfüllt",
 
 		// B5 — ride companion
-		PaceTight = "Knapp für Ihr Tempo — der Weg dauert etwa {0}"
+		PaceTight = "Knapp für Ihr Tempo — der Weg dauert etwa {0}",
+
+		// B9 — bike feeder
+		BikeSummary = "{0:0.0} km · +{1} m ↑ · −{2} m ↓ · {3}",
+		BikeFeederHint = "Eine Radroute zur Haltestelle ließ sich nicht planen; das ist die normale Verbindung"
 	};
 
 	public SettingsStrings Settings { get; } = new()
@@ -534,6 +538,24 @@ public sealed class GermanUiStrings : IUiStrings
 		DensityNormalDescription = "Ausgewogene Abst\u00e4nde",
 		DensityTouch = "Gro\u00dfe Touch-Fl\u00e4chen",
 		DensityTouchDescription = "H\u00f6here Zeilen und Schaltfl\u00e4chen, mehr Platz dazwischen",
+		// B11 — Barrierefreiheit und Sprache
+		TextSizeHeader = "Textgröße",
+		TextSizeNormal = "Normal",
+		TextSizeNormalDescription = "Der Text, wie die App entworfen ist",
+		TextSizeLarge = "Groß",
+		TextSizeLargeDescription = "Etwa ein Sechstel größer als normal",
+		TextSizeLargest = "Am größten",
+		TextSizeLargestDescription = "Zum Lesen auf Armlänge und darüber hinaus",
+		LineColoursHeader = "Linienfarben",
+		LineColoursDescription = "Die Farben der Verkehrsarten, neu gelegt, damit sie bei dieser Art von Farbensehen unterscheidbar bleiben",
+		LineColoursStandard = "Standard",
+		LineColoursDeuteranopia = "Sicher bei Deuteranomalie",
+		LineColoursProtanopia = "Sicher bei Protanomalie",
+		LineColoursTritanopia = "Sicher bei Tritanomalie",
+		SimpleCards = "Einfache Verbindungskarten",
+		SimpleCardsDescription = "Jede Verbindung als eine große Zeile: die Zeit und nur der nächste Schritt",
+		PresetLargeSimple = "Groß & einfach",
+		PresetLargeSimpleDescription = "Größter Text, großzügige Bedienelemente und die einfachen Verbindungskarten - ein Ausgangspunkt; jede Einstellung bleibt anpassbar",
 		MaterialHeader = "Fenstermaterial (Windows)",
 		MaterialNone = "Keines",
 		MaterialNoneDescription = "Volle Farben, kein Material",
@@ -699,6 +721,13 @@ public sealed class GermanUiStrings : IUiStrings
 		ExtraChargeAny = "Keine Einschränkung",
 		ExtraChargeNone = "Ohne Zuschlag",
 		ExtraChargeLocal = "Nur Nahverkehr",
+
+		// B9 — bike feeder
+		SectionBike = "Mit dem Rad",
+		BikeFeeder = "Mit dem Rad zur Haltestelle",
+		BikeFeederPrivacy = "Die Radroute zur Haltestelle plant der BRouter-Dienst auf brouter.de; er erhält den Startpunkt und die Haltestelle des Einstiegs",
+		BikeFeederRadius = "Suchradius",
+		BikeFeederRadiusText = "Haltestellen bis {0} km entfernt",
 		SectionVia = "Zwischenhalt",
 		ViaMinutes = "Aufenthalt am Zwischenhalt",
 		ViaMinutesHint = "Gilt für Verbindungen über den Zwischenhalt. Beliebig heißt eine Minute, der kürzeste Aufenthalt dort.",
@@ -843,7 +872,10 @@ public sealed class GermanUiStrings : IUiStrings
 		Ferry = "F\u00e4hre",
 		CableCar = "Seilbahn",
 		Taxi = "Taxi",
-		OnDemand = "On-Demand"
+		OnDemand = "On-Demand",
+
+		// B9 — bike feeder
+		Bike = "Fahrrad"
 	};
 
 	public WidgetStrings Widgets { get; } = new()

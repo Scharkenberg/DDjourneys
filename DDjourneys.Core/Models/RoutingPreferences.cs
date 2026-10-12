@@ -129,4 +129,14 @@ public sealed record RoutingPreferences
 	/// two-search fallback to this (see <see cref="Services.ViaRouting"/>).
 	/// </summary>
 	public int ViaMinutes { get; init; } = 1;
+
+	/// <summary>
+	/// The passenger rides a bike to the first stop: the app plans a real bike track from the searched start
+	/// to a boarding stop (see <see cref="Services.BikeFeeder"/>), with the hills of the track. Off by
+	/// default; when it cannot run, the ordinary journey answers.
+	/// </summary>
+	public bool BikeFeeder { get; init; }
+
+	/// <summary>Within which radius around the start stops are considered for boarding by bike, kilometres.</summary>
+	public int BikeFeederRadiusKm { get; init; } = 2;
 }

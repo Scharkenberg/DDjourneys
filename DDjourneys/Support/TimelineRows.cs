@@ -262,6 +262,7 @@ public sealed partial class LegRow : TimelineRow
 }
 
 
+/// <summary>One individual movement of its own between two places (a walk, or the bike ride of the feeder).</summary>
 public sealed partial class WalkRow : TimelineRow
 {
 	public required string Text { get; init; }
@@ -518,6 +519,19 @@ public static class TimelineRowFactory
 		}
 
 
+			else if (items.Count > 0
+					&& items[0] is BikeItem firstBike)
+			{
+				rows.Add(
+						EndpointStop(
+								firstBike.Leg.From.Name,
+								PlaceOf(firstBike.Leg.From),
+								firstBike.Leg.EffectiveDeparture,
+								Colors.Transparent,
+								BikeColor()));
+			}
+
+
 		for (int i = 0; i < items.Count; i++)
 		{
 			switch (items[i])
@@ -602,6 +616,10 @@ public static class TimelineRowFactory
 					}
 
 					break;
+
+					case BikeItem bike:
+						rows.Add(BikeRow(bike.Leg));
+						break;
 
 
 				case BoundaryItem boundary:
@@ -1435,6 +1453,10 @@ public static class TimelineRowFactory
 
 				case WalkItem:
 					return WalkColor();
+
+				case BikeItem bike:
+					return ModeColors.For(
+						bike.Leg.Mode);
 			}
 
 			index += step;
@@ -1568,6 +1590,56 @@ public static class TimelineRowFactory
 		ModeColors
 			.For(TransitMode.Walk)
 			.WithAlpha(0.5f);
+
+	private static Color BikeColor() =>
+		ModeColors
+			.For(TransitMode.Bike)
+			.WithAlpha(0.5f);
+
+	/// <summary>
+	/// The feeder movement as a row: the compact track summary (distance, hills, riding time) and the
+	/// stop it leads to.
+	/// </summary>
+	private static WalkRow BikeRow(
+		JourneyLeg leg)
+	{
+		JourneyStrings strings =
+			LocalizationService.Current
+				.CurrentStrings
+				.Journey;
+
+		string summary =
+			string.Format(
+				System.Globalization.CultureInfo.CurrentCulture,
+				strings.BikeSummary,
+				(leg.DistanceMeters ?? 0) / 1000.0,
+				leg.AscentMeters ?? 0,
+				leg.DescentMeters ?? 0,
+				Format.Duration(
+					leg.EffectiveDeparture,
+					leg.EffectiveArrival));
+
+		return
+			new WalkRow
+			{
+				Text = summary,
+
+				CaptionPrefix =
+					strings.To,
+
+				CaptionName =
+					leg.To.Name,
+
+				CaptionPlace =
+					PlaceOf(leg.To),
+
+				RailBottom =
+					BikeColor(),
+
+				Description =
+					$"{summary} {strings.To} {StopLabel.Compose(leg.To)}"
+			};
+	}
 
 
 	private static string TimeOf(
