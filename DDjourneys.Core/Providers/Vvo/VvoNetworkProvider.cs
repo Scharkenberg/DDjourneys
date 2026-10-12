@@ -58,7 +58,8 @@ public sealed class VvoNetworkProvider :
 				?
 				[
 					wanted.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture),
-					$"/Date({wanted.ToUnixTimeMilliseconds()}+0000)/"
+					$"/Date({wanted.ToUnixTimeMilliseconds()}+0000)/",
+					wanted.ToString("yyyy-MM-dd'T'HH:mm:sszzz", CultureInfo.InvariantCulture)
 				]
 				: [null];
 
@@ -87,14 +88,25 @@ public sealed class VvoNetworkProvider :
 
 			best = board;
 
-			if (query.Time is not { } at
-				|| board.Departures.Count == 0
-				|| board.Departures[0].Scheduled >= at - TimeSpan.FromMinutes(10))
+			if (query.Time is not { } at || board.Departures.Count == 0)
 			{
 				break;
 			}
 
-			DiagnosticLog.Write($"[VVO] the board for {at:HH:mm} starts at {board.Departures[0].Scheduled:HH:mm}: the time '{form}' was not read, trying the other form");
+			DateTimeOffset first = board.Departures[0].Scheduled;
+
+			// Read: the board starts at the wanted time (a little before it, for the delayed ones). Not read: it starts
+			// long before, or - for a time in the past - at "now", which is what the service answers for a time it
+			// does not understand (the departures of the past are served only when the time is read).
+			bool past = at < DateTimeOffset.Now - TimeSpan.FromMinutes(2);
+			bool read = first >= at - TimeSpan.FromMinutes(10) && (!past || first <= at + TimeSpan.FromMinutes(45));
+
+			DiagnosticLog.Write($"[VVO] board for {at:dd.MM. HH:mm} asked as '{form}': {board.Departures.Count} rows from {first:dd.MM. HH:mm} to {board.Departures[^1].Scheduled:HH:mm}, {(read ? "read" : "not read")}");
+
+			if (read)
+			{
+				break;
+			}
 		}
 
 		return best;

@@ -121,7 +121,13 @@ public sealed class NetworkMapStore(ApiClient api)
 				.GetAsync(VvoNetworkMap.PageUrl, cancellationToken: cancellationToken)
 				.ConfigureAwait(false);
 
-		return VvoNetworkMap.FromHtml(html);
+		VvoNetworkMapCatalog catalog = VvoNetworkMap.FromHtml(html);
+
+		static string Links(VvoNetworkMapPlan? plan) => plan is null ? "none" : $"pdf {plan.Pdf?.AbsolutePath ?? "-"}, jpg {plan.Jpg?.AbsolutePath ?? "-"}";
+
+		DiagnosticLog.Write($"[Network map] catalog ({html.Length / 1024} KB page): night {Links(catalog.Night)}; barrier-free {Links(catalog.BarrierFree)}; city {Links(catalog.CityMap)}");
+
+		return catalog;
 	}
 
 	private static string? Cached(string path) =>

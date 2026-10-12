@@ -308,8 +308,17 @@ public sealed partial class StopLineRow(
 /// <summary>One line of the filter chip row above the board: a tap toggles it, a long press keeps only it.</summary>
 public sealed partial class LineFilterChip(
 	string name,
-	string key) : ObservableObject
+	string key,
+	Action<LineFilterChip> toggle,
+	Action<LineFilterChip> only) : ObservableObject
 {
+	/// <summary>Own commands: a behavior in a template cannot bind through a relative source (it is no Element).</summary>
+	public Command ToggleCommand =>
+		field ??= new Command(() => toggle(this));
+
+	public Command OnlyCommand =>
+		field ??= new Command(() => only(this));
+
 	public string Name =>
 		name;
 
@@ -1736,7 +1745,7 @@ public sealed partial class DeparturesViewModel : DisposableViewModel
 		{
 			if (seen.Add(BoardFilter.LineKey(name)))
 			{
-				chips.Add(new LineFilterChip(name, BoardFilter.LineKey(name)));
+				chips.Add(new LineFilterChip(name, BoardFilter.LineKey(name), ToggleLine, OnlyLine));
 			}
 		}
 

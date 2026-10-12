@@ -165,10 +165,8 @@
 											<Label FontFamily="{DynamicResource FontSemibold}" Text="{Binding Name}" />
 											<Border.Behaviors>
 												<mct:TouchBehavior
-													Command="{Binding Source={RelativeSource AncestorType={x:Type local:DeparturesViewModel}}, x:DataType=local:DeparturesViewModel, Path=ToggleLineCommand}"
-													CommandParameter="{Binding .}"
-													LongPressCommand="{Binding Source={RelativeSource AncestorType={x:Type local:DeparturesViewModel}}, x:DataType=local:DeparturesViewModel, Path=OnlyLineCommand}"
-													LongPressCommandParameter="{Binding .}" />
+													Command="{Binding ToggleCommand}"
+													LongPressCommand="{Binding OnlyCommand}" />
 											</Border.Behaviors>
 										</Border>
 									</DataTemplate>

@@ -5,7 +5,7 @@
 	xmlns:controls="clr-namespace:DDjourneys.Controls"
 	xmlns:support="clr-namespace:DDjourneys.Support"
 	xmlns:localization="clr-namespace:DDjourneys.Localization"
-	Title="{localization:Tr Extras.ZonePlan}">
+	Title="{localization:Tr Extras.NetworkMap}">
 
 	<Grid RowDefinitions="Auto,Auto,*,Auto" RowSpacing="0">
 
@@ -14,64 +14,90 @@
 			support:Dense.Padding="12,4"
 			ColumnDefinitions="*,Auto"
 			ColumnSpacing="8">
-			<Border
-				Padding="3"
-				BackgroundColor="{DynamicResource Raised}"
-				HorizontalOptions="Start"
-				MaximumWidthRequest="320"
-				StrokeThickness="0"
-				VerticalOptions="Center">
-				<Border.StrokeShape>
-					<RoundRectangle CornerRadius="6" />
-				</Border.StrokeShape>
-
-				<Grid ColumnDefinitions="*,*" ColumnSpacing="3">
+			<ScrollView HorizontalOptions="Start" Orientation="Horizontal" VerticalOptions="Center">
+				<HorizontalStackLayout Padding="0,0,8,0" Spacing="4">
 					<Border
 						x:Name="SegRegion"
-						Padding="12,7"
+						StyleClass="ChipButton"
 						support:Themed.Background="Clear"
 						support:Themed.OnBackground="Accent"
-						StrokeThickness="0">
-						<Border.StrokeShape>
-							<RoundRectangle CornerRadius="4" />
-						</Border.StrokeShape>
+						SemanticProperties.Description="{localization:Tr Extras.ZonePlanRegion}">
+						<Label
+							x:Name="SegRegionLabel"
+							FontFamily="{DynamicResource FontSemibold}"
+							Text="{localization:Tr Extras.ZonePlanRegion}"
+							support:Themed.OnText="OnAccent"
+							support:Themed.Text="Ink" />
 						<Border.GestureRecognizers>
 							<TapGestureRecognizer Tapped="RegionTapped" />
 						</Border.GestureRecognizers>
-						<Label
-							x:Name="SegRegionLabel"
-							support:Themed.OnText="OnAccent"
-							support:Themed.Text="Ink"
-							FontFamily="{DynamicResource FontSemibold}"
-							HorizontalOptions="Center"
-							LineBreakMode="TailTruncation"
-							Text="{localization:Tr Extras.ZonePlanRegion}" />
 					</Border>
-
 					<Border
 						x:Name="SegDresden"
-						Grid.Column="1"
-						Padding="12,7"
+						StyleClass="ChipButton"
 						support:Themed.Background="Clear"
 						support:Themed.OnBackground="Accent"
-						StrokeThickness="0">
-						<Border.StrokeShape>
-							<RoundRectangle CornerRadius="4" />
-						</Border.StrokeShape>
+						SemanticProperties.Description="{localization:Tr Extras.ZonePlanDresden}">
+						<Label
+							x:Name="SegDresdenLabel"
+							FontFamily="{DynamicResource FontSemibold}"
+							Text="{localization:Tr Extras.ZonePlanDresden}"
+							support:Themed.OnText="OnAccent"
+							support:Themed.Text="Ink" />
 						<Border.GestureRecognizers>
 							<TapGestureRecognizer Tapped="DresdenTapped" />
 						</Border.GestureRecognizers>
-						<Label
-							x:Name="SegDresdenLabel"
-							support:Themed.OnText="OnAccent"
-							support:Themed.Text="Ink"
-							FontFamily="{DynamicResource FontSemibold}"
-							HorizontalOptions="Center"
-							LineBreakMode="TailTruncation"
-							Text="{localization:Tr Extras.ZonePlanDresden}" />
 					</Border>
-				</Grid>
-			</Border>
+					<Border
+						x:Name="SegNight"
+						StyleClass="ChipButton"
+						support:Themed.Background="Clear"
+						support:Themed.OnBackground="Accent"
+						SemanticProperties.Description="{localization:Tr Extras.NetworkMapPlanNight}">
+						<Label
+							x:Name="SegNightLabel"
+							FontFamily="{DynamicResource FontSemibold}"
+							Text="{localization:Tr Extras.NetworkMapPlanNight}"
+							support:Themed.OnText="OnAccent"
+							support:Themed.Text="Ink" />
+						<Border.GestureRecognizers>
+							<TapGestureRecognizer Tapped="NightTapped" />
+						</Border.GestureRecognizers>
+					</Border>
+					<Border
+						x:Name="SegBarrierFree"
+						StyleClass="ChipButton"
+						support:Themed.Background="Clear"
+						support:Themed.OnBackground="Accent"
+						SemanticProperties.Description="{localization:Tr Extras.NetworkMapPlanBarrierFree}">
+						<Label
+							x:Name="SegBarrierFreeLabel"
+							FontFamily="{DynamicResource FontSemibold}"
+							Text="{localization:Tr Extras.NetworkMapPlanBarrierFree}"
+							support:Themed.OnText="OnAccent"
+							support:Themed.Text="Ink" />
+						<Border.GestureRecognizers>
+							<TapGestureRecognizer Tapped="BarrierFreeTapped" />
+						</Border.GestureRecognizers>
+					</Border>
+					<Border
+						x:Name="SegCity"
+						StyleClass="ChipButton"
+						support:Themed.Background="Clear"
+						support:Themed.OnBackground="Accent"
+						SemanticProperties.Description="{localization:Tr Extras.NetworkMapPlanCityMap}">
+						<Label
+							x:Name="SegCityLabel"
+							FontFamily="{DynamicResource FontSemibold}"
+							Text="{localization:Tr Extras.NetworkMapPlanCityMap}"
+							support:Themed.OnText="OnAccent"
+							support:Themed.Text="Ink" />
+						<Border.GestureRecognizers>
+							<TapGestureRecognizer Tapped="CityTapped" />
+						</Border.GestureRecognizers>
+					</Border>
+				</HorizontalStackLayout>
+			</ScrollView>
 
 			<HorizontalStackLayout
 				Grid.Column="1"
@@ -108,6 +134,21 @@
 					IsEnabled="False"
 					SemanticProperties.Description="{localization:Tr Extras.NetworkMapZoomIn}"
 					TargetSize="{StaticResource HitIcon}" />
+
+				<controls:IconButton
+					x:Name="RefreshButton"
+					Clicked="RefreshClicked"
+					Glyph="Refresh"
+					SemanticProperties.Description="{localization:Tr Extras.NetworkMapRefresh}"
+					TargetSize="{StaticResource HitIcon}" />
+
+				<controls:IconButton
+					x:Name="PdfButton"
+					Clicked="OpenPdfClicked"
+					Glyph="Document"
+					IsVisible="False"
+					SemanticProperties.Description="{localization:Tr Extras.NetworkMapOpenPdf}"
+					TargetSize="{StaticResource HitIcon}" />
 			</HorizontalStackLayout>
 		</Grid>
 
@@ -139,6 +180,7 @@
 			<controls:PlanView
 				x:Name="Plan"
 				Opacity="0"
+				PlanLost="ReloadPlan"
 				Shown="PlanShown"
 				StopTapped="PlanStopTapped"
 				ZoomChanged="PlanZoomChanged" />
@@ -162,7 +204,7 @@
 				<Label
 					FontFamily="{DynamicResource FontSemibold}"
 					HorizontalTextAlignment="Center"
-					Text="{localization:Tr Extras.ZonePlanFailed}" />
+					x:Name="MessageText" Text="{localization:Tr Extras.ZonePlanFailed}" />
 
 				<Button
 					Clicked="RetryClicked"
@@ -220,6 +262,7 @@
 		<Label
 			Grid.Row="3"
 			Margin="12,6,12,10"
+			x:Name="Credit"
 			StyleClass="Caption"
 			Text="{localization:Tr Extras.ZonePlanCredit}" />
 	</Grid>

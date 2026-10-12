@@ -52,7 +52,7 @@ public partial class AppShell : Shell
 		Routing.RegisterRoute(Routes.Disruption, typeof(DisruptionPage));
 		Routing.RegisterRoute(Routes.Vehicles, typeof(VehiclesPage));
 		Routing.RegisterRoute(Routes.Map, typeof(MapPage));
-		Routing.RegisterRoute(Routes.NetworkMap, typeof(NetworkMapPage));
+		Routing.RegisterRoute(Routes.NetworkMap, typeof(ZonePlanPage));
 		Routing.RegisterRoute(Routes.ZonePlan, typeof(ZonePlanPage));
 #if WINDOWS
 		Routing.RegisterRoute(Routes.WidgetSetup, typeof(WidgetSetupPage));
