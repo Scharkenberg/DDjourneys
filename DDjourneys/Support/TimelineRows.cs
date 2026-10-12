@@ -420,7 +420,7 @@ public sealed class FareRow
 /// How an on-demand leg is booked: the words of the app, the contact and the link of the provider's
 /// data (see OnDemandBooking). The link is the ceiling of what the app does.
 /// </summary>
-public sealed class OnDemandRow : TimelineRow
+public sealed partial class OnDemandRow : TimelineRow
 {
 	/// <summary>What the passenger has to do ("on demand: book this ride before it starts").</summary>
 	public required string Text { get; init; }
@@ -450,7 +450,7 @@ public sealed record TimelineOptions(
 	bool ShowPlatforms = true,
 	bool ExpandStops = false,
 
-	/// <summary>B5: the user's walk pace (routing preferences); null keeps the old wording everywhere.</summary>
+	// B5: the user's walk pace (routing preferences); null keeps the old wording everywhere.
 	WalkingPace? Pace = null);
 
 

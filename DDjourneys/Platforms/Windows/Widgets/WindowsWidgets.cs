@@ -19,7 +19,7 @@ namespace DDjourneys.Platforms.Windows.Widgets;
 /// The pin API does not exist (WidgetManager knows GetWidgetInfos, UpdateWidget and SendMessageToContent):
 /// the user pins from the board's picker, and the widget's set-up action opens this app's set-up page.
 /// </summary>
-internal static class WindowsWidgets
+internal static partial class WindowsWidgets
 {
 	/// <summary>The class the board CoCreates; the same value as the manifest's com:Class and CreateInstance ClassId.</summary>
 	internal const string ProviderClassId = "8F1D5A53-2A1F-4B0B-B5E1-1D2A6C90F3D7";
@@ -392,8 +392,8 @@ internal static class WindowsWidgets
 		}
 	}
 
-	[DllImport("ole32.dll")]
-	private static extern int CoCreateInstance(
+	[LibraryImport("ole32.dll")]
+	private static partial int CoCreateInstance(
 		ref Guid clsid,
 		nint outer,
 		uint context,
@@ -431,8 +431,8 @@ internal static class WindowsWidgets
 		uint flags,
 		out uint lpdwRegister);
 
-	[DllImport("ole32.dll")]
-	private static extern int CoRevokeClassObject(uint dwRegister);
+	[LibraryImport("ole32.dll")]
+	private static partial int CoRevokeClassObject(uint dwRegister);
 
 	/// <summary>The IClassFactory of the docs' FactoryHelper, handed out for CoCreateInstance.</summary>
 	[ComVisible(true)]
@@ -486,6 +486,9 @@ internal static class WindowsWidgets
 		}
 	}
 
+	// GeneratedComInterface is not for interfaces that cross the WinRT ABI (the factory hands out a
+	// WinRT-marshalled provider, see MarshalInspectable above); the classic ComImport stays on purpose.
+#pragma warning disable SYSLIB1096 // Use 'GeneratedComInterfaceAttribute' instead of 'ComImportAttribute'
 	[ComImport, ComVisible(false), InterfaceType(ComInterfaceType.InterfaceIsIUnknown), Guid("00000001-0000-0000-C000-000000000046")]
 	private interface IClassFactory
 	{
@@ -495,4 +498,5 @@ internal static class WindowsWidgets
 		[PreserveSig]
 		int LockServer(bool fLock);
 	}
+#pragma warning restore SYSLIB1096
 }

@@ -12,8 +12,16 @@
 // to the tag, including the upstream 4-space indentation - this file keeps the
 // upstream shape on purpose; do not re-indent it to the repository's tabs.
 // Do not add the QRCoder package to any project of the solution - its types
-// would collide with these.
+// would collide with these. Style messages about the upstream shape (namespace,
+// assignment, switch, Count, the Dispose pattern) are suppressed for the whole
+// file: the code stays as close to the tag as this repository's zero-warning
+// build allows.
 //
+#pragma warning disable IDE0130 // Namespace does not match folder structure
+#pragma warning disable IDE0059 // Value assigned to symbol is never used
+#pragma warning disable IDE0066 // Convert switch statement to expression
+#pragma warning disable CA1816 // Dispose methods should call GC.SuppressFinalize
+#pragma warning disable CA1829 // Use Length/Count property instead of Count() when available
 
 using System;
 using System.Collections.Generic;

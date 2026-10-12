@@ -225,6 +225,10 @@ public sealed partial class NearbyRow(
 		}
 	} = [];
 
+	/// <summary>The row's board has arrived: its next departures (fed by the page's staggered loader).</summary>
+	public void Adopt(IReadOnlyList<NearbyPreview> departures) =>
+			Preview = departures;
+
 	public bool HasPreview =>
 		Preview.Count > 0;
 
@@ -243,7 +247,7 @@ public sealed partial class NearbyRow(
 	}
 
 	public IReadOnlyList<NearbyPreview> ShownPreview =>
-		[.. Preview.Take(IsExpanded ? 3 : 1)];
+		(List<NearbyPreview>)[.. Preview.Take(IsExpanded ? 3 : 1)];
 }
 
 
@@ -1211,7 +1215,8 @@ public sealed partial class DeparturesViewModel : DisposableViewModel
 			// has, and those are at least as fresh as the cache. A cache miss is today's error path.
 			if (IsNow
 				&& Rows.Count == 0
-				&& BoardCache.Find(_providers.SelectedId, stop.Id, IsArrival) is { } cached)
+				&& stop.Id is { } stopId
+				&& BoardCache.Find(_providers.SelectedId, stopId, IsArrival) is { } cached)
 			{
 				_current = cached.Departures;
 				RebuildRows();
@@ -1803,7 +1808,7 @@ public sealed partial class DeparturesViewModel : DisposableViewModel
 					return;
 				}
 
-				row.Preview =
+				row.Adopt(
 					(List<NearbyPreview>)[.. NearbyBoards.Previews(board, NearbyPreviewRows, Format.Now())
 						.Select(departure => new NearbyPreview(departure))];
 			}

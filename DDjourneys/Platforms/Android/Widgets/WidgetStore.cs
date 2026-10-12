@@ -11,7 +11,7 @@ namespace DDjourneys.Platforms.Android.Widgets;
 /// </remarks>
 internal static class WidgetStore
 {
-	private static readonly IWidgetStore Store = new AndroidWidgetStore();
+	private static readonly AndroidWidgetStore Store = new();
 
 	private static string Id(int id) =>
 		id.ToString(System.Globalization.CultureInfo.InvariantCulture);

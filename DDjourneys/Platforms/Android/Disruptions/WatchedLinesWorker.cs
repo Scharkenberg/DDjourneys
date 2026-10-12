@@ -26,24 +26,24 @@ internal sealed class WatchedLinesWorker(
 	{
 		if (IsStopped)
 		{
-			return WorkResult.Success();
+			return WorkResult.InvokeSuccess();
 		}
 
 		try
 		{
 			CheckAsync().GetAwaiter().GetResult();
 
-			return WorkResult.Success();
+			return WorkResult.InvokeSuccess();
 		}
 		catch (OperationCanceledException)
 		{
-			return WorkResult.Retry();
+			return WorkResult.InvokeRetry();
 		}
 		catch (Exception ex)
 		{
 			DiagnosticLog.Write($"Checking the watched lines in the background failed: {ex.Message}");
 
-			return WorkResult.Retry();
+			return WorkResult.InvokeRetry();
 		}
 	}
 

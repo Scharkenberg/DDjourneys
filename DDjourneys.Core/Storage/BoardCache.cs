@@ -140,7 +140,7 @@ public static class BoardCacheList
 				departures);
 	}
 
-	private static JsonNode DepartureNode(Departure departure) =>
+	private static JsonObject DepartureNode(Departure departure) =>
 		new JsonObject
 		{
 			["Id"] = departure.Id,

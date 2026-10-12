@@ -99,7 +99,7 @@ public static class WatchedLineStatus
 
 		try
 		{
-			IReadOnlyList<string> watched =
+			List<string> watched =
 				[.. WatchedLines.Load()
 					.Where(line => string.Equals(line.ProviderId, providerId, StringComparison.OrdinalIgnoreCase))
 					.Select(line => line.Name)];

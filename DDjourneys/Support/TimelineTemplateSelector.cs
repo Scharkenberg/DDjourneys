@@ -10,6 +10,9 @@ public sealed class TimelineTemplateSelector : DataTemplateSelector
 	public DataTemplate? Interchange { get; set; }
 	public DataTemplate? Notice { get; set; }
 
+	/// <summary>An on-demand leg (Anruf-Linien-Bus / alita): booked before it starts.</summary>
+	public DataTemplate? OnDemand { get; set; }
+
 	protected override DataTemplate OnSelectTemplate(object item, BindableObject container) =>
 		(item switch
 		{

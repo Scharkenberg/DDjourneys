@@ -33,7 +33,7 @@ public static class LineCourseNotices
 
 			try
 			{
-					DisruptionReport report =
+					Core.Models.DisruptionReport report =
 							await network.GetDisruptionsAsync(false, cancellationToken);
 
 					IReadOnlyList<Core.Models.Disruption> changes =

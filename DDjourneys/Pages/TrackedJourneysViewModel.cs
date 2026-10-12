@@ -1073,6 +1073,7 @@ public sealed partial class TrackedJourneysViewModel : DisposableViewModel, IQue
 				rows.Add(
 					new CourseRow
 					{
+						IsHeader = false,
 						IsHint = true,
 						Text =
 							hint.At is { } reaches

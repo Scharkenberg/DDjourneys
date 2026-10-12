@@ -16,7 +16,7 @@ namespace DDjourneys.Support;
 /// renderer mixed up tiles drawn in parallel (parts of one level landed in another). A tile whose picture does not
 /// have the size it was drawn for is never shown or kept.
 /// </remarks>
-public sealed class PdfPlanTiles : IPlanTiles
+public sealed partial class PdfPlanTiles : IPlanTiles
 {
 	/// <summary>Bumped when the drawing changes: tiles of an older drawing are dropped with their folder.</summary>
 	private const string RenderVersion = "r2";
@@ -75,7 +75,7 @@ public sealed class PdfPlanTiles : IPlanTiles
 
 		IPdfPage page = await PdfPages.OpenAsync(source, cancellationToken).ConfigureAwait(false);
 
-		_ = Task.Run(() => Tidy(root, name, key));
+		_ = Task.Run(() => Tidy(root, name, key), cancellationToken);
 
 		return new PdfPlanTiles(page, key, directory);
 	}

@@ -6,7 +6,7 @@ namespace DDjourneys.Support;
 /// A plan that is one picture (a JPG or PNG on the device), shown at its full size: the web view tiles large
 /// pictures itself, so nothing is scaled down. Only the header is read here, never the pixels.
 /// </summary>
-public sealed class ImagePlanTiles : IPlanTiles
+public sealed partial class ImagePlanTiles : IPlanTiles
 {
 	private readonly string _path;
 

@@ -253,7 +253,7 @@ public sealed partial class DisruptionsViewModel : DisposableViewModel, IQueryAt
 				OnPropertyChanged(nameof(HasYourLinesMessage));
 			}
 		}
-	}
+	} = [];
 
 	public bool HasYourLines =>
 		YourLines.Count > 0;
@@ -460,7 +460,7 @@ public sealed partial class DisruptionsViewModel : DisposableViewModel, IQueryAt
 	/// </summary>
 	private void BuildYourLines()
 	{
-		IReadOnlyList<string> watched =
+		List<string> watched =
 				[.. WatchedLines.Load()
 						.Where(line => string.Equals(line.ProviderId, _providerId, StringComparison.OrdinalIgnoreCase))
 						.Select(line => line.Name)];
@@ -468,7 +468,7 @@ public sealed partial class DisruptionsViewModel : DisposableViewModel, IQueryAt
 		DateTimeOffset now = DateTimeOffset.UtcNow;
 
 		YourLines =
-				[.. _changes
+				(List<DisruptionRow>)[.. _changes
 						.Where(change => change.IsActiveAt(now)
 							&& watched.Any(name => LineDisruptions.AffectsLine(change, name)))
 						.Select(change => new DisruptionRow(change))];

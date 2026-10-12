@@ -249,7 +249,7 @@ public sealed partial class NetworkMapPage : ContentPage
 		{
 			NetworkMapFile jpg = await _maps.GetJpgAsync(_kind);
 
-			IPlanTiles tiles = await ImagePlanTiles.OpenAsync(jpg.Path, VvoNetworkMap.PlanName(_kind), CancellationToken.None);
+			ImagePlanTiles tiles = await ImagePlanTiles.OpenAsync(jpg.Path, VvoNetworkMap.PlanName(_kind), CancellationToken.None);
 
 			_key = tiles.Spec.Key;
 

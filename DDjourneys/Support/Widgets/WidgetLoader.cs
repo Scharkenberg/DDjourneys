@@ -255,7 +255,7 @@ public sealed class WidgetLoader(
 		IReadOnlyList<Departure>[] boards =
 			await NearbyBoards.LoadAsync(
 				departures,
-				[.. chosen.Select(stop => stop.Stop)],
+				(List<Location>)[.. chosen.Select(stop => stop.Stop)],
 				arrival: false,
 				config.PerStop,
 				config.LineFilter,

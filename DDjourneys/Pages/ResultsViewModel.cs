@@ -77,8 +77,8 @@ public sealed partial class ResultsViewModel :
 
 		// B11: the line colours are baked into the chips, so a new colour set rebuilds them.
 		Subscribe(
-			() => ModeColorSet.Changed += OnLocalizationChanged,
-			() => ModeColorSet.Changed -= OnLocalizationChanged);
+			() => ModeColorSet.Changed += OnModeColorSetChanged,
+			() => ModeColorSet.Changed -= OnModeColorSetChanged);
 
 		RefreshCommand =
 			new Command(
@@ -752,6 +752,12 @@ public sealed partial class ResultsViewModel :
 		}
 	}
 
+
+	/// <summary>B11: a new line-colour set repaints the chips the same way a language change does.</summary>
+	private void OnModeColorSetChanged(object? sender, EventArgs e) =>
+			OnLocalizationChanged(
+				sender,
+				new System.ComponentModel.PropertyChangedEventArgs(string.Empty));
 
 	private void OnLocalizationChanged(
 		object? sender,

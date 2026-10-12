@@ -133,7 +133,7 @@ public static class WatchedLines
 			await CheckAsync(network, providerId, rideLines, cancellationToken).ConfigureAwait(false);
 
 		return
-			[.. result.Changed
+			(List<string>)[.. result.Changed
 				.Where(change => change.Kind == LineDisruptionChangeKind.Changed)
 				.Select(change => change.LineName)
 				.Where(name => rideLines.Any(line => LineCourseService.SameLine(line, name)))];
@@ -175,7 +175,7 @@ public static class WatchedLines
 		WatchedLineStatus.Adopt(providerId, report);
 
 		return new WatchedLineCheckResult(
-			[.. lines.Where(line => line.HasActive)],
+			(List<LineDisruptionReport>)[.. lines.Where(line => line.HasActive)],
 			LineDisruptions.Diff(previous, providerId, lines));
 	}
 

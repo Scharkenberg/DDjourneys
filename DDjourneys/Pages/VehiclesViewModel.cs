@@ -520,7 +520,7 @@ public sealed partial class VehiclesViewModel : DisposableViewModel, IQueryAttri
 				PositionSnapping.Snap(
 					fix.Latitude,
 					fix.Longitude,
-					[.. ridden.Target.Course.Select(point => (point.Latitude, point.Longitude))]);
+					(List<(double Latitude, double Longitude)>)[.. ridden.Target.Course.Select(point => (point.Latitude, point.Longitude))]);
 		}
 
 		SceneChanged?.Invoke(
@@ -542,7 +542,7 @@ public sealed partial class VehiclesViewModel : DisposableViewModel, IQueryAttri
 			? vehicles
 			: new MapScene
 			{
-				Markers = [.. (_courseMarkers ?? []), .. vehicles.Markers],
+				Markers = (List<MapMarker>)[.. (_courseMarkers ?? []), .. vehicles.Markers],
 				Lines = _courseLines,
 				Fit = vehicles.Fit
 			};
@@ -723,57 +723,16 @@ public sealed partial class VehiclesViewModel : DisposableViewModel, IQueryAttri
 
 			await foreach (LiveVehicle vehicle in _vehicleSubscription.Reader.ReadAllAsync(cts.Token))
 			{
-				bool delivered = false;
-
-				try
-				{
-					await foreach (LiveVehicle vehicle in
-						_vehicles.StreamAsync(
-							new VehicleFilter { Lines = lines },
-							cts.Token))
-					{
-						if (cts.IsCancellationRequested || IsDisposed)
-						{
-							return;
-						}
-
-						delivered = true;
-
-						if (_slots.Count > 0)
-						{
-							ApplyTracked(vehicle);
-
-							continue;
-						}
-
-						if (HasStatus)
-						{
-							Status = string.Empty;
-						}
-
-						Apply(vehicle);
-					}
-				}
-				catch (OperationCanceledException)
-				{
-				}
-				catch (Exception ex)
-				{
-					DiagnosticLog.Write($"Live vehicles failed: {ex}");
-				}
-
 				if (cts.IsCancellationRequested || IsDisposed)
 				{
 					return;
 				}
 
-				// The stream ended without the page asking: say so, wait, and connect again. A stream that
-				// carried positions gets another go at once; a page nobody leaves keeps trying with a pause.
-				Status = strings.LiveError;
-
-				if (delivered)
+				if (_slots.Count > 0)
 				{
-					failures = 0;
+					ApplyTracked(vehicle);
+
+					continue;
 				}
 
 				if (lines.Count > 0 && !lines.Contains(vehicle.Line))
@@ -783,7 +742,7 @@ public sealed partial class VehiclesViewModel : DisposableViewModel, IQueryAttri
 
 				if (HasStatus)
 				{
-					failures++;
+					Status = string.Empty;
 				}
 
 				Apply(vehicle);
@@ -802,33 +761,6 @@ public sealed partial class VehiclesViewModel : DisposableViewModel, IQueryAttri
 				IsStreaming = false;
 			}
 		}
-	}
-
-	/// <summary>
-	/// The page is no longer seen: the stream stops receiving (rows and matches stay as they are). While the page
-	/// is hidden the positions would cost battery for a picture nobody looks at.
-	/// </summary>
-	public void PauseStream()
-	{
-		_stream?.Cancel();
-		_stream = null;
-	}
-
-	/// <summary>The page is seen again: a stream that was paused continues where it left off.</summary>
-	public void ResumeStream()
-	{
-		if (IsDisposed
-			|| !IsStreaming
-			|| _stream is not null)
-		{
-			return;
-		}
-
-		var cts = new CancellationTokenSource();
-		_stream = cts;
-		_startedAt = DateTimeOffset.UtcNow;
-
-		_ = ConnectAsync(cts, _activeLines);
 	}
 
 	/// <summary>

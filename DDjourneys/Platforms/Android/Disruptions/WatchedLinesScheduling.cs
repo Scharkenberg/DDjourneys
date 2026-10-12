@@ -52,11 +52,11 @@ internal static class WatchedLinesScheduling
 				new PeriodicWorkRequest.Builder(typeof(WatchedLinesWorker), Interval)
 					.SetConstraints(
 						new Constraints.Builder()
-							.SetRequiredNetworkType(NetworkType.Connected)
+							.SetRequiredNetworkType(NetworkType.Connected!)
 							.Build())
 					.Build();
 
-			manager.EnqueueUniquePeriodicWork(UniqueName, ExistingPeriodicWorkPolicy.Keep, request);
+			manager.EnqueueUniquePeriodicWork(UniqueName, ExistingPeriodicWorkPolicy.Keep!, request);
 		}
 		catch (Exception ex)
 		{

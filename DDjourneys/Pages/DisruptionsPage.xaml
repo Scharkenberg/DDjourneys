@@ -11,7 +11,7 @@
 
 <ContentPage.Resources>
 	<!--  B4: the row card is shared by the list and the pinned "Your lines" section  -->
-	<DataTemplate x:DataType="local:DisruptionRow">
+	<DataTemplate x:Key="DisruptionCard" x:DataType="local:DisruptionRow">
 		<Border
 			Margin="16,0"
 			support:Motion.Feedback="True"

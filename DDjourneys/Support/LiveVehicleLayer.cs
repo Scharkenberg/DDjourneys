@@ -11,7 +11,7 @@ namespace DDjourneys.Support;
 /// the point of it. While the switch is on it stays subscribed even below the publishing zoom; the last
 /// positions age out quietly when the stream dies (the Vehicles page stays the place for connection detail).
 /// </summary>
-public sealed class LiveVehicleLayer : IDisposable
+public sealed partial class LiveVehicleLayer : IDisposable
 {
 	private const string IdPrefix = "v:";
 

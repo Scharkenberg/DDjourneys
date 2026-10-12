@@ -174,7 +174,7 @@ public static class MapScenes
 	/// The part of a route line that lies between the first and the last of the stops shown: the nearest
 	/// vertices carry the split, the stretch in between is the route. Null when the line is unusable.
 	/// </summary>
-	private static IReadOnlyList<(double Latitude, double Longitude)>? Stretch(
+	private static List<(double Latitude, double Longitude)>? Stretch(
 		IReadOnlyList<(double Latitude, double Longitude)>? path,
 		(double Latitude, double Longitude) first,
 		(double Latitude, double Longitude) last)

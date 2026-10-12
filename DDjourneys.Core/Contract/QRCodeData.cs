@@ -12,8 +12,11 @@
 // annotations; this repository builds with zero warnings). Everything else is
 // byte-identical to the tag, including the upstream 4-space indentation - this
 // file keeps the upstream shape on purpose; do not re-indent it to the
-// repository's tabs.
+// repository's tabs. Style messages about the upstream shape (namespace, the
+// Dispose pattern) are suppressed for the whole file.
 //
+#pragma warning disable IDE0130 // Namespace does not match folder structure
+#pragma warning disable CA1816 // Dispose methods should call GC.SuppressFinalize
 
 using System.Collections;
 using System.Collections.Generic;

@@ -201,7 +201,14 @@ public class VehicleStreamHubTests
 		// A pump over the reader (the map's layer) finishes when its subscription is disposed.
 		Task completion = subscriber.Reader.Completion;
 
-		Assert.Same(completion, await Task.WhenAny(completion, Task.Delay(TimeSpan.FromSeconds(2))));
+		try
+		{
+			await completion.WaitAsync(TimeSpan.FromSeconds(2));
+		}
+		catch (TimeoutException)
+		{
+			Assert.Fail("the reader of a disposed subscription did not complete");
+		}
 
 		hub.Dispose();
 	}

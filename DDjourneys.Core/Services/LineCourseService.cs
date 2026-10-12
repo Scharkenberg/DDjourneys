@@ -198,7 +198,7 @@ public sealed partial class LineCourseService(DepartureService departures)
 	}
 
 	/// <summary>Line names with or without spaces are the same line ("S 1" and "S1").</summary>
-	internal static bool SameLine(string? one, string? other)
+	public static bool SameLine(string? one, string? other)
 	{
 		if (one is null || other is null)
 		{

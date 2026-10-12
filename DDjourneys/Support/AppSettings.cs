@@ -66,7 +66,7 @@ public sealed class AppSettings
 	/// <summary>App-side text size id: "normal", "large" or "largest" (B11; scales the type-scale tokens).</summary>
 	public string TextSize
 	{
-		get => Read("textSize", TextSizeProfile.NormalId);
+		get => Read("textSize", Core.Theming.TextSizeProfile.NormalId);
 		set => Write("textSize", value);
 	}
 

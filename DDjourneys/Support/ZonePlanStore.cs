@@ -106,7 +106,7 @@ public sealed class ZonePlanStore(ApiClient api)
 
 		await File.WriteAllTextAsync(pointer, key, cancellationToken).ConfigureAwait(false);
 
-		_ = Task.Run(() => Tidy(name, key));
+		_ = Task.Run(() => Tidy(name, key), cancellationToken);
 
 		return (key, pins, true);
 	}

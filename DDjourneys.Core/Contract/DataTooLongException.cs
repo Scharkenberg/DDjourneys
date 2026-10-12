@@ -4,8 +4,9 @@
 // Raffael Herrmann, MIT licence (see LICENSE.txt in the upstream repository).
 // Vendored 2026-10-12 for the share-a-stop QR code (see QrCode). Byte-identical
 // to the tag; only the byte-order mark was removed, to match this repository's
-// files.
+// files. The namespace-message is suppressed for the whole file (upstream namespace).
 //
+#pragma warning disable IDE0130 // Namespace does not match folder structure
 
 using System;
 

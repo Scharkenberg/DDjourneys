@@ -972,7 +972,7 @@ public sealed partial class MapView : ContentView
 
 	private void OnChinMoved(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
 	{
-		if (_chinView is not { } view
+		if (_chinView is null
 			|| !_draggingHeight)
 		{
 			return;

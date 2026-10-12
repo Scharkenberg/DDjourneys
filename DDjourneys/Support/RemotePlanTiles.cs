@@ -10,7 +10,7 @@ namespace DDjourneys.Support;
 /// pixel and remembered, never asked again. After the first view the whole pyramid is fetched in the background on
 /// an unmetered connection (the shallowest level always), a few requests at a time behind the page's own.
 /// </summary>
-public sealed class RemotePlanTiles : IPlanTiles
+public sealed partial class RemotePlanTiles : IPlanTiles
 {
 	private const int PageRequests = 6;
 	private const int BackgroundRequests = 2;

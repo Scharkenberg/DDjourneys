@@ -1,4 +1,6 @@
+using CommunityToolkit.Maui;
 using CommunityToolkit.Maui.Core;
+using CommunityToolkit.Maui.Extensions;
 using CommunityToolkit.Maui.Views;
 using DDjourneys.Core.Contract;
 using DDjourneys.Core.Diagnostics;

@@ -135,7 +135,7 @@ public partial class WidgetSetupPage : PanePage, IQueryAttributable
 	}
 
 	/// <summary>One widget of the board: its icon, what it shows in words a person knows (never the id), and its state.</summary>
-	private View BuildRow(string id, WidgetConfig? config, int number, bool selected)
+	private Grid BuildRow(string id, WidgetConfig? config, int number, bool selected)
 	{
 		bool complete = config is { IsComplete: true };
 		bool route = config?.Kind is WidgetKind.Route;
@@ -511,7 +511,7 @@ public partial class WidgetSetupPage : PanePage, IQueryAttributable
 		}
 	}
 
-	private View BuildResult(Location place)
+	private Grid BuildResult(Location place)
 	{
 		(string name, string? city) = StopLabel.Split(place.Name, place.Place);
 

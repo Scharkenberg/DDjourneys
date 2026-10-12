@@ -71,7 +71,8 @@ public partial class PlanPage : PanePage, IQueryAttributable
 		// B4: the watched-lines banner leads to the disruptions page (beside this page in a wide window).
 		vm.OpenWatchedDisruptions = () =>
 			NavigateAsync(
-				Routes.Disruptions);
+				Routes.Disruptions,
+				[]);
 	}
 
 	protected override void OnAppearing()
