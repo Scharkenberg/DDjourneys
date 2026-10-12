@@ -185,6 +185,7 @@ public sealed partial class DisruptionsViewModel : DisposableViewModel, IQueryAt
 {
 	private readonly NetworkService _network;
 	private readonly LocalizationService _localization;
+	private string _providerId;
 	private IReadOnlyList<Disruption> _changes = [];
 	private IReadOnlyList<NetworkBanner> _banners = [];
 	private HashSet<string> _only = new(StringComparer.Ordinal);
@@ -204,6 +205,7 @@ public sealed partial class DisruptionsViewModel : DisposableViewModel, IQueryAt
 
 		_network = network;
 		_localization = LocalizationService.Current;
+		_providerId = providers.SelectedId;
 
 		// Messages and line ids belong to one provider: a switch drops them and loads the new provider's.
 		Subscribe(
@@ -236,6 +238,43 @@ public sealed partial class DisruptionsViewModel : DisposableViewModel, IQueryAt
 	public AsyncCommand<DisruptionRow> OpenCommand { get; }
 
 	public ObservableCollection<DisruptionRow> Rows { get; } = [];
+
+	/// <summary>The watched lines' own active disruptions, pinned above the list (B4). Their state feeds the
+	/// planner banner and the settings row as a side effect (<see cref="WatchedLineStatus.Adopt"/>).</summary>
+	public IReadOnlyList<DisruptionRow> YourLines
+	{
+		get;
+
+		private set
+		{
+			if (SetProperty(ref field, value))
+			{
+				OnPropertyChanged(nameof(HasYourLines));
+				OnPropertyChanged(nameof(HasYourLinesMessage));
+			}
+		}
+	} = [];
+
+	public bool HasYourLines =>
+		YourLines.Count > 0;
+
+	/// <summary>What the pinned section says when there is nothing to pin: how to watch lines (none watched
+	/// yet), or that none of them has a current change.</summary>
+	public string YourLinesMessage
+	{
+		get;
+
+		private set
+		{
+			if (SetProperty(ref field, value))
+			{
+				OnPropertyChanged(nameof(HasYourLinesMessage));
+			}
+		}
+	} = string.Empty;
+
+	public bool HasYourLinesMessage =>
+		YourLinesMessage.Length > 0;
 
 	public bool ShortTermOnly
 	{
@@ -326,9 +365,11 @@ public sealed partial class DisruptionsViewModel : DisposableViewModel, IQueryAt
 				_load?.Cancel();
 				_build?.Cancel();
 
+				_providerId = providerId;
 				_changes = [];
 				_banners = [];
 				_only = new HashSet<string>(StringComparer.Ordinal);
+				BuildYourLines();
 
 				if (_loaded)
 				{
@@ -370,6 +411,10 @@ public sealed partial class DisruptionsViewModel : DisposableViewModel, IQueryAt
 
 			_banners = report.Banners;
 
+			// The answer the page already has feeds the watched lines' session state (banner, settings row).
+			WatchedLineStatus.Adopt(_providerId, report);
+			BuildYourLines();
+
 			_ = RebuildAsync();
 		}
 		catch (OperationCanceledException)
@@ -407,6 +452,34 @@ public sealed partial class DisruptionsViewModel : DisposableViewModel, IQueryAt
 						&& line.Name.Length > name.Length
 						&& line.Name.StartsWith(name, StringComparison.CurrentCultureIgnoreCase)
 						&& line.Name[name.Length..].All(char.IsDigit))));
+
+	/// <summary>
+	/// The pinned "Your lines" section: the active route changes that name a watched line of this provider
+	/// (the same-line rule), in the provider's own order. Independent of the filter and the short-term switch:
+	/// what the passenger watches is never filtered away. The section teaches itself when nothing is watched.
+	/// </summary>
+	private void BuildYourLines()
+	{
+		List<string> watched =
+				[.. WatchedLines.Load()
+						.Where(line => string.Equals(line.ProviderId, _providerId, StringComparison.OrdinalIgnoreCase))
+						.Select(line => line.Name)];
+
+		DateTimeOffset now = DateTimeOffset.UtcNow;
+
+		YourLines =
+				(List<DisruptionRow>)[.. _changes
+						.Where(change => change.IsActiveAt(now)
+							&& watched.Any(name => LineDisruptions.AffectsLine(change, name)))
+						.Select(change => new DisruptionRow(change))];
+
+		YourLinesMessage =
+				watched.Count == 0
+						? _localization.CurrentStrings.WatchedLines.WatchHint
+						: YourLines.Count == 0
+								? _localization.CurrentStrings.WatchedLines.YourLinesNone
+								: string.Empty;
+	}
 
 	private async Task RebuildAsync(
 		bool debounce = false)

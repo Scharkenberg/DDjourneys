@@ -13,8 +13,39 @@
 		StyleClass="Card">
 		<VerticalStackLayout Spacing="{DynamicResource SpaceM}">
 
+			<!--  B11, simple card: one huge line - the time and only the next step  -->
+			<VerticalStackLayout IsVisible="{Binding Simple}" Spacing="{DynamicResource SpaceS}">
+				<Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource SpaceM}">
+					<Label
+						FontSize="{DynamicResource FontHeadline}"
+						FontFamily="{DynamicResource FontSemibold}"
+						Text="{Binding DepartureTime}" />
+					<VerticalStackLayout
+						Grid.Column="1"
+						Spacing="2"
+						VerticalOptions="Center">
+						<Label
+							FontSize="{DynamicResource FontSubtitle}"
+							FontFamily="{DynamicResource FontSemibold}"
+							IsVisible="{Binding HasNextStep}"
+							LineBreakMode="WordWrap"
+							MaxLines="2"
+							Text="{Binding NextStepText}" />
+						<Label
+							FontFamily="{DynamicResource FontSemibold}"
+							IsVisible="{Binding IsCancelled}"
+							LineBreakMode="WordWrap"
+							StyleClass="Cancelled"
+							Text="{Binding BlockText}" />
+					</VerticalStackLayout>
+				</Grid>
+			</VerticalStackLayout>
+
 			<!--  Times  -->
-			<Grid ColumnDefinitions="*,Auto,*" ColumnSpacing="{DynamicResource SpaceM}">
+			<Grid
+				ColumnDefinitions="*,Auto,*"
+				ColumnSpacing="{DynamicResource SpaceM}"
+				IsVisible="{Binding Detailed}">
 
 				<VerticalStackLayout Grid.Column="0" Spacing="2">
 					<Label StyleClass="Time" Text="{Binding DepartureTime}" />
@@ -99,6 +130,7 @@
 
 			<!--  Legs: one line, centered, and swipeable when it is too long for the card; the actions sit beside it  -->
 			<Grid
+				IsVisible="{Binding Detailed}"
 				support:Dense.MinHeight="{StaticResource HitIconTight}"
 				ColumnDefinitions="*,Auto"
 				ColumnSpacing="{DynamicResource SpaceS}">
@@ -216,7 +248,7 @@
 
 			<!--  Cannot take place: own row, so a long reason can wrap  -->
 			<Label
-				IsVisible="{Binding IsCancelled}"
+				IsVisible="{Binding Detailed}"
 				LineBreakMode="WordWrap"
 				StyleClass="Cancelled"
 				Text="{Binding BlockText}" />

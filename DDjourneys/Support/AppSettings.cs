@@ -35,7 +35,7 @@ public sealed class AppSettings
 
 	// ----- App -----
 
-	/// <summary>Light/dark mode: "system", "light" or "dark".</summary>
+	/// <summary>Light/dark mode: "system", "light", "dark" or "sun" (follows sunrise and sunset).</summary>
 	public string ThemeMode
 	{
 		get => Read("themeMode", "system");
@@ -61,6 +61,27 @@ public sealed class AppSettings
 	{
 		get => Read("uiDensity", "normal");
 		set => Write("uiDensity", value);
+	}
+
+	/// <summary>App-side text size id: "normal", "large" or "largest" (B11; scales the type-scale tokens).</summary>
+	public string TextSize
+	{
+		get => Read("textSize", Core.Theming.TextSizeProfile.NormalId);
+		set => Write("textSize", value);
+	}
+
+	/// <summary>Id of the line-colour set: "standard", "deuteranopia", "protanopia" or "tritanopia" (B11).</summary>
+	public string ModeColourSet
+	{
+		get => Read("modeColourSet", Core.Theming.ModeColorSets.StandardId);
+		set => Write("modeColourSet", value);
+	}
+
+	/// <summary>Journey cards reduced to the time and the next step, in huge type (B11).</summary>
+	public bool SimpleCards
+	{
+		get => Read("simpleCards", false);
+		set => Write("simpleCards", value);
 	}
 
 	/// <summary>Windows window material: "none", "mica", "micaalt" or "acrylic" (see MaterialProfile; ignored elsewhere).</summary>
@@ -184,6 +205,22 @@ public sealed class AppSettings
 		set => Write("leadMinutes", Math.Clamp(value, 1, 60));
 	}
 
+	// B5 — ride companion: the get-off alarm (a preference, not a stored or wire format - no schema bump).
+
+	/// <summary>Minutes before the get-off stop the alarm rings while a followed journey is under way (0 = off, 1..3; the default is the alarm the notification alone could not give).</summary>
+	public int GetOffAlarmLeadMinutes
+	{
+		get => Math.Clamp(Read("getOffAlarmLead", 1), 0, 3);
+		set => Write("getOffAlarmLead", Math.Clamp(value, 0, 3));
+	}
+
+	/// <summary>True: the get-off alarm rings with a sound (the alerts channel); false: gently, without one.</summary>
+	public bool GetOffAlarmSound
+	{
+		get => Read("getOffAlarmSound", true);
+		set => Write("getOffAlarmSound", value);
+	}
+
 	/// <summary>Request timeout for provider calls, seconds (5..60).</summary>
 	public int TimeoutSeconds
 	{
@@ -225,6 +262,13 @@ public sealed class AppSettings
 		| (SearchPois ? PlaceKinds.Pois : PlaceKinds.None);
 
 	// ----- Start in input mode -----
+
+	/// <summary>The screen the app opens on: the planner or (on the phone, with its tabs) the map.</summary>
+	public StartScreen StartScreen
+	{
+		get => Read("startScreen", StartScreen.Planner);
+		set => Write("startScreen", value);
+	}
 
 	/// <summary>The app opens as if the passenger had tapped the start already: start filled, destination search ready.</summary>
 	public bool StartInput
@@ -324,6 +368,38 @@ public sealed class AppSettings
 		}
 	}
 
+	/// <summary>Show the provider's tariff zones on the map. Provider-scoped: only a provider that publishes zone outlines has them.</summary>
+	public bool MapZones
+	{
+		get => Read(Scoped("mapZones"), true);
+		set => Write(Scoped("mapZones"), value);
+	}
+
+	/// <summary>Show park &amp; ride sites with their free spaces on the map. City data: the pref is
+	/// global, not provider-scoped (both shipped providers cover the same region).
+	/// </summary>
+	public bool MapParking
+	{
+		get => Read("mapParking", false);
+		set => Write("mapParking", value);
+	}
+
+	/// <summary>Show shared-bike stations with their live counts on the map. City data like park &amp; ride:
+	/// global, not provider-scoped.</summary>
+	public bool MapBikes
+	{
+		get => Read("mapBikes", false);
+		set => Write("mapBikes", value);
+	}
+
+	/// <summary>Show the vehicles around on the map, live from the shared TLMS stream. City data like the
+	/// other layers: global, not provider-scoped.</summary>
+	public bool MapVehicles
+	{
+		get => Read("mapVehicles", false);
+		set => Write("mapVehicles", value);
+	}
+
 	/// <summary>The library that draws the map: "carto" (vector, needs a key) or "leaflet" (raster tiles, no key).</summary>
 	public MapEngine MapEngine
 	{
@@ -333,6 +409,13 @@ public sealed class AppSettings
 			MapAvailability.SetEngine(value);
 			Changed?.Invoke(this, nameof(MapEngine));
 		}
+	}
+
+	/// <summary>Download the offline city map only on an unmetered connection (Wi-Fi or cable; on by default).</summary>
+	public bool CityTilesWifiOnly
+	{
+		get => Read("cityTilesWifiOnly", true);
+		set => Write("cityTilesWifiOnly", value);
 	}
 
 	// ----- Place search -----
@@ -356,6 +439,19 @@ public sealed class AppSettings
 	{
 		get => Math.Clamp(Read("minQueryLength", MinQueryLengthFloor), MinQueryLengthFloor, MinQueryLengthCeiling);
 		set => Write("minQueryLength", Math.Clamp(value, MinQueryLengthFloor, MinQueryLengthCeiling));
+	}
+
+	// ----- Tickets -----
+
+	/// <summary>
+	/// The passenger owns a Deutschlandticket. The ticket advice of a journey then treats what the provider
+	/// prices by its own fare zones as already paid for. Not provider-scoped: the ticket is valid
+	/// Germany-wide. An advice only - the app sells nothing.
+	/// </summary>
+	public bool HasDeutschlandTicket
+	{
+		get => Read("deutschlandTicket", false);
+		set => Write("deutschlandTicket", value);
 	}
 
 	// ----- Routing preferences -----
@@ -462,6 +558,31 @@ public sealed class AppSettings
 		set => Write(Scoped("extraCharge"), value);
 	}
 
+	/// <summary>Minutes to stay at the stop-over. 0 and 1 are the same thing: one minute is the floor ("Any").</summary>
+	public int ViaMinutes
+	{
+		get => Math.Clamp(Read(Scoped("viaMinutes"), 1), 0, 60);
+		set => Write(Scoped("viaMinutes"), Math.Clamp(value, 0, 60));
+	}
+
+	/// <summary>
+	/// The passenger rides a bike to the first stop: the planner puts a real bike track in front of the
+	/// transit part (BRouter, see <c>DDjourneys.Core.Services.BikeFeeder</c>). Off by default; the app is
+	/// honest when the feeder cannot run and shows the ordinary journey.
+	/// </summary>
+	public bool BikeFeeder
+	{
+		get => Read(Scoped("bikeFeeder"), false);
+		set => Write(Scoped("bikeFeeder"), value);
+	}
+
+	/// <summary>Within which radius around the start stops are considered for boarding by bike, kilometres (1..5).</summary>
+	public int BikeFeederRadiusKm
+	{
+		get => Math.Clamp(Read(Scoped("bikeFeederRadius"), 2), Core.Services.BikeFeeder.MinRadiusKm, Core.Services.BikeFeeder.MaxRadiusKm);
+		set => Write(Scoped("bikeFeederRadius"), Math.Clamp(value, Core.Services.BikeFeeder.MinRadiusKm, Core.Services.BikeFeeder.MaxRadiusKm));
+	}
+
 	/// <summary>The routing options as sent with every journey search.</summary>
 	public RoutingPreferences Routing =>
 		new()
@@ -478,7 +599,10 @@ public sealed class AppSettings
 			Optimisation = Optimisation,
 			Entrance = Entrance,
 			ExtraCharge = ExtraCharge,
-			Passenger = Passenger
+			ViaMinutes = ViaMinutes,
+			Passenger = Passenger,
+			BikeFeeder = BikeFeeder,
+			BikeFeederRadiusKm = BikeFeederRadiusKm
 		};
 
 	public void ResetRoutingDefaults()
@@ -495,7 +619,10 @@ public sealed class AppSettings
 		Optimisation = RouteOptimisation.Fastest;
 		Entrance = EntranceNeed.Any;
 		ExtraCharge = ExtraChargeFilter.Any;
+		ViaMinutes = 1;
 		Passenger = PassengerCategory.Adult;
+		BikeFeeder = false;
+		BikeFeederRadiusKm = 2;
 	}
 
 	public void ResetJourneyDefaults()
@@ -514,6 +641,8 @@ public sealed class AppSettings
 		ExpandStops = false;
 		SearchDelayMs = 500;
 		MinQueryLength = MinQueryLengthFloor;
+		GetOffAlarmLeadMinutes = 1;
+		GetOffAlarmSound = true;
 		ResetRoutingDefaults();
 	}
 
@@ -576,6 +705,16 @@ public sealed class AppSettings
 
 	private static string NormalizeCulture(string languageCode) =>
 	CultureInfo.GetCultureInfo(languageCode).Name;
+}
+
+/// <summary>The screen the app opens on.</summary>
+public enum StartScreen
+{
+	/// <summary>The planner (the default, everywhere).</summary>
+	Planner = 0,
+
+	/// <summary>The map (the phone's map tab; every other form factor opens the planner all the same).</summary>
+	Map
 }
 
 /// <summary>The start of the input mode.</summary>

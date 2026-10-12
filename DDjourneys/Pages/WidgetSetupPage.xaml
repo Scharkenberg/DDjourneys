@@ -1,0 +1,436 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<support:PanePage
+	x:Class="DDjourneys.Pages.WidgetSetupPage"
+	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+	xmlns:controls="clr-namespace:DDjourneys.Controls"
+	xmlns:localization="clr-namespace:DDjourneys.Localization"
+	xmlns:support="clr-namespace:DDjourneys.Support"
+	Title="{localization:Tr Widgets.SetupTitle}">
+
+	<ScrollView>
+		<VerticalStackLayout Padding="{DynamicResource PadPage}" Spacing="{DynamicResource SpaceS}">
+
+			<!--  The widgets of this app that are on the board: one tap opens the editor under the list  -->
+			<Label StyleClass="Section" Text="{localization:Tr Widgets.SetupPick}" />
+
+			<Border Padding="0" StyleClass="Card">
+				<VerticalStackLayout x:Name="Pinned" />
+			</Border>
+
+			<!--  The editor of the chosen widget. Changes are saved as they are made, once the widget has what it needs.  -->
+			<VerticalStackLayout
+				x:Name="Editor"
+				IsVisible="false"
+				Spacing="{DynamicResource SpaceS}">
+
+				<Label x:Name="EditorTitle" StyleClass="Section" />
+
+				<Border Padding="{DynamicResource PadCard}" StyleClass="Card">
+					<VerticalStackLayout Spacing="{DynamicResource SpaceM}">
+
+						<!--  Segmented choice: what the widget shows  -->
+						<VerticalStackLayout Spacing="6">
+							<Label StyleClass="Caption" Text="{localization:Tr Widgets.SetupKind}" />
+
+							<Border
+								Padding="3"
+								BackgroundColor="{DynamicResource Raised}"
+								StrokeThickness="0">
+								<Border.StrokeShape>
+									<RoundRectangle CornerRadius="6" />
+								</Border.StrokeShape>
+
+								<Grid ColumnDefinitions="*,*" ColumnSpacing="3">
+									<Border
+										x:Name="SegDepartures"
+										Padding="0,9"
+										support:Themed.Background="Clear"
+										support:Themed.OnBackground="Accent"
+										StrokeThickness="0">
+										<Border.StrokeShape>
+											<RoundRectangle CornerRadius="4" />
+										</Border.StrokeShape>
+										<Border.GestureRecognizers>
+											<TapGestureRecognizer Tapped="OnKindDepartures" />
+										</Border.GestureRecognizers>
+										<HorizontalStackLayout HorizontalOptions="Center" Spacing="8">
+											<controls:Icon
+												x:Name="SegDeparturesIcon"
+												Glyph="Clock"
+												Size="18"
+												VerticalOptions="Center" />
+											<Label
+												x:Name="SegDeparturesLabel"
+												support:Themed.OnText="OnAccent"
+												support:Themed.Text="Ink"
+												FontFamily="{DynamicResource FontSemibold}"
+												VerticalOptions="Center" />
+										</HorizontalStackLayout>
+									</Border>
+
+									<Border
+										x:Name="SegRoute"
+										Grid.Column="1"
+										Padding="0,9"
+										support:Themed.Background="Clear"
+										support:Themed.OnBackground="Accent"
+										StrokeThickness="0">
+										<Border.StrokeShape>
+											<RoundRectangle CornerRadius="4" />
+										</Border.StrokeShape>
+										<Border.GestureRecognizers>
+											<TapGestureRecognizer Tapped="OnKindRoute" />
+										</Border.GestureRecognizers>
+										<HorizontalStackLayout HorizontalOptions="Center" Spacing="8">
+											<controls:Icon
+												x:Name="SegRouteIcon"
+												Glyph="Route"
+												Size="18"
+												VerticalOptions="Center" />
+											<Label
+												x:Name="SegRouteLabel"
+												support:Themed.OnText="OnAccent"
+												support:Themed.Text="Ink"
+												FontFamily="{DynamicResource FontSemibold}"
+												VerticalOptions="Center" />
+										</HorizontalStackLayout>
+									</Border>
+								</Grid>
+							</Border>
+						</VerticalStackLayout>
+
+						<!--  The places the widget needs; the one that is being chosen wears the accent outline  -->
+						<VerticalStackLayout Spacing="6">
+
+							<Border
+								x:Name="StopField"
+								Padding="12,8"
+								BackgroundColor="{DynamicResource Raised}"
+								StrokeThickness="1"
+								support:Dense.MinHeight="{StaticResource HitRow}"
+								support:Themed.OnStroke="AccentBrush"
+								support:Themed.Stroke="OutlineBrush">
+								<Border.StrokeShape>
+									<RoundRectangle CornerRadius="4" />
+								</Border.StrokeShape>
+								<Border.GestureRecognizers>
+									<TapGestureRecognizer Tapped="OnStopField" />
+								</Border.GestureRecognizers>
+								<Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+									<controls:Icon
+										Glyph="MapPin"
+										Size="22"
+										VerticalOptions="Center"
+										Color="{DynamicResource Accent}" />
+									<VerticalStackLayout Grid.Column="1" VerticalOptions="Center">
+										<Label x:Name="StopCaption" StyleClass="Faint" />
+										<Label
+											x:Name="StopValue"
+											FontFamily="{DynamicResource FontSemibold}"
+											LineBreakMode="TailTruncation"
+											MaxLines="1" />
+									</VerticalStackLayout>
+									<controls:Icon
+										Grid.Column="2"
+										Glyph="Edit"
+										Size="18"
+										VerticalOptions="Center"
+										Color="{DynamicResource InkMuted}" />
+								</Grid>
+							</Border>
+
+							<Border
+								x:Name="FromField"
+								Padding="12,8"
+								BackgroundColor="{DynamicResource Raised}"
+								StrokeThickness="1"
+								support:Dense.MinHeight="{StaticResource HitRow}"
+								support:Themed.OnStroke="AccentBrush"
+								support:Themed.Stroke="OutlineBrush">
+								<Border.StrokeShape>
+									<RoundRectangle CornerRadius="4" />
+								</Border.StrokeShape>
+								<Border.GestureRecognizers>
+									<TapGestureRecognizer Tapped="OnFromField" />
+								</Border.GestureRecognizers>
+								<Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+									<controls:Icon
+										Glyph="Flag"
+										Size="22"
+										VerticalOptions="Center"
+										Color="{DynamicResource Accent}" />
+									<VerticalStackLayout Grid.Column="1" VerticalOptions="Center">
+										<Label x:Name="FromCaption" StyleClass="Faint" />
+										<Label
+											x:Name="FromValue"
+											FontFamily="{DynamicResource FontSemibold}"
+											LineBreakMode="TailTruncation"
+											MaxLines="1" />
+									</VerticalStackLayout>
+									<controls:Icon
+										Grid.Column="2"
+										Glyph="Edit"
+										Size="18"
+										VerticalOptions="Center"
+										Color="{DynamicResource InkMuted}" />
+								</Grid>
+							</Border>
+
+							<Border
+								x:Name="ToField"
+								Padding="12,8"
+								BackgroundColor="{DynamicResource Raised}"
+								StrokeThickness="1"
+								support:Dense.MinHeight="{StaticResource HitRow}"
+								support:Themed.OnStroke="AccentBrush"
+								support:Themed.Stroke="OutlineBrush">
+								<Border.StrokeShape>
+									<RoundRectangle CornerRadius="4" />
+								</Border.StrokeShape>
+								<Border.GestureRecognizers>
+									<TapGestureRecognizer Tapped="OnToField" />
+								</Border.GestureRecognizers>
+								<Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+									<controls:Icon
+										Glyph="MapPin"
+										Size="22"
+										VerticalOptions="Center"
+										Color="{DynamicResource Accent}" />
+									<VerticalStackLayout Grid.Column="1" VerticalOptions="Center">
+										<Label x:Name="ToCaption" StyleClass="Faint" />
+										<Label
+											x:Name="ToValue"
+											FontFamily="{DynamicResource FontSemibold}"
+											LineBreakMode="TailTruncation"
+											MaxLines="1" />
+									</VerticalStackLayout>
+									<controls:Icon
+										Grid.Column="2"
+										Glyph="Edit"
+										Size="18"
+										VerticalOptions="Center"
+										Color="{DynamicResource InkMuted}" />
+								</Grid>
+							</Border>
+						</VerticalStackLayout>
+
+						<!--  The title of the widget; empty = the place (shown as the hint)  -->
+						<Border
+							Padding="12,4"
+							BackgroundColor="{DynamicResource Raised}"
+							StrokeThickness="0"
+							support:Dense.MinHeight="{StaticResource HitRow}">
+							<Border.StrokeShape>
+								<RoundRectangle CornerRadius="4" />
+							</Border.StrokeShape>
+							<Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+								<controls:Icon
+									Glyph="Edit"
+									Size="22"
+									VerticalOptions="Center"
+									Color="{DynamicResource Accent}" />
+								<VerticalStackLayout Grid.Column="1" VerticalOptions="Center">
+									<Label StyleClass="Faint" Text="{localization:Tr Widgets.SetupTitleLabel}" />
+									<Entry
+										x:Name="TitleEntry"
+										ClearButtonVisibility="WhileEditing"
+										FontFamily="{DynamicResource FontSemibold}"
+										MaxLength="40"
+										SemanticProperties.Description="{localization:Tr Widgets.SetupTitleLabel}"
+										TextChanged="OnTitleChanged" />
+								</VerticalStackLayout>
+							</Grid>
+						</Border>
+					</VerticalStackLayout>
+				</Border>
+
+				<!--  The search for the place that is being chosen  -->
+				<Border Padding="10,0" StyleClass="Card">
+					<Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{DynamicResource SpaceS}">
+						<controls:Icon
+							Glyph="Search"
+							Size="19"
+							VerticalOptions="Center"
+							Color="{DynamicResource InkMuted}" />
+
+						<Entry
+							x:Name="Search"
+							Grid.Column="1"
+							ClearButtonVisibility="WhileEditing"
+							Placeholder="{localization:Tr Widgets.SetupSearch}"
+							ReturnType="Search"
+							SemanticProperties.Description="{localization:Tr Widgets.SetupSearch}"
+							TextChanged="OnSearchChanged" />
+
+						<ActivityIndicator
+							x:Name="Searching"
+							Grid.Column="2"
+							HeightRequest="20"
+							IsVisible="false"
+							VerticalOptions="Center"
+							WidthRequest="20"
+							Color="{DynamicResource Accent}" />
+					</Grid>
+				</Border>
+
+				<Border
+					x:Name="ResultsCard"
+					Padding="0"
+					IsVisible="false"
+					StyleClass="Card">
+					<VerticalStackLayout x:Name="Results" />
+				</Border>
+
+				<HorizontalStackLayout Margin="4,0" Spacing="8">
+					<controls:Icon
+						x:Name="StatusIcon"
+						Glyph="Info"
+						Size="18"
+						VerticalOptions="Center"
+						Color="{DynamicResource InkMuted}" />
+					<Label
+						x:Name="StatusLabel"
+						StyleClass="Caption"
+						VerticalOptions="Center" />
+				</HorizontalStackLayout>
+			</VerticalStackLayout>
+
+			<!--  How a widget gets onto the board (there is no way to pin one from the app)  -->
+			<Label StyleClass="Section" Text="{localization:Tr Widgets.SetupSummary}" />
+
+			<Border Padding="0" StyleClass="Card">
+				<VerticalStackLayout>
+					<Grid
+						Padding="12,10"
+						ColumnDefinitions="Auto,*"
+						ColumnSpacing="12">
+						<Border
+							BackgroundColor="{DynamicResource AccentSoft}"
+							HeightRequest="28"
+							Padding="0"
+							StrokeThickness="0"
+							WidthRequest="28">
+							<Border.StrokeShape>
+								<RoundRectangle CornerRadius="14" />
+							</Border.StrokeShape>
+							<Label
+								FontFamily="{DynamicResource FontSemibold}"
+								StyleClass="ChipLabel"
+								Text="1"
+								TextColor="{DynamicResource Accent}" />
+						</Border>
+						<Label
+							Grid.Column="1"
+							Text="{localization:Tr Widgets.SetupStep1}"
+							VerticalOptions="Center" />
+					</Grid>
+					<BoxView StyleClass="Divider" />
+					<Grid
+						Padding="12,10"
+						ColumnDefinitions="Auto,*"
+						ColumnSpacing="12">
+						<Border
+							BackgroundColor="{DynamicResource AccentSoft}"
+							HeightRequest="28"
+							Padding="0"
+							StrokeThickness="0"
+							WidthRequest="28">
+							<Border.StrokeShape>
+								<RoundRectangle CornerRadius="14" />
+							</Border.StrokeShape>
+							<Label
+								FontFamily="{DynamicResource FontSemibold}"
+								StyleClass="ChipLabel"
+								Text="2"
+								TextColor="{DynamicResource Accent}" />
+						</Border>
+						<Label
+							Grid.Column="1"
+							Text="{localization:Tr Widgets.SetupStep2}"
+							VerticalOptions="Center" />
+					</Grid>
+					<BoxView StyleClass="Divider" />
+					<Grid
+						Padding="12,10"
+						ColumnDefinitions="Auto,*"
+						ColumnSpacing="12">
+						<Border
+							BackgroundColor="{DynamicResource AccentSoft}"
+							HeightRequest="28"
+							Padding="0"
+							StrokeThickness="0"
+							WidthRequest="28">
+							<Border.StrokeShape>
+								<RoundRectangle CornerRadius="14" />
+							</Border.StrokeShape>
+							<Label
+								FontFamily="{DynamicResource FontSemibold}"
+								StyleClass="ChipLabel"
+								Text="3"
+								TextColor="{DynamicResource Accent}" />
+						</Border>
+						<Label
+							Grid.Column="1"
+							Text="{localization:Tr Widgets.SetupStep3}"
+							VerticalOptions="Center" />
+					</Grid>
+				</VerticalStackLayout>
+			</Border>
+
+			<!--  The board's own error says nothing: what Windows has on record for this app, to copy  -->
+			<Border Padding="0" StyleClass="Card">
+				<VerticalStackLayout>
+					<Grid
+						support:Dense.MinHeight="{StaticResource HitRow}"
+						support:Dense.Padding="12,8"
+						support:Motion.Feedback="True"
+						ColumnDefinitions="Auto,*,Auto"
+						ColumnSpacing="12">
+						<controls:Icon
+							Glyph="Info"
+							Size="20"
+							VerticalOptions="Center"
+							Color="{DynamicResource InkMuted}" />
+						<Label
+							Grid.Column="1"
+							FontFamily="{DynamicResource FontSemibold}"
+							Text="{localization:Tr Widgets.DiagTitle}"
+							VerticalOptions="Center" />
+						<controls:Icon
+							x:Name="DiagChevron"
+							Grid.Column="2"
+							Glyph="ChevronDown"
+							Size="20"
+							VerticalOptions="Center"
+							Color="{DynamicResource InkMuted}" />
+						<Grid.GestureRecognizers>
+							<TapGestureRecognizer Tapped="OnDiagToggle" />
+						</Grid.GestureRecognizers>
+					</Grid>
+
+					<VerticalStackLayout
+						x:Name="DiagBody"
+						Padding="12,0,12,12"
+						IsVisible="false"
+						Spacing="8">
+						<Label StyleClass="Caption" Text="{localization:Tr Widgets.DiagHint}" />
+						<Button
+							x:Name="DiagButton"
+							support:Dense.MinHeight="{StaticResource HitButton}"
+							Clicked="OnDiagnostics"
+							HorizontalOptions="Start"
+							StyleClass="Tonal"
+							Text="{localization:Tr Widgets.DiagCopy}" />
+						<Label
+							x:Name="DiagText"
+							FontFamily="Consolas"
+							FontSize="12"
+							IsVisible="false"
+							StyleClass="Faint" />
+					</VerticalStackLayout>
+				</VerticalStackLayout>
+			</Border>
+		</VerticalStackLayout>
+	</ScrollView>
+</support:PanePage>

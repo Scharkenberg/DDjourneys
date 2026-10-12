@@ -90,4 +90,15 @@ public partial class PlaceSearchPage : ContentPage
 			_vm.SelectPlaceCommand.Execute(place.Place);
 		}
 	}
+
+	/// <summary>A line row of the line search: shows the course of the whole line (the page stays under the map).</summary>
+	private void LineTapped(object? sender, TappedEventArgs e)
+	{
+		if (sender is VisualElement { BindingContext: LineRow line } row)
+		{
+			HideKeyboard();
+			_ = Motion.TapAsync(row);
+			_vm.SelectLineCommand.Execute(line);
+		}
+	}
 }

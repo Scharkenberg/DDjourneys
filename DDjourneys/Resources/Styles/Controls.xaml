@@ -19,48 +19,48 @@
 	<Style TargetType="Label">
 		<Setter Property="TextColor" Value="{DynamicResource Ink}" />
 		<Setter Property="FontFamily" Value="{DynamicResource FontRegular}" />
-		<Setter Property="FontSize" Value="{StaticResource FontBody}" />
+		<Setter Property="FontSize" Value="{DynamicResource FontBody}" />
 		<!--  Motion (Motion.cs): shown later = rises in; Pulse (below) = a changed value ticks over  -->
 		<Setter Property="support:Motion.OnShow" Value="True" />
 	</Style>
 	<Style Class="Headline" TargetType="Label">
 		<Setter Property="FontFamily" Value="{DynamicResource FontSemibold}" />
-		<Setter Property="FontSize" Value="{StaticResource FontHeadline}" />
+		<Setter Property="FontSize" Value="{DynamicResource FontHeadline}" />
 	</Style>
 	<Style Class="Title" TargetType="Label">
 		<Setter Property="SemanticProperties.HeadingLevel" Value="Level2" />
 		<Setter Property="FontFamily" Value="{DynamicResource FontSemibold}" />
-		<Setter Property="FontSize" Value="{StaticResource FontTitle}" />
+		<Setter Property="FontSize" Value="{DynamicResource FontTitle}" />
 	</Style>
 	<Style Class="Time" TargetType="Label">
 		<Setter Property="FontFamily" Value="{DynamicResource FontSemibold}" />
-		<Setter Property="FontSize" Value="{StaticResource FontTime}" />
+		<Setter Property="FontSize" Value="{DynamicResource FontTime}" />
 		<Setter Property="support:Motion.Pulse" Value="True" />
 	</Style>
 	<Style Class="Caption" TargetType="Label">
-		<Setter Property="FontSize" Value="{StaticResource FontCaption}" />
+		<Setter Property="FontSize" Value="{DynamicResource FontCaption}" />
 		<Setter Property="TextColor" Value="{DynamicResource InkMuted}" />
 	</Style>
 	<!--  Secondary detail under a name (city, region): smaller than Caption, same accessible colour  -->
 	<Style Class="Faint" TargetType="Label">
-		<Setter Property="FontSize" Value="{StaticResource FontMicro}" />
+		<Setter Property="FontSize" Value="{DynamicResource FontMicro}" />
 		<Setter Property="TextColor" Value="{DynamicResource InkMuted}" />
 	</Style>
 	<Style Class="OnTime" TargetType="Label">
 		<Setter Property="FontFamily" Value="{DynamicResource FontSemibold}" />
-		<Setter Property="FontSize" Value="{StaticResource FontCaption}" />
+		<Setter Property="FontSize" Value="{DynamicResource FontCaption}" />
 		<Setter Property="TextColor" Value="{DynamicResource OnTime}" />
 		<Setter Property="support:Motion.Pulse" Value="True" />
 	</Style>
 	<Style Class="Delay" TargetType="Label">
 		<Setter Property="FontFamily" Value="{DynamicResource FontSemibold}" />
-		<Setter Property="FontSize" Value="{StaticResource FontCaption}" />
+		<Setter Property="FontSize" Value="{DynamicResource FontCaption}" />
 		<Setter Property="TextColor" Value="{DynamicResource Delay}" />
 		<Setter Property="support:Motion.Pulse" Value="True" />
 	</Style>
 	<Style Class="Cancelled" TargetType="Label">
 		<Setter Property="FontFamily" Value="{DynamicResource FontSemibold}" />
-		<Setter Property="FontSize" Value="{StaticResource FontCaption}" />
+		<Setter Property="FontSize" Value="{DynamicResource FontCaption}" />
 		<Setter Property="TextColor" Value="{DynamicResource Cancelled}" />
 	</Style>
 
@@ -122,7 +122,7 @@
 		<Setter Property="support:Themed.DisabledBackground" Value="Raised" />
 		<Setter Property="support:Themed.DisabledText" Value="InkMuted" />
 		<Setter Property="FontFamily" Value="{DynamicResource FontSemibold}" />
-		<Setter Property="FontSize" Value="{StaticResource FontBody}" />
+		<Setter Property="FontSize" Value="{DynamicResource FontBody}" />
 		<Setter Property="CornerRadius" Value="6" />
 		<Setter Property="BorderWidth" Value="0" />
 		<Setter Property="BorderColor" Value="Transparent" />
@@ -202,7 +202,7 @@
 	<Style Class="Section" TargetType="Label">
 		<Setter Property="SemanticProperties.HeadingLevel" Value="Level2" />
 		<Setter Property="FontFamily" Value="{DynamicResource FontSemibold}" />
-		<Setter Property="FontSize" Value="{StaticResource FontCaption}" />
+		<Setter Property="FontSize" Value="{DynamicResource FontCaption}" />
 		<Setter Property="TextColor" Value="{DynamicResource Accent}" />
 		<Setter Property="CharacterSpacing" Value="0.5" />
 		<Setter Property="TextTransform" Value="Uppercase" />
@@ -211,23 +211,23 @@
 	</Style>
 	<Style Class="Subtitle" TargetType="Label">
 		<Setter Property="FontFamily" Value="{DynamicResource FontSemibold}" />
-		<Setter Property="FontSize" Value="{StaticResource FontSubtitle}" />
+		<Setter Property="FontSize" Value="{DynamicResource FontSubtitle}" />
 	</Style>
 
 	<!--  Native controls: themed, never wrapped in tight borders  -->
 	<Style TargetType="DatePicker">
 		<Setter Property="FontFamily" Value="{DynamicResource FontSemibold}" />
-		<Setter Property="FontSize" Value="{StaticResource FontBody}" />
+		<Setter Property="FontSize" Value="{DynamicResource FontBody}" />
 		<Setter Property="support:NativeTheme.Follow" Value="True" />
 	</Style>
 	<Style TargetType="TimePicker">
 		<Setter Property="FontFamily" Value="{DynamicResource FontSemibold}" />
-		<Setter Property="FontSize" Value="{StaticResource FontBody}" />
+		<Setter Property="FontSize" Value="{DynamicResource FontBody}" />
 		<Setter Property="support:NativeTheme.Follow" Value="True" />
 	</Style>
 	<Style TargetType="Picker">
 		<Setter Property="FontFamily" Value="{DynamicResource FontRegular}" />
-		<Setter Property="FontSize" Value="{StaticResource FontBody}" />
+		<Setter Property="FontSize" Value="{DynamicResource FontBody}" />
 		<Setter Property="support:NativeTheme.Follow" Value="True" />
 	</Style>
 	<!--  Native controls take their colours from support:NativeTheme (see there); thumb contrasts with the track in both states  -->
@@ -243,7 +243,7 @@
 
 	<Style TargetType="Entry">
 		<Setter Property="FontFamily" Value="{DynamicResource FontRegular}" />
-		<Setter Property="FontSize" Value="{StaticResource FontBody}" />
+		<Setter Property="FontSize" Value="{DynamicResource FontBody}" />
 		<Setter Property="support:NativeTheme.Follow" Value="True" />
 	</Style>
 

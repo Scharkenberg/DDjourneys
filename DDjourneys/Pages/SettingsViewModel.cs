@@ -1,6 +1,9 @@
 using CommunityToolkit.Maui.Alerts;
+using System.Globalization;
 using DDjourneys.Core.Diagnostics;
+using DDjourneys.Core.Mapping;
 using DDjourneys.Core.Providers;
+using DDjourneys.Core.Providers.Abstractions;
 using DDjourneys.Localization;
 using DDjourneys.Support;
 using Microsoft.Maui.ApplicationModel.DataTransfer;
@@ -14,14 +17,19 @@ public sealed partial class SettingsViewModel : DisposableViewModel
 	private readonly LocalizationService _localization;
 
 	private readonly ProviderRegistry _providers;
+	private readonly CityTilesStore _cityTiles;
+	private readonly NetworkMapStore _networkMaps;
 
-	public SettingsViewModel(AppSettings settings, ProviderRegistry providers)
+	public SettingsViewModel(AppSettings settings, ProviderRegistry providers, CityTilesStore cityTiles, NetworkMapStore networkMaps)
 	{
 		ArgumentNullException.ThrowIfNull(settings);
 		ArgumentNullException.ThrowIfNull(providers);
+		ArgumentNullException.ThrowIfNull(cityTiles);
 
 		_settings = settings;
 		_providers = providers;
+		_cityTiles = cityTiles;
+		_networkMaps = networkMaps;
 		_localization = LocalizationService.Current;
 
 		ListenToLocalization(_localization, OnLocalizationChanged);
@@ -32,12 +40,18 @@ public sealed partial class SettingsViewModel : DisposableViewModel
 		OpenRoutingCommand = new AsyncCommand(OpenRoutingAsync);
 		OpenStartCommand = new AsyncCommand(OpenStartAsync);
 		OpenProvidersCommand = new AsyncCommand(OpenProvidersAsync);
+		OpenWidgetsCommand = new AsyncCommand(OpenWidgetsAsync);
+		OpenExploreMapCommand = new AsyncCommand(() => TabRoots.OpenAsync(Routes.Map));
+		OpenNetworkMapCommand = new AsyncCommand(() => Shell.Current.GoToAsync(Routes.NetworkMap));
+		OpenDisruptionsCommand = new AsyncCommand(() => Shell.Current.GoToAsync(Routes.Disruptions));
 		ShareLogCommand = new AsyncCommand(ShareLogAsync);
 		ClearLogCommand = new Command(ClearLog);
 		OpenAboutCommand = new AsyncCommand(OpenAboutAsync);
 		CopyInterfacesCommand = new AsyncCommand(CopyInterfacesAsync);
 		SaveMapKeyCommand = new Command(SaveMapKey, () => MapKeyChanged);
 		SelectMapEngineCommand = new Command<string>(SelectMapEngine);
+		DownloadCityTilesCommand = new AsyncCommand(DownloadCityTilesAsync);
+		RemoveCityTilesCommand = new AsyncCommand(RemoveCityTilesAsync);
 
 		_mapKeyDraft = _settings.MapApiKey;
 
@@ -109,6 +123,181 @@ public sealed partial class SettingsViewModel : DisposableViewModel
 		SaveMapKeyCommand.ChangeCanExecute();
 	}
 
+	// B7 — offline: the city map download (Settings, Offline) and the boards kept per stop.
+
+	private CancellationTokenSource? _cityTilesCancellation;
+
+	/// <summary>Downloads the city map once: the honest estimate first, progress while it runs, a summary after.</summary>
+	public AsyncCommand DownloadCityTilesCommand { get; }
+
+	/// <summary>Deletes the downloaded city map from the device.</summary>
+	public AsyncCommand RemoveCityTilesCommand { get; }
+
+	/// <summary>Whether the city-map download waits for Wi-Fi or a cable (on by default).</summary>
+	public bool CityTilesWifiOnly
+	{
+		get => _settings.CityTilesWifiOnly;
+		set
+		{
+			_settings.CityTilesWifiOnly = value;
+			OnPropertyChanged();
+		}
+	}
+
+	/// <summary>The honest estimate shown BEFORE the download: the tile count times an average tile weight.</summary>
+	public string CityTilesEstimate =>
+		string.Format(
+			CultureInfo.CurrentCulture,
+			_localization.CurrentStrings.Settings.OfflineEstimate,
+			Math.Round(CityTiles.EstimateBytes() / (1024.0 * 1024.0), 1),
+			CityTiles.Count());
+
+	public bool CityTilesDownloading
+	{
+		get;
+		private set
+		{
+			if (SetProperty(ref field, value))
+			{
+				OnPropertyChanged(nameof(HasCityTilesProgress));
+			}
+		}
+	}
+
+	/// <summary>0..1 while the download runs (the bar is hidden at the ends).</summary>
+	public double CityTilesProgress
+	{
+		get;
+		private set
+		{
+			if (SetProperty(ref field, value))
+			{
+				OnPropertyChanged(nameof(HasCityTilesProgress));
+			}
+		}
+	}
+
+	public bool HasCityTilesProgress =>
+		CityTilesDownloading && CityTilesProgress is > 0 and < 1;
+
+	public string CityTilesStatus
+	{
+		get;
+		private set
+		{
+			if (SetProperty(ref field, value))
+			{
+				OnPropertyChanged(nameof(HasCityTilesStatus));
+			}
+		}
+	} = string.Empty;
+
+	public bool HasCityTilesStatus =>
+		CityTilesStatus.Length > 0;
+
+	/// <summary>What the offline section says about the downloaded city map (“nothing yet” is honest too).</summary>
+	public string CityTilesSizeText
+	{
+		get;
+		private set => SetProperty(ref field, value);
+	} = string.Empty;
+
+	private async Task DownloadCityTilesAsync()
+	{
+		if (CityTilesDownloading)
+		{
+			return;
+		}
+
+		CityTilesDownloading = true;
+		CityTilesProgress = 0;
+		CityTilesStatus = string.Empty;
+
+		int total = CityTiles.Count();
+
+		var progress =
+			new Progress<int>(
+				settled =>
+				{
+					CityTilesProgress = (double)settled / Math.Max(1, total);
+
+					CityTilesStatus = string.Format(
+						CultureInfo.CurrentCulture,
+						_localization.CurrentStrings.Settings.OfflineDownloading,
+						settled,
+						total);
+				});
+
+		_cityTilesCancellation?.Cancel();
+		_cityTilesCancellation = new CancellationTokenSource();
+
+		try
+		{
+			SettingsStrings strings = _localization.CurrentStrings.Settings;
+
+			CityTilesDownload result =
+				await _cityTiles.PrefetchAsync(
+					progress,
+					_settings.CityTilesWifiOnly,
+					MapAvailability.Key,
+					_cityTilesCancellation.Token);
+
+			if (!result.Skipped && !result.Cancelled)
+			{
+				// The DVB plans belong to the offline set: the same button brings their current editions.
+				await _networkMaps.SyncAsync(_settings.CityTilesWifiOnly, force: true, _cityTilesCancellation.Token);
+			}
+
+			if (result.Skipped)
+			{
+				CityTilesStatus = strings.OfflineSkippedMetered;
+			}
+			else if (result.Cancelled)
+			{
+				CityTilesStatus = string.Format(CultureInfo.CurrentCulture, strings.OfflineStopped, result.Fetched);
+			}
+			else
+			{
+				CityTilesStatus = string.Format(CultureInfo.CurrentCulture, strings.OfflineDone, result.Fetched, result.Failed);
+			}
+		}
+		finally
+		{
+			CityTilesDownloading = false;
+
+			await RefreshCityTilesAsync();
+		}
+	}
+
+	private async Task RemoveCityTilesAsync()
+	{
+		CityTilesStatus = string.Empty;
+
+		await _cityTiles.RemoveAsync();
+		await RefreshCityTilesAsync();
+	}
+
+	/// <summary>Reads the size of the downloaded city map; called when the page shows and after downloads.</summary>
+	public async Task RefreshCityTilesAsync()
+	{
+		(long bytes, int tiles) = await _cityTiles.MeasureAsync();
+
+		CityTilesSizeText =
+			tiles == 0
+				? _localization.CurrentStrings.Settings.OfflineNone
+				: string.Format(
+					CultureInfo.CurrentCulture,
+					_localization.CurrentStrings.Settings.OfflineSize,
+					Math.Round(bytes / (1024.0 * 1024.0), 1),
+					tiles);
+	}
+
+	protected override void OnDisposing()
+	{
+		// A download still running when the page is left stops with it (what arrived stays).
+		_cityTilesCancellation?.Cancel();
+	}
+
 	private void OnMapAvailabilityChanged(object? sender, EventArgs e) =>
 		MainThread.BeginInvokeOnMainThread(
 			() =>
@@ -128,6 +317,21 @@ public sealed partial class SettingsViewModel : DisposableViewModel
 	public AsyncCommand OpenRoutingCommand { get; }
 	public AsyncCommand OpenStartCommand { get; }
 	public AsyncCommand OpenProvidersCommand { get; }
+
+	/// <summary>Whether this build has a Windows Widgets Board to feed (the row is hidden without it).</summary>
+	public bool ShowWindowsWidgets =>
+#if WINDOWS
+		true;
+#else
+		false;
+#endif
+
+	public AsyncCommand OpenWidgetsCommand { get; }
+
+	/// <summary>The map without a scene: stops, tariff zones and the other layers around the centre.</summary>
+	public AsyncCommand OpenExploreMapCommand { get; }
+
+	public AsyncCommand OpenNetworkMapCommand { get; }
 	public AsyncCommand ShareLogCommand { get; }
 	public Command ClearLogCommand { get; }
 	public AsyncCommand OpenAboutCommand { get; }
@@ -146,6 +350,36 @@ public sealed partial class SettingsViewModel : DisposableViewModel
 
 	public void RefreshProvider() =>
 		OnPropertyChanged(nameof(ProviderText));
+
+	/// <summary>Whether the selected provider names route changes (the disruptions entry of the More tab, B4).</summary>
+	public bool ShowDisruptions =>
+		_providers.Supports(ProviderCapabilities.Disruptions);
+
+	/// <summary>
+	/// The count on the disruptions entry of the More tab: "2 of your lines are affected by disruptions.", or
+	/// the calm "no current disruptions" when nothing is. Fed by <see cref="WatchedLineStatus"/> (the session
+	/// state); refreshed whenever the page shows.
+	/// </summary>
+	public string DisruptionsSummary
+	{
+		get
+		{
+			WatchedLineStrings strings = _localization.CurrentStrings.WatchedLines;
+
+			int affected = WatchedLineStatus
+					.BannerLines(_providers.SelectedId)
+					.Count;
+
+			return affected > 0
+					? string.Format(CultureInfo.CurrentCulture, strings.BannerAffected, affected)
+						: strings.SummaryClear;
+		}
+	}
+
+	public AsyncCommand OpenDisruptionsCommand { get; }
+
+	public void RefreshDisruptions() =>
+			OnPropertyChanged(nameof(DisruptionsSummary));
 
 	// ----- Localization -----
 
@@ -224,6 +458,50 @@ public sealed partial class SettingsViewModel : DisposableViewModel
 		string.Format(
 			_localization.CurrentStrings.Settings.LeadMinutesDescription,
 			_settings.DefaultLeadMinutes);
+
+	// B5 — ride companion: the get-off alarm (0/1/2/3 minutes, off at 0; a sound choice beside it).
+
+	public const int GetOffAlarmFloor = 0;
+	public const int GetOffAlarmCeiling = 3;
+
+	/// <summary>Slider value; a whole minute is stored, like the other lead sliders.</summary>
+	public double GetOffAlarmMinutes
+	{
+		get => _settings.GetOffAlarmLeadMinutes;
+		set
+		{
+			int minutes = (int)Math.Round(value);
+
+			if (minutes != _settings.GetOffAlarmLeadMinutes)
+			{
+				_settings.GetOffAlarmLeadMinutes = minutes;
+			}
+
+			OnPropertyChanged();
+			OnPropertyChanged(nameof(GetOffAlarmText));
+		}
+	}
+
+	public string GetOffAlarmText =>
+		_settings.GetOffAlarmLeadMinutes <= GetOffAlarmFloor
+			? _localization.CurrentStrings.Settings.GetOffAlarmOff
+			: string.Format(
+				_localization.CurrentStrings.Settings.GetOffAlarmLead,
+				_settings.GetOffAlarmLeadMinutes);
+
+	public bool GetOffAlarmSound
+	{
+		get => _settings.GetOffAlarmSound;
+		set
+		{
+			if (value != _settings.GetOffAlarmSound)
+			{
+				_settings.GetOffAlarmSound = value;
+			}
+
+			OnPropertyChanged();
+		}
+	}
 
 	public double TimeoutSeconds
 	{
@@ -487,6 +765,9 @@ public sealed partial class SettingsViewModel : DisposableViewModel
 	private static Task OpenAboutAsync() =>
 		Shell.Current.GoToAsync(Routes.About);
 
+	private static Task OpenWidgetsAsync() =>
+		Shell.Current.GoToAsync(Routes.WidgetSetup);
+
 	private async Task CopyInterfacesAsync()
 	{
 		await Clipboard.Default.SetTextAsync(InterfaceReport);
@@ -585,6 +866,7 @@ public sealed partial class SettingsViewModel : DisposableViewModel
 		OnPropertyChanged(nameof(SearchDelayText));
 		OnPropertyChanged(nameof(MinQueryLengthText));
 		OnPropertyChanged(nameof(Version));
+		OnPropertyChanged(nameof(DisruptionsSummary));
 	}
 
 	private void Reset()
@@ -610,5 +892,7 @@ public sealed partial class SettingsViewModel : DisposableViewModel
 		OnPropertyChanged(nameof(SearchDelayText));
 		OnPropertyChanged(nameof(MinQueryLength));
 		OnPropertyChanged(nameof(MinQueryLengthText));
+		OnPropertyChanged(nameof(CityTilesEstimate));
+		OnPropertyChanged(nameof(CityTilesSizeText));
 	}
 }

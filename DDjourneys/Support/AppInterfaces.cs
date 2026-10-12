@@ -17,8 +17,40 @@ public static class AppInterfaces
 			string.Empty,
 			string.Join(", ", AppStorage.Migrations.OrderBy(step => step.Version).Select(step => $"{step.Version} {step.Name}")));
 
+	/// <summary>The ends of followed journeys (key <c>tracking.endpoints</c>): from/via/to per plan, for a recovery search.</summary>
+	public static InterfaceSchema TrackingEndpoints { get; } =
+			new(
+				"tracking-endpoints", InterfaceKind.Internal, "Stored followed-journey endpoints",
+				"r1",
+				"tracking.endpoints",
+				"StoredJson envelope, one entry per plan: PlanId, From/To/Via as location objects (absent when unknown).");
+
+	/// <summary>The lines watched for disruptions (key <c>watchedlines.list</c>): provider-scoped, the same-line rule applies.</summary>
+	public static InterfaceSchema WatchedLines { get; } =
+			new(
+				"watched-lines", InterfaceKind.Internal, "Stored watched lines",
+				"r1",
+				"watchedlines.list",
+				"StoredJson envelope, one entry per watched line: ProviderId, Name. The stars on the departures line rows and the run page header write it.");
+
+	/// <summary>The last-seen disruption fingerprint per watched line (key <c>watchedlines.state</c>): bookkeeping of the change check, never passenger data — dropping it costs one suppressed comparison, never a missed notification.</summary>
+	public static InterfaceSchema WatchedLineState { get; } =
+			new(
+				"watched-line-state", InterfaceKind.Internal, "Stored watched-line disruption fingerprints",
+				"r1",
+				"watchedlines.state",
+				"StoredJson envelope, one entry per provider and line: ProviderId, Line (the board filter's line key), Fingerprint (FNV-1a over the sorted id|published stamps of the line's active disruptions).");
+
+	/// <summary>The last boards of the stops (key <c>boards.cache</c>): what the departures page shows, with an as-of stamp, when a fetch fails offline.</summary>
+	public static InterfaceSchema BoardCache { get; } =
+			new(
+				"board-cache", InterfaceKind.Internal, "Stored last departure boards",
+				"r1",
+				"boards.cache",
+				"StoredJson envelope, one entry per provider, stop and board mode (LRU bound 30): ProviderId, StopId, IsArrival, Fetched, Departures (line, direction, scheduled and live time, state, platform). Written after every successful now-board fetch; a failed fetch shows the entry as it was, stamped with its Fetched time.");
+
 	public static IReadOnlyList<InterfaceSchema> All { get; } =
-		(List<InterfaceSchema>)[.. InterfaceSchemas.Core, Storage];
+		(List<InterfaceSchema>)[.. InterfaceSchemas.Core, Storage, TrackingEndpoints, WatchedLines, WatchedLineState, BoardCache];
 
 	/// <summary>The build, the system and the interface list as plain text.</summary>
 	public static string Report() =>

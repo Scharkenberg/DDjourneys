@@ -12,6 +12,9 @@ public static class TrackingActions
 	public const string Dismissed = "dd.journey.dismissed";
 	public const string Open = "dd.journey.open";
 
+	/// <summary>Find alternatives for a missed or endangered connection (opens the planner, searching now).</summary>
+	public const string Replan = "dd.journey.replan";
+
 	/// <summary>Name of the plan id in platform payloads (intent extras, URIs).</summary>
 	public const string PlanIdKey = "plan_id";
 }

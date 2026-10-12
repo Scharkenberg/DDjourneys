@@ -53,6 +53,23 @@ public sealed partial class RoutingSettingsViewModel : DisposableViewModel
 				() => (int)_settings.MaxTransfers,
 				value => _settings.MaxTransfers = (MaxTransfers)value);
 
+		ViaStay =
+			new ChoiceGroup(
+				(List<(int Code, Func<string> Title)>)
+				[
+					(1, () => Strings.ViaAny),
+					(3, () => ViaStayText(3)),
+					(5, () => ViaStayText(5)),
+					(10, () => ViaStayText(10)),
+					(15, () => ViaStayText(15)),
+					(20, () => ViaStayText(20)),
+					(30, () => ViaStayText(30)),
+					(45, () => ViaStayText(45)),
+					(60, () => ViaStayText(60))
+				],
+				() => Math.Max(1, _settings.ViaMinutes),
+				value => _settings.ViaMinutes = value);
+
 		Pace =
 			new ChoiceGroup(
 				(List<(int Code, Func<string> Title)>)
@@ -176,6 +193,13 @@ public sealed partial class RoutingSettingsViewModel : DisposableViewModel
 
 	public ChoiceGroup Transfers { get; }
 
+	/// <summary>How long the journey stays at the stop-over (client-side; every provider).</summary>
+	public ChoiceGroup ViaStay { get; }
+
+	/// <summary>A stay at the stop-over with its unit: a bare "3" does not say minutes.</summary>
+	private string ViaStayText(int minutes) =>
+		string.Format(System.Globalization.CultureInfo.CurrentCulture, Strings.ViaMinutesValue, minutes);
+
 	public ChoiceGroup Pace { get; }
 
 	public ChoiceGroup Accessibility { get; }
@@ -208,6 +232,25 @@ public sealed partial class RoutingSettingsViewModel : DisposableViewModel
 	/// <summary>Who the tickets are for.</summary>
 	public bool ShowPassenger => _providers.Supports(ProviderCapabilities.PassengerFares);
 
+	/// <summary>The tickets section: shown for a provider that quotes fares (the passenger choice only when it quotes by passenger).</summary>
+	public bool ShowTickets => _providers.Supports(ProviderCapabilities.Fares);
+
+	/// <summary>Whether the passenger owns a Deutschlandticket (see AppSettings): switches the ticket advice of a journey on.</summary>
+	public bool DeutschlandTicket
+	{
+		get => _settings.HasDeutschlandTicket;
+
+		set
+		{
+			if (value != _settings.HasDeutschlandTicket)
+			{
+				_settings.HasDeutschlandTicket = value;
+
+				OnPropertyChanged();
+			}
+		}
+	}
+
 	/// <summary>Fastest, fewest changes, least walking, lowest fare.</summary>
 	public bool ShowOptimisation => _providers.Supports(ProviderCapabilities.RouteOptimisation);
 
@@ -222,6 +265,7 @@ public sealed partial class RoutingSettingsViewModel : DisposableViewModel
 				{
 					OnPropertyChanged(nameof(ShowWalkToStops));
 					OnPropertyChanged(nameof(ShowPassenger));
+					OnPropertyChanged(nameof(ShowTickets));
 					OnPropertyChanged(nameof(ShowOptimisation));
 					OnPropertyChanged(nameof(ShowExtraCharge));
 					RefreshAll();
@@ -229,6 +273,10 @@ public sealed partial class RoutingSettingsViewModel : DisposableViewModel
 			});
 
 	public const double MaxFootpath = AppSettings.MaxFootpathMinutes;
+
+	public const double MinBikeRadius = Core.Services.BikeFeeder.MinRadiusKm;
+
+	public const double MaxBikeRadius = Core.Services.BikeFeeder.MaxRadiusKm;
 
 	public double FootpathMinutes
 	{
@@ -251,6 +299,49 @@ public sealed partial class RoutingSettingsViewModel : DisposableViewModel
 		string.Format(
 			Strings.FootpathDescription,
 			_settings.FootpathMinutes);
+
+	/// <summary>The feeder applies to the next search; the radius row appears only while it is on.</summary>
+	public bool BikeFeeder
+	{
+		get => _settings.BikeFeeder;
+
+		set
+		{
+			if (value != _settings.BikeFeeder)
+			{
+				_settings.BikeFeeder = value;
+
+				OnPropertyChanged();
+				OnPropertyChanged(nameof(ShowBikeRadius));
+			}
+		}
+	}
+
+	/// <summary>The radius row of the feeder: hidden while the feeder is off.</summary>
+	public bool ShowBikeRadius => _settings.BikeFeeder;
+
+	public double BikeRadiusKm
+	{
+		get => _settings.BikeFeederRadiusKm;
+
+		set
+		{
+			int rounded = (int)Math.Round(value);
+
+			if (rounded != _settings.BikeFeederRadiusKm)
+			{
+				_settings.BikeFeederRadiusKm = rounded;
+			}
+
+			OnPropertyChanged();
+			OnPropertyChanged(nameof(BikeRadiusText));
+		}
+	}
+
+	public string BikeRadiusText =>
+		string.Format(
+			Strings.BikeFeederRadiusText,
+			_settings.BikeFeederRadiusKm);
 
 	private ExtrasStrings ExtraStrings =>
 		_localization.CurrentStrings.Extras;
@@ -308,6 +399,7 @@ public sealed partial class RoutingSettingsViewModel : DisposableViewModel
 		}
 
 		Transfers.Refresh();
+		ViaStay.Refresh();
 		Pace.Refresh();
 		Accessibility.Refresh();
 		Entrance.Refresh();
@@ -317,5 +409,9 @@ public sealed partial class RoutingSettingsViewModel : DisposableViewModel
 
 		OnPropertyChanged(nameof(FootpathMinutes));
 		OnPropertyChanged(nameof(FootpathText));
+		OnPropertyChanged(nameof(BikeFeeder));
+		OnPropertyChanged(nameof(ShowBikeRadius));
+		OnPropertyChanged(nameof(BikeRadiusKm));
+		OnPropertyChanged(nameof(BikeRadiusText));
 	}
 }

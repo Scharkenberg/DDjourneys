@@ -95,6 +95,38 @@ public sealed class VvoRoute
 	[JsonPropertyName("MapData")]
 	public IReadOnlyList<string> MapData { get; init; }
 		= [];
+
+
+	/// <summary>
+	/// The tickets the trip planner names for this route, when it names any (its own names, with a
+	/// price and the fare zone texts). Not always present.
+	/// </summary>
+	[JsonPropertyName("Tickets")]
+	public IReadOnlyList<VvoTicket> Tickets { get; init; }
+		= [];
+}
+
+
+/// <summary>
+/// One ticket the VVO trip planner names for a route.
+/// </summary>
+public sealed class VvoTicket
+{
+	[JsonPropertyName("Name")]
+	public string? Name { get; init; }
+
+
+	/// <summary>Price in euros as text ("3,60").</summary>
+	[JsonPropertyName("Price")]
+	public string? Price { get; init; }
+
+
+	[JsonPropertyName("NumberOfFareZones")]
+	public string? NumberOfFareZones { get; init; }
+
+
+	[JsonPropertyName("FareZoneNames")]
+	public string? FareZoneNames { get; init; }
 }
 
 

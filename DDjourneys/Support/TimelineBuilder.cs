@@ -12,6 +12,9 @@ public sealed record WalkItem(
 	DateTimeOffset? EffectiveDeparture = null,
 	DateTimeOffset? EffectiveArrival = null) : TimelineItem;
 
+/// <summary>A leg ridden by bike (the feeder to the boarding stop): a leg of its own, never a ride.</summary>
+public sealed record BikeItem(JourneyLeg Leg) : TimelineItem;
+
 /// <summary>
 /// The boundary between two journey legs, or a terminal walking transfer
 /// at the beginning or end of the journey.
@@ -86,6 +89,14 @@ public static class TimelineBuilder
 				previousEffectiveArrival =
 					walk.EffectiveArrival
 					?? leg.EffectiveArrival;
+			}
+			else if (leg.Mode == TransitMode.Bike)
+			{
+				items.Add(
+					new BikeItem(leg));
+
+				previousEffectiveArrival =
+					leg.EffectiveArrival;
 			}
 			else
 			{

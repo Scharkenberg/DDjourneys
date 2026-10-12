@@ -193,6 +193,19 @@ public sealed partial class VvoJourneyProvider :
 	}
 
 
+	/// <summary>The route the journey came from, when asking again found nothing: better than telling the person the trip is gone.</summary>
+	private static (VvoRoute Route, string? SessionId, VvoStatus? Status)? Stale(
+		(VvoRoute Route, string? SessionId, VvoStatus? Status)? remembered,
+		string reason)
+	{
+		if (remembered is not null)
+		{
+			DiagnosticLog.Write($"[VVO SCHUTZENGEL] {reason}: following with the route the journey was found with");
+		}
+
+		return remembered;
+	}
+
 	/// <summary>How long the route a search returned stays good for following it without asking VVO again.</summary>
 	private static readonly TimeSpan RememberedConnectionAge = TimeSpan.FromMinutes(10);
 
@@ -227,10 +240,19 @@ public sealed partial class VvoJourneyProvider :
 
 		// A journey this process mapped from a VVO route: that route is what the service needs, no requery.
 		// Only a recent one: an old search's session and real-time state are not what a new follow should hand over.
+		(VvoRoute Route, string? SessionId, VvoStatus? Status)? stale = null;
+
 		if (VvoJourneyMapper.TryGetConnection(target, out VvoJourneyMapper.VvoConnection? remembered)
-			&& DateTimeOffset.UtcNow - remembered!.MappedAt < RememberedConnectionAge)
+			&& remembered is not null)
 		{
-			return (remembered.Route, remembered.SessionId, remembered.Status);
+			if (DateTimeOffset.UtcNow - remembered.MappedAt < RememberedConnectionAge)
+			{
+				return (remembered.Route, remembered.SessionId, remembered.Status);
+			}
+
+			// Older than that: ask again, but when the service no longer lists it in an ordinary search (a journey
+			// through a stop-over is not in one), the route the journey came from is still the best there is.
+			stale = (remembered.Route, remembered.SessionId, remembered.Status);
 		}
 
 
@@ -277,7 +299,7 @@ public sealed partial class VvoJourneyProvider :
 		if (response is null
 			|| response.Routes.Count == 0)
 		{
-			return null;
+			return Stale(stale, "the service lists no route");
 		}
 
 
@@ -345,7 +367,7 @@ public sealed partial class VvoJourneyProvider :
 			DiagnosticLog.Write(
 				$"[VVO SCHUTZENGEL] No match among {count} routes for {target.From.Id}->{target.To.Id} at {requestedTime:u} (legs={target.Legs.Count}).");
 
-			return null;
+			return Stale(stale, "no route matches");
 		}
 
 
@@ -363,7 +385,7 @@ public sealed partial class VvoJourneyProvider :
 		if (!VvoJourneyMapper.TryGetConnection(journeys[best.Index], out VvoJourneyMapper.VvoConnection? matched)
 			|| matched is null)
 		{
-			return null;
+			return Stale(stale, "the matched route has no remembered connection");
 		}
 
 		VvoRoute route = matched.Route;

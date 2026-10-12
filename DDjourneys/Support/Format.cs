@@ -136,6 +136,9 @@ public static class Format
 			TransitMode.OnDemand =>
 				strings.OnDemand,
 
+			TransitMode.Bike =>
+				strings.Bike,
+
 			_ =>
 				LocalizationService.Current.CurrentStrings.Common.Unknown
 		};

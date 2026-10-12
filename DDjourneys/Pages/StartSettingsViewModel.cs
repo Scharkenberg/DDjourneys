@@ -6,7 +6,7 @@ using Location = DDjourneys.Core.Models.Location;
 
 namespace DDjourneys.Pages;
 
-/// <summary>"Start in input mode": whether the app opens with the start filled in and the destination search ready, and what the start is.</summary>
+/// <summary>What the app opens on: the start screen (the planner or, on the phone, the map tab), the input mode with its start filled in and the destination search ready.</summary>
 public sealed partial class StartSettingsViewModel : DisposableViewModel
 {
 	private readonly AppSettings _settings;
@@ -19,16 +19,32 @@ public sealed partial class StartSettingsViewModel : DisposableViewModel
 		_settings = settings;
 		_localization = LocalizationService.Current;
 
+		SelectPlannerCommand = new Command(() => SelectScreen(StartScreen.Planner));
+		SelectMapCommand = new Command(() => SelectScreen(StartScreen.Map));
 		SelectLocationCommand = new Command(() => Select(StartFromKind.Location));
 		SelectPlaceCommand = new AsyncCommand(SelectPlaceAsync);
 		PickPlaceCommand = new AsyncCommand(PickPlaceAsync);
 	}
+
+	public Command SelectPlannerCommand { get; }
+
+	public Command SelectMapCommand { get; }
 
 	public Command SelectLocationCommand { get; }
 
 	public AsyncCommand SelectPlaceCommand { get; }
 
 	public AsyncCommand PickPlaceCommand { get; }
+
+	/// <summary>The app has tabs (the phone), so the start screen can be chosen; everywhere else the planner always opens.</summary>
+	public bool HasTabs =>
+		TabRoots.Enabled;
+
+	public bool StartOnPlanner =>
+		_settings.StartScreen != StartScreen.Map;
+
+	public bool StartOnMap =>
+		!StartOnPlanner;
 
 	public bool InputMode
 	{
@@ -73,6 +89,8 @@ public sealed partial class StartSettingsViewModel : DisposableViewModel
 
 	public void Refresh()
 	{
+		OnPropertyChanged(nameof(StartOnPlanner));
+		OnPropertyChanged(nameof(StartOnMap));
 		OnPropertyChanged(nameof(InputMode));
 		OnPropertyChanged(nameof(UseLocation));
 		OnPropertyChanged(nameof(UsePlace));
@@ -80,6 +98,13 @@ public sealed partial class StartSettingsViewModel : DisposableViewModel
 		OnPropertyChanged(nameof(PlaceDetail));
 		OnPropertyChanged(nameof(HasPlaceDetail));
 		OnPropertyChanged(nameof(HasPlace));
+	}
+
+	private void SelectScreen(StartScreen screen)
+	{
+		_settings.StartScreen = screen;
+
+		Refresh();
 	}
 
 	private void Select(StartFromKind kind)

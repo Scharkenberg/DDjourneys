@@ -167,6 +167,29 @@ public class MainActivity : MauiAppCompatActivity
 			return;
 		}
 
+		// The recovery search of a missed connection: the planner opens through the tracker, like the
+		// notification buttons of the live surface. Off the UI thread (a cold start resolves the tracker graph).
+		if (intent.Action == TrackingActions.Replan
+			&& intent.GetStringExtra(TrackingActions.PlanIdKey) is { Length: > 0 } replanId)
+		{
+			_ = Task.Run(
+				async () =>
+				{
+					// Resolving the tracker creates it (and attaches it to the bridge) on a cold start.
+					_ = Service<IJourneyTracker>();
+
+					if (Service<TrackingCallbackBridge>() is { } bridge)
+					{
+						await bridge.HandleActionAsync(TrackingActions.Replan, replanId).ConfigureAwait(false);
+					}
+				});
+
+			// Consumed: a recreated activity must not run it again.
+			intent.SetAction(Intent.ActionMain);
+
+			return;
+		}
+
 		if (ContractIntentReader.Read(intent) is { } request)
 		{
 			ContractEntry.Submit(request);

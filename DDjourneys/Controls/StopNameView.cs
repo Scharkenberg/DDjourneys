@@ -93,6 +93,7 @@ public sealed partial class StopNameView : ContentView
 		};
 
 	private readonly VerticalStackLayout _lines;
+
 	private bool _tapForwarded;
 
 	/// <summary>
@@ -147,16 +148,14 @@ public sealed partial class StopNameView : ContentView
 					Content = _lines
 				};
 
-#if ANDROID
+
 			if (!_tapForwarded)
 			{
 				_tapForwarded = true;
-
 				var tap = new TapGestureRecognizer();
 				tap.Tapped += (_, _) => Tapped?.Invoke(this, EventArgs.Empty);
 				_lines.GestureRecognizers.Add(tap);
 			}
-#endif
 		}
 		else
 		{

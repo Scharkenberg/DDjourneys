@@ -38,6 +38,13 @@ public sealed partial class JourneyViewModel :
 
 	private readonly LegRunResolver _runs;
 
+	private readonly FareBorrower _fareBorrower;
+
+	/// <summary>Tickets borrowed from another interface for the journey shown (a provider that quotes none).</summary>
+	private (Journey Journey, IReadOnlyList<JourneyFare> Fares)? _borrowedFares;
+
+	private CancellationTokenSource? _borrowing;
+
 
 	/// <summary>Saves (and removes) the connection this journey belongs to; empty when it was opened without a search.</summary>
 	public RouteBookmark Bookmark { get; }
@@ -49,11 +56,13 @@ public sealed partial class JourneyViewModel :
 		ContractSession contract,
 		JourneyService journeys,
 		PlaceStore places,
-		LegRunResolver runs)
+		LegRunResolver runs,
+		FareBorrower fareBorrower)
 	{
 		ArgumentNullException.ThrowIfNull(places);
 
 		_runs = runs ?? throw new ArgumentNullException(nameof(runs));
+		_fareBorrower = fareBorrower ?? throw new ArgumentNullException(nameof(fareBorrower));
 
 		Bookmark =
 			new RouteBookmark(
@@ -92,6 +101,23 @@ public sealed partial class JourneyViewModel :
 		ToggleFaresCommand =
 			new Command(
 				() => FaresExpanded = !FaresExpanded);
+
+		ShowZonePlanCommand =
+			new AsyncCommand(ShowZonePlanAsync);
+
+		OpenFareCommand =
+			new AsyncCommand<FareRow>(
+				row => row.Link is { } link
+					? Launcher.Default.OpenAsync(link)
+					: Task.CompletedTask);
+
+		// An on-demand leg (Anruf-Linien-Bus / alita): the booking link its data carries, or the page of
+		// the transport authority (OnDemandBooking). The app books nothing itself.
+		OpenBookingCommand =
+			new AsyncCommand<OnDemandRow>(
+				row => row?.Link is { } booking
+					? Launcher.Default.OpenAsync(booking)
+					: Task.CompletedTask);
 
 
 		ShareCommand =
@@ -473,6 +499,18 @@ public sealed partial class JourneyViewModel :
 			};
 	}
 
+	/// <summary>The journeys that are followed for this one: its parts when it was joined, else itself.</summary>
+	private static IReadOnlyList<Journey> PiecesOf(Journey journey) =>
+		journey.Parts is { Count: > 1 } parts
+			? parts
+			: (List<Journey>)[journey];
+
+	/// <summary>The plans of everything followed for the journey on show.</summary>
+	private List<string> FollowedPlanIds() =>
+		_journey is null
+			? []
+			: [.. PiecesOf(_journey).Select(piece => _tracker.Find(piece)?.PlanId).OfType<string>().Distinct()];
+
 	private async Task FollowJourneyAsync()
 	{
 		if (_journey is null)
@@ -490,8 +528,35 @@ public sealed partial class JourneyViewModel :
 
 		WatchedJourney watched = await _tracker.FollowAsync(_journey, replaces, default);
 
-		// The followed journey's map (and its vehicles) needs the rides with their boarding stops.
-		FollowedRides.Save(watched.PlanId, _journey);
+		// A journey through a stop-over that was joined from two parts is followed as two plans, one per part.
+		IReadOnlyList<Journey> pieces = PiecesOf(_journey);
+
+		for (int index = 0; index < pieces.Count; index++)
+		{
+			WatchedJourney? plan = index == 0 ? watched : _tracker.Find(pieces[index]);
+
+			if (plan is null)
+			{
+				continue;
+			}
+
+			// The followed journey's map (and its vehicles) needs the rides with their boarding stops.
+			FollowedRides.Save(plan.PlanId, pieces[index]);
+
+			// A missed connection is recovered from these ends; the notification's search needs them.
+			if (pieces.Count == 1)
+			{
+				FollowedEndpoints.Save(plan.PlanId, _query?.From, _query?.To, _query?.Via);
+			}
+			else if (index == 0)
+			{
+				FollowedEndpoints.Save(plan.PlanId, _query?.From, _query?.Via, null);
+			}
+			else
+			{
+				FollowedEndpoints.Save(plan.PlanId, _query?.Via, _query?.To, null);
+			}
+		}
 
 		UpdateFollowState();
 
@@ -508,7 +573,10 @@ public sealed partial class JourneyViewModel :
 			return;
 		}
 
-		await _tracker.SetActiveAsync(_followed.PlanId, !paused);
+		foreach (string planId in FollowedPlanIds())
+		{
+			await _tracker.SetActiveAsync(planId, !paused);
+		}
 
 		UpdateFollowState();
 	}
@@ -520,7 +588,10 @@ public sealed partial class JourneyViewModel :
 			return;
 		}
 
-		await _tracker.DeleteAsync(_followed.PlanId);
+		foreach (string planId in FollowedPlanIds())
+		{
+			await _tracker.DeleteAsync(planId);
+		}
 
 		UpdateFollowState();
 	}
@@ -772,7 +843,117 @@ public sealed partial class JourneyViewModel :
 		!string.IsNullOrWhiteSpace(FaresNotesText);
 
 
+	/// <summary>The zones-and-prices line of the ticket advice card (null when there is nothing to compare).</summary>
+	public string? TicketAdviceComparison
+	{
+		get;
+
+		private set
+		{
+			if (SetProperty(
+					ref field,
+					value))
+			{
+				OnPropertyChanged(
+						nameof(HasTicketAdviceComparison));
+
+				OnPropertyChanged(
+						nameof(HasTicketAdvice));
+			}
+		}
+	}
+
+
+	public bool HasTicketAdviceComparison =>
+		!string.IsNullOrWhiteSpace(TicketAdviceComparison);
+
+
+	/// <summary>What a Deutschlandticket of the passenger means for this journey ("covers it" / "does not cover its long-distance legs").</summary>
+	public string? TicketAdviceCoverage
+	{
+		get;
+
+		private set
+		{
+			if (SetProperty(
+					ref field,
+					value))
+			{
+				OnPropertyChanged(
+						nameof(HasTicketAdviceCoverage));
+
+				OnPropertyChanged(
+						nameof(HasTicketAdvice));
+			}
+		}
+	}
+
+
+	public bool HasTicketAdviceCoverage =>
+		!string.IsNullOrWhiteSpace(TicketAdviceCoverage);
+
+
+	/// <summary>When a Deutschlandticket at its public price has paid for itself on this route.</summary>
+	public string? TicketAdviceAmortization
+	{
+		get;
+
+		private set
+		{
+			if (SetProperty(
+					ref field,
+					value))
+			{
+				OnPropertyChanged(
+						nameof(HasTicketAdviceAmortization));
+
+				OnPropertyChanged(
+						nameof(HasTicketAdvice));
+			}
+		}
+	}
+
+
+	public bool HasTicketAdviceAmortization =>
+		!string.IsNullOrWhiteSpace(TicketAdviceAmortization);
+
+
+	public bool HasTicketAdvice =>
+		HasTicketAdviceComparison
+		|| HasTicketAdviceCoverage
+		|| HasTicketAdviceAmortization;
+
+
 	public Command ToggleFaresCommand { get; }
+
+	public AsyncCommand<FareRow> OpenFareCommand { get; }
+
+	public AsyncCommand<OnDemandRow> OpenBookingCommand { get; }
+
+	public AsyncCommand ShowZonePlanCommand { get; }
+
+	/// <summary>The fare zone plan with the journey's ends marked: where the first ride boards and the last one alights.</summary>
+	private Task ShowZonePlanAsync()
+	{
+		if (_journey is not { } journey)
+		{
+			return Task.CompletedTask;
+		}
+
+		List<JourneyLeg> rides = [.. journey.Rides];
+		Station from = rides.Count > 0 ? rides[0].From : journey.From;
+		Station to = rides.Count > 0 ? rides[^1].To : journey.To;
+
+		return Shell.Current.GoToAsync(
+			Routes.ZonePlan,
+			new ShellNavigationQueryParameters
+			{
+				[Routes.ZonePlanTarget] =
+					new ZonePlanTarget(
+						new ZonePlanStopRef(from.Id, from.Name, from.Place),
+						new ZonePlanStopRef(to.Id, to.Name, to.Place))
+			});
+	}
 
 
 	public void ApplyQueryAttributes(
@@ -1108,7 +1289,10 @@ public sealed partial class JourneyViewModel :
 			_settings.ShowTechnicalDetails,
 			_settings.ShowOccupancy,
 			_settings.ShowPlatforms,
-			_settings.ExpandStops);
+			_settings.ExpandStops,
+
+			// B5: the walk pace the routing preferences carry, so a change can say "tight at your pace".
+			_settings.Routing.Pace);
 
 	/// <summary>Rebuilds the timeline if a display setting changed since it was built.</summary>
 	public void RefreshFromSettings()
@@ -1178,9 +1362,17 @@ public sealed partial class JourneyViewModel :
 		ExtrasStrings strings =
 			_localization.CurrentStrings.Extras;
 
+		// The journey's own tickets, else the ones borrowed for this very journey.
+		IReadOnlyList<JourneyFare> quoted =
+			journey.Fares.Count > 0
+				? journey.Fares
+				: _borrowedFares is { } borrowed && ReferenceEquals(borrowed.Journey, journey)
+					? borrowed.Fares
+					: journey.Fares;
+
 		JourneyFare? preferred =
 			FareChoice.Preferred(
-				journey.Fares,
+				quoted,
 				_settings.Passenger);
 
 		string NameOf(
@@ -1204,9 +1396,25 @@ public sealed partial class JourneyViewModel :
 								strings)))
 				: fare.ValidFor;
 
-		Fares =
+		// What the quoted fares say about the zones, the day ticket and the Deutschlandticket of this journey.
+		TicketAdvice advice =
+			TicketAdvisor.Advise(
+				journey,
+				quoted,
+				_settings.Passenger);
+
+		TicketStrings ticket =
+			_localization.CurrentStrings.Ticket;
+
+		// A Deutschlandticket that covers the journey: its quoted fares are already paid for, so they are
+		// struck through, their buy buttons are gone and the header says why instead of naming a price.
+		bool covered =
+			_settings.HasDeutschlandTicket
+			&& advice.Coverage == TicketCoverage.WithinVerbund;
+
+		List<FareRow> fareRows =
 			(List<FareRow>)
-			[.. journey.Fares
+			[.. quoted
 				.OrderBy(
 					fare => ReferenceEquals(fare, preferred)
 						? 0
@@ -1250,11 +1458,43 @@ public sealed partial class JourneyViewModel :
 						IsPreferred =
 							ReferenceEquals(
 								fare,
-								preferred)
+								preferred),
+
+						IsStruck = covered,
+
+						Link =
+							covered
+								? null
+								: FareLinks.For(
+									fare,
+									_providers.SelectedId)
 					})];
 
+		// The BahnCard 25 price is the app's own estimate from the single fare - the provider quotes no
+		// conditional prices - so it is labelled as one, never preferred and never offered for buying.
+		if (!covered
+			&& advice.BahnCard25Estimate is { } estimate)
+		{
+			fareRows.Add(
+				new FareRow
+				{
+					Name = ticket.BahnCard25,
+
+					PriceText =
+						"~" + Format.Price(
+							estimate,
+							advice.SingleCurrency ?? "EUR"),
+
+					Detail = ticket.BahnCardEstimate
+				});
+		}
+
+		Fares = fareRows;
+
 		FaresSummaryName =
-			preferred is null
+			covered
+				? ticket.CoveredShort
+				: preferred is null
 				? string.Empty
 				: string.Join(
 					" · ",
@@ -1269,7 +1509,9 @@ public sealed partial class JourneyViewModel :
 							part)));
 
 		FaresSummaryPrice =
-			preferred is { Price: { } best }
+			covered
+				? string.Empty
+				: preferred is { Price: { } best }
 				? Format.Price(
 					best,
 					preferred.Currency)
@@ -1278,7 +1520,7 @@ public sealed partial class JourneyViewModel :
 		string zones =
 			string.Join(
 				", ",
-				journey.Fares
+				quoted
 					.Select(
 						fare => fare.Zones)
 					.Where(
@@ -1294,7 +1536,7 @@ public sealed partial class JourneyViewModel :
 		string notes =
 			string.Join(
 				" ",
-				journey.Fares
+				quoted
 					.Select(
 						fare => fare.Notes)
 					.Where(
@@ -1307,10 +1549,130 @@ public sealed partial class JourneyViewModel :
 				? notes
 				: null;
 
+		BuildTicketAdvice(
+			advice,
+			covered);
+
 		OnPropertyChanged(
 			nameof(FaresToggleDescription));
 	}
 
+
+	/// <summary>
+	/// The one wording place of the ticket advice (the JourneyFacts discipline): the numbers of the
+	/// <see cref="TicketAdvisor"/> become the sentences of the advice card, in the language of the app.
+	/// </summary>
+	private void BuildTicketAdvice(
+		TicketAdvice advice,
+		bool covered)
+	{
+		TicketStrings ticket =
+			_localization.CurrentStrings.Ticket;
+
+		string? zones =
+			advice.ZoneCount is not { } count
+				? null
+				: count == 1
+					? ticket.OneZone
+					: string.Format(
+						CultureInfo.CurrentCulture,
+						ticket.Zones,
+						count);
+
+		string? single =
+			advice.SinglePrice is { } one
+				? string.Format(
+						CultureInfo.CurrentCulture,
+						ticket.Single,
+						Format.Price(
+							one,
+							advice.SingleCurrency ?? "EUR"))
+				: null;
+
+		string? day =
+			advice.DayPrice is { } all
+				? string.Format(
+						CultureInfo.CurrentCulture,
+						ticket.Day,
+						Format.Price(
+							all,
+							advice.DayCurrency ?? "EUR"))
+				: null;
+
+		string? comparison =
+			covered
+				? null
+				: string.Join(
+						" · ",
+						new[] { zones, single, day }.Where(part => !string.IsNullOrWhiteSpace(part))) is { Length: > 0 } parts
+					? advice.DayWinsFromRide is { } from
+						? $"{parts} – {string.Format(CultureInfo.CurrentCulture, ticket.DayWins, from)}"
+						: parts
+					: null;
+
+		TicketAdviceComparison = comparison;
+
+		TicketAdviceCoverage =
+			!_settings.HasDeutschlandTicket
+				? null
+				: covered
+					? ticket.Covered
+					: advice.Coverage == TicketCoverage.LongDistance
+						? ticket.LongDistance
+						: null;
+
+		TicketAdviceAmortization =
+			advice.DeutschlandTicketRides is { } rides
+				? string.Format(
+						CultureInfo.CurrentCulture,
+						ticket.Amortize,
+						Format.Price(TicketAdvisor.DeutschlandTicketPrice),
+						rides)
+				: null;
+	}
+
+
+	/// <summary>
+	/// A provider that quotes no tickets still gets a fare card: the same connection is looked up at the VVO
+	/// WebAPI (see <see cref="FareBorrower"/>) and its tickets are shown when it is found.
+	/// </summary>
+	private async Task BorrowFaresAsync(Journey journey)
+	{
+		_borrowing?.Cancel();
+
+		if (!_fareBorrower.Wants(journey))
+		{
+			return;
+		}
+
+		var cancel = new CancellationTokenSource();
+
+		_borrowing = cancel;
+
+		try
+		{
+			IReadOnlyList<JourneyFare> fares = await _fareBorrower.BorrowAsync(journey, _query, cancel.Token);
+
+			if (fares.Count == 0
+				|| cancel.IsCancellationRequested
+				|| IsDisposed
+				|| !ReferenceEquals(_journey, journey))
+			{
+				return;
+			}
+
+			_borrowedFares = (journey, fares);
+
+			await MainThread.InvokeOnMainThreadAsync(() => BuildFares(journey));
+		}
+		catch (OperationCanceledException)
+		{
+		}
+		catch (Exception ex)
+		{
+			DiagnosticLog.Write($"[Fares] borrowing for the journey page failed: {ex.Message}");
+		}
+	}
 
 	private void BuildLocalizedDisplay(
 		Journey journey)
@@ -1320,6 +1682,7 @@ public sealed partial class JourneyViewModel :
 				journey)
 			{
 				Passenger = _settings.Passenger,
+				Simple = _settings.SimpleCards,
 				MapCommand = OpenMapCommand,
 				Actions = Actions
 			};
@@ -1382,6 +1745,8 @@ public sealed partial class JourneyViewModel :
 		BuildFares(
 			journey);
 
+		_ = BorrowFaresAsync(journey);
+
 
 		Notices =
 			(List<NoticeRow>)
@@ -1396,10 +1761,14 @@ public sealed partial class JourneyViewModel :
 						new NoticeRow
 						{
 							Text =
-								n,
+								WordNotice(
+									n,
+									options.Technical),
 
 							Description =
-								n,
+								WordNotice(
+									n,
+									options.Technical),
 
 							Expanded =
 								options.ExpandNotices,
@@ -1429,6 +1798,19 @@ public sealed partial class JourneyViewModel :
 		LoadError =
 			null;
 	}
+
+
+	/// <summary>
+	/// One notice the app added itself while planning, in the user's language. The core library carries only
+	/// a stable marker (it has no strings); the technical view shows the marker as it is.
+	/// </summary>
+	private static string WordNotice(
+		string notice,
+		bool technical) =>
+		!technical
+		&& string.Equals(notice, BikeFeeder.UnavailableNotice, StringComparison.Ordinal)
+			? LocalizationService.Current.CurrentStrings.Journey.BikeFeederHint
+		: notice;
 
 
 	private void OnLocalizationChanged(

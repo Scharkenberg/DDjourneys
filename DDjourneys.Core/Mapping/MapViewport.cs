@@ -12,8 +12,8 @@ public sealed record MapViewport(
 	double Latitude,
 	double Longitude)
 {
-	/// <summary>Distance from the centre to the farthest corner, capped (providers answer areas of a few km at most).</summary>
-	public int RadiusMeters(int maximum = 2000) =>
+	/// <summary>Distance from the centre to the farthest corner, capped (the VVO answers boxes up to 10 km, TRIAS less).</summary>
+	public int RadiusMeters(int maximum = 10_000) =>
 		(int)Math.Clamp(
 			Math.Max(
 				GeoMath.DistanceMeters(Latitude, Longitude, North, East),

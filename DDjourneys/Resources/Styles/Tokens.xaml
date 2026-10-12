@@ -11,6 +11,8 @@
 	<Color x:Key="ModeFerry">#1D5FA8</Color>
 	<Color x:Key="ModeCableCar">#8A5A00</Color>
 	<Color x:Key="ModeWalk">#5B6B74</Color>
+	<!-- The bike feeder leg: a teal of its own, apart from the suburban green and the quiet walk grey. -->
+	<Color x:Key="ModeBike">#0F766E</Color>
 
 	<!-- Spacing: 4-pt grid, tighter than before -->
 	<x:Double x:Key="SpaceXS">4</x:Double>

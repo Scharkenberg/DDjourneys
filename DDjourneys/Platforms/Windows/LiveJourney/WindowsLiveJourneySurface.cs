@@ -143,12 +143,24 @@ internal sealed partial class WindowsLiveJourneySurface(TrackingCallbackBridge b
 				.AddText(alert.Title)
 				.AddText(alert.Text);
 
+				// A problem alert offers the recovery search (activation opens the planner).
+				if (alert.Kind == JourneyAlertKind.Problem)
+				{
+					builder.AddButton(
+						new AppNotificationButton(Strings.Replan)
+							.AddArgument(WindowsNotificationHost.SourceKey, WindowsNotificationHost.SourceAlert)
+							.AddArgument(WindowsNotificationHost.ActionKey, TrackingActions.Replan)
+							.AddArgument(TrackingActions.PlanIdKey, alert.PlanId));
+				}
+
 			AppNotification notification = builder.BuildNotification();
 
 			notification.Tag = AlertTag(alert.PlanId, alert.Kind);
 			notification.Group = WindowsNotificationHost.AlertGroup;
 			notification.Expiration = DateTimeOffset.Now.AddHours(6);
-			notification.SuppressDisplay = alert.Kind == JourneyAlertKind.Arrived;
+			// B5: a gentle alert (the get-off alarm's quiet choice) is placed in the notification centre
+			// without a banner - the honest equivalent of Android's quiet channel.
+			notification.SuppressDisplay = alert.Kind == JourneyAlertKind.Arrived || alert.Gentle;
 
 			AppNotificationManager.Default.Show(notification);
 

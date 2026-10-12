@@ -95,7 +95,19 @@ public sealed class EnglishUiStrings : IUiStrings
 		RunTitle = "Course",
 		NoRun = "No course available for this departure.",
 		VehicleHere = "Vehicle is here",
-		OpenDepartures = "Departures at this stop"
+		OpenDepartures = "Departures at this stop",
+
+		// B1 — line-centric departures
+		ShowCancelled = "Show cancelled",
+		AllLines = "All lines",
+		OnlyThisLine = "Only this line",
+		LineChipDescription = "Line {0}",
+		InMinutesShort = "{0}\u2032",
+		NowShort = "now",
+		MoreDepartures = "Show more departures",
+
+		// B7 — offline comfort
+		CachedBoard = "The departures could not be loaded; this is the board as of {0}."
 	};
 
 	public DisruptionsStrings Disruptions { get; } = new()
@@ -142,6 +154,7 @@ public sealed class EnglishUiStrings : IUiStrings
 		LiveRun = "Run {0}",
 		LiveSecondsAgo = "{0} s ago",
 		LiveMinutesAgo = "{0} min ago",
+		LiveHoursAgo = "{0} h ago",
 		LiveOnTime = "On time",
 		LiveSourceGps = "GPS",
 		LiveSourceTelegram = "Radio telegram",
@@ -175,7 +188,8 @@ public sealed class EnglishUiStrings : IUiStrings
 		FareDay = "Day ticket",
 		FareZones = "Zones",
 		FareValidFor = "For",
-		FareNotAll = "Prices of the provider for this journey. Other tickets (weekly, monthly, reduced, Deutschland-Ticket) are not part of its answer.",
+		FareNotAll = "Prices of the provider for this journey. Other tickets (weekly, monthly, reduced, Deutschlandticket) are not part of its answer; the BahnCard 25 line is the app's own estimate.",
+		FareBuy = "Buy ticket, opens the website of the transport authority",
 		ShortcutHome = "Take me home",
 		ShortcutDepartures = "Departures from here",
 		ShortcutNoHome = "Set your home first: choose it in the planner.",
@@ -189,6 +203,12 @@ public sealed class EnglishUiStrings : IUiStrings
 		RunsOn = "Runs {0}",
 		RunsDaily = "Runs daily",
 		VehicleReported = "Vehicle (reported position)",
+
+		// B5 — ride companion (the "you are probably here" marker)
+		YouAreHere = "You are probably here",
+		ShowMyPosition = "Show my position",
+		ShowMyPositionDescription = "While the vehicle's own position is missing or stale, your device position is snapped onto the stops of the run — an estimate",
+		ShowMyPositionHint = "The app has no permission for your location. Allow it in the system settings to use this.",
 		PdfFailed = "The PDF could not be loaded. Details are in the log file diagnostics.log.",
 		LiveHowTitle = "How it works",
 		LiveHowText = "Type one or more line numbers separated by commas (for example 3, 11); leave the field empty to see every vehicle. Then tap Show: the vehicles appear on the map and in the list and move as new positions arrive. Tap a vehicle in the list to find it on the map.",
@@ -209,7 +229,7 @@ public sealed class EnglishUiStrings : IUiStrings
 		MapPickEnd = "Pick the destination",
 		MapPickStop = "Pick a stop",
 		MapPickOnMap = "Pick on map",
-		MapZoomHint = "Zoom in to see stops",
+		MapZoomHint = "Zoom in to see stops, vehicles and details",
 		MapPickHint = "Tap a stop or a point on the map",
 		MapStopDepartures = "Departures here",
 		MapJourneyToHere = "Journey to here",
@@ -225,6 +245,65 @@ public sealed class EnglishUiStrings : IUiStrings
 		RunDeparted = "This vehicle has already left; its course is no longer available.",
 		MapAutoFit = "Auto-fit",
 		MapFitNow = "Show everything",
+		MapLayers = "Layers",
+		MapZones = "Tariff zones",
+		MapParking = "Park & ride",
+		MapBikes = "Bikes & scooters",
+		MapVehicles = "Vehicles",
+		VehicleSeen = "Last seen {0}",
+		VehicleFollowLine = "Show this line",
+		RunWholeLine = "Show the whole line",
+		LineCourseTitle = "Line {0} · {1} – {2}",
+		LineMapNone = "No run of this line was found right now.",
+		BikesCounts = "{0} bikes available",
+		BikesDocks = "{0} free docks",
+		BikesOpenApp = "Open in {0}",
+		ParkingCounts = "{0} of {1} free",
+		ParkingShort = "P+R {0}",
+		ParkingUpdated = "Updated {0}",
+		BikesEBikes = "{0} of them e-bikes",
+		BikesCargo = "{0} of them cargo bikes",
+		BikesDockStation = "Station with docks",
+		BikesVirtualStation = "Virtual station: no docks, leave the bike inside the marked area",
+		BikesEmpty = "No bike here right now",
+		LiveCountMissing = "no live count",
+		ParkingSpaces = "{0} spaces",
+		SharedBike = "Bike",
+		SharedEBike = "E-bike",
+		SharedCargo = "Cargo bike",
+		SharedScooter = "E-scooter",
+		SharedRange = "{0} km range",
+		MapSharedZoomHint = "Zoom in further to see the bikes and scooters standing free",
+		NetworkMap = "Network map",
+		NetworkMapRefresh = "Load the current network map",
+		NetworkMapOpenPdf = "Open the network map as PDF",
+		NetworkMapCredit = "Liniennetzplan: Dresdner Verkehrsbetriebe (DVB). The plans are downloaded from the DVB website; all rights to them stay with the DVB.",
+		NetworkMapStale = "The current plan could not be loaded; this is the saved version.",
+		NetworkMapFailed = "The network map could not be loaded. Check the connection and try again.",
+		NetworkMapZoomIn = "Zoom in",
+		NetworkMapZoomOut = "Zoom out",
+		MapOpenSummary = "Stops, tariff zones, park & ride, bikes and moving vehicles. The layers button on the map switches them on.",
+		NetworkMapSummary = "The DVB's network plans: standard, night and barrier-free. Zoom with two fingers, the mouse wheel or the buttons.",
+		// B6 — night and barrier-free plans
+		NetworkMapPlanStandard = "Standard",
+		NetworkMapPlanNight = "Night",
+		NetworkMapPlanBarrierFree = "Barrier-free",
+		NetworkMapPlanCityMap = "City map",
+		ZonePlan = "Fare zone plan",
+		ZonePlanSummary = "The VVO fare zones with every line, interactive: tap a stop for its departures and journeys. Works offline once loaded.",
+		ZonePlanRegion = "VVO area",
+		ZonePlanDresden = "Dresden",
+		ZonePlanSearch = "Find a stop on the plan",
+		ZonePlanSearchHint = "Stop name",
+		ZonePlanNoMatch = "No stop on this plan matches.",
+		ZonePlanLocate = "Show the stop nearest to me",
+		ZonePlanLocating = "Finding your position…",
+		ZonePlanNotNear = "No stop on the plans is near you.",
+		ZonePlanFailed = "The plan could not be loaded. Check the connection and try again.",
+		ZonePlanStale = "Offline: this is the saved plan.",
+		ZonePlanCredit = "Tarifzonenplan and Liniennetz Dresden: Verkehrsverbund Oberelbe (VVO) and Dresdner Verkehrsbetriebe (DVB), loaded from vvo-online.de; all rights stay with them.",
+		ZonePlanShow = "Show on the fare zone plan",
+		ZonePlanSwitched = "Shown on the plan of the VVO area: {0} is not on the Dresden plan.",
 		MapInfo = "Map data",
 		MapGrip = "Drag to change the size of the map",
 		TrackFollowing = "Following line {0} {1}",
@@ -246,7 +325,19 @@ public sealed class EnglishUiStrings : IUiStrings
 		MapSummary = "Stop, stops nearby and open sections on a map",
 		LiveSummary = "Where the vehicles of a line are right now",
 		HomeTitle = "Home",
-		HomeNotSet = "Not set: tap to choose"
+		HomeNotSet = "Not set: tap to choose",
+
+		// B7 — offline comfort
+		MapOfflineTiles = "Offline: city map from this device",
+
+		// B8 — share a stop
+		ShareStop = "Share this stop",
+		ShareStopMeetAt = "Meet me at {0}.",
+		ShareStopQrCaption = "The code opens the stop on a map, in any camera app.",
+		ShareStopTextCaption = "Text for messages",
+		ShareStopCopyLink = "Copy link",
+		ShareStopCopyHint = "The link opens this stop's departures in DDjourneys.",
+		ShareStopCopied = "Copied",
 	};
 	// </extras>
 
@@ -263,7 +354,12 @@ public sealed class EnglishUiStrings : IUiStrings
 		Searching = "Searching...",
 		CouldNotReachService =
 		"Could not reach the timetable service. Check your connection.",
-		SearchForPlace = "Search for a place"
+		SearchForPlace = "Search for a place",
+
+		// B1 — line-centric departures
+		LinesTitle = "Lines",
+		LineCourse = "Line {0} — show course",
+		LineSeenAt = "Seen at {0}"
 	};
 
 	public ResultsStrings Results { get; } = new()
@@ -352,6 +448,10 @@ public sealed class EnglishUiStrings : IUiStrings
 		Platform = "Platform",
 		WithinStop = "within the stop",
 		Track = "Track",
+		PlatformShort = "Pl.",
+		TrackShort = "Tr.",
+		TransferLead = "transfer:",
+		TransfersLead = "transfers:",
 		LowFloor = "Low floor",
 		WheelchairAccessible = "Wheelchair accessible",
 		BicycleAccessible = "Bicycle accessible",
@@ -372,7 +472,14 @@ public sealed class EnglishUiStrings : IUiStrings
 		OccupancyMedium = "Moderate",
 		OccupancyHigh = "Many passengers",
 		OccupancyFull = "Full",
-		OccupancyOverloaded = "Overloaded"
+		OccupancyOverloaded = "Overloaded",
+
+		// B5 — ride companion
+		PaceTight = "Tight at your pace — the walk takes about {0}",
+
+		// B9 — bike feeder
+		BikeSummary = "{0:0.0} km · +{1} m ↑ · −{2} m ↓ · {3}",
+		BikeFeederHint = "No bike route to a stop could be planned, so the journey starts as an ordinary one"
 	};
 
 	public SettingsStrings Settings { get; } = new()
@@ -400,12 +507,14 @@ public sealed class EnglishUiStrings : IUiStrings
 		ThemeSystem = "System",
 		ThemeLight = "Light",
 		ThemeDark = "Dark",
+		ThemeSun = "Sunrise to sunset",
 		AppearanceTitle = "Appearance",
 		AppearanceHint = "Mode, colours and font",
 		ModeHeader = "Mode",
 		ModeSystemDescription = "Follows the device",
 		ModeLightDescription = "Bright surfaces",
 		ModeDarkDescription = "Dark surfaces",
+		ModeSunDescription = "Light by day, dark by night, at the times of the selected provider's city. At night the same dark palette as the dark mode.",
 		PureBlack = "Pure black in dark mode",
 		PureBlackDescription = "Saves power on OLED screens",
 		ColorsHeader = "Colours",
@@ -420,6 +529,24 @@ public sealed class EnglishUiStrings : IUiStrings
 		DensityNormalDescription = "Balanced spacing",
 		DensityTouch = "Large touch targets",
 		DensityTouchDescription = "Taller rows and buttons, more room between them",
+		// B11 — accessibility & language
+		TextSizeHeader = "Text size",
+		TextSizeNormal = "Normal",
+		TextSizeNormalDescription = "The text as the app is designed",
+		TextSizeLarge = "Large",
+		TextSizeLargeDescription = "About a sixth bigger than normal",
+		TextSizeLargest = "Largest",
+		TextSizeLargestDescription = "For reading at arm's length or further away",
+		LineColoursHeader = "Line colours",
+		LineColoursDescription = "The colours of the transport modes, remapped so they stay distinct with that kind of colour vision",
+		LineColoursStandard = "Standard",
+		LineColoursDeuteranopia = "Deuteranopia-safe",
+		LineColoursProtanopia = "Protanopia-safe",
+		LineColoursTritanopia = "Tritanopia-safe",
+		SimpleCards = "Simple journey cards",
+		SimpleCardsDescription = "Each journey as one big line: the time and only the next step",
+		PresetLargeSimple = "Large & simple",
+		PresetLargeSimpleDescription = "Largest text, roomy controls and the simple journey cards - a starting point; every setting stays adjustable",
 		MaterialHeader = "Window material (Windows)",
 		MaterialNone = "None",
 		MaterialNoneDescription = "Solid colours, no material",
@@ -505,7 +632,34 @@ public sealed class EnglishUiStrings : IUiStrings
 		InterfaceVersions = "Interface versions",
 		InterfaceVersionsDescription = "The versions of every interface this build uses: the services, the stored data and the contract. Add them to a bug report.",
 		CopyInterfaces = "Copy versions",
-		InterfacesCopied = "Copied to clipboard"
+		InterfacesCopied = "Copied to clipboard",
+
+		// B5 — ride companion (the get-off alarm)
+		GetOffAlarmTitle = "Get-off alarm",
+		GetOffAlarmDescription = "How long before your stop the alarm rings while you are riding (applies to every followed journey)",
+		GetOffAlarmLead = "{0} min before your stop",
+		GetOffAlarmOff = "Off",
+		GetOffAlarmSound = "Alarm with sound",
+		GetOffAlarmSoundDescription = "The get-off alarm rings with a sound (the alerts channel) or gently without one",
+
+		// B7 — offline comfort
+		OfflineSection = "Offline",
+		OfflineCityMap = "City map for offline use",
+		OfflineCityMapDescription = "The tiles of the simple map (Leaflet) for Dresden and its close outskirts, downloaded once by this button; the vector map (CARTO) keeps needing its own connection. The DVB line network plans come with it and are checked for a new edition once a week (on Wi-Fi only while that switch is on).",
+		OfflineEstimate = "Estimate: about {0} MB ({1} tiles)",
+		OfflineDownload = "Download city map",
+		OfflineDownloading = "{0} of {1} tiles",
+		OfflineDone = "{0} tiles on the device ({1} failed)",
+		OfflineStopped = "Stopped after {0} tiles; what arrived stays on the device",
+		OfflineSkippedMetered = "Not downloaded: the connection is metered",
+		OfflineWifiOnly = "Wi-Fi only",
+		OfflineWifiOnlyDescription = "Download the city map only over an unmetered connection (Wi-Fi or cable)",
+		OfflineOnDevice = "On this device",
+		OfflineRemove = "Remove",
+		OfflineNone = "Nothing downloaded yet",
+		OfflineSize = "About {0} MB ({1} tiles)",
+		OfflineBoardsTitle = "Departure boards offline",
+		OfflineBoardsDescription = "The app keeps the last boards of the stops you look at and shows them, stamped with their time, when a board cannot be loaded.",
 	};
 
 	public RoutingStrings Routing { get; } = new()
@@ -556,7 +710,19 @@ public sealed class EnglishUiStrings : IUiStrings
 		SectionExtraCharge = "Supplements",
 		ExtraChargeAny = "No restriction",
 		ExtraChargeNone = "Without supplement",
-		ExtraChargeLocal = "Local transport only"
+		ExtraChargeLocal = "Local transport only",
+
+		// B9 — bike feeder
+		SectionBike = "Cycling",
+		BikeFeeder = "Bike to the stop",
+		BikeFeederPrivacy = "The bike route to the stop is planned by the BRouter service at brouter.de, which receives the start and the stop you board at",
+		BikeFeederRadius = "Search radius",
+		BikeFeederRadiusText = "Stops up to {0} km away",
+		SectionVia = "Stop over",
+		ViaMinutes = "Stay at the stop over",
+		ViaMinutesHint = "On journeys through the stop over. Any means one minute, the shortest stay there is.",
+		ViaAny = "Any",
+		ViaMinutesValue = "{0} min"
 	};
 
 	public ProviderStrings Provider { get; } = new()
@@ -667,12 +833,21 @@ public sealed class EnglishUiStrings : IUiStrings
 		NotifMonitoring = "Monitoring your journeys",
 		NotifActionPause = "Pause",
 		NotifActionStop = "Stop",
+		Replan = "Find alternatives",
 		NotifStartAlertTitle = "Your journey is about to start",
 		NotifStartAlertText = "{0} \u2192 {1}, departs {2}",
 		NotifChangeAlertTitle = "Journey updated",
 		NotifProblemAlertTitle = "Journey problem",
 		NotifMinutes = "{0} min",
-		NotifNow = "now"
+		NotifNow = "now",
+
+		// B5 — ride companion
+		StayInVehicle = "Stay in the vehicle — this line also reaches {0}",
+		StayInVehicleAt = "Stay in the vehicle — this line also reaches {0} at {1}",
+		NotifStopsToGo = "{0} stops to go",
+		NotifOneStopToGo = "1 stop to go",
+		NotifExitIn = "exit in about {0} min",
+		NotifGetOffAlertTitle = "Get off soon"
 	};
 
 	public TransportStrings Transport { get; } = new()
@@ -687,7 +862,10 @@ public sealed class EnglishUiStrings : IUiStrings
 		Ferry = "Ferry",
 		CableCar = "Cable car",
 		Taxi = "Taxi",
-		OnDemand = "On-demand"
+		OnDemand = "On-demand",
+
+		// B9 — bike feeder
+		Bike = "Bike"
 	};
 
 	public WidgetStrings Widgets { get; } = new()
@@ -736,6 +914,90 @@ public sealed class EnglishUiStrings : IUiStrings
 		ConfigProviderChanged = "Places of the other provider were cleared",
 		Done = "Done",
 		LocationHint = "Widgets with stops nearby need the location. To refresh in the background, allow location access all the time in the app settings.",
-		OpenSettings = "Open app settings"
+		OpenSettings = "Open app settings",
+		CardRefresh = "Refresh",
+		CardOpen = "Show in the app",
+		CardSetUp = "Set up this widget",
+		SetupTitle = "Windows widgets",
+		SetupSummary = "Add a widget",
+		SetupPick = "Your widgets",
+		SetupNone = "No widget of this app is on your board yet.",
+		SetupKind = "Shows",
+		SetupKindDepartures = "Departures",
+		SetupKindRoute = "Route",
+		SetupStop = "Stop",
+		SetupFrom = "From",
+		SetupTo = "To",
+		SetupSearch = "Search a stop",
+		SetupTitleLabel = "Title",
+		SetupSaved = "Saved. The widget is updating.",
+		EditorFor = "Widget {0}",
+		SetupNotChosen = "Not chosen yet",
+		SetupStep1 = "Press Windows + W to open the widgets board.",
+		SetupStep2 = "Choose Add widgets, then DDjourneys, and pick Departures or Route.",
+		SetupStep3 = "Come back here and choose the stop or the route.",
+		SetupNotSetUp = "Not set up yet",
+		SetupChange = "Change",
+		SetupIncompleteStop = "Choose a stop to finish.",
+		SetupIncompleteRoute = "Choose a start and a destination to finish.",
+		CardSetUpHint = "Choose a stop or a route in the app.",
+		CardInMinutes = "in {0} min",
+		CardNow = "now",
+		DiagTitle = "If a widget cannot be added",
+		DiagHint = "Windows only says \"Error adding your widget\". This report shows what Windows has on record for this app. Turn on Settings, Developer options, Log to file, try to add the widget once more, and share the log together with this report.",
+		DiagCopy = "Copy the report",
+		DiagCopied = "Copied."
+	};
+
+	// B2 — phone navigation
+	public ShellStrings Shell { get; } = new()
+	{
+		TabPlan = "Plan",
+		TabMore = "More",
+		StartScreenTitle = "Start screen",
+		StartScreenPlanner = "Planner",
+		StartScreenPlannerDescription = "Where you plan a journey",
+		StartScreenMap = "Map",
+		StartScreenMapDescription = "Stops and layers on the map"
+	};
+
+	// B3 — ticketing advice
+	public TicketStrings Ticket { get; } = new()
+	{
+		Title = "Ticket advice",
+		OneZone = "1 zone",
+		Zones = "{0} zones",
+		Single = "single {0}",
+		Day = "day ticket {0}",
+		DayWins = "the day ticket pays off from {0} rides",
+		Covered = "Your Deutschlandticket covers this journey; you need no other ticket for it.",
+		CoveredShort = "covered by the Deutschlandticket",
+		LongDistance = "The Deutschlandticket does not cover long-distance trains; those legs need a ticket of their own.",
+		Amortize = "At {0} a month, this route pays for itself after about {1} single rides.",
+		BahnCard25 = "BahnCard 25",
+		BahnCardEstimate = "estimate: about 25 % off the regional single fare",
+		DTicketSetting = "I have a Deutschlandticket",
+		DTicketSettingDescription = "The ticket advice then treats what the provider prices by its own fare zones as already paid for.",
+		OnDemandText = "On demand: book this ride before it starts.",
+		OnDemandLink = "Booking information"
+	};
+
+	// B4 — disruption intelligence
+	public WatchedLineStrings WatchedLines { get; } = new()
+	{
+			YourLinesTitle = "Your lines",
+			YourLinesNone = "None of your watched lines has a current change.",
+			WatchHint = "Watch lines with the star beside a line under \u201eAround this stop\u201c or on the run page, and their disruptions appear here.",
+			WatchLine = "Watch line {0}",
+			UnwatchLine = "Stop watching line {0}",
+			BannerAffected = "{0} of your lines are affected by disruptions.",
+			BannerDismiss = "Hide",
+			ChannelWatched = "Watched lines",
+			NotifTitle = "Watched lines",
+			NotifChangedSingle = "The disruptions of your line {0} changed.",
+			NotifChangedMany = "The disruptions of {0} of your lines changed: {1}.",
+			TrackedDisruption = "New disruption on your line: {0}",
+			StopNotServed = "not served",
+			SummaryClear = "Your watched lines have no current disruptions."
 	};
 }

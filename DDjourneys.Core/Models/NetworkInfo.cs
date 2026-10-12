@@ -111,6 +111,18 @@ public sealed class NearbyStop
 
 
 /// <summary>A tariff zone (fare area) of the network.</summary>
+/// <summary>
+/// A tariff zone as a shape on the map: number, name, colour, a point inside it (for the label) and its
+/// outline in WGS84. Only providers that publish zone outlines fill this (VVO <c>map/polygons</c>).
+/// </summary>
+public sealed record TariffZoneShape(
+	int Number,
+	string Name,
+	string? Color,
+	double CenterLat,
+	double CenterLon,
+	IReadOnlyList<(double Latitude, double Longitude)> Ring);
+
 public sealed class TariffZone
 {
 	public required string Number { get; init; }

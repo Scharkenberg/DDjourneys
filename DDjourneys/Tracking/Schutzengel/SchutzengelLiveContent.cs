@@ -17,6 +17,10 @@ internal static class SchutzengelLiveContent
 	/// What the notification says is what the traveller has to DO next: board, get off, change, walk. It therefore
 	/// only changes when that changes (new ride or walk, a different time or platform, a delay, a notice, a risk),
 	/// never with the passing of intermediate stops. Countdowns run natively via <c>When</c> and need no updates.
+	/// The optional <paramref name="disruptionLine"/> (B4, the auto-watch of W1-B4b) is appended as a second
+	/// line while the journey is still going, and the optional <paramref name="stopsToGo"/> (B5, the ride
+	/// companion) as a line of its own while riding - composed, never overwritten: the phase text first, then
+	/// the stops-to-go line, then the disruption line.
 	/// </summary>
 	public static LiveJourneyContent Create(
 		string planId,
@@ -24,7 +28,9 @@ internal static class SchutzengelLiveContent
 		TrackingPhase phase,
 		string? notice,
 		DateTimeOffset now,
-		TrackingStrings strings)
+		TrackingStrings strings,
+		string? disruptionLine = null,
+		string? stopsToGo = null)
 	{
 		ArgumentNullException.ThrowIfNull(snapshot);
 		ArgumentNullException.ThrowIfNull(strings);
@@ -153,6 +159,21 @@ internal static class SchutzengelLiveContent
 				text = route;
 				when = snapshot.Start;
 				break;
+		}
+
+		// B5: the stops-to-go line of the ride under way - before the disruption line, so both compose.
+		if (stopsToGo is { Length: > 0 } && phase == TrackingPhase.InProgress)
+		{
+			text = $"{text}\n{stopsToGo}";
+		}
+
+		// B4: the auto-watch's line, one extra line while the journey is still going (the ended states say
+		// their own last word).
+		if (disruptionLine is { Length: > 0 }
+			&& phase is not TrackingPhase.Arrived
+			&& phase is not TrackingPhase.Cancelled)
+		{
+			text = $"{text}\n{disruptionLine}";
 		}
 
 		int[] segments = [.. snapshot.SegmentLengths.Select(length => Math.Max(1, length))];

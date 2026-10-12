@@ -17,6 +17,9 @@ public interface IUiStrings
 	SettingsStrings Settings { get; }
 	TransportStrings Transport { get; }
 	WidgetStrings Widgets { get; }
+	ShellStrings Shell { get; }
+	TicketStrings Ticket { get; }
+	WatchedLineStrings WatchedLines { get; }
 }
 
 public sealed class CommonStrings
@@ -112,6 +115,18 @@ public sealed class DeparturesStrings
 	public required string NoRun { get; init; }
 	public required string VehicleHere { get; init; }
 	public required string OpenDepartures { get; init; }
+
+	// B1 — line-centric departures
+	public required string ShowCancelled { get; init; }
+	public required string AllLines { get; init; }
+	public required string OnlyThisLine { get; init; }
+	public required string LineChipDescription { get; init; }
+	public required string InMinutesShort { get; init; }
+	public required string NowShort { get; init; }
+	public required string MoreDepartures { get; init; }
+
+	// B7 — offline comfort
+	public required string CachedBoard { get; init; }
 }
 
 
@@ -145,6 +160,11 @@ public sealed class PlaceSearchStrings
 	public required string NoPlacesFound { get; init; }
 	public required string Searching { get; init; }
 	public required string CouldNotReachService { get; init; }
+
+	// B1 — line-centric departures
+	public required string LinesTitle { get; init; }
+	public required string LineCourse { get; init; }
+	public required string LineSeenAt { get; init; }
 }
 
 public sealed class ResultsStrings
@@ -225,6 +245,10 @@ public sealed class JourneyStrings
 	public required string Platform { get; init; }
 	public required string WithinStop { get; init; }
 	public required string Track { get; init; }
+	public required string PlatformShort { get; init; }
+	public required string TrackShort { get; init; }
+	public required string TransferLead { get; init; }
+	public required string TransfersLead { get; init; }
 	public required string LowFloor { get; init; }
 	public required string WheelchairAccessible { get; init; }
 	public required string BicycleAccessible { get; init; }
@@ -246,6 +270,13 @@ public sealed class JourneyStrings
 	public required string OccupancyHigh { get; init; }
 	public required string OccupancyFull { get; init; }
 	public required string OccupancyOverloaded { get; init; }
+
+	// B5 — ride companion
+	public required string PaceTight { get; init; }
+
+	// B9 — bike feeder
+	public required string BikeSummary { get; init; }
+	public required string BikeFeederHint { get; init; }
 }
 
 public sealed class SettingsStrings
@@ -273,12 +304,14 @@ public sealed class SettingsStrings
 	public required string ThemeSystem { get; init; }
 	public required string ThemeLight { get; init; }
 	public required string ThemeDark { get; init; }
+	public required string ThemeSun { get; init; }
 	public required string AppearanceTitle { get; init; }
 	public required string AppearanceHint { get; init; }
 	public required string ModeHeader { get; init; }
 	public required string ModeSystemDescription { get; init; }
 	public required string ModeLightDescription { get; init; }
 	public required string ModeDarkDescription { get; init; }
+	public required string ModeSunDescription { get; init; }
 	public required string PureBlack { get; init; }
 	public required string PureBlackDescription { get; init; }
 	public required string ColorsHeader { get; init; }
@@ -293,6 +326,25 @@ public sealed class SettingsStrings
 	public required string DensityNormalDescription { get; init; }
 	public required string DensityTouch { get; init; }
 	public required string DensityTouchDescription { get; init; }
+
+	// B11 — accessibility & language
+	public required string TextSizeHeader { get; init; }
+	public required string TextSizeNormal { get; init; }
+	public required string TextSizeNormalDescription { get; init; }
+	public required string TextSizeLarge { get; init; }
+	public required string TextSizeLargeDescription { get; init; }
+	public required string TextSizeLargest { get; init; }
+	public required string TextSizeLargestDescription { get; init; }
+	public required string LineColoursHeader { get; init; }
+	public required string LineColoursDescription { get; init; }
+	public required string LineColoursStandard { get; init; }
+	public required string LineColoursDeuteranopia { get; init; }
+	public required string LineColoursProtanopia { get; init; }
+	public required string LineColoursTritanopia { get; init; }
+	public required string SimpleCards { get; init; }
+	public required string SimpleCardsDescription { get; init; }
+	public required string PresetLargeSimple { get; init; }
+	public required string PresetLargeSimpleDescription { get; init; }
 	public required string MaterialHeader { get; init; }
 	public required string MaterialNone { get; init; }
 	public required string MaterialNoneDescription { get; init; }
@@ -374,6 +426,33 @@ public sealed class SettingsStrings
 	public required string InterfaceVersionsDescription { get; init; }
 	public required string CopyInterfaces { get; init; }
 	public required string InterfacesCopied { get; init; }
+
+	// B5 — ride companion (the get-off alarm)
+	public required string GetOffAlarmTitle { get; init; }
+	public required string GetOffAlarmDescription { get; init; }
+	public required string GetOffAlarmLead { get; init; }
+	public required string GetOffAlarmOff { get; init; }
+	public required string GetOffAlarmSound { get; init; }
+	public required string GetOffAlarmSoundDescription { get; init; }
+
+	// B7 — offline comfort
+	public required string OfflineSection { get; init; }
+	public required string OfflineCityMap { get; init; }
+	public required string OfflineCityMapDescription { get; init; }
+	public required string OfflineEstimate { get; init; }
+	public required string OfflineDownload { get; init; }
+	public required string OfflineDownloading { get; init; }
+	public required string OfflineDone { get; init; }
+	public required string OfflineStopped { get; init; }
+	public required string OfflineSkippedMetered { get; init; }
+	public required string OfflineWifiOnly { get; init; }
+	public required string OfflineWifiOnlyDescription { get; init; }
+	public required string OfflineOnDevice { get; init; }
+	public required string OfflineRemove { get; init; }
+	public required string OfflineNone { get; init; }
+	public required string OfflineSize { get; init; }
+	public required string OfflineBoardsTitle { get; init; }
+	public required string OfflineBoardsDescription { get; init; }
 }
 
 public sealed class TransportStrings
@@ -389,6 +468,9 @@ public sealed class TransportStrings
 	public required string CableCar { get; init; }
 	public required string Taxi { get; init; }
 	public required string OnDemand { get; init; }
+
+	// B9 — bike feeder
+	public required string Bike { get; init; }
 }
 
 public sealed class RoutingStrings
@@ -437,9 +519,21 @@ public sealed class RoutingStrings
 	public required string EntranceSmallStep { get; init; }
 	public required string EntranceNoStep { get; init; }
 	public required string SectionExtraCharge { get; init; }
+	public required string SectionVia { get; init; }
+	public required string ViaMinutes { get; init; }
+	public required string ViaMinutesHint { get; init; }
+	public required string ViaAny { get; init; }
+	public required string ViaMinutesValue { get; init; }
 	public required string ExtraChargeAny { get; init; }
 	public required string ExtraChargeNone { get; init; }
 	public required string ExtraChargeLocal { get; init; }
+
+	// B9 — bike feeder
+	public required string SectionBike { get; init; }
+	public required string BikeFeeder { get; init; }
+	public required string BikeFeederPrivacy { get; init; }
+	public required string BikeFeederRadius { get; init; }
+	public required string BikeFeederRadiusText { get; init; }
 }
 
 public sealed class ProviderStrings
@@ -550,12 +644,21 @@ public sealed class TrackingStrings
 	public required string NotifMonitoring { get; init; }
 	public required string NotifActionPause { get; init; }
 	public required string NotifActionStop { get; init; }
+	public required string Replan { get; init; }
 	public required string NotifStartAlertTitle { get; init; }
 	public required string NotifStartAlertText { get; init; }
 	public required string NotifChangeAlertTitle { get; init; }
 	public required string NotifProblemAlertTitle { get; init; }
 	public required string NotifMinutes { get; init; }
 	public required string NotifNow { get; init; }
+
+	// B5 — ride companion
+	public required string StayInVehicle { get; init; }
+	public required string StayInVehicleAt { get; init; }
+	public required string NotifStopsToGo { get; init; }
+	public required string NotifOneStopToGo { get; init; }
+	public required string NotifExitIn { get; init; }
+	public required string NotifGetOffAlertTitle { get; init; }
 }
 
 // <extras>
@@ -583,6 +686,7 @@ public sealed class ExtrasStrings
 	public required string LiveRun { get; init; }
 	public required string LiveSecondsAgo { get; init; }
 	public required string LiveMinutesAgo { get; init; }
+	public required string LiveHoursAgo { get; init; }
 	public required string LiveOnTime { get; init; }
 	public required string LiveSourceGps { get; init; }
 	public required string LiveSourceTelegram { get; init; }
@@ -617,6 +721,7 @@ public sealed class ExtrasStrings
 	public required string FareZones { get; init; }
 	public required string FareValidFor { get; init; }
 	public required string FareNotAll { get; init; }
+	public required string FareBuy { get; init; }
 	public required string ShortcutHome { get; init; }
 	public required string ShortcutDepartures { get; init; }
 	public required string ShortcutNoHome { get; init; }
@@ -630,6 +735,12 @@ public sealed class ExtrasStrings
 	public required string RunsOn { get; init; }
 	public required string RunsDaily { get; init; }
 	public required string VehicleReported { get; init; }
+
+	// B5 — ride companion (the "you are probably here" marker)
+	public required string YouAreHere { get; init; }
+	public required string ShowMyPosition { get; init; }
+	public required string ShowMyPositionDescription { get; init; }
+	public required string ShowMyPositionHint { get; init; }
 	public required string PdfFailed { get; init; }
 	public required string LiveHowTitle { get; init; }
 	public required string LiveHowText { get; init; }
@@ -666,6 +777,65 @@ public sealed class ExtrasStrings
 	public required string RunDeparted { get; init; }
 	public required string MapAutoFit { get; init; }
 	public required string MapFitNow { get; init; }
+	public required string MapLayers { get; init; }
+	public required string MapZones { get; init; }
+	public required string MapParking { get; init; }
+	public required string MapBikes { get; init; }
+	public required string MapVehicles { get; init; }
+	public required string VehicleSeen { get; init; }
+	public required string VehicleFollowLine { get; init; }
+	public required string RunWholeLine { get; init; }
+	public required string LineCourseTitle { get; init; }
+	public required string LineMapNone { get; init; }
+	public required string BikesCounts { get; init; }
+	public required string BikesDocks { get; init; }
+	public required string BikesOpenApp { get; init; }
+	public required string ParkingCounts { get; init; }
+	public required string ParkingShort { get; init; }
+	public required string ParkingUpdated { get; init; }
+	public required string BikesEBikes { get; init; }
+	public required string BikesCargo { get; init; }
+	public required string BikesDockStation { get; init; }
+	public required string BikesVirtualStation { get; init; }
+	public required string BikesEmpty { get; init; }
+	public required string LiveCountMissing { get; init; }
+	public required string ParkingSpaces { get; init; }
+	public required string SharedBike { get; init; }
+	public required string SharedEBike { get; init; }
+	public required string SharedCargo { get; init; }
+	public required string SharedScooter { get; init; }
+	public required string SharedRange { get; init; }
+	public required string MapSharedZoomHint { get; init; }
+	public required string NetworkMap { get; init; }
+	public required string NetworkMapRefresh { get; init; }
+	public required string NetworkMapOpenPdf { get; init; }
+	public required string NetworkMapCredit { get; init; }
+	public required string NetworkMapStale { get; init; }
+	public required string NetworkMapFailed { get; init; }
+	public required string NetworkMapZoomIn { get; init; }
+	public required string NetworkMapZoomOut { get; init; }
+	public required string MapOpenSummary { get; init; }
+	public required string NetworkMapSummary { get; init; }
+	// B6 — night and barrier-free plans
+	public required string NetworkMapPlanStandard { get; init; }
+	public required string NetworkMapPlanNight { get; init; }
+	public required string NetworkMapPlanBarrierFree { get; init; }
+	public required string NetworkMapPlanCityMap { get; init; }
+	public required string ZonePlan { get; init; }
+	public required string ZonePlanSummary { get; init; }
+	public required string ZonePlanRegion { get; init; }
+	public required string ZonePlanDresden { get; init; }
+	public required string ZonePlanSearch { get; init; }
+	public required string ZonePlanSearchHint { get; init; }
+	public required string ZonePlanNoMatch { get; init; }
+	public required string ZonePlanLocate { get; init; }
+	public required string ZonePlanLocating { get; init; }
+	public required string ZonePlanNotNear { get; init; }
+	public required string ZonePlanFailed { get; init; }
+	public required string ZonePlanStale { get; init; }
+	public required string ZonePlanCredit { get; init; }
+	public required string ZonePlanShow { get; init; }
+	public required string ZonePlanSwitched { get; init; }
 	public required string MapInfo { get; init; }
 	public required string MapGrip { get; init; }
 	public required string TrackFollowing { get; init; }
@@ -688,6 +858,18 @@ public sealed class ExtrasStrings
 	public required string LiveSummary { get; init; }
 	public required string HomeTitle { get; init; }
 	public required string HomeNotSet { get; init; }
+
+	// B7 — offline comfort
+	public required string MapOfflineTiles { get; init; }
+
+	// B8 — share a stop
+	public required string ShareStop { get; init; }
+	public required string ShareStopMeetAt { get; init; }
+	public required string ShareStopQrCaption { get; init; }
+	public required string ShareStopTextCaption { get; init; }
+	public required string ShareStopCopyLink { get; init; }
+	public required string ShareStopCopyHint { get; init; }
+	public required string ShareStopCopied { get; init; }
 }
 // </extras>
 
@@ -740,4 +922,94 @@ public sealed class WidgetStrings
 	public required string Done { get; init; }
 	public required string LocationHint { get; init; }
 	public required string OpenSettings { get; init; }
+	public required string CardRefresh { get; init; }
+	public required string CardOpen { get; init; }
+	public required string CardSetUp { get; init; }
+	public required string SetupTitle { get; init; }
+	public required string SetupSummary { get; init; }
+	public required string SetupPick { get; init; }
+	public required string SetupNone { get; init; }
+	public required string SetupKind { get; init; }
+	public required string SetupKindDepartures { get; init; }
+	public required string SetupKindRoute { get; init; }
+	public required string SetupStop { get; init; }
+	public required string SetupFrom { get; init; }
+	public required string SetupTo { get; init; }
+	public required string SetupSearch { get; init; }
+	public required string SetupTitleLabel { get; init; }
+	public required string SetupSaved { get; init; }
+	public required string EditorFor { get; init; }
+	public required string SetupNotChosen { get; init; }
+	public required string SetupStep1 { get; init; }
+	public required string SetupStep2 { get; init; }
+	public required string SetupStep3 { get; init; }
+	public required string SetupNotSetUp { get; init; }
+	public required string SetupChange { get; init; }
+	public required string SetupIncompleteStop { get; init; }
+	public required string SetupIncompleteRoute { get; init; }
+	public required string CardSetUpHint { get; init; }
+	public required string CardInMinutes { get; init; }
+	public required string CardNow { get; init; }
+	public required string DiagTitle { get; init; }
+	public required string DiagHint { get; init; }
+	public required string DiagCopy { get; init; }
+	public required string DiagCopied { get; init; }
+}
+
+// B2 — phone navigation
+
+/// <summary>The phone's tab bar and the start screen choice (see AppShell).</summary>
+public sealed class ShellStrings
+{
+	public required string TabPlan { get; init; }
+	public required string TabMore { get; init; }
+	public required string StartScreenTitle { get; init; }
+	public required string StartScreenPlanner { get; init; }
+	public required string StartScreenPlannerDescription { get; init; }
+	public required string StartScreenMap { get; init; }
+	public required string StartScreenMapDescription { get; init; }
+}
+
+// B3 — ticketing advice
+
+/// <summary>The ticket advice of a journey, the Deutschlandticket setting and the on-demand booking card (see TicketAdvisor).</summary>
+public sealed class TicketStrings
+{
+	public required string Title { get; init; }
+	public required string OneZone { get; init; }
+	public required string Zones { get; init; }
+	public required string Single { get; init; }
+	public required string Day { get; init; }
+	public required string DayWins { get; init; }
+	public required string Covered { get; init; }
+	public required string CoveredShort { get; init; }
+	public required string LongDistance { get; init; }
+	public required string Amortize { get; init; }
+	public required string BahnCard25 { get; init; }
+	public required string BahnCardEstimate { get; init; }
+	public required string DTicketSetting { get; init; }
+	public required string DTicketSettingDescription { get; init; }
+	public required string OnDemandText { get; init; }
+	public required string OnDemandLink { get; init; }
+}
+
+// B4 — disruption intelligence
+
+/// <summary>The watched lines: the stars, the planner banner, the "Your lines" section and the disruption notifications.</summary>
+public sealed class WatchedLineStrings
+{
+	public required string YourLinesTitle { get; init; }
+	public required string YourLinesNone { get; init; }
+	public required string WatchHint { get; init; }
+	public required string WatchLine { get; init; }
+	public required string UnwatchLine { get; init; }
+	public required string BannerAffected { get; init; }
+	public required string BannerDismiss { get; init; }
+	public required string ChannelWatched { get; init; }
+	public required string NotifTitle { get; init; }
+	public required string NotifChangedSingle { get; init; }
+	public required string NotifChangedMany { get; init; }
+	public required string TrackedDisruption { get; init; }
+	public required string StopNotServed { get; init; }
+	public required string SummaryClear { get; init; }
 }

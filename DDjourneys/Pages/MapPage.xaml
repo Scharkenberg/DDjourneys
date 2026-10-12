@@ -30,5 +30,35 @@
 				HorizontalTextAlignment="Center"
 				TextColor="{DynamicResource InkMuted}" />
 		</Border>
+
+		<!--  B4: the diversions note of a line course (the active route changes of its line)  -->
+		<Border
+			x:Name="Notice"
+			Margin="12,12,12,44"
+			Padding="12,8"
+			BackgroundColor="{DynamicResource Surface}"
+			InputTransparent="True"
+			IsVisible="False"
+			Opacity="0.95"
+			Stroke="{DynamicResource Outline}"
+			StrokeShape="RoundRectangle 16"
+			StrokeThickness="1"
+			VerticalOptions="End">
+			<Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+				<controls:Icon
+					Glyph="Warning"
+					Size="18"
+					VerticalOptions="Center"
+					Color="{DynamicResource Delay}" />
+				<Label
+					x:Name="NoticeText"
+					Grid.Column="1"
+					FontSize="{StaticResource FontCaption}"
+					LineBreakMode="TailTruncation"
+					MaxLines="5"
+					TextColor="{DynamicResource Ink}"
+					VerticalOptions="Center" />
+			</Grid>
+		</Border>
 	</Grid>
 </support:PanePage>

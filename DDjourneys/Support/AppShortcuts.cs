@@ -163,7 +163,7 @@ public static class AppShortcuts
 		}
 	}
 
-	/// <summary>Shows the planner or the departures (unwinding pushed pages) and starts the action; false while the shell is not ready.</summary>
+	/// <summary>Shows the planner or the departures and starts the action; false while the shell is not ready.</summary>
 	private static async Task<bool> TryApplyAsync(AppShortcut shortcut)
 	{
 		if (Shell.Current is not { CurrentPage: not null } shell)
@@ -171,10 +171,10 @@ public static class AppShortcuts
 			return false;
 		}
 
-		await Panes.ToStartAsync(shell);
-
 		if (shortcut == AppShortcut.Home)
 		{
+			await Panes.ToStartAsync(shell);
+
 			if (shell.CurrentPage is not PlanPage plan)
 			{
 				return false;
@@ -185,7 +185,17 @@ public static class AppShortcuts
 			return true;
 		}
 
-		await shell.GoToAsync(Routes.Departures);
+		// "Departures from here": on the phone the departures tab (the absolute route unwinds it to its default
+		// board, which then locates the device); everywhere else the planner unwinds and the board is pushed on top.
+		if (TabRoots.Enabled)
+		{
+			await shell.GoToAsync($"//{Routes.Departures}");
+		}
+		else
+		{
+			await Panes.ToStartAsync(shell);
+			await shell.GoToAsync(Routes.Departures);
+		}
 
 		if (shell.CurrentPage is not DeparturesPage departures)
 		{

@@ -12,6 +12,66 @@
 	<ScrollView>
 		<VerticalStackLayout Padding="{DynamicResource PadPage}" Spacing="{DynamicResource SpaceS}">
 
+			<!--  The start screen: a phone with its tabs can open on the map; everywhere else this is not offered.  -->
+			<Label
+				IsVisible="{Binding HasTabs}"
+				StyleClass="Section"
+				Text="{localization:Tr Shell.StartScreenTitle}" />
+
+			<Border
+				Padding="0"
+				IsVisible="{Binding HasTabs}"
+				StyleClass="Card">
+				<VerticalStackLayout>
+
+					<!--  The planner  -->
+					<Grid
+						support:Dense.Padding="12,8"
+						ColumnDefinitions="*,Auto"
+						support:Dense.MinHeight="{StaticResource HitRow}"
+						support:Motion.Feedback="True">
+						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
+							<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Shell.StartScreenPlanner}" />
+							<Label StyleClass="Caption" Text="{localization:Tr Shell.StartScreenPlannerDescription}" />
+						</VerticalStackLayout>
+						<controls:Icon
+							Grid.Column="1"
+							Glyph="Check"
+							IsVisible="{Binding StartOnPlanner}"
+							Size="20"
+							VerticalOptions="Center"
+							Color="{DynamicResource Accent}" />
+						<Grid.GestureRecognizers>
+							<TapGestureRecognizer Command="{Binding SelectPlannerCommand}" />
+						</Grid.GestureRecognizers>
+					</Grid>
+
+					<BoxView StyleClass="Divider" />
+
+					<!--  The map  -->
+					<Grid
+						support:Dense.Padding="12,8"
+						ColumnDefinitions="*,Auto"
+						support:Dense.MinHeight="{StaticResource HitRow}"
+						support:Motion.Feedback="True">
+						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
+							<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Shell.StartScreenMap}" />
+							<Label StyleClass="Caption" Text="{localization:Tr Shell.StartScreenMapDescription}" />
+						</VerticalStackLayout>
+						<controls:Icon
+							Grid.Column="1"
+							Glyph="Check"
+							IsVisible="{Binding StartOnMap}"
+							Size="20"
+							VerticalOptions="Center"
+							Color="{DynamicResource Accent}" />
+						<Grid.GestureRecognizers>
+							<TapGestureRecognizer Command="{Binding SelectMapCommand}" />
+						</Grid.GestureRecognizers>
+					</Grid>
+				</VerticalStackLayout>
+			</Border>
+
 			<Border Padding="0" StyleClass="Card">
 				<Grid
 					support:Dense.Padding="12,8"

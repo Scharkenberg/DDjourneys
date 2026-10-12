@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using DDjourneys.Core.Contract;
+using DDjourneys.Core.Providers.Vvo;
 using DDjourneys.Core.Storage;
 
 namespace DDjourneys.Core.Diagnostics;
@@ -70,21 +71,42 @@ public static class InterfaceSchemas
 	/// <summary>Raster tiles of the Leaflet engine (first choice; CARTO's raster tiles are the fallback).</summary>
 	public const string OsmTileUrl = "https://tile.openstreetmap.org/";
 
+	/// <summary>The DVB Liniennetzplan page, read for the current standard plan (JPG and PDF links).</summary>
+	public const string DvbNetworkMapUrl = VvoNetworkMap.PageUrl;
+
+	/// <summary>Park &amp; ride occupancy of the VVO, as an open-data file.</summary>
+	public const string VvoPurUrl = "https://www.vvo-online.de/open_data/PuR.JSON";
+
+	/// <summary>Shared bikes of MOBIbike Dresden (Nextbike), as GBFS discovery names them.</summary>
+	public const string GbfsUrl = "https://gbfs.nextbike.net/maps/gbfs/v2/nextbike_dx/gbfs.json";
+
+	/// <summary>Free e-bikes of Lime in Dresden, as GBFS discovery names them (the v2 partner feed).</summary>
+	public const string LimeGbfsUrl = "https://data.lime.bike/api/partners/v2/gbfs/dresden/gbfs";
+
+	/// <summary>BRouter: the public routing service that plans the bike track to the boarding stop.</summary>
+	public const string BrouterUrl = "https://brouter.de/brouter";
+
 	/// <summary>
 	/// Revisions the app keeps itself. Changing how the app reads or writes the interface means raising it here and
 	/// adding a line to the history below.
 	/// </summary>
 	public static class Revision
 	{
-		// History: r1 = first schema of the interface list (October 2026). Map bridge r2 = the page's diagnostics (log: messages), r3 = the page loads MapLibre only after its own check and reports unsupported:reason, r4 = the page waits for the app (boot, ddBoot start with engine carto|leaflet and force). Carto r2 = raster tiles for the Leaflet engine (OpenStreetMap tiles first, CARTO raster as fallback).
-		public const int VvoWebApi = 1;
+		// History: r1 = first schema of the interface list (October 2026). Map bridge r2 = the page's diagnostics (log: messages), r3 = the page loads MapLibre only after its own check and reports unsupported:reason, r4 = the page waits for the app (boot, ddBoot start with engine carto|leaflet and force), r5 = per-layer sends (ddMapCall layer/layers with a layer id, the overlay command is gone), polygon payloads (tariff zones) and the reserved marker kinds parking and bike of the Tier 2 city layers. Carto r2 = raster tiles for the Leaflet engine (OpenStreetMap tiles first, CARTO raster as fallback). Plan bridge r1 = the plan page's own protocol (ddPlanCall and its messages, the /_plan/ tile addresses). Gbfs r2 = Lime's dockless feed read (free_bike_status and vehicle_types of the v2 partner feed). Plan bridge r2 = the zone plan's stops and marks (the stops and mark commands, the pin and unpin messages). VvoWebApi r2 = a trip answer's named ticket list is read (Tickets with Name, Price and the fare zone texts, beyond the two route prices), on-demand runs are recognised by their mot type (Alita, HailedSharedTaxi) and their booking contact (BookingLink) is carried on the leg. Map bridge r6 = offline city tiles: the Leaflet engine asks for a cached tile after a network tile fails (raw message tile:{z}/{x}/{y}), the app answers ddMapCall('tile', {z, x, y, data}) with a data: URL or a miss, and the init carries the note label for serving from the cache (labels.offlineTile). Brouter r1 = the GeoJSON track answer of the bike feeder (track-length, filtered ascend, total-time, the [lon, lat, elevation] coordinates).
+		public const int VvoWebApi = 2;
 		public const int Schutzengel = 1;
 		public const int Tlms = 1;
 		public const int OpenData = 1;
 		public const int Carto = 2;
-		public const int MapBridge = 4;
+		public const int MapBridge = 6;
+		public const int PlanBridge = 2;
 		public const int OsmTiles = 1;
-		public const int WidgetData = 1;
+		public const int DvbNetworkMap = 2;
+		public const int VvoPur = 1;
+		public const int Gbfs = 2;
+		public const int Brouter = 1;
+		public const int WidgetData = 2;
+		public const int WidgetCardWin = 2;
 	}
 
 	/// <summary>Interfaces that exist in the core library; the app adds its own (see <c>AppInterfaces</c>).</summary>
@@ -119,17 +141,41 @@ public static class InterfaceSchemas
 			R(Revision.OsmTiles), OsmTileUrl,
 			"Leaflet engine, first source; dark mode inverts the picture by CSS; replaced by CARTO raster when it delivers no tile"),
 		new(
+			"dvb-networkmap", InterfaceKind.External, "DVB Liniennetzplan page",
+			R(Revision.DvbNetworkMap), DvbNetworkMapUrl,
+			"the page is read as a catalog of plans: standard dvb_lnp_n_st_n, night GuteNachtLinien gnl_n_pip, the barrier-free line network plan (PDF only) and the MOBI city map; the plans are DVB's, downloaded on demand and credited, never bundled"),
+		new(
+			"vvo-pur", InterfaceKind.External, "VVO park & ride occupancy",
+			R(Revision.VvoPur), VvoPurUrl,
+			"open-data file of about 56 sites with live free counts (one observed sample, field list unverified); the per-space sensor block is only read for sites without a count of their own"),
+		new(
+			"gbfs", InterfaceKind.External, "Shared bikes (GBFS)",
+			R(Revision.Gbfs), GbfsUrl,
+			"GBFS 2.x, discovery-first; station_information cached an hour, station_status at most a minute (the feed's ttl when smaller); Lime dockless: free_bike_status and vehicle_types of the v2 partner feed (data.lime.bike)"),
+		new(
+			"brouter", InterfaceKind.External, "BRouter bike routes",
+			R(Revision.Brouter), BrouterUrl,
+			"one GET with lonlats (lon first, pipe-separated), profile trekking; the GeoJSON track answer is read for track-length, filtered ascend and total-time, and for the [lon, lat, elevation] coordinates (the path and the hills of the feeder leg)"),
+		new(
 			"storage-lists", InterfaceKind.Internal, "Stored lists (places, routes)",
 			Number(StoredJson.CurrentVersion), string.Empty,
 			"versioned envelope; unreadable entries are skipped one by one"),
 		new(
 			"map-bridge", InterfaceKind.Internal, "Map page messages",
 			R(Revision.MapBridge), string.Empty,
-			"ddMapCall(command, json) and the raw messages boot, ready, open, tap, view, point, error, auto, log, unsupported"),
+			"ddMapCall(command, json) or ddMapCall('layer', id, json) for the layer/layers commands, and the raw messages boot, ready, layers, open, tap, view, point, error, auto, log, unsupported, tile; the tile answer carries a data: URL of the cached city tile or a miss"),
+		new(
+			"plan-bridge", InterfaceKind.Internal, "Plan page messages",
+			R(Revision.PlanBridge), string.Empty,
+			"ddPlanCall(command, json) for init (theme and the plan's geometry), theme, zoom, fit, clear, stops and mark, the raw messages ready, shown, failed, zoom, pin, unpin, error, and the tile addresses /_plan/{key}/{level}/{x}/{y}?r={ratio} and /_plan/{key}/image, answered no-store (an empty tile is retried by the page)"),
 		new(
 			"widget-data", InterfaceKind.Internal, "Widget settings and snapshot",
 			R(Revision.WidgetData), string.Empty,
-			"WidgetConfig and WidgetSnapshot as JSON in the preferences"),
+			"WidgetConfig and WidgetSnapshot as JSON in the preferences (Android) or the application data settings (Windows); the formats are the same"),
+		new(
+			"widget-card-win", InterfaceKind.Internal, "Windows widget cards",
+			R(Revision.WidgetCardWin), string.Empty,
+			"the Adaptive Card (1.6) of a Windows widget, built for the size the board reports: the header overridden with the stop or route, literal rows (like the docs' weather example) with drawn line chips (data-URI images), the host's semantic colours for the statuses, refresh and open actions (select action open) and a set-up card"),
 		new(
 			"contract", InterfaceKind.Contract, "External contract (links, intents, protocol launches)",
 			Number(ContractVersion.Current) + " (oldest answered: " + Number(ContractVersion.Oldest) + ")",

@@ -50,23 +50,95 @@ public sealed class VvoNetworkProvider :
 			return DepartureBoard.Empty;
 		}
 
-		VvoDepartureResponse? response =
-			await _apiClient.GetDeparturesAsync(
-				new VvoDepartureRequest
-				{
-					StopId = query.Stop.Id,
-					Limit = Math.Clamp(query.Limit, 1, 60),
-					Time = query.Time?.ToString("O", CultureInfo.InvariantCulture),
-					IsArrival = query.IsArrival,
-					ModesOfTransport = ModesOf(query.Modes)
-				},
-				Timeout(query.TimeoutSeconds),
-				cancellationToken)
-				.ConfigureAwait(false);
+		// The time of the board, in the forms the service reads: ISO in UTC first, the Microsoft date second.
+		// A board that starts long before the wanted time means the service ignored the time (it answers for
+		// now when it cannot read it): then the other form is tried, once.
+		string?[] forms =
+			query.Time is { } wanted
+				?
+				[
+					wanted.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture),
+					$"/Date({wanted.ToUnixTimeMilliseconds()}+0000)/",
+					wanted.ToString("yyyy-MM-dd'T'HH:mm:sszzz", CultureInfo.InvariantCulture),
+					$"/Date({wanted.ToUnixTimeMilliseconds()}{(wanted.Offset < TimeSpan.Zero ? '-' : '+')}{Math.Abs(wanted.Offset.Hours):00}{Math.Abs(wanted.Offset.Minutes):00})/",
+					wanted.ToString("yyyy-MM-dd'T'HH:mm:ss", CultureInfo.InvariantCulture)
+				]
+				: [null];
 
-		return response is null
-			? DepartureBoard.Empty
-			: VvoNetworkMapper.MapBoard(response, query.Stop, query.IsArrival);
+		DepartureBoard best = DepartureBoard.Empty;
+		List<DepartureBoard> closest = [];
+		bool found = false;
+
+		foreach (string? form in forms)
+		{
+			VvoDepartureResponse? response =
+				await _apiClient.GetDeparturesAsync(
+					new VvoDepartureRequest
+					{
+						StopId = query.Stop.Id,
+						Limit = Math.Clamp(query.Limit, 1, 60),
+						Time = form,
+						IsArrival = query.IsArrival,
+						ModesOfTransport = ModesOf(query.Modes)
+					},
+					Timeout(query.TimeoutSeconds),
+					cancellationToken)
+					.ConfigureAwait(false);
+
+			DepartureBoard board =
+				response is null
+					? DepartureBoard.Empty
+					: VvoNetworkMapper.MapBoard(response, query.Stop, query.IsArrival);
+
+			best = board;
+
+			if (query.Time is not { } at)
+			{
+				break;
+			}
+
+			bool past = at < DateTimeOffset.Now - TimeSpan.FromMinutes(2);
+
+			// An empty board for a time in the past is the service not reading the time, not a quiet stop: the other
+			// forms are tried. An empty board for a time to come is a quiet stop.
+			if (board.Departures.Count == 0)
+			{
+				DiagnosticLog.Write($"[VVO] board for {at:dd.MM. HH:mm} asked as '{form}': empty{(past ? ", trying the other form" : string.Empty)}");
+
+				if (!past)
+				{
+					break;
+				}
+
+				continue;
+			}
+
+			closest.Add(board);
+
+			DateTimeOffset first = board.Departures[0].Scheduled;
+
+			// Read: the board starts at the wanted time (a little before it, for the delayed ones). Not read: it starts
+			// long before, or - for a time in the past - at "now", which is what the service answers for a time it
+			// does not understand (the departures of the past are served only when the time is read).
+			bool read = first >= at - TimeSpan.FromMinutes(10) && (!past || first <= at + TimeSpan.FromMinutes(45));
+
+			DiagnosticLog.Write($"[VVO] board for {at:dd.MM. HH:mm} asked as '{form}': {board.Departures.Count} rows from {first:dd.MM. HH:mm} to {board.Departures[^1].Scheduled:HH:mm}, {(read ? "read" : "not read")}");
+
+			if (read)
+			{
+				found = true;
+
+				break;
+			}
+		}
+
+		// Nothing read: the board that comes closest to the wanted time.
+		if (!found && query.Time is { } target && closest.Count > 0)
+		{
+			best = closest.OrderBy(board => (board.Departures[0].Scheduled - target).Duration()).First();
+		}
+
+		return best;
 	}
 
 	/// <inheritdoc />
@@ -241,7 +313,9 @@ public sealed class VvoNetworkProvider :
 			return [];
 		}
 
-		int radius = Math.Clamp(radiusMeters, 100, 2000);
+		// The whole view, not a kilometre-capped circle around its centre: a box of the view's own size keeps
+		// every stop that is on screen, and the same stop stays in the answer while only the view's edge moves.
+		int radius = Math.Clamp(radiusMeters, 100, 10_000);
 
 		// GK4 is metric (scale 1 on the central meridian, about 1.0001 in Saxony): a box in metres is a box here.
 		static string Metres(double value) =>
@@ -262,35 +336,125 @@ public sealed class VvoNetworkProvider :
 
 		if (response is null)
 		{
+			DiagnosticLog.Write($"[Stops] VVO map/pins gave no answer for the box around {latitude:F5},{longitude:F5} ({radius} m)");
+
 			return [];
 		}
 
-		// Pins are written like PointFinder entries; a stop pin has a numeric id.
-		return
-			[.. response.Pins
-				.Select(VvoPoint.Parse)
-				.Where(point => point.IsStop && !string.IsNullOrWhiteSpace(point.Name))
-				.Select(VvoLocationProvider.Map)
-				.Where(stop => stop.Latitude is not null && stop.Longitude is not null)
+		DiagnosticLog.Write($"[Stops] VVO map/pins: {response.Pins.Count} pins for the box around {latitude:F5},{longitude:F5} ({radius} m), status {response.Status?.Code ?? "none"}");
+
+		List<Location> stops = [];
+		int unreadable = 0;
+
+		foreach (string pin in response.Pins)
+		{
+			if (PinToStop(pin) is { } stop)
+			{
+				stops.Add(stop);
+			}
+			else
+			{
+				unreadable++;
+			}
+		}
+
+		// The 1.45 factor: the farthest corner of the box is sqrt(2) * radius from its centre (a circle of 1.25 cut
+		// the corners off, which looked like stops missing at the edges of the view).
+		List<NearbyStop> result =
+			[.. stops
 				.Select(
 					stop =>
 						new NearbyStop
 						{
 							Stop = stop,
-							DistanceMeters =
-								(int)Math.Round(
-									GeoMath.DistanceMeters(
-										latitude,
-										longitude,
-										stop.Latitude!.Value,
-										stop.Longitude!.Value))
+							DistanceMeters = (int)Math.Round(GeoMath.DistanceMeters(latitude, longitude, stop.Latitude!.Value, stop.Longitude!.Value))
 						})
-				.Where(nearby => nearby.DistanceMeters <= radius * 1.25)
-				.OrderBy(nearby => nearby.DistanceMeters)
-				.Take(20)];
+				.Where(nearby => nearby.DistanceMeters <= radius * 1.45)
+				.OrderBy(nearby => nearby.DistanceMeters)];
+
+		DiagnosticLog.Write($"[Stops] VVO map/pins read: {stops.Count} stops of {response.Pins.Count} pins ({unreadable} not stops), {result.Count} inside the box");
+
+		if (result.Count == 0 && response.Pins.Count > 0)
+		{
+			DiagnosticLog.Write($"[Stops] VVO map/pins sample: {string.Join(" ;; ", response.Pins.Take(3))}");
+		}
+
+		return result;
+	}
+
+	/// <summary>A stop pin is named by its DHID ("de:14612:243", seen in the log) or a plain number.</summary>
+	private static bool IsStopId(string id) =>
+		int.TryParse(id, out _) || id.StartsWith("de:", StringComparison.OrdinalIgnoreCase);
+
+	/// <summary>
+	/// A map pin as a stop. The layout of a pin is not documented: the name is the first text field that is neither
+	/// the id nor a number, the position the first two numbers in the GK4 range (either order), a stop has a DHID
+	/// id and a type that is empty or says stop.
+	/// </summary>
+	private static Location? PinToStop(string pin)
+	{
+		string[] fields = pin.Split('|');
+
+		if (fields.Length < 6 || !IsStopId(fields[0]))
+		{
+			return null;
+		}
+
+		string type = fields[1].Trim();
+
+		if (type.Length > 0 && !type.Equals("stop", StringComparison.OrdinalIgnoreCase) && !type.Equals("s", StringComparison.OrdinalIgnoreCase))
+		{
+			return null;
+		}
+
+		string? name =
+			fields.Skip(2)
+				.Select(field => field.Trim())
+				.FirstOrDefault(field => field.Length > 0 && !double.TryParse(field, NumberStyles.Float, CultureInfo.InvariantCulture, out _));
+
+		string? place = fields.Length > 3 && fields[2].Trim() is { Length: > 0 } p && p != name ? p : null;
+
+		List<string> numbers =
+			[.. fields.Skip(2).Where(field => double.TryParse(field, NumberStyles.Float, CultureInfo.InvariantCulture, out double v) && v >= 100_000)];
+
+		if (string.IsNullOrWhiteSpace(name)
+			|| numbers.Count < 2
+			|| !VvoCoordinateConverter.TryFromPointFields(numbers[0], numbers[1], out (double Latitude, double Longitude) position))
+		{
+			return null;
+		}
+
+		// The place column comes before the name in a PointFinder entry; when it is the name's field, none.
+		int nameIndex = Array.IndexOf(fields, name);
+
+		return new Location
+		{
+			Id = fields[0],
+			ProviderId = VvoProviderInfo.Id,
+			Name = name,
+			Kind = PlaceKind.Stop,
+			Place = nameIndex > 2 ? VvoPlaces.Resolve(fields[2], PlaceKind.Stop) : place ?? string.Empty,
+			Latitude = position.Latitude,
+			Longitude = position.Longitude
+		};
 	}
 
 	/// <inheritdoc />
+	public async Task<IReadOnlyList<TariffZoneShape>> GetTariffZonesAsync(
+		CancellationToken cancellationToken = default)
+	{
+		IReadOnlyList<ZonePolygon> zones =
+			await LoadZonesAsync(cancellationToken)
+				.ConfigureAwait(false);
+
+		// Zone-number order: the same picture on every load, whatever the wire order was.
+		return
+			(IReadOnlyList<TariffZoneShape>)[.. zones
+					.Select(ToShape)
+					.OfType<TariffZoneShape>()
+					.OrderBy(shape => shape.Number)];
+	}
+
 	public async Task<TariffZone?> FindTariffZoneAsync(
 		double latitude,
 		double longitude,
@@ -372,21 +536,68 @@ public sealed class VvoNetworkProvider :
 		int seconds) =>
 		TimeSpan.FromSeconds(Math.Clamp(seconds, 5, 60));
 
+	/// <summary>A zone polygon as a map shape: the ring in WGS84, the centre as the label position.</summary>
+	private static TariffZoneShape? ToShape(ZonePolygon zone)
+	{
+		if (!int.TryParse(
+				zone.Zone.Number,
+				NumberStyles.Integer,
+				CultureInfo.InvariantCulture,
+				out int number))
+		{
+			return null;
+		}
+
+		(double Latitude, double Longitude) centre =
+			zone.Centre is { } at
+				? VvoCoordinateConverter.FromGk4(at.X, at.Y)
+				: Centroid(zone.Ring);
+
+		return new TariffZoneShape(
+			number,
+			zone.Zone.Name,
+			zone.Zone.Color,
+			centre.Latitude,
+			centre.Longitude,
+			(IReadOnlyList<(double Latitude, double Longitude)>)[.. zone.Ring
+				.Select(point => VvoCoordinateConverter.FromGk4(point.X, point.Y))]);
+	}
+
+	private static (double Latitude, double Longitude) Centroid((double X, double Y)[] ring)
+	{
+		double x = 0, y = 0;
+
+		foreach ((double X, double Y) point in ring)
+		{
+			x += point.X;
+			y += point.Y;
+		}
+
+		return VvoCoordinateConverter.FromGk4(x / ring.Length, y / ring.Length);
+	}
+
 	/// <summary>A tariff zone with its outline in GK4 (easting, northing).</summary>
 	private sealed class ZonePolygon
 	{
 		private readonly (double X, double Y)[] _ring;
 
-		private ZonePolygon(TariffZone zone, (double X, double Y)[] ring)
+		private ZonePolygon(TariffZone zone, (double X, double Y)[] ring, (double X, double Y)? centre)
 		{
 			Zone = zone;
 			_ring = ring;
+			Centre = centre;
 			Area = Math.Abs(SignedArea(ring));
 		}
 
 		public TariffZone Zone { get; }
 
+		/// <summary>The label position, when the wire names one.</summary>
+		public (double X, double Y)? Centre { get; }
+
 		public double Area { get; }
+
+		/// <summary>The outline ring in GK4 (easting, northing).</summary>
+		public (double X, double Y)[] Ring => _ring;
 
 		/// <summary>"zone|name|#colour|centreN|centreE|n|e|n|e|..."; values with decimals are WGS84 degrees.</summary>
 		public static ZonePolygon? Parse(string raw)
@@ -439,6 +650,26 @@ public sealed class VvoNetworkProvider :
 				}
 			}
 
+			// The centre (the first pair) goes the same way as a ring point, so the label lands inside the zone.
+			(double X, double Y)? centre = null;
+
+			if (numbers.Length >= 2
+				&& !double.IsNaN(numbers[0])
+				&& !double.IsNaN(numbers[1]))
+			{
+				if (numbers[0] < 1000)
+				{
+					if (VvoCoordinateConverter.TryToGk4(numbers[0], numbers[1], out (double Easting, double Northing) at))
+					{
+						centre = (at.Easting, at.Northing);
+					}
+				}
+				else
+				{
+					centre = (numbers[1], numbers[0]);
+				}
+			}
+
 			if (ring.Count < 3)
 			{
 				return null;
@@ -451,7 +682,8 @@ public sealed class VvoNetworkProvider :
 					Name = fields[1].Trim(),
 					Color = string.IsNullOrWhiteSpace(fields[2]) ? null : fields[2].Trim()
 				},
-				[.. ring]);
+				[.. ring],
+				centre);
 		}
 
 		/// <summary>Ray casting.</summary>

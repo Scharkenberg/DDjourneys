@@ -1,5 +1,7 @@
 ﻿using DDjourneys.Platforms.Windows;
 using DDjourneys.Platforms.Windows.LiveJourney;
+using DDjourneys.Platforms.Windows.Widgets;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 
 // To learn more about WinUI, the WinUI project structure,
@@ -18,6 +20,8 @@ namespace DDjourneys.WinUI
 		/// </summary>
 		public App()
 		{
+			WindowsTrace.Bootstrap();
+
 			WindowsTrace.Write($"Process start: {string.Join(' ', Environment.GetCommandLineArgs())}");
 
 			UnhandledException += (_, e) => WindowsTrace.Write("Unhandled UI exception", e.Exception);
@@ -31,6 +35,10 @@ namespace DDjourneys.WinUI
 			// Before anything else: a notification click that started this process needs it registered.
 			WindowsNotificationHost.Register();
 			WindowsBackground.Initialize(WindowsNotificationHost.Embedded);
+
+			// The Widgets Board waits for this class object after it started the app: registered now, not
+			// after the MAUI app has been built (that takes seconds).
+			WindowsWidgets.RegisterClassObject();
 
 			this.InitializeComponent();
 
@@ -58,6 +66,11 @@ namespace DDjourneys.WinUI
 					});
 
 				WindowsNotificationHost.Initialize(app.Services);
+
+				// The Widgets Board: the class object it CoCreates, and the store and loader behind it.
+				WindowsWidgets.Initialize(
+					app.Services.GetRequiredService<Support.Widgets.IWidgetStore>(),
+					app.Services.GetRequiredService<Support.Widgets.WidgetLoader>());
 
 				_ = WindowsJumpList.UpdateAsync();
 

@@ -46,6 +46,13 @@ public sealed class Journey
 	/// </summary>
 	public object? ProviderData { get; init; }
 
+	/// <summary>
+	/// The journeys this one was joined from (a journey through a stop-over that no provider could plan in one
+	/// piece: start to stop-over, stop-over to destination). Each part is a journey of the provider with its own
+	/// route, so following the joined journey follows the parts. Null for every journey that is one piece.
+	/// </summary>
+	public IReadOnlyList<Journey>? Parts { get; init; }
+
 	public IReadOnlyList<string> Notices { get; init; }
 		= [];
 
