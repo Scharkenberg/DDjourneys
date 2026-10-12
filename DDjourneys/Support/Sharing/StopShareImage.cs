@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using DDjourneys.Core.Contract;
 using SkiaSharp;
 
@@ -22,7 +24,7 @@ public static class StopShareImage
 		string folder = Path.Combine(FileSystem.CacheDirectory, "share");
 		Directory.CreateDirectory(folder);
 
-		string path = Path.Combine(folder, "stop-qr.png");
+		string path = Path.Combine(folder, $"stop-qr-{Fingerprint(qr)}.png");
 		int module = Math.Max(1, TargetPixels / qr.Size);
 		int side = module * qr.Size;
 
@@ -53,5 +55,22 @@ public static class StopShareImage
 		data.SaveTo(stream);
 
 		return path;
+	}
+
+	private static string Fingerprint(QrMatrix qr)
+	{
+		var builder = new StringBuilder(qr.Size * qr.Size + 16);
+		builder.Append(qr.Version).Append(':').Append(qr.Size).Append(':');
+
+		for (int y = 0; y < qr.Size; y++)
+		{
+			for (int x = 0; x < qr.Size; x++)
+			{
+				builder.Append(qr.Modules[y, x] ? '1' : '0');
+			}
+		}
+
+		byte[] hash = SHA256.HashData(Encoding.UTF8.GetBytes(builder.ToString()));
+		return Convert.ToHexString(hash, 0, 12).ToLowerInvariant();
 	}
 }
