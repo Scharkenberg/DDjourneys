@@ -93,7 +93,7 @@ public sealed partial class DdWidgetProvider : IWidgetProvider
 		WidgetUpdaterWin.Forget(widgetId);
 		WindowsWidgets.Store?.Remove(widgetId);
 
-		if (_active.Count == 0)
+		if (_active.IsEmpty)
 		{
 			WindowsBackground.SetKeepAlive(false);
 		}
@@ -129,7 +129,7 @@ public sealed partial class DdWidgetProvider : IWidgetProvider
 			_active[widgetId] = false;
 		}
 
-		if (_active.Count == 0 || _active.Values.All(static active => !active))
+		if (_active.IsEmpty || _active.Values.All(static active => !active))
 		{
 			// Nobody is looking: the process may go when the rest of the app has nothing left either
 			// (the board relaunches it by COM when it wants it again).

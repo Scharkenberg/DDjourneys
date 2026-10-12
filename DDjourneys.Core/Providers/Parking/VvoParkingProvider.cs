@@ -63,7 +63,6 @@ public sealed partial class VvoParkingProvider(ApiClient apiClient) : IParkingPr
 		for (int index = 0; index < sites.Length; index++)
 		{
 			if (MapSite(
-					index,
 					sites[index],
 					live is { Length: > 0 } list && index < list.Length ? list[index] : null) is { } site)
 			{
@@ -76,7 +75,6 @@ public sealed partial class VvoParkingProvider(ApiClient apiClient) : IParkingPr
 
 	/// <summary>One site: skipped when it cannot be placed or named at all.</summary>
 	internal static ParkingSite? MapSite(
-		int index,
 		VvoParkingSite site,
 		VvoParkingSiteLive? live)
 	{

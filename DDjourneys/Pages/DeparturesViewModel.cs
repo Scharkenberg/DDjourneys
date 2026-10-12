@@ -1810,7 +1810,7 @@ public sealed partial class DeparturesViewModel : DisposableViewModel
 
 				row.Adopt(
 					(List<NearbyPreview>)[.. NearbyBoards.Previews(board, NearbyPreviewRows, Format.Now())
-						.Select(departure => new NearbyPreview(departure))];
+						.Select(departure => new NearbyPreview(departure))]);
 			}
 		}
 		catch (OperationCanceledException)

@@ -273,7 +273,7 @@ public sealed class VehicleStreamHub : IDisposable
 
 	private void SetState(VehicleStreamState next)
 	{
-		Action<VehicleStreamState>? fire = null;
+		Action<VehicleStreamState>? fire;
 
 		lock (_gate)
 		{
@@ -291,7 +291,7 @@ public sealed class VehicleStreamHub : IDisposable
 
 	public void Dispose()
 	{
-		Timer? timer = null;
+		Timer? timer;
 
 		lock (_gate)
 		{

@@ -584,7 +584,7 @@ public sealed partial class VehiclesViewModel : DisposableViewModel, IQueryAttri
 					.SearchByCoordinatesAsync(standing.Vehicle.Latitude, standing.Vehicle.Longitude, TimeSpan.FromSeconds(8))
 					.ConfigureAwait(false);
 
-				Location? at = near.FirstOrDefault(place => place.IsStation) ?? near.FirstOrDefault();
+				Location? at = near.FirstOrDefault(place => place.IsStation) ?? (near.Count > 0 ? near[0] : null);
 
 				if (at is null)
 				{

@@ -392,13 +392,18 @@ internal static partial class WindowsWidgets
 		}
 	}
 
-	[LibraryImport("ole32.dll")]
-	private static partial int CoCreateInstance(
+	// DllImport on purpose, like CoRegisterClassObject below: the LibraryImport source generator
+	// does not run in the MAUI Windows head (CS8795 on the owner's build; it does run in plain
+	// net11.0 and net11.0-windows projects), and the signature is fully blittable anyway.
+#pragma warning disable SYSLIB1054 // LibraryImport needs its generator, which does not run in this head
+	[DllImport("ole32.dll")]
+	private static extern int CoCreateInstance(
 		ref Guid clsid,
 		nint outer,
 		uint context,
 		ref Guid iid,
 		out nint instance);
+#pragma warning restore SYSLIB1054
 
 	/// <summary>Asks COM for the provider class the way the Widgets Board does (local server): the answer tells whether COM can reach it.</summary>
 	private static string SelfTest()
@@ -431,8 +436,10 @@ internal static partial class WindowsWidgets
 		uint flags,
 		out uint lpdwRegister);
 
-	[LibraryImport("ole32.dll")]
-	private static partial int CoRevokeClassObject(uint dwRegister);
+#pragma warning disable SYSLIB1054
+	[DllImport("ole32.dll")]
+	private static extern int CoRevokeClassObject(uint dwRegister);
+#pragma warning restore SYSLIB1054
 
 	/// <summary>The IClassFactory of the docs' FactoryHelper, handed out for CoCreateInstance.</summary>
 	[ComVisible(true)]

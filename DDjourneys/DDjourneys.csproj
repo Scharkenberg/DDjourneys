@@ -127,6 +127,12 @@
 	</ItemGroup>
 
 	<ItemGroup>
+	  <!-- The shared keyed row template on the CollectionView's ItemTemplate trips the XAML source
+	       generator (CS0030 in the generated code); this page compiles through classic XamlC instead,
+	       like the two popups below. -->
+	  <MauiXaml Update="Pages\DisruptionsPage.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </MauiXaml>
 	  <MauiXaml Update="Pages\JourneySharePopup.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>

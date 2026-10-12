@@ -46,7 +46,7 @@ public static class PolylineSimplify
 	{
 		double tolerance = Math.Max(1, startToleranceMeters);
 
-		IReadOnlyList<(double Latitude, double Longitude)> result = points;
+		IReadOnlyList<(double Latitude, double Longitude)> result;
 
 		while (true)
 		{
