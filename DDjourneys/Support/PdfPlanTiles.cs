@@ -19,7 +19,7 @@ namespace DDjourneys.Support;
 public sealed partial class PdfPlanTiles : IPlanTiles
 {
 	/// <summary>Bumped when the drawing changes: tiles of an older drawing are dropped with their folder.</summary>
-	private const string RenderVersion = "r2";
+	private const string RenderVersion = "r3";
 
 	/// <summary>Width of the deepest level in units (CSS pixels).</summary>
 	private const double DeepWidth = 8192;
@@ -36,6 +36,7 @@ public sealed partial class PdfPlanTiles : IPlanTiles
 	private readonly LinkedList<Job> _waiting = new();
 	private readonly ConcurrentDictionary<string, Lazy<Task<byte[]?>>> _running = new(StringComparer.Ordinal);
 	private readonly CancellationTokenSource _life = new();
+	private int _prefetching;
 	private bool _working;
 	private bool _disposed;
 
@@ -92,6 +93,8 @@ public sealed partial class PdfPlanTiles : IPlanTiles
 
 		string file = Path.Combine(_directory, $"{tile.Level}_{tile.X}_{tile.Y}@{tile.Ratio}.png");
 
+		StartPrefetch(tile.Ratio);
+
 		try
 		{
 			if (File.Exists(file))
@@ -114,13 +117,13 @@ public sealed partial class PdfPlanTiles : IPlanTiles
 		}
 	}
 
-	private async Task<byte[]?> DrawAsync(PlanTile tile, string file)
+	private async Task<byte[]?> DrawAsync(PlanTile tile, string file, bool low = false)
 	{
 		byte[]? png = null;
 
 		try
 		{
-			var job = new Job(tile, new TaskCompletionSource<byte[]?>(TaskCreationOptions.RunContinuationsAsynchronously));
+			var job = new Job(tile, new TaskCompletionSource<byte[]?>(TaskCreationOptions.RunContinuationsAsynchronously), low);
 
 			Enqueue(job);
 
@@ -148,6 +151,71 @@ public sealed partial class PdfPlanTiles : IPlanTiles
 	}
 
 	/// <summary>
+	/// The shallow levels are drawn in the background once the page has shown which pixel ratio it wants (the cache
+	/// is per ratio): zooming in a plan that is mostly on disk is instant, and what the page asks for always goes
+	/// first. A desktop window shows four times the tiles of a phone and draws one at a time, so it goes one level
+	/// deeper.
+	/// </summary>
+	private void StartPrefetch(int ratio)
+	{
+		if (Interlocked.Exchange(ref _prefetching, 1) != 0)
+		{
+			return;
+		}
+
+		_ = Task.Run(() => PrefetchAsync(ratio));
+	}
+
+	private async Task PrefetchAsync(int ratio)
+	{
+		int deepest = Math.Min(Levels.Length - 1, DeviceInfo.Idiom == DeviceIdiom.Desktop ? 4 : 3);
+
+		try
+		{
+			// What is on screen first.
+			await Task.Delay(TimeSpan.FromSeconds(2), _life.Token).ConfigureAwait(false);
+
+			for (int level = 0; level <= deepest; level++)
+			{
+				(double levelWidth, double levelHeight) = Spec.LevelSize(level);
+
+				int columns = (int)Math.Ceiling(levelWidth / Spec.TileSize);
+				int rows = (int)Math.Ceiling(levelHeight / Spec.TileSize);
+
+				for (int y = 0; y < rows; y++)
+				{
+					for (int x = 0; x < columns; x++)
+					{
+						_life.Token.ThrowIfCancellationRequested();
+
+						var tile = new PlanTile(level, x, y, ratio);
+						string file = Path.Combine(_directory, $"{level}_{x}_{y}@{ratio}.png");
+
+						if (File.Exists(file))
+						{
+							continue;
+						}
+
+						await _running
+							.GetOrAdd(file, path => new Lazy<Task<byte[]?>>(() => DrawAsync(tile, path, low: true)))
+							.Value
+							.ConfigureAwait(false);
+					}
+				}
+			}
+
+			DiagnosticLog.Write($"[Plan] {Spec.Key}: levels 0-{deepest} drawn in the background");
+		}
+		catch (OperationCanceledException)
+		{
+		}
+		catch (Exception ex)
+		{
+			DiagnosticLog.Write($"[Plan] pre-drawing stopped: {ex.Message}");
+		}
+	}
+
+	/// <summary>
 	/// Newest first. Nothing is given up: a tile the page stopped waiting for is still drawn (later) and kept, and a
 	/// tile it still waits for is never answered with nothing (that left holes the old level showed through).
 	/// </summary>
@@ -162,7 +230,15 @@ public sealed partial class PdfPlanTiles : IPlanTiles
 				return;
 			}
 
-			_waiting.AddFirst(job);
+			// A tile the page waits for goes before everything; the quiet pre-drawing waits behind it.
+			if (job.Low)
+			{
+				_waiting.AddLast(job);
+			}
+			else
+			{
+				_waiting.AddFirst(job);
+			}
 
 			if (_working)
 			{
@@ -358,5 +434,5 @@ public sealed partial class PdfPlanTiles : IPlanTiles
 			});
 	}
 
-	private sealed record Job(PlanTile Tile, TaskCompletionSource<byte[]?> Done);
+	private sealed record Job(PlanTile Tile, TaskCompletionSource<byte[]?> Done, bool Low = false);
 }

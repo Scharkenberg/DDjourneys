@@ -45,7 +45,10 @@ public static partial class PdfPages
 			int pixelHeight,
 			CancellationToken cancellationToken)
 		{
-			byte[] png = await DrawAsync(left, top, width, height, Ask(pixelWidth), Ask(pixelHeight), cancellationToken).ConfigureAwait(false);
+			int askedWidth = Ask(pixelWidth);
+			int askedHeight = Ask(pixelHeight);
+
+			byte[] png = await DrawAsync(left, top, width, height, askedWidth, askedHeight, cancellationToken).ConfigureAwait(false);
 
 			if (SizeOf(png) is not { } size)
 			{
@@ -57,17 +60,16 @@ public static partial class PdfPages
 				return png;
 			}
 
-			// Measure the factor on a tile big enough to tell (a sliver rounds too coarsely).
-			if (pixelWidth >= 64 && pixelHeight >= 64)
+			// The renderer's factor: its answer per pixel asked for (not multiplied again and again - it is a property
+			// of the display, so it is SET from the answer; a sliver rounds too coarsely to tell).
+			if (askedWidth >= 64 && askedHeight >= 64)
 			{
-				double measured = size.Width / (double)Ask(pixelWidth);
+				double factor = size.Width / (double)askedWidth;
 
-				if (measured is > 0.2 and < 8 && Math.Abs(measured - 1) > 0.02)
+				if (factor is > 0.2 and < 8 && Math.Abs(factor - s_scale) > 0.03)
 				{
-					double before = s_scale;
-
-					s_scale = Math.Clamp(s_scale * measured, 0.2, 8);
-					DiagnosticLog.Write($"[Plan] the PDF renderer answers {measured:F2}x the size asked for; asking for 1/{s_scale / before:F2} from now on");
+					s_scale = factor;
+					DiagnosticLog.Write($"[Plan] the PDF renderer answers {factor:F2}x the size asked for; asking for 1/{factor:F2} from now on");
 
 					png = await DrawAsync(left, top, width, height, Ask(pixelWidth), Ask(pixelHeight), cancellationToken).ConfigureAwait(false);
 				}
