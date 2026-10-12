@@ -15,6 +15,12 @@ public static class BoardCache
 {
 	private const string Key = "boards.cache";
 
+	/// <summary>A stop's board is kept at most this often: the page refreshes every 30 s, and every keep rewrites the whole list.</summary>
+	private static readonly TimeSpan KeepEvery = TimeSpan.FromMinutes(2);
+
+	private static readonly Dictionary<string, DateTimeOffset> Kept = [];
+	private static readonly Lock Gate = new();
+
 	/// <summary>Keeps this stop's board as the newest of the cache (LRU bound, see <see cref="BoardCacheList.Capacity"/>).</summary>
 	public static void Store(
 		string providerId,
@@ -28,6 +34,18 @@ public static class BoardCache
 		if (departures.Count == 0 || string.IsNullOrWhiteSpace(stop.Id))
 		{
 			return;
+		}
+
+		string slot = $"{providerId}|{stop.Id}|{isArrival}";
+
+		lock (Gate)
+		{
+			if (Kept.TryGetValue(slot, out DateTimeOffset last) && DateTimeOffset.UtcNow - last < KeepEvery)
+			{
+				return;
+			}
+
+			Kept[slot] = DateTimeOffset.UtcNow;
 		}
 
 		try

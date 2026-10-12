@@ -127,11 +127,6 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <!-- VvoNetworkMap is defined by DDjourneys.Core; this app-local copy duplicates its public types. -->
-	  <Compile Remove="Core\Providers\Vvo\VvoNetworkMap.cs" />
-	</ItemGroup>
-
-	<ItemGroup>
 	  <!-- The shared keyed row template on the CollectionView's ItemTemplate trips the XAML source
 	       generator (CS0030 in the generated code); this page compiles through classic XamlC instead,
 	       like the two popups below. -->
