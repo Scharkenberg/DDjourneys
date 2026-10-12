@@ -28,7 +28,19 @@ public enum MapMarkerKind
 	Poi,
 
 	/// <summary>An intermediate stop: a small, quiet dot without a name; the popup tells it.</summary>
-	Knot
+	Knot,
+
+	/// <summary>A park &amp; ride site: a small square with a P, coloured by how full it is.</summary>
+	Parking,
+
+	/// <summary>A virtual bike station (an area without docks): a dashed disc with a bike and the count beside it.</summary>
+	Bike,
+
+	/// <summary>A physical bike station with docks (a MOBIpunkt): a solid rounded square with a bike and the count.</summary>
+	Dock,
+
+	/// <summary>A shared vehicle standing free: a small disc in the operator's colour; the label is its glyph (b, e, c, s).</summary>
+	Shared
 }
 
 
@@ -53,6 +65,17 @@ public sealed record MapLine(
 	double Opacity = 1);
 
 
+/// <summary>A filled area on the map (a tariff zone): an outline, a fill colour and a label inside it.</summary>
+public sealed record MapPolygon(
+	IReadOnlyList<(double Latitude, double Longitude)> Points,
+	string Color,
+	double Opacity = 0.12,
+	string? Outline = null,
+	string? Label = null,
+	double? LabelLat = null,
+	double? LabelLon = null);
+
+
 /// <summary>
 /// Everything one map shows. The map itself (MapLibre GL in a HybridWebView) is told about it as JSON; this type
 /// knows nothing about the UI and is the only contract between the app and the map page.
@@ -65,12 +88,19 @@ public sealed class MapScene
 
 	public IReadOnlyList<MapLine> Lines { get; init; } = [];
 
+	/// <summary>Filled areas (tariff zones); drawn under the lines of the same payload.</summary>
+	public IReadOnlyList<MapPolygon> Polygons { get; init; } = [];
+
 	/// <summary>Zoom to everything after applying; false keeps the view the user has chosen.</summary>
 	public bool Fit { get; init; } = true;
 
+	/// <summary>For a layer: the map zoom from which its markers are shown (dense layers stay off the city view).</summary>
+	public double? MinZoom { get; init; }
+
 	public bool IsEmpty =>
 		Markers.Count == 0
-		&& Lines.Count == 0;
+		&& Lines.Count == 0
+		&& Polygons.Count == 0;
 
 	private static string KindName(MapMarkerKind kind) =>
 		kind switch
@@ -82,6 +112,10 @@ public sealed class MapScene
 			MapMarkerKind.Me => "me",
 			MapMarkerKind.Poi => "poi",
 			MapMarkerKind.Knot => "knot",
+			MapMarkerKind.Parking => "parking",
+			MapMarkerKind.Bike => "bike",
+			MapMarkerKind.Dock => "dock",
+			MapMarkerKind.Shared => "shared",
 			_ => "stop"
 		};
 
@@ -107,6 +141,11 @@ public sealed class MapScene
 			writer.WriteStartObject();
 			writer.WriteBoolean("dark", dark);
 			writer.WriteBoolean("fit", fit ?? Fit);
+
+			if (MinZoom is { } minZoom)
+			{
+				writer.WriteNumber("minZoom", minZoom);
+			}
 
 			writer.WriteStartArray("markers");
 
@@ -158,6 +197,62 @@ public sealed class MapScene
 				writer.WriteBoolean("dashed", line.Dashed);
 				writer.WriteNumber("weight", line.Weight);
 				writer.WriteNumber("opacity", Math.Clamp(line.Opacity, 0.05, 1));
+				writer.WriteStartArray("points");
+
+				foreach ((double latitude, double longitude) in points)
+				{
+					writer.WriteStartArray();
+					writer.WriteNumberValue(latitude);
+					writer.WriteNumberValue(longitude);
+					writer.WriteEndArray();
+				}
+
+				writer.WriteEndArray();
+				writer.WriteEndObject();
+			}
+
+			writer.WriteEndArray();
+
+			// The same payload serves scenes ("set") and layers ("layer"): polygons ride along with the lines.
+			writer.WriteStartArray("polygons");
+
+			foreach (MapPolygon polygon in Polygons)
+			{
+				var points =
+					polygon.Points
+						.Where(point => IsValid(point.Latitude, point.Longitude))
+						.ToArray();
+
+				// Fewer than three distinct points draw nothing.
+				if (points.Distinct().Count() < 3)
+				{
+					continue;
+				}
+
+				writer.WriteStartObject();
+				writer.WriteString("color", color is null ? polygon.Color : color(polygon.Color));
+				writer.WriteNumber("opacity", Math.Clamp(polygon.Opacity, 0.02, 0.5));
+
+				if (polygon.Outline is { Length: > 0 } outline)
+				{
+					writer.WriteString("outline", color is null ? outline : color(outline));
+				}
+
+				if (polygon.Label is { Length: > 0 } label)
+				{
+					writer.WriteString("label", label);
+
+					if (polygon.LabelLat is { } labelLat
+						&& polygon.LabelLon is { } labelLon
+						&& IsValid(labelLat, labelLon))
+					{
+						writer.WriteStartArray("at");
+						writer.WriteNumberValue(labelLat);
+						writer.WriteNumberValue(labelLon);
+						writer.WriteEndArray();
+					}
+				}
+
 				writer.WriteStartArray("points");
 
 				foreach ((double latitude, double longitude) in points)

@@ -6,9 +6,30 @@ namespace DDjourneys;
 
 public partial class AppShell : Shell
 {
-	public AppShell()
+	public AppShell(AppSettings settings)
 	{
+		ArgumentNullException.ThrowIfNull(settings);
+
 		InitializeComponent();
+
+		// The phone shows the tab bar, every other form factor keeps the single door (the planner). The one not
+		// needed leaves the tree here, before anything is shown: Shell builds a tab's page only when the tab is
+		// first opened, so the planner exists only once, and with one door gone the "plan" route is unambiguous.
+		if (DeviceInfo.Current.Idiom == DeviceIdiom.Phone)
+		{
+			Items.Remove(SingleDoor);
+
+			// The start screen choice (Settings): which tab the app opens on. Setting the tab bar's current tab is
+			// no navigation: the shell opens right on it, nothing flashes.
+			if (settings.StartScreen == StartScreen.Map)
+			{
+				PhoneTabs.CurrentItem = MapTab;
+			}
+		}
+		else
+		{
+			Items.Remove(PhoneTabs);
+		}
 
 		// Up and showing a page for a few seconds: this start counts as finished (see StartupGuard).
 		Navigated += OnFirstNavigated;
@@ -31,6 +52,11 @@ public partial class AppShell : Shell
 		Routing.RegisterRoute(Routes.Disruption, typeof(DisruptionPage));
 		Routing.RegisterRoute(Routes.Vehicles, typeof(VehiclesPage));
 		Routing.RegisterRoute(Routes.Map, typeof(MapPage));
+		Routing.RegisterRoute(Routes.NetworkMap, typeof(ZonePlanPage));
+		Routing.RegisterRoute(Routes.ZonePlan, typeof(ZonePlanPage));
+#if WINDOWS
+		Routing.RegisterRoute(Routes.WidgetSetup, typeof(WidgetSetupPage));
+#endif
 
 		Navigating += OnNavigating;
 

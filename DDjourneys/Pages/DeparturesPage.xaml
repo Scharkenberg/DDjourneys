@@ -6,6 +6,7 @@
 	xmlns:core="clr-namespace:DDjourneys.Core.Models;assembly=DDjourneys.Core"
 	xmlns:local="clr-namespace:DDjourneys.Pages"
 	xmlns:localization="clr-namespace:DDjourneys.Localization"
+	xmlns:mct="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
 	xmlns:support="clr-namespace:DDjourneys.Support"
 	Title="{localization:Tr Departures.Title}"
 	x:DataType="local:DeparturesViewModel">
@@ -20,7 +21,7 @@
 				<Grid
 					support:Dense.Padding="12,4"
 					support:Dense.MinHeight="{StaticResource HitRowTight}"
-					ColumnDefinitions="*,Auto,Auto,Auto"
+					ColumnDefinitions="*,Auto,Auto,Auto,Auto"
 					ColumnSpacing="0"
 					SemanticProperties.Description="{localization:Tr Departures.Stop}">
 
@@ -52,6 +53,15 @@
 						Glyph="Refresh"
 						IsVisible="{Binding HasStop}"
 						SemanticProperties.Description="{localization:Tr Departures.Refresh}"
+						TargetSize="{StaticResource HitIconTight}" />
+
+					<!--  Share this stop: the QR sheet with the text and links (the stop, not a row)  -->
+					<controls:IconButton
+						Grid.Column="4"
+						Clicked="ShareClicked"
+						Glyph="Share"
+						IsVisible="{Binding HasStop}"
+						SemanticProperties.Description="{localization:Tr Extras.ShareStop}"
 						TargetSize="{StaticResource HitIconTight}" />
 
 					<Grid.GestureRecognizers>
@@ -121,6 +131,64 @@
 						StyleClass="Caption"
 						Text="{Binding Message}" />
 
+				<!--  Lines of the stop as filter chips: a tap toggles a line, a long press keeps only that line; the last chip shows cancelled rows  -->
+				<Border
+					Padding="0"
+					IsVisible="{Binding ShowLineFilter}"
+					StyleClass="Card">
+					<ScrollView Orientation="Horizontal">
+						<HorizontalStackLayout Padding="12,8" Spacing="{DynamicResource SpaceS}">
+
+							<!--  Every line again (appears while a line is picked)  -->
+							<Border
+								IsVisible="{Binding HasLineSelection}"
+								StyleClass="ChipButton"
+								support:Themed.Background="Clear"
+								SemanticProperties.Description="{localization:Tr Departures.AllLines}">
+								<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Departures.AllLines}" />
+								<Border.GestureRecognizers>
+									<TapGestureRecognizer Command="{Binding ClearLineFilterCommand}" />
+								</Border.GestureRecognizers>
+							</Border>
+
+							<HorizontalStackLayout BindableLayout.ItemsSource="{Binding LineChips}" Spacing="{DynamicResource SpaceS}">
+								<BindableLayout.ItemTemplate>
+									<DataTemplate x:DataType="local:LineFilterChip">
+										<Border
+											Padding="12,6"
+											StyleClass="ChipButton"
+											support:Themed.Background="Clear"
+											support:Themed.IsOn="{Binding IsSelected}"
+											support:Themed.OnBackground="AccentSoft"
+											SemanticProperties.Description="{Binding Description}"
+											SemanticProperties.Hint="{localization:Tr Departures.OnlyThisLine}">
+											<Label FontFamily="{DynamicResource FontSemibold}" Text="{Binding Name}" />
+											<Border.Behaviors>
+												<mct:TouchBehavior
+													Command="{Binding ToggleCommand}"
+													LongPressCommand="{Binding OnlyCommand}" />
+											</Border.Behaviors>
+										</Border>
+									</DataTemplate>
+								</BindableLayout.ItemTemplate>
+							</HorizontalStackLayout>
+
+							<!--  Cancelled rows: hidden by default, struck through when shown  -->
+							<Border
+								StyleClass="ChipButton"
+								support:Themed.Background="Clear"
+								support:Themed.IsOn="{Binding ShowCancelled}"
+								support:Themed.OnBackground="AccentSoft"
+								SemanticProperties.Description="{localization:Tr Departures.ShowCancelled}">
+								<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Departures.ShowCancelled}" />
+								<Border.GestureRecognizers>
+									<TapGestureRecognizer Command="{Binding ToggleCancelledCommand}" />
+								</Border.GestureRecognizers>
+							</Border>
+						</HorizontalStackLayout>
+					</ScrollView>
+				</Border>
+
 				<!--  Departure rows  -->
 				<Border Padding="0" StyleClass="Card">
 					<Border.Triggers>
@@ -170,7 +238,8 @@
 											VerticalOptions="Center">
 											<Label
 												LineBreakMode="TailTruncation"
-												Text="{Binding Direction}" />
+												Text="{Binding Direction}"
+												TextDecorations="{Binding TextDecorations}" />
 											<HorizontalStackLayout Spacing="8">
 												<Label
 													IsVisible="{Binding HasPlatform}"
@@ -204,7 +273,8 @@
 												<Label
 													FontFamily="{DynamicResource FontSemibold}"
 													HorizontalTextAlignment="End"
-													Text="{Binding TimeText}" />
+													Text="{Binding TimeText}"
+													TextDecorations="{Binding TextDecorations}" />
 												<Label
 													HorizontalTextAlignment="End"
 													IsVisible="{Binding HasDelay}"
@@ -239,7 +309,7 @@
 						<VerticalStackLayout BindableLayout.ItemsSource="{Binding Nearby}">
 							<BindableLayout.ItemTemplate>
 								<DataTemplate x:DataType="local:NearbyRow">
-									<Grid RowDefinitions="Auto,Auto" RowSpacing="0">
+									<Grid RowDefinitions="Auto,Auto,Auto" RowSpacing="0">
 										<Grid
 											support:Dense.Padding="12,8"
 											support:Dense.MinHeight="{StaticResource HitRow}"
@@ -261,7 +331,51 @@
 													CommandParameter="{Binding .}" />
 											</Grid.GestureRecognizers>
 										</Grid>
-										<BoxView Grid.Row="1" StyleClass="Divider" />
+										<!--  Next departures of this stop: one line chip with its minutes; tap the strip for up to three  -->
+										<HorizontalStackLayout
+											Grid.Row="1"
+											Margin="12,0,12,6"
+											BindableLayout.ItemsSource="{Binding ShownPreview}"
+											IsVisible="{Binding HasPreview}"
+											SemanticProperties.Description="{localization:Tr Departures.MoreDepartures}"
+											Spacing="{DynamicResource SpaceS}"
+											support:Motion.Feedback="True">
+												<BindableLayout.ItemTemplate>
+													<DataTemplate x:DataType="local:NearbyPreview">
+														<HorizontalStackLayout Margin="0,0,10,0" Spacing="4">
+															<Border
+																BackgroundColor="{Binding Look.Fill}"
+																StrokeDashArray="{Binding Look.Dashes}"
+																StrokeShape="{Binding Look.Shape}"
+																StrokeThickness="{Binding Look.StrokeThickness}"
+																StyleClass="Chip"
+																Stroke="{Binding Look.Stroke}"
+																HorizontalOptions="Start"
+																VerticalOptions="Center"
+																WidthRequest="56">
+																	<support:PillScroll>
+																		<Label
+																			FontFamily="{DynamicResource FontSemibold}"
+																			FontSize="{StaticResource FontCaption}"
+																			StyleClass="ChipLabel"
+																			Text="{Binding LineText}"
+																			TextColor="{Binding Look.Text}" />
+																	</support:PillScroll>
+																</Border>
+															<Label
+																StyleClass="Caption"
+																Text="{Binding TimeText}"
+																VerticalOptions="Center" />
+														</HorizontalStackLayout>
+													</DataTemplate>
+												</BindableLayout.ItemTemplate>
+											<HorizontalStackLayout.GestureRecognizers>
+												<TapGestureRecognizer
+													Command="{Binding Source={RelativeSource AncestorType={x:Type local:DeparturesViewModel}}, x:DataType=local:DeparturesViewModel, Path=ExpandNearbyCommand}"
+													CommandParameter="{Binding .}" />
+											</HorizontalStackLayout.GestureRecognizers>
+										</HorizontalStackLayout>
+										<BoxView Grid.Row="2" StyleClass="Divider" />
 									</Grid>
 								</DataTemplate>
 							</BindableLayout.ItemTemplate>
@@ -306,7 +420,7 @@
 											<Grid
 												Grid.Row="1"
 												support:Dense.Padding="12,8"
-												ColumnDefinitions="68,*"
+												ColumnDefinitions="68,*,Auto,Auto"
 												ColumnSpacing="10">
 												<Border
 													BackgroundColor="{Binding Look.Fill}"
@@ -331,6 +445,21 @@
 													Grid.Column="1"
 													StyleClass="Caption"
 													Text="{Binding DirectionsText}" />
+												<controls:IconButton
+													Grid.Column="2"
+													Command="{Binding Source={RelativeSource AncestorType={x:Type local:DeparturesViewModel}}, x:DataType=local:DeparturesViewModel, Path=OpenLineMapCommand}"
+													CommandParameter="{Binding .}"
+													Glyph="Route"
+													SemanticProperties.Description="{localization:Tr Extras.RunWholeLine}"
+													VerticalOptions="Center" />
+												<!--  B4: the star watches this line for disruptions  -->
+												<controls:IconButton
+													Grid.Column="3"
+													Command="{Binding Source={RelativeSource AncestorType={x:Type local:DeparturesViewModel}}, x:DataType=local:DeparturesViewModel, Path=ToggleWatchCommand}"
+													CommandParameter="{Binding .}"
+													Glyph="{Binding WatchStar}"
+													SemanticProperties.Description="{Binding WatchDescription}"
+													VerticalOptions="Center" />
 											</Grid>
 										</Grid>
 									</DataTemplate>

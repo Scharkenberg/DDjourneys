@@ -10,6 +10,9 @@ public sealed class TimelineTemplateSelector : DataTemplateSelector
 	public DataTemplate? Interchange { get; set; }
 	public DataTemplate? Notice { get; set; }
 
+	/// <summary>An on-demand leg (Anruf-Linien-Bus / alita): booked before it starts.</summary>
+	public DataTemplate? OnDemand { get; set; }
+
 	protected override DataTemplate OnSelectTemplate(object item, BindableObject container) =>
 		(item switch
 		{
@@ -19,6 +22,7 @@ public sealed class TimelineTemplateSelector : DataTemplateSelector
 			WalkRow => Walk,
 			InterchangeRow => Interchange,
 			NoticeRow => Notice,
+			OnDemandRow => OnDemand,
 			_ => null
 		}) ?? throw new InvalidOperationException($"No timeline template for {item.GetType().Name}.");
 }

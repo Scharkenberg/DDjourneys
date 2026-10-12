@@ -1,6 +1,7 @@
 using DDjourneys.Core.Diagnostics;
 using System.Collections.ObjectModel;
 using System.Globalization;
+using DDjourneys.Controls;
 using DDjourneys.Core.Models;
 using DDjourneys.Core.Providers;
 using DDjourneys.Core.Providers.Abstractions;
@@ -128,6 +129,12 @@ public sealed record DepartureRow(
 	public bool IsCancelled =>
 		Departure.IsCancelled;
 
+	/// <summary>Cancelled rows are struck through when the "show cancelled" toggle lets them through.</summary>
+	public TextDecorations TextDecorations =>
+		Departure.IsCancelled
+			? TextDecorations.Strikethrough
+			: TextDecorations.None;
+
 	private static string CancelledText =>
 		LocalizationService.Current.CurrentStrings.Departures.Cancelled;
 
@@ -147,46 +154,191 @@ public sealed record DepartureRow(
 }
 
 
-/// <summary>A stop near the passenger.</summary>
-public sealed record NearbyRow(
-	NearbyStop Nearby)
+/// <summary>One next departure of a nearby row: the line chip and how far away it leaves.</summary>
+public sealed record NearbyPreview(Departure Departure)
 {
+	public string LineText =>
+		string.IsNullOrWhiteSpace(Departure.Line.Name)
+			? Format.TransportMode(Departure.Line.Mode)
+			: Departure.Line.Name;
+
+	public ChipLook Look =>
+		ModeChips.For(Departure.Line.Mode);
+
+	/// <summary>"3′" — the minutes until it leaves ("now" when it is this minute; ceil, never 0′).</summary>
+	public string TimeText
+	{
+		get
+		{
+			DeparturesStrings strings =
+				LocalizationService.Current.CurrentStrings.Departures;
+
+			double minutes =
+				(Departure.Effective - Format.Now()).TotalMinutes;
+
+			return minutes < 1
+				? strings.NowShort
+				: string.Format(
+					CultureInfo.CurrentCulture,
+					strings.InMinutesShort,
+					(int)Math.Ceiling(minutes));
+		}
+	}
+}
+
+/// <summary>A stop near the passenger, with the next departures it previews (loaded one row at a time).</summary>
+public sealed partial class NearbyRow(
+	NearbyStop nearby) : ObservableObject
+{
+	public NearbyStop Nearby =>
+		nearby;
+
 	public Location Stop =>
-		Nearby.Stop;
+		nearby.Stop;
 
 	public string Name =>
-		Nearby.Stop.Name;
+		nearby.Stop.Name;
 
 	public string? Place =>
 		StopLabel.PlaceFor(
-			Nearby.Stop.Name,
-			Nearby.Stop.Place);
+			nearby.Stop.Name,
+			nearby.Stop.Place);
 
 	public string DistanceText =>
 		string.Format(
 			CultureInfo.CurrentCulture,
 			LocalizationService.Current.CurrentStrings.Departures.Metres,
-			Nearby.DistanceMeters);
+			nearby.DistanceMeters);
+
+	/// <summary>Up to three next departures, once the row's board has arrived (one request per row, staggered).</summary>
+	public IReadOnlyList<NearbyPreview> Preview
+	{
+		get;
+
+		private set
+		{
+			if (SetProperty(ref field, value))
+			{
+				OnPropertyChanged(nameof(HasPreview));
+				OnPropertyChanged(nameof(ShownPreview));
+			}
+		}
+	} = [];
+
+	/// <summary>The row's board has arrived: its next departures (fed by the page's staggered loader).</summary>
+	public void Adopt(IReadOnlyList<NearbyPreview> departures) =>
+			Preview = departures;
+
+	public bool HasPreview =>
+		Preview.Count > 0;
+
+	/// <summary>Collapsed shows one departure; expanded up to three.</summary>
+	public bool IsExpanded
+	{
+		get;
+
+		set
+		{
+			if (SetProperty(ref field, value))
+			{
+				OnPropertyChanged(nameof(ShownPreview));
+			}
+		}
+	}
+
+	public IReadOnlyList<NearbyPreview> ShownPreview =>
+		(List<NearbyPreview>)[.. Preview.Take(IsExpanded ? 3 : 1)];
 }
 
 
-/// <summary>A line that serves the chosen stop.</summary>
-public sealed record StopLineRow(
-	StopLine Line)
+/// <summary>
+/// A line that serves the chosen stop. Carries the watch state of B4: the star beside the row watches the line
+/// for disruptions (<see cref="Support.WatchedLines"/>, provider-scoped).
+/// </summary>
+public sealed partial class StopLineRow(
+	StopLine line) : ObservableObject
 {
+	public StopLine Line =>
+		line;
+
 	public string LineText =>
-		Line.Name;
+		line.Name;
 
 	public ChipLook Look =>
-		ModeChips.For(Line.Mode);
+		ModeChips.For(line.Mode);
 
 	public string DirectionsText =>
 		string.Join(
 			"\n",
-			Line.Directions.Select(direction => direction.Name));
+			line.Directions.Select(direction => direction.Name));
 
 	public bool HasChanges =>
-		Line.RouteChangeIds.Count > 0;
+		line.RouteChangeIds.Count > 0;
+
+	/// <summary>Whether the passenger watches this line for disruptions (the star is filled then).</summary>
+	public bool IsWatched
+	{
+		get;
+
+		set
+		{
+			if (SetProperty(ref field, value))
+			{
+				OnPropertyChanged(nameof(WatchStar));
+				OnPropertyChanged(nameof(WatchDescription));
+			}
+		}
+	}
+
+	public IconGlyph WatchStar =>
+		IsWatched ? IconGlyph.StarFilled : IconGlyph.Star;
+
+	/// <summary>"Watch line 11" / "Stop watching line 11": what the star says to a screen reader.</summary>
+	public string WatchDescription =>
+		string.Format(
+			CultureInfo.CurrentCulture,
+			IsWatched
+				? LocalizationService.Current.CurrentStrings.WatchedLines.UnwatchLine
+				: LocalizationService.Current.CurrentStrings.WatchedLines.WatchLine,
+			LineText);
+}
+
+
+
+/// <summary>One line of the filter chip row above the board: a tap toggles it, a long press keeps only it.</summary>
+public sealed partial class LineFilterChip(
+	string name,
+	string key,
+	Action<LineFilterChip> toggle,
+	Action<LineFilterChip> only) : ObservableObject
+{
+	/// <summary>Own commands: a behavior in a template cannot bind through a relative source (it is no Element).</summary>
+	public Command ToggleCommand =>
+		field ??= new Command(() => toggle(this));
+
+	public Command OnlyCommand =>
+		field ??= new Command(() => only(this));
+
+	public string Name =>
+		name;
+
+	/// <summary>The line's key in the filter (<see cref="BoardFilter.LineKey"/>).</summary>
+	public string Key =>
+		key;
+
+	/// <summary>"Line 11": what the chip says to a screen reader.</summary>
+	public string Description =>
+		string.Format(
+			CultureInfo.CurrentCulture,
+			LocalizationService.Current.CurrentStrings.Departures.LineChipDescription,
+			name);
+
+	public bool IsSelected
+	{
+		get;
+
+		set => SetProperty(ref field, value);
+	}
 }
 
 
@@ -268,7 +420,14 @@ public sealed partial class DeparturesViewModel : DisposableViewModel
 {
 	private const int NearbyRadius = 600;
 
+	/// <summary>Nearby rows that preview their next departures per pass (a request cap; the nearest first).</summary>
+	private const int NearbyPreviewStops = 8;
+
+	/// <summary>Departures a nearby row previews when expanded (one when collapsed).</summary>
+	private const int NearbyPreviewRows = 3;
+
 	private readonly DepartureService _departures;
+	private readonly LineCourseService _lineCourses;
 	private readonly NetworkService _network;
 	private readonly OpenDataService _openData;
 	private readonly LocationService _locations;
@@ -276,6 +435,7 @@ public sealed partial class DeparturesViewModel : DisposableViewModel
 	private readonly PlaceStore _store;
 	private readonly AppSettings _settings;
 	private readonly LocalizationService _localization;
+	private readonly ProviderRegistry _providers;
 
 	private DateTime _when;
 	private bool _syncing;
@@ -287,9 +447,15 @@ public sealed partial class DeparturesViewModel : DisposableViewModel
 	private IReadOnlyList<Departure> _current = [];
 	private CancellationTokenSource? _refresh;
 	private CancellationTokenSource? _info;
+	private CancellationTokenSource? _previews;
+
+	// The board filter: the lines picked in the chip row (their keys, see BoardFilter.LineKey) and the
+	// cancelled toggle below them. Nothing is picked by default: the board looks exactly as it came.
+	private readonly HashSet<string> _selectedLines = new(StringComparer.Ordinal);
 
 	public DeparturesViewModel(
 		DepartureService departures,
+		LineCourseService lineCourses,
 		NetworkService network,
 		OpenDataService openData,
 		LocationService locations,
@@ -301,6 +467,7 @@ public sealed partial class DeparturesViewModel : DisposableViewModel
 		ArgumentNullException.ThrowIfNull(providers);
 
 		ArgumentNullException.ThrowIfNull(departures);
+		ArgumentNullException.ThrowIfNull(lineCourses);
 		ArgumentNullException.ThrowIfNull(network);
 		ArgumentNullException.ThrowIfNull(openData);
 		ArgumentNullException.ThrowIfNull(locations);
@@ -309,6 +476,7 @@ public sealed partial class DeparturesViewModel : DisposableViewModel
 		ArgumentNullException.ThrowIfNull(settings);
 
 		_departures = departures;
+		_lineCourses = lineCourses;
 		_network = network;
 		_openData = openData;
 		_locations = locations;
@@ -316,6 +484,7 @@ public sealed partial class DeparturesViewModel : DisposableViewModel
 		_store = store;
 		_settings = settings;
 		_localization = LocalizationService.Current;
+		_providers = providers;
 		_when = Format.NowLocal();
 
 		ListenToLocalization(
@@ -405,6 +574,49 @@ public sealed partial class DeparturesViewModel : DisposableViewModel
 			new AsyncCommand(
 				OpenMapAsync);
 
+		OpenLineMapCommand =
+			new AsyncCommand<StopLineRow>(
+				row => row is not null && Stop is not null
+					? OpenLineMapAsync(row)
+					: Task.CompletedTask);
+
+		ToggleLineCommand =
+			new Command<LineFilterChip>(
+				chip =>
+				{
+					if (chip is not null)
+					{
+						ToggleLine(chip);
+					}
+				});
+
+		OnlyLineCommand =
+			new Command<LineFilterChip>(
+				chip =>
+				{
+					if (chip is not null)
+					{
+						OnlyLine(chip);
+					}
+				});
+
+		ClearLineFilterCommand =
+			new Command(ClearLineFilter);
+
+		ToggleCancelledCommand =
+			new Command(
+				() => ShowCancelled = !ShowCancelled);
+
+		ExpandNearbyCommand =
+			new Command<NearbyRow>(
+				row =>
+				{
+					if (row is not null)
+					{
+						row.IsExpanded = !row.IsExpanded;
+					}
+				});
+
 		RefreshQuickPicks();
 	}
 
@@ -446,6 +658,24 @@ public sealed partial class DeparturesViewModel : DisposableViewModel
 	/// <summary>Shows the stop, the stops near the passenger and the service points on a map.</summary>
 	public AsyncCommand OpenMapCommand { get; }
 
+	/// <summary>Shows the course of the whole line on the map (both directions when they can be told apart).</summary>
+	public AsyncCommand<StopLineRow> OpenLineMapCommand { get; }
+
+	/// <summary>Toggles one line of the filter chip row (multi-select).</summary>
+	public Command<LineFilterChip> ToggleLineCommand { get; }
+
+	/// <summary>Long press on a chip: exactly this line (a long press on the only picked line clears the filter).</summary>
+	public Command<LineFilterChip> OnlyLineCommand { get; }
+
+	/// <summary>Every line again: clears the line pick.</summary>
+	public Command ClearLineFilterCommand { get; }
+
+	/// <summary>Shows the cancelled rows (hidden by default; shown struck-through).</summary>
+	public Command ToggleCancelledCommand { get; }
+
+	/// <summary>Expands a nearby row's preview from one departure to three.</summary>
+	public Command<NearbyRow> ExpandNearbyCommand { get; }
+
 	public ObservableCollection<AccessRow> Accessibility { get; } = [];
 
 	public ObservableCollection<ServicePointRow> ServicePoints { get; } = [];
@@ -455,6 +685,9 @@ public sealed partial class DeparturesViewModel : DisposableViewModel
 	public ObservableCollection<NearbyRow> Nearby { get; } = [];
 
 	public ObservableCollection<StopLineRow> Lines { get; } = [];
+
+	/// <summary>The lines of the stop as filter chips above the board (see <see cref="ShowLineFilter"/>).</summary>
+	public ObservableCollection<LineFilterChip> LineChips { get; } = [];
 
 	public ObservableCollection<Location> QuickPicks { get; } = [];
 
@@ -471,6 +704,7 @@ public sealed partial class DeparturesViewModel : DisposableViewModel
 				OnPropertyChanged(nameof(HasStop));
 				OnPropertyChanged(nameof(NoStop));
 				OnPropertyChanged(nameof(ShowQuickPicks));
+				OnPropertyChanged(nameof(ShowLineFilter));
 			}
 		}
 	}
@@ -647,6 +881,28 @@ public sealed partial class DeparturesViewModel : DisposableViewModel
 	public bool HasLines =>
 		Lines.Count > 0;
 
+	/// <summary>Cancelled rows are hidden by default; when the toggle shows them they are struck through.</summary>
+	public bool ShowCancelled
+	{
+		get;
+
+		private set
+		{
+			if (SetProperty(ref field, value))
+			{
+				RebuildRows();
+			}
+		}
+	}
+
+	/// <summary>Whether the chip row has anything to filter: it needs the stop and its lines.</summary>
+	public bool ShowLineFilter =>
+		HasStop && LineChips.Count > 0;
+
+	/// <summary>Whether any line is picked (the clear chip appears).</summary>
+	public bool HasLineSelection =>
+		_selectedLines.Count > 0;
+
 	public bool ShowAccessibility
 	{
 		get;
@@ -732,6 +988,65 @@ public sealed partial class DeparturesViewModel : DisposableViewModel
 	public bool HasServicePointsMessage =>
 		ServicePointsMessage.Length > 0;
 
+	/// <summary>Where this line actually goes: the next run of the line from this stop's board, both
+	/// directions when they can be told apart, as one map.</summary>
+	private async Task OpenLineMapAsync(StopLineRow row)
+	{
+		if (Stop is not { } stop)
+		{
+			return;
+		}
+
+		try
+		{
+			var station =
+				new Station
+				{
+					Id = stop.Id ?? string.Empty,
+					ProviderId = stop.ProviderId,
+					Name = stop.Name,
+					Place = stop.Place,
+					Latitude = stop.Latitude,
+					Longitude = stop.Longitude
+				};
+
+			IReadOnlyList<LineCourse> courses =
+				await _lineCourses.BothDirectionsAsync(
+					new TransitLine { Name = row.Line.Name, Mode = row.Line.Mode },
+					station,
+					_settings.TimeoutSeconds);
+
+			if (courses.Count == 0)
+			{
+				Message = _localization.CurrentStrings.Extras.LineMapNone;
+
+				return;
+			}
+
+			LineCourse first = courses[0];
+
+			string title =
+				string.Format(
+					CultureInfo.CurrentCulture,
+					_localization.CurrentStrings.Extras.LineCourseTitle,
+					first.LineName,
+					first.FirstTerminus ?? string.Empty,
+					first.LastTerminus ?? string.Empty);
+
+			// B4: the diversions note of the line rides along (active route changes; failures stay quiet).
+			string? notice = await LineCourseNotices.OfLineAsync(_network, first.LineName);
+
+			await MapScenes.OpenAsync(
+				MapScenes.FromLineCourses(courses),
+				title,
+				notice: notice);
+		}
+		catch (Exception ex)
+		{
+			DiagnosticLog.Write($"[Departures] line map for {row.Line.Name} failed: {ex.Message}");
+		}
+	}
+
 	/// <summary>
 	/// Stop ids, lines and boards belong to one provider: after a switch nothing of the old one is kept, and the
 	/// quick picks are those of the new provider's favourites and recents.
@@ -747,12 +1062,16 @@ public sealed partial class DeparturesViewModel : DisposableViewModel
 
 				_refresh?.Cancel();
 				_info?.Cancel();
+				_previews?.Cancel();
 
 				Stop = null;
 				_current = [];
 				Rows.Clear();
 				Nearby.Clear();
 				Lines.Clear();
+				LineChips.Clear();
+				_selectedLines.Clear();
+				ShowCancelled = false;
 				_linesLoaded = false;
 				Accessibility.Clear();
 				AccessibilityMessage = string.Empty;
@@ -766,6 +1085,8 @@ public sealed partial class DeparturesViewModel : DisposableViewModel
 				OnPropertyChanged(nameof(HasLines));
 				OnPropertyChanged(nameof(LinesSummary));
 				OnPropertyChanged(nameof(ServicePointsSummary));
+				OnPropertyChanged(nameof(HasLineSelection));
+				OnPropertyChanged(nameof(ShowLineFilter));
 
 				RefreshQuickPicks();
 			});
@@ -794,6 +1115,11 @@ public sealed partial class DeparturesViewModel : DisposableViewModel
 		Rows.Clear();
 		Lines.Clear();
 		_linesLoaded = false;
+		_selectedLines.Clear();
+		ShowCancelled = false;
+		LineChips.Clear();
+		OnPropertyChanged(nameof(HasLineSelection));
+		OnPropertyChanged(nameof(ShowLineFilter));
 		Accessibility.Clear();
 		AccessibilityMessage = string.Empty;
 		_accessibilityFor = null;
@@ -865,9 +1191,18 @@ public sealed partial class DeparturesViewModel : DisposableViewModel
 
 			_current = board.Departures;
 			RebuildRows();
+			RebuildLineChips();
 
+			// The board of now is what the page can still answer offline (B7); a board for a chosen
+			// other time is not. The widget board passes write the same cache from their own side.
+			if (IsNow)
+			{
+				BoardCache.Store(_providers.SelectedId, stop, IsArrival, _current);
+			}
+
+			// What is shown, not what was fetched: a filter that empties the board is honest about it.
 			Message =
-				_current.Count == 0
+				Rows.Count == 0
 					? _localization.CurrentStrings.Departures.NoDepartures
 					: string.Empty;
 
@@ -884,7 +1219,25 @@ public sealed partial class DeparturesViewModel : DisposableViewModel
 		{
 			DiagnosticLog.Write($"Departures failed: {ex}");
 
-			if (!silent || Rows.Count == 0)
+			// Offline, or the provider is down: the last board of this stop still answers, stamped with
+			// when it was fetched (B7). Only when nothing is on screen — a silent pass keeps the rows it
+			// has, and those are at least as fresh as the cache. A cache miss is today's error path.
+			if (IsNow
+				&& Rows.Count == 0
+				&& stop.Id is { } stopId
+				&& BoardCache.Find(_providers.SelectedId, stopId, IsArrival) is { } cached)
+			{
+				_current = cached.Departures;
+				RebuildRows();
+				RebuildLineChips();
+
+				Message =
+					string.Format(
+						CultureInfo.CurrentCulture,
+						_localization.CurrentStrings.Departures.CachedBoard,
+						Format.Time(cached.Fetched));
+			}
+			else if (!silent || Rows.Count == 0)
 			{
 				Message =
 					string.IsNullOrWhiteSpace(ex.Message)
@@ -898,6 +1251,12 @@ public sealed partial class DeparturesViewModel : DisposableViewModel
 			{
 				IsBusy = false;
 			}
+		}
+
+		// A refresh the passenger asked for also freshens the nearby previews; the 30-second pass does not.
+		if (!silent && Nearby.Count > 0 && !IsDisposed)
+		{
+			_ = LoadNearbyPreviewsAsync();
 		}
 	}
 
@@ -962,7 +1321,9 @@ public sealed partial class DeparturesViewModel : DisposableViewModel
 
 			Nearby.Clear();
 
-			foreach (NearbyStop stop in found)
+			// Nearest first (the same order the "next departures around" widget uses): the preview cap
+			// then reaches the stops that matter.
+			foreach (NearbyStop stop in found.OrderBy(stop => stop.DistanceMeters))
 			{
 				Nearby.Add(new NearbyRow(stop));
 			}
@@ -974,9 +1335,15 @@ public sealed partial class DeparturesViewModel : DisposableViewModel
 			{
 				Message = _localization.CurrentStrings.Plan.NoStopNearby;
 			}
-			else if (Stop is null)
+			else
 			{
-				SetStop(found[0].Stop);
+				// The nearest rows preview their next departures (the widget's shared path, one row at a time).
+				_ = LoadNearbyPreviewsAsync();
+
+				if (Stop is null)
+				{
+					SetStop(found[0].Stop);
+				}
 			}
 		}
 		catch (OperationCanceledException)
@@ -1175,10 +1542,9 @@ public sealed partial class DeparturesViewModel : DisposableViewModel
 
 		try
 		{
-			if (ShowLines)
-			{
-				_ = LoadLinesAsync(stop);
-			}
+			// The stop's lines are the filter chip row's full set, so they load with the stop (cached ten
+			// minutes); the lines section then only shows them.
+			_ = LoadLinesAsync(stop);
 
 			if (stop.Latitude is { } latitude
 				&& stop.Longitude is { } longitude)
@@ -1225,12 +1591,18 @@ public sealed partial class DeparturesViewModel : DisposableViewModel
 
 			foreach (StopLine line in lines.OrderBy(line => line.Name, StringComparer.CurrentCultureIgnoreCase))
 			{
-				Lines.Add(new StopLineRow(line));
+				// The star state comes with the row (the watch list is read once per load).
+				Lines.Add(
+					new StopLineRow(line)
+					{
+						IsWatched = WatchedLines.IsWatched(stop.ProviderId, line.Name)
+					});
 			}
 
 			_linesLoaded = true;
 			OnPropertyChanged(nameof(HasLines));
 			OnPropertyChanged(nameof(LinesSummary));
+			RebuildLineChips();
 		}
 		catch (OperationCanceledException)
 		{
@@ -1298,12 +1670,165 @@ public sealed partial class DeparturesViewModel : DisposableViewModel
 	private void RebuildRows()
 	{
 		// The board is refreshed every half minute and hardly changes: rows that show the same stay as they are.
-		List<DepartureRow> board = [.. _current.Select(departure => new DepartureRow(departure))];
+		List<DepartureRow> board =
+			[.. BoardFilter.Apply(_current, _selectedLines, ShowCancelled)
+				.Select(departure => new DepartureRow(departure))];
 
 		CollectionSync.Merge(
 			Rows,
 			board,
 			static (shown, next) => shown.Shows(next));
+	}
+
+	// ---------- The line filter and the cancelled toggle ----------
+
+	private void ToggleLine(LineFilterChip chip)
+	{
+		if (!_selectedLines.Remove(chip.Key))
+		{
+			_selectedLines.Add(chip.Key);
+		}
+
+		ApplyLineFilter();
+	}
+
+	/// <summary>Long press on a chip: exactly this line; a long press on the only picked line clears the filter.</summary>
+	private void OnlyLine(LineFilterChip chip)
+	{
+		if (_selectedLines.Count == 1 && _selectedLines.Contains(chip.Key))
+		{
+			_selectedLines.Clear();
+		}
+		else
+		{
+			_selectedLines.Clear();
+			_selectedLines.Add(chip.Key);
+		}
+
+		ApplyLineFilter();
+	}
+
+	private void ClearLineFilter()
+	{
+		_selectedLines.Clear();
+
+		ApplyLineFilter();
+	}
+
+	/// <summary>Carries a changed pick to the chips and the board.</summary>
+	private void ApplyLineFilter()
+	{
+		foreach (LineFilterChip chip in LineChips)
+		{
+			chip.IsSelected = _selectedLines.Contains(chip.Key);
+		}
+
+		OnPropertyChanged(nameof(HasLineSelection));
+		RebuildRows();
+	}
+
+	/// <summary>
+	/// The chip row: every line the stop's lines say or the fetched board shows, one chip each (multi-select,
+	/// see the commands). The collection is left alone when nothing changed — the row scrolls, and a rebuild
+	/// would jump it back.
+	/// </summary>
+	private void RebuildLineChips()
+	{
+		IEnumerable<(string Name, TransitMode Mode)> lines =
+			Lines.Select(row => (row.Line.Name, row.Line.Mode))
+				.Concat(_current.Select(departure => (departure.Line.Name, departure.Line.Mode)));
+
+		var seen = new HashSet<string>(StringComparer.Ordinal);
+		List<LineFilterChip> chips = [];
+
+		foreach ((string name, TransitMode mode) in lines.OrderBy(line => line.Name, StringComparer.CurrentCultureIgnoreCase))
+		{
+			if (seen.Add(BoardFilter.LineKey(name)))
+			{
+				chips.Add(new LineFilterChip(name, BoardFilter.LineKey(name), ToggleLine, OnlyLine));
+			}
+		}
+
+		if (LineChips.Select(chip => chip.Key).SequenceEqual(chips.Select(chip => chip.Key)))
+		{
+			ApplyLineFilter();
+
+			return;
+		}
+
+		LineChips.Clear();
+
+		foreach (LineFilterChip chip in chips)
+		{
+			chip.IsSelected = _selectedLines.Contains(chip.Key);
+			LineChips.Add(chip);
+		}
+
+		// A line without a chip (changed stop, switched provider) must not go on filtering silently.
+		_selectedLines.IntersectWith((List<string>)[.. chips.Select(chip => chip.Key)]);
+
+		OnPropertyChanged(nameof(ShowLineFilter));
+		OnPropertyChanged(nameof(HasLineSelection));
+		ApplyLineFilter();
+	}
+
+	// ---------- Nearby previews ----------
+
+	/// <summary>
+	/// The next departures of the nearest nearby rows, one row at a time (the nearest first): the same shared
+	/// path the "next departures around" widget uses. At most eight rows per pass, cancelled with the page.
+	/// </summary>
+	private async Task LoadNearbyPreviewsAsync()
+	{
+		_previews?.Cancel();
+
+		NearbyRow[] rows = [.. Nearby.Take(NearbyPreviewStops)];
+
+		if (rows.Length == 0)
+		{
+			return;
+		}
+
+		var cts = new CancellationTokenSource();
+		_previews = cts;
+
+		try
+		{
+			foreach (NearbyRow row in rows)
+			{
+				if (cts.IsCancellationRequested || IsDisposed)
+				{
+					return;
+				}
+
+				IReadOnlyList<Departure> board =
+					await NearbyBoards.NextOfAsync(
+						_departures,
+						row.Stop,
+						arrival: false,
+						keep: NearbyPreviewRows + NearbyBoards.Spare,
+						lines: null,
+						modes: ModeFilter.All,
+						timeoutSeconds: _settings.TimeoutSeconds,
+						cancellationToken: cts.Token);
+
+				if (cts.IsCancellationRequested || IsDisposed)
+				{
+					return;
+				}
+
+				row.Adopt(
+					(List<NearbyPreview>)[.. NearbyBoards.Previews(board, NearbyPreviewRows, Format.Now())
+						.Select(departure => new NearbyPreview(departure))]);
+			}
+		}
+		catch (OperationCanceledException)
+		{
+		}
+		catch (Exception ex)
+		{
+			DiagnosticLog.Write($"Nearby previews failed: {ex.Message}");
+		}
 	}
 
 	/// <summary>Favourites first, then recently used stops (stops only: places without a stop id have no departures).</summary>
@@ -1356,5 +1881,6 @@ public sealed partial class DeparturesViewModel : DisposableViewModel
 	{
 		_refresh?.Cancel();
 		_info?.Cancel();
+		_previews?.Cancel();
 	}
 }

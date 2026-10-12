@@ -47,6 +47,24 @@
 							<Label StyleClass="Caption" Text="{localization:Tr Extras.TrackOnlyThisRun}" />
 						</VerticalStackLayout>
 					</Grid>
+
+					<!--  B5: the opt-in "you are probably here" marker of the followed run  -->
+					<Grid
+						support:Dense.MinHeight="{StaticResource HitRow}"
+						ColumnDefinitions="*,Auto"
+						ColumnSpacing="12">
+						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
+							<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Extras.ShowMyPosition}" />
+							<Label StyleClass="Caption" Text="{localization:Tr Extras.ShowMyPositionDescription}" />
+						</VerticalStackLayout>
+
+						<Switch
+							Grid.Column="1"
+							IsToggled="{Binding ShowMyPosition}"
+							SemanticProperties.Description="{localization:Tr Extras.ShowMyPosition}"
+							VerticalOptions="Center" />
+					</Grid>
+
 					<Button
 						Command="{Binding ShowAllCommand}"
 						StyleClass="Tonal"

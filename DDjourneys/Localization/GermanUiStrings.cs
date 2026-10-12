@@ -99,7 +99,19 @@ public sealed class GermanUiStrings : IUiStrings
 		RunTitle = "Fahrtverlauf",
 		NoRun = "Für diese Fahrt ist kein Verlauf verfügbar.",
 		VehicleHere = "Fahrzeug ist hier",
-		OpenDepartures = "Abfahrten an dieser Haltestelle"
+		OpenDepartures = "Abfahrten an dieser Haltestelle",
+
+		// B1 — line-centric departures
+		ShowCancelled = "Ausgefallene anzeigen",
+		AllLines = "Alle Linien",
+		OnlyThisLine = "Nur diese Linie",
+		LineChipDescription = "Linie {0}",
+		InMinutesShort = "{0}\u2032",
+		NowShort = "jetzt",
+		MoreDepartures = "Weitere Abfahrten anzeigen",
+
+		// B7 — offline comfort
+		CachedBoard = "Die Abfahrten konnten nicht geladen werden; dies ist die Tafel von {0}."
 	};
 
 	public DisruptionsStrings Disruptions { get; } = new()
@@ -146,6 +158,7 @@ public sealed class GermanUiStrings : IUiStrings
 		LiveRun = "Fahrt {0}",
 		LiveSecondsAgo = "vor {0} s",
 		LiveMinutesAgo = "vor {0} min",
+		LiveHoursAgo = "vor {0} Std.",
 		LiveOnTime = "Pünktlich",
 		LiveSourceGps = "GPS",
 		LiveSourceTelegram = "Funktelegramm",
@@ -179,7 +192,8 @@ public sealed class GermanUiStrings : IUiStrings
 		FareDay = "Tageskarte",
 		FareZones = "Tarifzonen",
 		FareValidFor = "Für",
-		FareNotAll = "Preise des Anbieters für diese Verbindung. Weitere Tickets (Wochen-, Monats-, ermäßigte Karten, Deutschland-Ticket) liefert seine Antwort nicht.",
+		FareNotAll = "Preise des Anbieters für diese Verbindung. Weitere Tickets (Wochen-, Monats-, ermäßigte Karten, Deutschlandticket) liefert seine Antwort nicht; die BahnCard-25-Zeile ist eine Schätzung der App.",
+		FareBuy = "Ticket kaufen, öffnet die Website des Verkehrsverbunds",
 		ShortcutHome = "Bring mich nach Hause",
 		ShortcutDepartures = "Abfahrten von hier",
 		ShortcutNoHome = "Lege zuerst dein Zuhause fest: im Planer auswählen.",
@@ -193,6 +207,12 @@ public sealed class GermanUiStrings : IUiStrings
 		RunsOn = "Verkehrt {0}",
 		RunsDaily = "Verkehrt täglich",
 		VehicleReported = "Fahrzeug (gemeldete Position)",
+
+		// B5 — ride companion (die „Sie sind wahrscheinlich hier“-Markierung)
+		YouAreHere = "Sie sind wahrscheinlich hier",
+		ShowMyPosition = "Meine Position zeigen",
+		ShowMyPositionDescription = "Solange die Position des Fahrzeugs fehlt oder veraltet ist, wird Ihre Geräteposition auf die Haltestellen der Fahrt gelegt — eine Schätzung",
+		ShowMyPositionHint = "Der App fehlt die Berechtigung für den Standort. Erteilen Sie sie in den Systemeinstellungen, um das zu nutzen.",
 		PdfFailed = "Das PDF konnte nicht geladen werden. Details stehen in der Protokolldatei diagnostics.log.",
 		LiveHowTitle = "So funktioniert's",
 		LiveHowText = "Eine oder mehrere Liniennummern durch Komma getrennt eingeben (zum Beispiel 3, 11); leer lassen, um alle Fahrzeuge zu sehen. Dann auf Anzeigen tippen: Die Fahrzeuge erscheinen auf der Karte und in der Liste und bewegen sich mit jeder neuen Position. Ein Fahrzeug in der Liste antippen, um es auf der Karte zu finden.",
@@ -213,7 +233,7 @@ public sealed class GermanUiStrings : IUiStrings
 		MapPickEnd = "Ziel wählen",
 		MapPickStop = "Haltestelle wählen",
 		MapPickOnMap = "Auf der Karte wählen",
-		MapZoomHint = "Zum Anzeigen der Haltestellen hineinzoomen",
+		MapZoomHint = "Näher heranzoomen, um Haltestellen, Fahrzeuge und Details zu sehen",
 		MapPickHint = "Haltestelle oder Punkt auf der Karte antippen",
 		MapStopDepartures = "Abfahrten hier",
 		MapJourneyToHere = "Fahrt hierher",
@@ -229,6 +249,65 @@ public sealed class GermanUiStrings : IUiStrings
 		RunDeparted = "Dieses Fahrzeug ist bereits abgefahren; der Verlauf ist nicht mehr verfügbar.",
 		MapAutoFit = "Auto-Ausschnitt",
 		MapFitNow = "Alles anzeigen",
+		MapLayers = "Ebenen",
+		MapZones = "Tarifzonen",
+		MapParking = "Park & Ride",
+		MapBikes = "Fahrräder & Roller",
+		MapVehicles = "Fahrzeuge",
+		VehicleSeen = "Zuletzt gesehen {0}",
+		VehicleFollowLine = "Diese Linie zeigen",
+		RunWholeLine = "Die ganze Linie anzeigen",
+		LineCourseTitle = "Linie {0} · {1} – {2}",
+		LineMapNone = "Es wurde gerade keine Fahrt dieser Linie gefunden.",
+		BikesCounts = "{0} Räder verfügbar",
+		BikesDocks = "{0} freie Stellplätze",
+		BikesOpenApp = "In {0} öffnen",
+		ParkingCounts = "{0} von {1} frei",
+		ParkingShort = "P+R {0}",
+		ParkingUpdated = "Aktualisiert: {0}",
+		BikesEBikes = "davon {0} E-Bikes",
+		BikesCargo = "davon {0} Lastenräder",
+		BikesDockStation = "Station mit Abstellplätzen",
+		BikesVirtualStation = "Virtuelle Station: ohne Abstellplätze, das Rad im markierten Bereich abstellen",
+		BikesEmpty = "Gerade kein Rad hier",
+		LiveCountMissing = "keine Live-Zählung",
+		ParkingSpaces = "{0} Stellplätze",
+		SharedBike = "Fahrrad",
+		SharedEBike = "E-Bike",
+		SharedCargo = "Lastenrad",
+		SharedScooter = "E-Scooter",
+		SharedRange = "{0} km Reichweite",
+		MapSharedZoomHint = "Weiter heranzoomen, um frei stehende Räder und Roller zu sehen",
+		NetworkMap = "Liniennetzplan",
+		NetworkMapRefresh = "Den aktuellen Liniennetzplan laden",
+		NetworkMapOpenPdf = "Liniennetzplan als PDF öffnen",
+		NetworkMapCredit = "Liniennetzplan: Dresdner Verkehrsbetriebe (DVB). Die Pläne werden von der Website der DVB geladen; alle Rechte daran bleiben bei der DVB.",
+		NetworkMapStale = "Der aktuelle Plan konnte nicht geladen werden; dies ist die gespeicherte Version.",
+		NetworkMapFailed = "Der Liniennetzplan konnte nicht geladen werden. Prüfen Sie die Verbindung und versuchen Sie es erneut.",
+		NetworkMapZoomIn = "Vergrößern",
+		NetworkMapZoomOut = "Verkleinern",
+		MapOpenSummary = "Haltestellen, Tarifzonen, P+R, Leihräder und fahrende Fahrzeuge. Die Ebenen-Taste auf der Karte schaltet sie ein.",
+		NetworkMapSummary = "Die Netzpläne der DVB: Standard, Nacht und Barrierefrei. Mit zwei Fingern, dem Mausrad oder den Tasten zoomen.",
+		// B6 — Nacht- und Barrierefrei-Pläne
+		NetworkMapPlanStandard = "Standard",
+		NetworkMapPlanNight = "Nacht",
+		NetworkMapPlanBarrierFree = "Barrierefrei",
+		NetworkMapPlanCityMap = "Stadtplan",
+		ZonePlan = "Tarifzonenplan",
+		ZonePlanSummary = "Die Tarifzonen des VVO mit allen Linien, interaktiv: Haltestelle antippen für Abfahrten und Verbindungen. Einmal geladen, auch offline.",
+		ZonePlanRegion = "Verbundraum",
+		ZonePlanDresden = "Dresden",
+		ZonePlanSearch = "Haltestelle auf dem Plan suchen",
+		ZonePlanSearchHint = "Name der Haltestelle",
+		ZonePlanNoMatch = "Keine Haltestelle dieses Plans passt.",
+		ZonePlanLocate = "Die Haltestelle in meiner Nähe zeigen",
+		ZonePlanLocating = "Ihre Position wird gesucht …",
+		ZonePlanNotNear = "Keine Haltestelle der Pläne ist in Ihrer Nähe.",
+		ZonePlanFailed = "Der Plan konnte nicht geladen werden. Prüfen Sie die Verbindung und versuchen Sie es erneut.",
+		ZonePlanStale = "Offline: dies ist der gespeicherte Plan.",
+		ZonePlanCredit = "Tarifzonenplan und Liniennetz Dresden: Verkehrsverbund Oberelbe (VVO) und Dresdner Verkehrsbetriebe (DVB), geladen von vvo-online.de; alle Rechte bleiben bei ihnen.",
+		ZonePlanShow = "Auf dem Tarifzonenplan zeigen",
+		ZonePlanSwitched = "Auf dem Plan des Verbundraums gezeigt: {0} liegt nicht auf dem Dresdner Plan.",
 		MapInfo = "Kartendaten",
 		MapGrip = "Ziehen, um die Größe der Karte zu ändern",
 		TrackFollowing = "Folge Linie {0} {1}",
@@ -250,7 +329,19 @@ public sealed class GermanUiStrings : IUiStrings
 		MapSummary = "Haltestelle, Haltestellen in der Nähe und geöffnete Bereiche auf der Karte",
 		LiveSummary = "Wo die Fahrzeuge einer Linie gerade sind",
 		HomeTitle = "Zuhause",
-		HomeNotSet = "Nicht festgelegt: Tippen zum Auswählen"
+		HomeNotSet = "Nicht festgelegt: Tippen zum Auswählen",
+
+		// B7 — offline comfort
+		MapOfflineTiles = "Offline: Stadtkarte von diesem Gerät",
+
+		// B8 — share a stop
+		ShareStop = "Haltestelle teilen",
+		ShareStopMeetAt = "Treffpunkt: {0}.",
+		ShareStopQrCaption = "Der Code öffnet die Haltestelle auf einer Karte, in jeder Kamera-App.",
+		ShareStopTextCaption = "Text für Nachrichten",
+		ShareStopCopyLink = "Link kopieren",
+		ShareStopCopyHint = "Der Link öffnet die Abfahrten dieser Haltestelle in DDjourneys.",
+		ShareStopCopied = "Kopiert",
 	};
 	// </extras>
 
@@ -267,7 +358,12 @@ public sealed class GermanUiStrings : IUiStrings
 		Searching = "Suche...",
 		CouldNotReachService =
 			"Der Fahrplandienst ist nicht erreichbar. Verbindung prüfen.",
-		SearchForPlace = "Nach einem Ort suchen"
+		SearchForPlace = "Nach einem Ort suchen",
+
+		// B1 — line-centric departures
+		LinesTitle = "Linien",
+		LineCourse = "Linie {0} – Verlauf anzeigen",
+		LineSeenAt = "Gesehen an {0}"
 	};
 
 	public ResultsStrings Results { get; } = new()
@@ -359,6 +455,10 @@ public sealed class GermanUiStrings : IUiStrings
 		Platform = "Steig",
 		WithinStop = "innerhalb der Haltestelle",
 		Track = "Gleis",
+		PlatformShort = "Stg.",
+		TrackShort = "Gl.",
+		TransferLead = "Umstieg:",
+		TransfersLead = "Umstiege:",
 		LowFloor = "Niederflur",
 		WheelchairAccessible =
 			"Rollstuhlgerecht",
@@ -381,7 +481,14 @@ public sealed class GermanUiStrings : IUiStrings
 		OccupancyMedium = "Mittel",
 		OccupancyHigh = "Viele Fahrgäste",
 		OccupancyFull = "Voll",
-		OccupancyOverloaded = "Überfüllt"
+		OccupancyOverloaded = "Überfüllt",
+
+		// B5 — ride companion
+		PaceTight = "Knapp für Ihr Tempo — der Weg dauert etwa {0}",
+
+		// B9 — bike feeder
+		BikeSummary = "{0:0.0} km · +{1} m ↑ · −{2} m ↓ · {3}",
+		BikeFeederHint = "Eine Radroute zur Haltestelle ließ sich nicht planen; das ist die normale Verbindung"
 	};
 
 	public SettingsStrings Settings { get; } = new()
@@ -409,12 +516,14 @@ public sealed class GermanUiStrings : IUiStrings
 		ThemeSystem = "System",
 		ThemeLight = "Hell",
 		ThemeDark = "Dunkel",
+		ThemeSun = "Sonnenauf- bis -untergang",
 		AppearanceTitle = "Darstellung",
 		AppearanceHint = "Modus, Farben und Schrift",
 		ModeHeader = "Modus",
 		ModeSystemDescription = "Folgt dem Ger\u00e4t",
 		ModeLightDescription = "Helle Fl\u00e4chen",
 		ModeDarkDescription = "Dunkle Fl\u00e4chen",
+		ModeSunDescription = "Tagsüber hell, nachts dunkel, zu den Zeiten der Stadt des gewählten Anbieters. Nachts dieselbe dunkle Palette wie im dunklen Modus.",
 		PureBlack = "Reines Schwarz im Dunkelmodus",
 		PureBlackDescription = "Spart Strom auf OLED-Displays",
 		ColorsHeader = "Farben",
@@ -429,6 +538,24 @@ public sealed class GermanUiStrings : IUiStrings
 		DensityNormalDescription = "Ausgewogene Abst\u00e4nde",
 		DensityTouch = "Gro\u00dfe Touch-Fl\u00e4chen",
 		DensityTouchDescription = "H\u00f6here Zeilen und Schaltfl\u00e4chen, mehr Platz dazwischen",
+		// B11 — Barrierefreiheit und Sprache
+		TextSizeHeader = "Textgröße",
+		TextSizeNormal = "Normal",
+		TextSizeNormalDescription = "Der Text, wie die App entworfen ist",
+		TextSizeLarge = "Groß",
+		TextSizeLargeDescription = "Etwa ein Sechstel größer als normal",
+		TextSizeLargest = "Am größten",
+		TextSizeLargestDescription = "Zum Lesen auf Armlänge und darüber hinaus",
+		LineColoursHeader = "Linienfarben",
+		LineColoursDescription = "Die Farben der Verkehrsarten, neu gelegt, damit sie bei dieser Art von Farbensehen unterscheidbar bleiben",
+		LineColoursStandard = "Standard",
+		LineColoursDeuteranopia = "Sicher bei Deuteranomalie",
+		LineColoursProtanopia = "Sicher bei Protanomalie",
+		LineColoursTritanopia = "Sicher bei Tritanomalie",
+		SimpleCards = "Einfache Verbindungskarten",
+		SimpleCardsDescription = "Jede Verbindung als eine große Zeile: die Zeit und nur der nächste Schritt",
+		PresetLargeSimple = "Groß & einfach",
+		PresetLargeSimpleDescription = "Größter Text, großzügige Bedienelemente und die einfachen Verbindungskarten - ein Ausgangspunkt; jede Einstellung bleibt anpassbar",
 		MaterialHeader = "Fenstermaterial (Windows)",
 		MaterialNone = "Keines",
 		MaterialNoneDescription = "Volle Farben, kein Material",
@@ -515,7 +642,34 @@ public sealed class GermanUiStrings : IUiStrings
 		InterfaceVersions = "Schnittstellenversionen",
 		InterfaceVersionsDescription = "Die Versionen aller Schnittstellen dieser Version: Dienste, gespeicherte Daten und Contract. Gehören in jeden Fehlerbericht.",
 		CopyInterfaces = "Versionen kopieren",
-		InterfacesCopied = "In die Zwischenablage kopiert"
+		InterfacesCopied = "In die Zwischenablage kopiert",
+
+		// B5 — ride companion (Aussteige-Alarm)
+		GetOffAlarmTitle = "Aussteige-Alarm",
+		GetOffAlarmDescription = "Wie lange vor Ihrer Haltestelle der Alarm klingelt, während Sie fahren (gilt für alle begleiteten Fahrten)",
+		GetOffAlarmLead = "{0} Min. vor Ihrer Haltestelle",
+		GetOffAlarmOff = "Aus",
+		GetOffAlarmSound = "Alarm mit Ton",
+		GetOffAlarmSoundDescription = "Der Aussteige-Alarm klingelt mit Ton (der Alarmkanal) oder leise ohne",
+
+		// B7 — offline comfort
+		OfflineSection = "Offline",
+		OfflineCityMap = "Stadtkarte für offline",
+		OfflineCityMapDescription = "Die Kacheln der einfachen Karte (Leaflet) für Dresden und den nahen Rand, einmal über diese Taste geladen; die Vektorkarte (CARTO) braucht weiter ihre eigene Verbindung. Die DVB-Liniennetzpläne gehören dazu und werden einmal pro Woche auf eine neue Ausgabe geprüft (nur im WLAN, solange dieser Schalter an ist).",
+		OfflineEstimate = "Schätzung: rund {0} MB ({1} Kacheln)",
+		OfflineDownload = "Stadtkarte laden",
+		OfflineDownloading = "{0} von {1} Kacheln",
+		OfflineDone = "{0} Kacheln auf dem Gerät ({1} fehlgeschlagen)",
+		OfflineStopped = "Nach {0} Kacheln abgebrochen; was angekommen ist, bleibt auf dem Gerät",
+		OfflineSkippedMetered = "Nicht geladen: Die Verbindung ist getaktet",
+		OfflineWifiOnly = "Nur über WLAN",
+		OfflineWifiOnlyDescription = "Die Stadtkarte nur über eine ungetaktete Verbindung laden (WLAN oder Kabel)",
+		OfflineOnDevice = "Auf diesem Gerät",
+		OfflineRemove = "Entfernen",
+		OfflineNone = "Noch nichts geladen",
+		OfflineSize = "Rund {0} MB ({1} Kacheln)",
+		OfflineBoardsTitle = "Abfahrtstafeln offline",
+		OfflineBoardsDescription = "Die App behält die letzten Tafeln der angesehenen Haltestellen und zeigt sie, mit ihrem Zeitpunkt gestempelt, wenn sich eine Tafel nicht laden lässt.",
 	};
 
 	public RoutingStrings Routing { get; } = new()
@@ -566,7 +720,19 @@ public sealed class GermanUiStrings : IUiStrings
 		SectionExtraCharge = "Zuschläge",
 		ExtraChargeAny = "Keine Einschränkung",
 		ExtraChargeNone = "Ohne Zuschlag",
-		ExtraChargeLocal = "Nur Nahverkehr"
+		ExtraChargeLocal = "Nur Nahverkehr",
+
+		// B9 — bike feeder
+		SectionBike = "Mit dem Rad",
+		BikeFeeder = "Mit dem Rad zur Haltestelle",
+		BikeFeederPrivacy = "Die Radroute zur Haltestelle plant der BRouter-Dienst auf brouter.de; er erhält den Startpunkt und die Haltestelle des Einstiegs",
+		BikeFeederRadius = "Suchradius",
+		BikeFeederRadiusText = "Haltestellen bis {0} km entfernt",
+		SectionVia = "Zwischenhalt",
+		ViaMinutes = "Aufenthalt am Zwischenhalt",
+		ViaMinutesHint = "Gilt für Verbindungen über den Zwischenhalt. Beliebig heißt eine Minute, der kürzeste Aufenthalt dort.",
+		ViaAny = "Beliebig",
+		ViaMinutesValue = "{0} Min."
 	};
 
 	public ProviderStrings Provider { get; } = new()
@@ -677,12 +843,21 @@ public sealed class GermanUiStrings : IUiStrings
 		NotifMonitoring = "Deine Verbindungen werden \u00fcberwacht",
 		NotifActionPause = "Pausieren",
 		NotifActionStop = "Beenden",
+		Replan = "Verbindungen suchen",
 		NotifStartAlertTitle = "Deine Fahrt beginnt gleich",
 		NotifStartAlertText = "{0} \u2192 {1}, Abfahrt {2}",
 		NotifChangeAlertTitle = "Fahrt aktualisiert",
 		NotifProblemAlertTitle = "Problem auf deiner Fahrt",
 		NotifMinutes = "{0} Min.",
-		NotifNow = "jetzt"
+		NotifNow = "jetzt",
+
+		// B5 — ride companion
+		StayInVehicle = "Im Fahrzeug bleiben — diese Linie fährt auch {0} an",
+		StayInVehicleAt = "Im Fahrzeug bleiben — diese Linie fährt {0} um {1} an",
+		NotifStopsToGo = "Noch {0} Haltestellen",
+		NotifOneStopToGo = "Noch 1 Haltestelle",
+		NotifExitIn = "Aussteigen in ca. {0} Min.",
+		NotifGetOffAlertTitle = "Bald aussteigen"
 	};
 
 	public TransportStrings Transport { get; } = new()
@@ -697,7 +872,10 @@ public sealed class GermanUiStrings : IUiStrings
 		Ferry = "F\u00e4hre",
 		CableCar = "Seilbahn",
 		Taxi = "Taxi",
-		OnDemand = "On-Demand"
+		OnDemand = "On-Demand",
+
+		// B9 — bike feeder
+		Bike = "Fahrrad"
 	};
 
 	public WidgetStrings Widgets { get; } = new()
@@ -746,6 +924,90 @@ public sealed class GermanUiStrings : IUiStrings
 		ConfigProviderChanged = "Orte des anderen Anbieters wurden entfernt",
 		Done = "Fertig",
 		LocationHint = "Widgets mit Haltestellen in der Nähe brauchen den Standort. Für Aktualisierungen im Hintergrund den Standortzugriff in den App-Einstellungen dauerhaft erlauben.",
-		OpenSettings = "App-Einstellungen öffnen"
+		OpenSettings = "App-Einstellungen öffnen",
+		CardRefresh = "Aktualisieren",
+		CardOpen = "In der App anzeigen",
+		CardSetUp = "Dieses Widget einrichten",
+		SetupTitle = "Windows-Widgets",
+		SetupSummary = "Widget hinzufügen",
+		SetupPick = "Ihre Widgets",
+		SetupNone = "Auf Ihrer Leiste ist noch kein Widget dieser App.",
+		SetupKind = "Zeigt",
+		SetupKindDepartures = "Abfahrten",
+		SetupKindRoute = "Verbindung",
+		SetupStop = "Haltestelle",
+		SetupFrom = "Von",
+		SetupTo = "Nach",
+		SetupSearch = "Haltestelle suchen",
+		SetupTitleLabel = "Titel",
+		SetupSaved = "Gespeichert. Das Widget aktualisiert sich.",
+		EditorFor = "Widget {0}",
+		SetupNotChosen = "Noch nicht gewählt",
+		SetupStep1 = "Drücken Sie Windows + W, um die Widget-Leiste zu öffnen.",
+		SetupStep2 = "Wählen Sie Widgets hinzufügen, dann DDjourneys, und Abfahrten oder Verbindung.",
+		SetupStep3 = "Kommen Sie hierher zurück und wählen Sie Haltestelle oder Verbindung.",
+		SetupNotSetUp = "Noch nicht eingerichtet",
+		SetupChange = "Ändern",
+		SetupIncompleteStop = "Wählen Sie eine Haltestelle, um fertig zu werden.",
+		SetupIncompleteRoute = "Wählen Sie Start und Ziel, um fertig zu werden.",
+		CardSetUpHint = "Wählen Sie in der App eine Haltestelle oder eine Verbindung.",
+		CardInMinutes = "in {0} Min.",
+		CardNow = "jetzt",
+		DiagTitle = "Wenn ein Widget sich nicht hinzufügen lässt",
+		DiagHint = "Windows meldet nur \"Fehler beim Hinzufügen des Widgets\". Dieser Bericht zeigt, was Windows über diese App gespeichert hat. Schalten Sie unter Einstellungen, Entwickleroptionen, In Datei protokollieren ein, versuchen Sie das Hinzufügen noch einmal und schicken Sie das Protokoll zusammen mit diesem Bericht.",
+		DiagCopy = "Bericht kopieren",
+		DiagCopied = "Kopiert."
+	};
+
+	// B2 — phone navigation
+	public ShellStrings Shell { get; } = new()
+	{
+		TabPlan = "Planen",
+		TabMore = "Mehr",
+		StartScreenTitle = "Startbildschirm",
+		StartScreenPlanner = "Planen",
+		StartScreenPlannerDescription = "Wo Sie eine Verbindung planen",
+		StartScreenMap = "Karte",
+		StartScreenMapDescription = "Haltestellen und Ebenen auf der Karte"
+	};
+
+	// B3 — ticketing advice
+	public TicketStrings Ticket { get; } = new()
+	{
+		Title = "Ticketberatung",
+		OneZone = "1 Tarifzone",
+		Zones = "{0} Tarifzonen",
+		Single = "Einzelfahrt {0}",
+		Day = "Tageskarte {0}",
+		DayWins = "die Tageskarte lohnt sich ab {0} Fahrten",
+		Covered = "Ihr Deutschlandticket deckt diese Fahrt ab; Sie brauchen dafür kein weiteres Ticket.",
+		CoveredShort = "vom Deutschlandticket abgedeckt",
+		LongDistance = "Das Deutschlandticket deckt Fernverkehrszüge nicht ab; diese Abschnitte brauchen ein eigenes Ticket.",
+		Amortize = "Bei {0} im Monat hat sich diese Strecke nach rund {1} Einzelfahrten bezahlt.",
+		BahnCard25 = "BahnCard 25",
+		BahnCardEstimate = "geschätzt: rund 25 % Rabatt auf die Einzelfahrt im Regionalverkehr",
+		DTicketSetting = "Ich habe ein Deutschlandticket",
+		DTicketSettingDescription = "Die Ticketberatung behandelt, was der Anbieter nach eigenen Tarifzonen bepreist, dann als bereits bezahlt.",
+		OnDemandText = "Bedarfsverkehr: Diese Fahrt muss vor der Abfahrt gebucht werden.",
+		OnDemandLink = "Buchung & Infos"
+	};
+
+	// B4 — Störungen der beobachteten Linien
+	public WatchedLineStrings WatchedLines { get; } = new()
+	{
+			YourLinesTitle = "Deine Linien",
+			YourLinesNone = "Keine deiner beobachteten Linien hat eine aktuelle Meldung.",
+			WatchHint = "Beobachte Linien mit dem Stern neben einer Linie unter „Um diese Haltestelle“ oder auf der Laufseite, dann stehen ihre Störungen hier.",
+			WatchLine = "Linie {0} beobachten",
+			UnwatchLine = "Linie {0} nicht mehr beobachten",
+			BannerAffected = "{0} deiner Linien sind von Störungen betroffen.",
+			BannerDismiss = "Ausblenden",
+			ChannelWatched = "Beobachtete Linien",
+			NotifTitle = "Beobachtete Linien",
+			NotifChangedSingle = "Die Störungen deiner Linie {0} haben sich geändert.",
+			NotifChangedMany = "Die Störungen von {0} deiner Linien haben sich geändert: {1}.",
+			TrackedDisruption = "Neue Störung auf deiner Linie: {0}",
+			StopNotServed = "fällt aus",
+			SummaryClear = "Deine beobachteten Linien haben keine aktuellen Störungen."
 	};
 }

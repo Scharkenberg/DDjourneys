@@ -20,6 +20,7 @@ public static class ModeColors
 			TransitMode.Ferry => "ModeFerry",
 			TransitMode.CableCar => "ModeCableCar",
 			TransitMode.Walk => "ModeWalk",
+			TransitMode.Bike => "ModeBike",
 			_ => "ModeTrain"
 		};
 
@@ -44,11 +45,27 @@ public sealed partial class JourneyCardModel : ObservableObject
 	private string _noticesText = string.Empty;
 	private bool _hasNotices;
 	private string _accessibilityText = string.Empty;
+	private string _nextStepText = string.Empty;
 
 	/// <summary>
 	/// Set once the entrance animation ran, so recycled cards never replay it while scrolling.
 	/// </summary>
 	public bool Revealed { get; set; }
+
+	/// <summary>
+	/// B11's simple journey card: the time and only the next step, in huge type. A verbosity flag, not a
+	/// fork: the same card control renders both shapes.
+	/// </summary>
+	public bool Simple { get; set; }
+
+	/// <summary>The ordinary card (the inverse of <see cref="Simple"/>, for XAML visibility).</summary>
+	public bool Detailed => !Simple;
+
+	/// <summary>The one next step of the journey ("Walk 4 min · to Postplatz", "61 · to Pirnaischer Platz").</summary>
+	public string NextStepText => _nextStepText;
+
+	public bool HasNextStep =>
+		_nextStepText.Length > 0;
 
 	public JourneyCardModel(Journey journey)
 	{
@@ -184,7 +201,7 @@ public sealed partial class JourneyCardModel : ObservableObject
 
 	/// <summary>The line under the legs: only "on time" is worth a line; notices are a badge.</summary>
 	public bool HasStatusRow =>
-		IsOnTime;
+		Detailed && IsOnTime;
 
 	/// <summary>The icons next to the map icon (journey page); null on the cards of the result list.</summary>
 	public JourneyActions? Actions { get; init; }
@@ -216,6 +233,58 @@ public sealed partial class JourneyCardModel : ObservableObject
 				Format.Duration(duration)),
 			ModeChips.For(TransitMode.Walk));
 
+/// <summary>
+/// The one next step (B11's simple cards): the feeder's bike ride, the walk to the first stop, or the first
+/// ride's line and where it goes. Empty when the journey says nothing usable.
+/// </summary>
+private string NextStep(
+		JourneyStrings strings)
+{
+		JourneyLeg? firstRide =
+			Journey.Legs.FirstOrDefault(leg => leg.IsRide);
+
+		if (Journey.Legs.Count > 0
+			&& Journey.Legs[0].Mode == TransitMode.Bike)
+	{
+		return BikeChipText(strings, Journey.Legs[0]);
+	}
+
+		if (Journey.AccessDuration > TimeSpan.Zero
+			&& firstRide is { } ride)
+	{
+		return $"{strings.Walk} {Format.Duration(Journey.AccessDuration)} \u00b7 {strings.To} {ride.From.Name}";
+	}
+
+		if (firstRide is { } first)
+	{
+		string line = first.Line?.Name ?? Format.TransportMode(first.Mode);
+		string towards =
+			first.Line?.Destination is { Length: > 0 } destination
+				? destination
+				: first.To.Name;
+
+		return $"{line} \u00b7 {strings.To} {towards}";
+	}
+
+		return Journey.AccessDuration > TimeSpan.Zero
+			? $"{strings.Walk} {Format.Duration(Journey.AccessDuration)}"
+			: string.Empty;
+}
+
+/// <summary>The feeder's compact track summary: kilometres, hills, riding time.</summary>
+private static string BikeChipText(
+		JourneyStrings strings,
+		JourneyLeg leg) =>
+		string.Format(
+			CultureInfo.CurrentCulture,
+			strings.BikeSummary,
+			(leg.DistanceMeters ?? 0) / 1000.0,
+			leg.AscentMeters ?? 0,
+			leg.DescentMeters ?? 0,
+			Format.Duration(
+				leg.EffectiveDeparture,
+				leg.EffectiveArrival));
+
 	private void RebuildLocalizedValues(int notices)
 	{
 		JourneyStrings strings =
@@ -241,7 +310,9 @@ public sealed partial class JourneyCardModel : ObservableObject
 								Format.Duration(
 									leg.EffectiveDeparture,
 									leg.EffectiveArrival))
-							: leg.Line?.Name
+							: leg.Mode == TransitMode.Bike
+									? BikeChipText(strings, leg)
+									: leg.Line?.Name
 								?? Format.TransportMode(leg.Mode),
 						ModeChips.For(leg.Mode))));
 
@@ -251,6 +322,8 @@ public sealed partial class JourneyCardModel : ObservableObject
 		}
 
 		_chips = chips;
+
+		_nextStepText = NextStep(strings);
 
 		_transfersText = !Journey.Rides.Any()
 			? strings.Walk
@@ -308,5 +381,7 @@ public sealed partial class JourneyCardModel : ObservableObject
 		OnPropertyChanged(nameof(HasNotices));
 		OnPropertyChanged(nameof(HasStatusRow));
 		OnPropertyChanged(nameof(AccessibilityText));
+		OnPropertyChanged(nameof(NextStepText));
+		OnPropertyChanged(nameof(HasNextStep));
 	}
 }

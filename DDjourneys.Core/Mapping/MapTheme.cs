@@ -38,14 +38,16 @@ public sealed record MapTheme(
 
 	/// <summary>
 	/// The JSON for <c>ddMapCall('init', ...)</c>: the CARTO key (may be empty), the theme, whether the view
-	/// follows the scene, and the texts of the map's own controls.
+	/// follows the scene, and the texts of the map's own controls (the last one names the note the Leaflet
+	/// engine shows while it serves the offline city tiles).
 	/// </summary>
 	public string ToInitJson(
 		string cartoKey,
 		bool autoFit,
 		string autoFitLabel,
 		string fitNowLabel,
-		string infoLabel)
+		string infoLabel,
+		string offlineTileLabel)
 	{
 		using var stream = new MemoryStream();
 
@@ -59,6 +61,7 @@ public sealed record MapTheme(
 			writer.WriteString("autoFit", autoFitLabel);
 			writer.WriteString("fitNow", fitNowLabel);
 			writer.WriteString("info", infoLabel);
+			writer.WriteString("offlineTile", offlineTileLabel);
 			writer.WriteEndObject();
 			writer.WritePropertyName("theme");
 			Write(writer);

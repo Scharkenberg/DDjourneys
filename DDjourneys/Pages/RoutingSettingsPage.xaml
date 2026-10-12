@@ -82,6 +82,35 @@
 				</VerticalStackLayout>
 			</Border>
 
+			<Label StyleClass="Section" Text="{localization:Tr Routing.SectionVia}" />
+
+			<!--  Stay at the stop over: chips, not a radio list, because nine options must wrap  -->
+			<Border Padding="12" StyleClass="Card">
+				<VerticalStackLayout Spacing="{DynamicResource SpaceS}">
+					<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Routing.ViaMinutes}" />
+					<Label StyleClass="Caption" Text="{localization:Tr Routing.ViaMinutesHint}" />
+					<FlexLayout AlignContent="Start" AlignItems="Start" BindableLayout.ItemsSource="{Binding ViaStay.Options}" Wrap="Wrap">
+						<BindableLayout.ItemTemplate>
+							<DataTemplate x:DataType="support:ChoiceOption">
+								<Border
+									Margin="0,0,8,8"
+									Padding="12,6"
+									StyleClass="ChipButton"
+									support:Themed.Background="Clear"
+									support:Themed.IsOn="{Binding IsSelected}"
+									support:Themed.OnBackground="AccentSoft"
+									SemanticProperties.Description="{Binding Title}">
+										<Label FontFamily="{DynamicResource FontSemibold}" Text="{Binding Title}" />
+									<Border.GestureRecognizers>
+										<TapGestureRecognizer Command="{Binding SelectCommand}" />
+									</Border.GestureRecognizers>
+								</Border>
+							</DataTemplate>
+						</BindableLayout.ItemTemplate>
+					</FlexLayout>
+				</VerticalStackLayout>
+			</Border>
+
 			<Label StyleClass="Section" Text="{localization:Tr Routing.SectionWalking}" />
 
 			<Border Padding="0" StyleClass="Card">
@@ -158,6 +187,42 @@
 				</VerticalStackLayout>
 			</Border>
 
+			<Label StyleClass="Section" Text="{localization:Tr Routing.SectionBike}" />
+
+			<!--  Bike to the stop: the feeder is off by default; the radius only matters while it is on  -->
+			<Border Padding="0" StyleClass="Card">
+				<VerticalStackLayout>
+					<Grid
+						ColumnDefinitions="*,Auto"
+						ColumnSpacing="12"
+						support:Dense.MinHeight="{StaticResource HitRow}"
+						support:Dense.Padding="12,8">
+						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
+							<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Routing.BikeFeeder}" />
+							<Label StyleClass="Caption" Text="{localization:Tr Routing.BikeFeederPrivacy}" />
+						</VerticalStackLayout>
+						<Switch
+							Grid.Column="1"
+							IsToggled="{Binding BikeFeeder}"
+							SemanticProperties.Description="{localization:Tr Routing.BikeFeeder}"
+							VerticalOptions="Center" />
+					</Grid>
+					<BoxView StyleClass="Divider" />
+					<VerticalStackLayout
+						IsVisible="{Binding ShowBikeRadius}"
+						support:Dense.Padding="12,8"
+						Spacing="4">
+						<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Routing.BikeFeederRadius}" />
+						<Label StyleClass="Caption" Text="{Binding BikeRadiusText}" />
+						<Slider
+							Maximum="{x:Static local:RoutingSettingsViewModel.MaxBikeRadius}"
+							Minimum="{x:Static local:RoutingSettingsViewModel.MinBikeRadius}"
+							SemanticProperties.Description="{localization:Tr Routing.BikeFeederRadius}"
+							Value="{Binding BikeRadiusKm}" />
+					</VerticalStackLayout>
+				</VerticalStackLayout>
+			</Border>
+
 			<Label StyleClass="Section" Text="{localization:Tr Routing.SectionAccessibility}" />
 
 			<Border Padding="0" StyleClass="Card">
@@ -228,10 +293,10 @@
 				</VerticalStackLayout>
 			</Border>
 
-			<VerticalStackLayout IsVisible="{Binding ShowPassenger}" Spacing="{DynamicResource SpaceS}">
+			<VerticalStackLayout IsVisible="{Binding ShowTickets}" Spacing="{DynamicResource SpaceS}">
 				<Label StyleClass="Section" Text="{localization:Tr Routing.SectionTickets}" />
 
-				<Border Padding="0" StyleClass="Card">
+				<Border Padding="0" IsVisible="{Binding ShowPassenger}" StyleClass="Card">
 					<VerticalStackLayout>
 						<VerticalStackLayout BindableLayout.ItemsSource="{Binding Passenger.Options}">
 							<BindableLayout.ItemTemplate>
@@ -262,6 +327,26 @@
 							</BindableLayout.ItemTemplate>
 						</VerticalStackLayout>
 					</VerticalStackLayout>
+				</Border>
+
+				<!--  What the passenger already owns: switches the ticket advice of a journey on  -->
+				<Border Padding="12" StyleClass="Card">
+					<Grid
+						ColumnDefinitions="*,Auto"
+						ColumnSpacing="12"
+						support:Dense.MinHeight="{StaticResource HitRow}">
+
+						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
+							<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Ticket.DTicketSetting}" />
+							<Label StyleClass="Caption" Text="{localization:Tr Ticket.DTicketSettingDescription}" />
+						</VerticalStackLayout>
+
+						<Switch
+							Grid.Column="1"
+							IsToggled="{Binding DeutschlandTicket}"
+							SemanticProperties.Description="{localization:Tr Ticket.DTicketSetting}"
+							VerticalOptions="Center" />
+					</Grid>
 				</Border>
 			</VerticalStackLayout>
 

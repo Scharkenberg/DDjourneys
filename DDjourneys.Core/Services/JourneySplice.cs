@@ -89,7 +89,8 @@ public static class JourneySplice
 		bool keepFares = false,
 		IReadOnlyList<string>? notices = null,
 		Station? origin = null,
-		Station? destination = null)
+		Station? destination = null,
+		IReadOnlyList<Journey>? parts = null)
 	{
 		ArgumentNullException.ThrowIfNull(template);
 		ArgumentNullException.ThrowIfNull(segments);
@@ -138,6 +139,7 @@ public static class JourneySplice
 			Id = null,
 			Context = null,
 			ProviderData = null,
+			Parts = parts,
 			PlannedDuration = null
 		};
 	}

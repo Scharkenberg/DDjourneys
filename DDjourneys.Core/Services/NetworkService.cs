@@ -9,15 +9,18 @@ public sealed class NetworkService
 {
 	private readonly IEnumerable<INetworkInfoProvider> _providers;
 	private readonly ProviderRegistry? _registry;
+	private readonly LineIndex? _lineIndex;
 
 	public NetworkService(
 		IEnumerable<INetworkInfoProvider> providers,
-		ProviderRegistry? registry = null)
+		ProviderRegistry? registry = null,
+		LineIndex? lineIndex = null)
 	{
 		ArgumentNullException.ThrowIfNull(providers);
 
 		_providers = providers;
 		_registry = registry;
+		_lineIndex = lineIndex;
 	}
 
 	private INetworkInfoProvider? Provider =>
@@ -67,6 +70,22 @@ public sealed class NetworkService
 			_stopLines.Set(key, lines);
 		}
 
+		// The lines of a stop are the line search's candidates too (a side effect, never a request of its own).
+		if (_lineIndex is not null
+			&& provider is IProviderDescriptor described
+			&& lines.Count > 0)
+		{
+			Station seenAt = LineIndex.StopOf(stop);
+
+			foreach (StopLine line in lines)
+			{
+				_lineIndex.Remember(
+					described.Info.Id,
+					new TransitLine { Name = line.Name, Mode = line.Mode },
+					seenAt);
+			}
+		}
+
 		return lines;
 	}
 
@@ -78,6 +97,12 @@ public sealed class NetworkService
 		Provider is { } provider
 			? provider.GetNearbyStopsAsync(latitude, longitude, radiusMeters, cancellationToken)
 			: Task.FromResult<IReadOnlyList<NearbyStop>>([]);
+
+	public Task<IReadOnlyList<TariffZoneShape>> GetTariffZonesAsync(
+		CancellationToken cancellationToken = default) =>
+		Provider is { } provider
+			? provider.GetTariffZonesAsync(cancellationToken)
+			: Task.FromResult<IReadOnlyList<TariffZoneShape>>([]);
 
 	public Task<TariffZone?> FindTariffZoneAsync(
 		double latitude,

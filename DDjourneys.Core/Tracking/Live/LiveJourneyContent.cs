@@ -47,12 +47,17 @@ public enum JourneyAlertKind
 	Start,
 	Change,
 	Problem,
-	Arrived
+	Arrived,
+
+	/// <summary>The get-off alarm of B5: the ride under way ends within the chosen lead time.</summary>
+	GetOff
 }
 
-/// <summary>One event worth interrupting the user for (start, change, problem, arrival).</summary>
+/// <summary>One event worth interrupting the user for (start, change, problem, arrival, get-off).</summary>
+/// <param name="Gentle">B5: present the alert gently - the quiet channel instead of the alarm channel with its sound.</param>
 public sealed record JourneyAlert(
 	string PlanId,
 	JourneyAlertKind Kind,
 	string Title,
-	string Text);
+	string Text,
+	bool Gentle = false);

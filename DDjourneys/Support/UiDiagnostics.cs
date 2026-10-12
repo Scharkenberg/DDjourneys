@@ -79,7 +79,7 @@ public static class UiDiagnostics
 			+ $"{DeviceInfo.Current.Idiom} {DeviceInfo.Current.Platform} {DeviceInfo.Current.VersionString}");
 
 		DiagnosticLog.Write(
-			$"[UI] theme: mode {Theme.Mode}, colours '{Theme.ColorId}', dark {Theme.IsDark}, pure black {Theme.PureBlack}, "
+			$"[UI] theme: mode {Theme.Mode} (effective {Theme.EffectiveMode}), colours '{Theme.ColorId}', dark {Theme.IsDark}, pure black {Theme.PureBlack}, "
 			+ $"material {Material.Id}/{Material.Surfaces} (active {Material.Active}), density {Density.Profile.Id}, "
 			+ $"animations {Motion.Enabled}, system text scale {SystemAccessibility.TextScale:F2}");
 

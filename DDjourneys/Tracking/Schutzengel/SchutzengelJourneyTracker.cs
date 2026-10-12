@@ -6,12 +6,16 @@ using System.Net;
 using System.Text.Json;
 using DDjourneys.Core.Models;
 using DDjourneys.Core.Providers.Abstractions;
+using DDjourneys.Core.Providers;
 using DDjourneys.Core.Providers.Vvo;
 using DDjourneys.Core.Tracking;
 using DDjourneys.Core.Providers.Vvo.Models;
+using DDjourneys.Core.Services;
+using DDjourneys.Core.Storage;
 using DDjourneys.Core.Tracking.Live;
 using DDjourneys.Localization;
 using DDjourneys.Support;
+using Location = DDjourneys.Core.Models.Location;
 
 namespace DDjourneys.Tracking.Schutzengel;
 
@@ -40,6 +44,12 @@ internal sealed partial class SchutzengelJourneyTracker : IJourneyTracker, ITrac
 	private static readonly TimeSpan RenderInterval = TimeSpan.FromSeconds(10);
 	private static readonly TimeSpan PlanListInterval = TimeSpan.FromMinutes(5);
 	private static readonly TimeSpan ClockInterval = TimeSpan.FromMinutes(10);
+
+	/// <summary>
+	/// How often the ride lines of the live journey are checked while it is under way (the loop syncs every
+	/// minute; the auto-watch piggybacks at most this often - no second loop).
+	/// </summary>
+	private static readonly TimeSpan WatchedLinesInterval = TimeSpan.FromMinutes(5);
 	/// <summary>
 	/// A plan that the list of the service no longer shows is forgotten only after this many lists in a row have missed
 	/// it, at least <see cref="VanishGrace"/> after it was last listed, and while a direct question about it is answered
@@ -74,6 +84,12 @@ internal sealed partial class SchutzengelJourneyTracker : IJourneyTracker, ITrac
 
 	/// <summary>Per plan: the notice (time and text) the user swiped away.</summary>
 	private readonly Dictionary<string, string> _dismissedNotices = new(StringComparer.Ordinal);
+
+	// B4: the disruption line of the live journey's ride lines (the auto-watch of W1-B4b) - one line of
+	// the live notification, from the change until the journey is forgotten.
+	private readonly Dictionary<string, string> _trackedDisruptions = new(StringComparer.Ordinal);
+
+	private DateTimeOffset _watchedLinesCheckedAt;
 	private readonly TrackingEventBroadcaster<JourneyTrackingEvent> _events = new();
 
 	private readonly List<string> _pendingForgotten = [];
@@ -97,6 +113,22 @@ internal sealed partial class SchutzengelJourneyTracker : IJourneyTracker, ITrac
 
 	private readonly Func<int>? _defaultLeadMinutes;
 
+	// The recovery search of a missed connection (null on the test setup: the fallback opens the overview).
+	private readonly LocationService? _locations;
+	private readonly PlannerLauncher? _planner;
+	private readonly TrackedJourneyNavigator? _navigator;
+
+	// B4: the auto-watch of the live journey's ride lines (null in the test setup) - the network the check
+	// fetches through and the registry that scopes the fetch to the VVO.
+	private readonly NetworkService? _network;
+	private readonly ProviderRegistry? _providers;
+
+	// B5: the get-off alarm (null in the test setup: the default lead applies, the alarm sounds).
+	private readonly Func<int>? _getOffLeadMinutes;
+	private readonly Func<bool>? _getOffAlarmSound;
+
+	private static readonly TimeSpan RecoveryLookupTimeout = TimeSpan.FromSeconds(8);
+
 	private CancellationTokenSource? _loopCancellation;
 	private Task? _loop;
 	private bool _runWanted;
@@ -110,9 +142,23 @@ internal sealed partial class SchutzengelJourneyTracker : IJourneyTracker, ITrac
 		ITrackingRuntime runtime,
 		INotificationAccess access,
 		HttpClient? http = null,
-		Func<int>? defaultLeadMinutes = null)
+		Func<int>? defaultLeadMinutes = null,
+		LocationService? locations = null,
+		PlannerLauncher? planner = null,
+		TrackedJourneyNavigator? navigator = null,
+		NetworkService? network = null,
+		ProviderRegistry? providers = null,
+		Func<int>? getOffLeadMinutes = null,
+		Func<bool>? getOffAlarmSound = null)
 	{
 		_defaultLeadMinutes = defaultLeadMinutes;
+		_getOffLeadMinutes = getOffLeadMinutes;
+		_getOffAlarmSound = getOffAlarmSound;
+		_locations = locations;
+		_planner = planner;
+		_navigator = navigator;
+		_network = network;
+		_providers = providers;
 		_provider = journeyProvider ?? throw new ArgumentNullException(nameof(journeyProvider));
 		_bridge = bridge ?? throw new ArgumentNullException(nameof(bridge));
 		_surface = surface ?? throw new ArgumentNullException(nameof(surface));
@@ -154,6 +200,16 @@ internal sealed partial class SchutzengelJourneyTracker : IJourneyTracker, ITrac
 	public WatchedJourney? Find(Journey journey)
 	{
 		ArgumentNullException.ThrowIfNull(journey);
+
+		// A journey joined from parts is followed when every part is: its state is the first part's.
+		if (journey.Parts is { Count: > 1 } parts)
+		{
+			WatchedJourney?[] found = [.. parts.Select(Find)];
+
+			return found.All(item => item is not null)
+				? found[0]
+				: null;
+		}
 
 		string? key = JourneyFingerprint.Of(journey);
 
@@ -218,6 +274,27 @@ internal sealed partial class SchutzengelJourneyTracker : IJourneyTracker, ITrac
 		CancellationToken cancellationToken = default)
 	{
 		ArgumentNullException.ThrowIfNull(journey);
+
+		// A journey joined from parts (through a stop-over no provider could plan in one piece): each part is a
+		// journey of the provider with its own route, and each is followed; the first one stands for the whole.
+		if (journey.Parts is { Count: > 1 } parts)
+		{
+			WatchedJourney? first = null;
+
+			foreach (Journey part in parts)
+			{
+				WatchedJourney followed =
+					await FollowAsync(
+						part,
+						first is null ? replacesPlanId : null,
+						cancellationToken)
+					.ConfigureAwait(false);
+
+				first ??= followed;
+			}
+
+			return first!;
+		}
 
 		await RequestNotificationPermissionAsync().ConfigureAwait(false);
 
@@ -397,6 +474,7 @@ internal sealed partial class SchutzengelJourneyTracker : IJourneyTracker, ITrac
 			TrackingActions.Pause => SetActiveAsync(planId, false),
 			TrackingActions.Resume => SetActiveAsync(planId, true),
 			TrackingActions.Stop => DeleteAsync(planId),
+			TrackingActions.Replan => RecoverAsync(planId),
 			TrackingActions.Dismissed =>
 				RunAsync(
 					() =>
@@ -437,6 +515,96 @@ internal sealed partial class SchutzengelJourneyTracker : IJourneyTracker, ITrac
 		lock (_runtimeGate)
 		{
 			_serviceRunning = false;
+		}
+	}
+
+	// ----- Recovery search of a missed connection -----
+
+	/// <summary>
+	/// "Find alternatives" for a followed journey whose connection is endangered or lost: the planner is filled
+	/// from the interchange stop where the connection broke (the risk station), or the stored start, or where the
+	/// passenger is; the destination is the stored one, or the journey's destination name. Everything is quiet and
+	/// logged - one fallback that fails never blocks the next. Without a destination there is nothing to search
+	/// for: the overview opens instead.
+	/// </summary>
+	private async Task RecoverAsync(string planId)
+	{
+		try
+		{
+			string? riskStation = null;
+			string? destinationName = null;
+
+			await _gate.WaitAsync().ConfigureAwait(false);
+
+			try
+			{
+				if (_entries.TryGetValue(planId, out WatchEntry? entry))
+				{
+					riskStation = entry.Snapshot.Risk?.Station;
+					destinationName = entry.Summary?.Destination;
+				}
+			}
+			finally
+			{
+				_gate.Release();
+			}
+
+			FollowedEndpoint? endpoints = FollowedEndpoints.Find(planId);
+
+			Location? from =
+				await ResolveStopAsync(riskStation).ConfigureAwait(false)
+				?? endpoints?.From
+				?? await (_planner?.NearMeAsync() ?? Task.FromResult<Location?>(null)).ConfigureAwait(false);
+
+			Location? to =
+				endpoints?.To
+				?? await ResolveStopAsync(destinationName).ConfigureAwait(false);
+
+			if (to is null || _planner is null)
+			{
+				Log($"Recovery of plan {planId} without a destination: opening the overview instead");
+
+				_navigator?.Request(planId);
+
+				if (_navigator is { } navigator)
+				{
+					await navigator.DeliverAsync().ConfigureAwait(false);
+				}
+
+				return;
+			}
+
+			await PlannerLauncher.RecoverAsync(from, to, endpoints?.Via).ConfigureAwait(false);
+
+			Log($"Recovery of plan {planId} started at {from?.Name ?? "?"}");
+		}
+		catch (Exception ex) when (ex is not OperationCanceledException)
+		{
+			Log($"Recovery search failed: {ex.Message}");
+		}
+	}
+
+	/// <summary>A stop by its name, the exact station first, then any station (the tolerant matching of the contract).</summary>
+	private async Task<Location?> ResolveStopAsync(string? name)
+	{
+		if (_locations is null || string.IsNullOrWhiteSpace(name))
+		{
+			return null;
+		}
+
+		try
+		{
+			IReadOnlyList<Location> found =
+				await _locations.SearchAsync(name, RecoveryLookupTimeout, cancellationToken: CancellationToken.None).ConfigureAwait(false);
+
+			return found.FirstOrDefault(stop => stop.IsStation && string.Equals(stop.Name, name, StringComparison.OrdinalIgnoreCase))
+				?? found.FirstOrDefault(stop => stop.IsStation);
+		}
+		catch (Exception ex) when (ex is not OperationCanceledException)
+		{
+			Log($"Looking up '{name}' for the recovery failed: {ex.Message}");
+
+			return null;
 		}
 	}
 
@@ -589,7 +757,74 @@ internal sealed partial class SchutzengelJourneyTracker : IJourneyTracker, ITrac
 				.ConfigureAwait(false);
 		}
 
+		// B4: the periodic pass checks the ride lines of the live journey (the auto-watch of W1-B4b); a forced
+		// refresh stays what it is - no extra work on a person's pull.
+		if (!force)
+		{
+			await CheckWatchedLinesAsync(cancellationToken).ConfigureAwait(false);
+		}
+
 		return Recompute();
+	}
+
+	/// <summary>
+	/// The auto-watch of W1-B4b: the ride lines of the journey the live presentation shows join the stored
+	/// watched lines for one check (<see cref="WatchedLines.CheckTrackedAsync"/> answers exactly the CHANGED
+	/// ones; the first sight is a baseline, never news), piggybacked on the periodic sync and throttled to
+	/// <see cref="WatchedLinesInterval"/>. A change adds one line to the live notification; the content key
+	/// changes with it, so the update runs through the live presentation exactly once - no notification storm.
+	/// </summary>
+	private async Task CheckWatchedLinesAsync(CancellationToken cancellationToken)
+	{
+		if (_network is null || _providers is null)
+		{
+			return;
+		}
+
+		DateTimeOffset now = DateTimeOffset.UtcNow;
+
+		if (now - _watchedLinesCheckedAt < WatchedLinesInterval)
+		{
+			return;
+		}
+
+		_watchedLinesCheckedAt = now;
+
+		string? planId = _livePlanId;
+
+		if (planId is not { Length: > 0 }
+			|| !_entries.TryGetValue(planId, out WatchEntry? entry)
+			|| entry.Summary?.Lines is not { Count: > 0 } lines)
+		{
+			return;
+		}
+
+		try
+		{
+			// Schutzengel is the DVB/VVO service, so the check belongs to the VVO whichever provider is selected.
+			using (_providers.Override(VvoProviderInfo.Id))
+			{
+				IReadOnlyList<string> changed =
+					await WatchedLines.CheckTrackedAsync(_network, VvoProviderInfo.Id, lines, cancellationToken)
+						.ConfigureAwait(false);
+
+				if (changed.Count > 0)
+				{
+					_trackedDisruptions[planId] = string.Format(
+						CultureInfo.CurrentCulture,
+						LocalizationService.Current.CurrentStrings.WatchedLines.TrackedDisruption,
+						string.Join(", ", changed));
+				}
+			}
+		}
+		catch (OperationCanceledException)
+		{
+			throw;
+		}
+		catch (Exception ex)
+		{
+			Log($"Watched lines check failed: {ex.Message}");
+		}
 	}
 
 	private async Task SyncClockAsync(DateTimeOffset localNow, CancellationToken cancellationToken)
@@ -799,8 +1034,12 @@ internal sealed partial class SchutzengelJourneyTracker : IJourneyTracker, ITrac
 	private void Forget(string planId)
 	{
 		_entries.Remove(planId);
+
+		// The ends of the journey went with it; a recovery search has nothing to add to anymore.
+		FollowedEndpoints.Forget(planId);
 		_dismissed.Remove(planId);
 		_dismissedNotices.Remove(planId);
+		_trackedDisruptions.Remove(planId);
 
 		try
 		{
@@ -1297,6 +1536,41 @@ internal sealed partial class SchutzengelJourneyTracker : IJourneyTracker, ITrac
 			effects.Events.Add(new JourneyTrackingEvent(JourneyTrackingEventKind.Updated, State(null)));
 		}
 
+		// B5: the get-off alarm. Once per ride, at the lead time the settings say - it rides the render
+		// pass like every other presentation decision, so it never adds a fetch of its own.
+		if (alertable
+			&& phase == TrackingPhase.InProgress
+			&& snapshot.EpisodeEnd is { Name.Length: > 0 } end
+			&& GetOffAlarm.Due(
+				end.Effective,
+				GetOffAlarm.Lead(_getOffLeadMinutes?.Invoke() ?? GetOffAlarm.DefaultLead),
+				now)
+			&& entry.GetOffAlertedEpisode != snapshot.EpisodeIndex)
+		{
+			entry.GetOffAlertedEpisode = snapshot.EpisodeIndex;
+
+			string alighting =
+				string.Format(
+					CultureInfo.CurrentCulture,
+					strings.NotifGetOff,
+					end.Name,
+					DDjourneys.Support.Format.TimeOrDash(end.Effective));
+
+			bool gentle =
+				_getOffAlarmSound is { } sound
+					? !sound()
+					: false;
+
+			effects.Actions.Add(
+				() => _surface.ShowAlert(
+					new JourneyAlert(
+					planId,
+					JourneyAlertKind.GetOff,
+					strings.NotifGetOffAlertTitle,
+					alighting,
+					gentle)));
+		}
+
 		if (phase == entry.LastPhase)
 		{
 			return;
@@ -1357,6 +1631,68 @@ internal sealed partial class SchutzengelJourneyTracker : IJourneyTracker, ITrac
 		}
 	}
 
+	/// <summary>
+	/// B5: the stops-to-go line of the ride under way ("3 stops to go · exit in about 4 min"), computed from the
+	/// trip's own progress. Rides the render pass only - no fetch of its own, no second loop.
+	/// </summary>
+	private static string? StopsToGoText(
+		WatchEntry focus,
+		DateTimeOffset now,
+		TrackingStrings strings)
+	{
+		TripSnapshot snapshot = focus.Snapshot;
+
+		if (snapshot.Stage != TripStage.Riding
+			|| snapshot.EpisodeIndex < 0
+			|| focus.Timeline is not { } timeline
+			|| snapshot.EpisodeIndex >= timeline.Episodes.Count)
+		{
+			return null;
+		}
+
+		TripEpisode episode = timeline.Episodes[snapshot.EpisodeIndex];
+
+		if (episode.IsIndividual)
+		{
+			return null;
+		}
+
+		// The ride's own stops, ending with the get-off stop the plan says (allStations may stop earlier).
+		List<RideCountdowns.StopVisit> visits =
+			[.. episode.Stops
+				.Select(stop => new RideCountdowns.StopVisit(stop.Name, stop.Effective))];
+
+		if (visits.Count == 0
+			|| !string.Equals(
+				visits[^1].Name,
+				episode.To.Name,
+				StringComparison.OrdinalIgnoreCase))
+		{
+			visits.Add(new RideCountdowns.StopVisit(episode.To.Name, episode.To.Effective));
+		}
+
+		if (RideCountdowns.Of(visits, now) is not { } countdown)
+		{
+			return null;
+		}
+
+		CultureInfo culture = CultureInfo.CurrentCulture;
+
+		string stops =
+			countdown.Stops == 1
+					? strings.NotifOneStopToGo
+					: string.Format(culture, strings.NotifStopsToGo, countdown.Stops);
+
+		if (countdown.ExitIn is not { } exit)
+		{
+			return stops;
+		}
+
+		int minutes = Math.Max(0, (int)Math.Round(exit.TotalMinutes));
+
+		return $"{stops} · {string.Format(culture, strings.NotifExitIn, minutes)}";
+	}
+
 	/// <summary>Decides what the single live presentation shows (or that it should go away).</summary>
 	private void ScheduleLiveNotification(
 		WatchEntry? focus,
@@ -1400,7 +1736,9 @@ internal sealed partial class SchutzengelJourneyTracker : IJourneyTracker, ITrac
 					focus.Phase,
 					focusView.LatestNotice,
 					now,
-					strings);
+					strings,
+					_trackedDisruptions.TryGetValue(planId, out string? trackedDisruption) ? trackedDisruption : null,
+					StopsToGoText(focus, now, strings));
 		}
 		else if (run)
 		{
@@ -1802,6 +2140,9 @@ internal sealed partial class SchutzengelJourneyTracker : IJourneyTracker, ITrac
 		public TrackingPhase LastPhase { get; set; }
 
 		public int LastEpisode { get; set; } = -1;
+
+		/// <summary>B5: the ride the get-off alarm has already rung for (once per ride).</summary>
+		public int GetOffAlertedEpisode { get; set; } = -1;
 	}
 
 	private sealed class PendingEffects

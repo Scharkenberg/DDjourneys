@@ -122,7 +122,8 @@ public sealed class WidgetTests
 				Rows =
 				[
 					new WidgetRow { Chip = "11", Mode = TransitMode.Tram, Main = "Zschertnitz", Sub = "Platform 2", Time = "08:41", Delay = "+2 min", DelayLevel = WidgetDelay.Late },
-					new WidgetRow { Kind = WidgetRowKind.Header, Main = "Postplatz", Time = "120 m" }
+					new WidgetRow { Kind = WidgetRowKind.Header, Main = "Postplatz", Time = "120 m" },
+					new WidgetRow { Chip = "7", Time = "23:09", Arrival = "23:17", Facts = "Pl. 4 \u00b7 47 min \u00b7 transfers: 6 \u203a 8", Lead = "Walk 4 min" }
 				]
 			};
 
@@ -131,10 +132,13 @@ public sealed class WidgetTests
 		Assert.NotNull(read);
 		Assert.True(read.IsStale);
 		Assert.Equal(snapshot.UpdatedAt, read.UpdatedAt);
-		Assert.Equal(2, read.Rows.Count);
+		Assert.Equal(3, read.Rows.Count);
 		Assert.Equal(TransitMode.Tram, read.Rows[0].Mode);
 		Assert.Equal(WidgetDelay.Late, read.Rows[0].DelayLevel);
 		Assert.Equal(WidgetRowKind.Header, read.Rows[1].Kind);
+		Assert.Equal("23:17", read.Rows[2].Arrival);
+		Assert.Equal("Pl. 4 \u00b7 47 min \u00b7 transfers: 6 \u203a 8", read.Rows[2].Facts);
+		Assert.Equal("Walk 4 min", read.Rows[2].Lead);
 	}
 
 	[Fact]

@@ -4,6 +4,7 @@ using System.Windows.Input;
 using DDjourneys.Core.Models;
 using DDjourneys.Core.Services;
 using DDjourneys.Core.Tracking;
+using DDjourneys.Core.Tracking.Live;
 using DDjourneys.Controls;
 using DDjourneys.Localization;
 using DDjourneys.Support;
@@ -33,6 +34,9 @@ public sealed class CourseRow
 	public bool IsCurrent { get; init; }
 	public bool IsNext { get; init; }
 	public bool IsWalk { get; init; }
+
+	/// <summary>B5: the "stay in the vehicle" hint below the stops of the ride under way.</summary>
+	public bool IsHint { get; init; }
 
 	/// <summary>Platform or track of a boarding/alighting stop; empty elsewhere.</summary>
 	public string Detail { get; init; } = string.Empty;
@@ -106,6 +110,9 @@ public sealed class TrackedRow
 	public required bool HasMap { get; init; }
 	public required string StatusText { get; init; }
 	public required bool IsProblem { get; init; }
+
+	/// <summary>The connection is broken (at risk or cancelled): the recovery search is offered.</summary>
+	public required bool ShowReplan { get; init; }
 	public required bool IsCancelled { get; init; }
 	public required bool IsNormalStatus { get; init; }
 	public required double Progress { get; init; }
@@ -144,6 +151,9 @@ public sealed class TrackedRow
 	public bool HasCourseHint => IsCourseVisible && Course.Count == 0;
 
 	public required ICommand ToggleExpandedCommand { get; init; }
+
+	/// <summary>Find alternatives for the broken connection (the same path as the notification button).</summary>
+	public required ICommand ReplanCommand { get; init; }
 	public required ICommand PauseResumeCommand { get; init; }
 	public required ICommand StopCommand { get; init; }
 	public required ICommand ToggleStartAlertCommand { get; init; }
@@ -183,6 +193,7 @@ public sealed partial class TrackedJourneysViewModel : DisposableViewModel, IQue
 	private readonly IJourneyTracker _tracker;
 	private readonly LegRunResolver _runs;
 	private readonly AppSettings _settings;
+	private readonly TrackingCallbackBridge _bridge;
 	private readonly LocalizationService _localization;
 	private readonly HashSet<string> _expanded = new(StringComparer.Ordinal);
 	private readonly HashSet<string> _courses = new(StringComparer.Ordinal);
@@ -191,11 +202,12 @@ public sealed partial class TrackedJourneysViewModel : DisposableViewModel, IQue
 
 	private CancellationTokenSource? _observation;
 
-	public TrackedJourneysViewModel(IJourneyTracker tracker, LegRunResolver runs, AppSettings settings)
+	public TrackedJourneysViewModel(IJourneyTracker tracker, LegRunResolver runs, AppSettings settings, TrackingCallbackBridge bridge)
 	{
 		_tracker = tracker ?? throw new ArgumentNullException(nameof(tracker));
 		_runs = runs ?? throw new ArgumentNullException(nameof(runs));
 		_settings = settings ?? throw new ArgumentNullException(nameof(settings));
+		_bridge = bridge ?? throw new ArgumentNullException(nameof(bridge));
 		_localization = LocalizationService.Current;
 
 		ListenToLocalization(_localization, OnLocalizationChanged);
@@ -835,7 +847,7 @@ public sealed partial class TrackedJourneysViewModel : DisposableViewModel, IQue
 
 		bool live = _tracker.LivePlanId == journey.PlanId;
 		bool course = _courses.Contains(journey.PlanId);
-		IReadOnlyList<CourseRow> rows = course ? CreateCourse(journey.PlanId, strings) : [];
+		IReadOnlyList<CourseRow> rows = course ? CreateCourse(journey, strings) : [];
 
 		return new TrackedRow
 		{
@@ -857,6 +869,8 @@ public sealed partial class TrackedJourneysViewModel : DisposableViewModel, IQue
 			MapCommand = new AsyncCommand(() => OpenMapAsync(journey), null, ShowError),
 			StatusText = status,
 			IsProblem = problem,
+			ShowReplan = problem || cancelled,
+			ReplanCommand = new AsyncCommand(() => _bridge.HandleActionAsync(TrackingActions.Replan, journey.PlanId), null, ShowError),
 			IsCancelled = cancelled,
 			IsNormalStatus = !problem && !cancelled,
 			Progress = Math.Clamp(journey.Progress, 0, 1),
@@ -972,9 +986,9 @@ public sealed partial class TrackedJourneysViewModel : DisposableViewModel, IQue
 	}
 
 	/// <summary>The course as flat rows: a heading per ride or walk, then its stops.</summary>
-	private List<CourseRow> CreateCourse(string planId, TrackingStrings strings)
+	private List<CourseRow> CreateCourse(WatchedJourney journey, TrackingStrings strings)
 	{
-		if (_tracker.GetTrip(planId) is not { IsEmpty: false } trip)
+		if (_tracker.GetTrip(journey.PlanId) is not { IsEmpty: false } trip)
 		{
 			return [];
 		}
@@ -1038,6 +1052,40 @@ public sealed partial class TrackedJourneysViewModel : DisposableViewModel, IQue
 						IsNext = stop.State == TrackedStopState.Next,
 						Detail = boardsOrAlights ? PlatformText(stop, strings) : string.Empty,
 						Eta = stop.State == TrackedStopState.Next ? EtaText(stop, trip.At, strings) : string.Empty
+					});
+			}
+
+			// B5: below the stops of the ride under way, the plan's transfer may be unnecessary - the run itself
+			// also serves the journey's destination (the tracked stop list ends at the plan's alighting stop, so
+			// the hint only ever fires when the service reports the run's stops beyond it).
+			if (segment.IsCurrent
+				&& !segment.IsWalk
+				&& segment.Stops.Count > 0
+				&& !string.IsNullOrWhiteSpace(journey.Destination)
+				&& StayInVehicle.After(
+					(List<CourseStop>)[.. segment.Stops.Select(stop => new CourseStop(null, stop.Name, stop.Effective))],
+					transferId: null,
+					transferName: segment.Stops[^1].Name,
+					destinationId: null,
+					destinationName: journey.Destination)
+					is { } hint)
+			{
+				rows.Add(
+					new CourseRow
+					{
+						IsHeader = false,
+						IsHint = true,
+						Text =
+							hint.At is { } reaches
+								? string.Format(
+									CultureInfo.CurrentCulture,
+									strings.StayInVehicleAt,
+									journey.Destination,
+									Format.Time(reaches))
+								: string.Format(
+										CultureInfo.CurrentCulture,
+										strings.StayInVehicle,
+										journey.Destination)
 					});
 			}
 		}

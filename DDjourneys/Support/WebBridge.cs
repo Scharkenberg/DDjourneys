@@ -43,6 +43,33 @@ public static class WebBridge
 		}
 	}
 
+	/// <summary>The form with an argument between the command and the json (the map's layer command: id and payload).</summary>
+	public static async Task CallAsync(
+		HybridWebView web,
+		string function,
+		string command,
+		string argument,
+		string? json,
+		string log)
+	{
+		ArgumentNullException.ThrowIfNull(web);
+		ArgumentNullException.ThrowIfNull(argument);
+
+		try
+		{
+			await MainThread.InvokeOnMainThreadAsync(
+				() => web.InvokeJavaScriptAsync<string>(
+					function,
+					StringInfo,
+					[command, argument, json],
+					[StringInfo, StringInfo, StringInfo]));
+		}
+		catch (Exception ex)
+		{
+			DiagnosticLog.Write($"[{log}] '{command}' failed: {ex.Message}");
+		}
+	}
+
 	/// <summary>
 	/// Paints the frame of the web view in the theme background, on the control and on the native web view, so the
 	/// page never shows its own white (or the previous theme) before or around its content.
@@ -93,13 +120,13 @@ public static class WebBridge
 					Hex("Ink", "#E9EFF1"), Hex("InkMuted", "#A2B3BC"), Hex("Accent", "#5CC0DA"), Hex("AccentSoft", "#1B3E4A"),
 					Hex("OnTime", "#4ADE80"),
 					Theme.Font,
-					SystemAccessibility.TextScale)
+					SystemAccessibility.TextScale * Theme.TextFactor)
 				: new MapTheme(
 					false,
 					Hex("Bg", "#F2F4F5"), Hex("Surface", "#FFFFFF"), Hex("Raised", "#DFE6E9"), Hex("Outline", "#B4C1C7"),
 					Hex("Ink", "#0F1A1F"), Hex("InkMuted", "#4A5960"), Hex("Accent", "#0B6E8A"), Hex("AccentSoft", "#D3E9F0"),
 					Hex("OnTime", "#15803D"),
 					Theme.Font,
-					SystemAccessibility.TextScale);
+					SystemAccessibility.TextScale * Theme.TextFactor);
 	}
 }

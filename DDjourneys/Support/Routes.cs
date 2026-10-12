@@ -27,6 +27,10 @@ public static class Routes
 	public const string Providers = "providers";
 	public const string About = "about";
 	public const string Departures = "departures";
+
+	/// <summary>The fourth phone tab (see AppShell): the settings page, the hub of the pages behind the app's core.</summary>
+	public const string More = "more";
+
 	public const string Run = "run";
 	public const string Disruptions = "disruptions";
 	public const string Vehicles = "vehicles";
@@ -34,8 +38,26 @@ public static class Routes
 
 	/// <summary>The map page, and its query keys: a <c>MapScene</c> and the page title.</summary>
 	public const string Map = "map";
+	public const string NetworkMap = "networkmap";
+
+	/// <summary>The VVO's interactive plans (fare zones, Dresden network); query key: a <c>ZonePlanTarget</c> (a journey's ends).</summary>
+	public const string ZonePlan = "zoneplan";
+	public const string ZonePlanTarget = "ZonePlanTarget";
+
+	/// <summary>The Windows widget set-up page (registered on Windows only).</summary>
+	public const string WidgetSetup = "widgetsetup";
+	public const string WidgetId = "WidgetId";
+
+	/// <summary>Reserved key of the map layer panel: the network map link row posts it when tapped.</summary>
+	public const string NetworkMapLayer = "networkmap";
+
+	/// <summary>Reserved key of the map layer panel: the fare zone plan link row.</summary>
+	public const string ZonePlanLayer = "zoneplan";
 	public const string MapScene = "MapScene";
 	public const string MapTitle = "MapTitle";
+
+	/// <summary>Query key: the note the map page shows under its controls (the diversions of a line course).</summary>
+	public const string MapNotice = "MapNotice";
 
 	/// <summary>
 	/// Query key: how the map page is used. <see cref="MapModePick"/> answers with a place like the place search

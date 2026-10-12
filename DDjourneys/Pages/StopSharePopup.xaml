@@ -1,0 +1,214 @@
+<ContentView
+	x:Class="DDjourneys.Pages.StopSharePopup"
+	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+	xmlns:controls="clr-namespace:DDjourneys.Controls"
+	xmlns:localization="clr-namespace:DDjourneys.Localization"
+	xmlns:support="clr-namespace:DDjourneys.Support"
+	BackgroundColor="Transparent">
+
+	<!--
+		A sheet in the app's own terms (the JourneySharePopup pattern): the card pattern with rows and
+		dividers, the sheet radius, density-scaled rows and paddings. The card is translucent where a
+		window material is on, so it sits on a solid layer of the page colour (SheetBase, set in code)
+		instead of on the dimmed page behind the popup.
+	-->
+	<Grid
+		Padding="16"
+		HorizontalOptions="Fill"
+		VerticalOptions="Fill">
+
+		<Border
+			x:Name="SheetBase"
+			HorizontalOptions="Center"
+			MaximumWidthRequest="480"
+			Padding="0"
+			StrokeThickness="0"
+			VerticalOptions="Center">
+
+			<Border.StrokeShape>
+				<RoundRectangle CornerRadius="{StaticResource CornerSheet}" />
+			</Border.StrokeShape>
+
+			<Border
+				Padding="0"
+				StyleClass="Card">
+
+				<Border.StrokeShape>
+					<RoundRectangle CornerRadius="{StaticResource CornerSheet}" />
+				</Border.StrokeShape>
+
+				<VerticalStackLayout>
+
+					<!--  Header: the share and the stop's own name  -->
+					<Grid
+						support:Dense.Padding="12,12"
+						ColumnDefinitions="Auto,*"
+						ColumnSpacing="{StaticResource SpaceM}">
+
+						<Border
+							support:Dense.MinHeight="{StaticResource HitIcon}"
+							support:Dense.MinWidth="{StaticResource HitIcon}"
+							BackgroundColor="{DynamicResource AccentSoft}"
+							StrokeThickness="0"
+							VerticalOptions="Start">
+
+							<Border.StrokeShape>
+								<RoundRectangle CornerRadius="{StaticResource CornerControl}" />
+							</Border.StrokeShape>
+
+							<controls:Icon
+								Glyph="Share"
+								HorizontalOptions="Center"
+								Size="22"
+								VerticalOptions="Center"
+								Color="{DynamicResource Accent}" />
+						</Border>
+
+						<VerticalStackLayout
+							Grid.Column="1"
+							Spacing="2"
+							VerticalOptions="Center">
+
+							<Label StyleClass="Subtitle" Text="{localization:Tr Extras.ShareStop}" />
+
+							<Label
+								x:Name="StopNameLabel"
+								LineBreakMode="WordWrap"
+								StyleClass="Caption" />
+						</VerticalStackLayout>
+					</Grid>
+
+					<BoxView StyleClass="Divider" />
+
+					<!--  The code, for showing the phone to someone: black on white whatever the theme,
+					      like the plan pages that stay light paper in dark mode. The quiet zone is part
+					      of the picture. Hidden when the stop has no coordinates.  -->
+					<VerticalStackLayout
+						x:Name="QrBlock"
+						Padding="12,12,12,4"
+						Spacing="{StaticResource SpaceS}">
+
+						<Border
+							Padding="0"
+							BackgroundColor="White"
+							HorizontalOptions="Center"
+							StrokeThickness="0">
+
+							<Border.StrokeShape>
+								<RoundRectangle CornerRadius="{StaticResource CornerControl}" />
+							</Border.StrokeShape>
+
+							<Image
+								x:Name="QrImage"
+								WidthRequest="280"
+								HeightRequest="280"
+								Aspect="AspectFit"
+								SemanticProperties.Description="{localization:Tr Extras.ShareStopQrCaption}" />
+						</Border>
+
+						<Label
+							HorizontalTextAlignment="Center"
+							LineBreakMode="WordWrap"
+							StyleClass="Caption"
+							Text="{localization:Tr Extras.ShareStopQrCaption}" />
+					</VerticalStackLayout>
+
+					<!--  The text that goes out, shown so the sender knows what they are sharing  -->
+					<VerticalStackLayout
+						Padding="12,8"
+						Spacing="{StaticResource SpaceS}">
+
+						<Label StyleClass="Caption" Text="{localization:Tr Extras.ShareStopTextCaption}" />
+
+						<Label
+							x:Name="ShareTextLabel"
+							LineBreakMode="WordWrap"
+							StyleClass="Caption" />
+					</VerticalStackLayout>
+
+					<BoxView StyleClass="Divider" />
+
+					<!--  Copy link: the board link alone, for pasting somewhere  -->
+					<Grid
+						support:Dense.MinHeight="{StaticResource HitRow}"
+						support:Dense.Padding="12,8"
+						support:Motion.Feedback="True"
+						ColumnDefinitions="Auto,*,Auto"
+						ColumnSpacing="{StaticResource SpaceM}"
+						SemanticProperties.Description="{localization:Tr Extras.ShareStopCopyLink}">
+
+						<Border
+							support:Dense.MinHeight="{StaticResource HitIconTight}"
+							support:Dense.MinWidth="{StaticResource HitIconTight}"
+							BackgroundColor="{DynamicResource Raised}"
+							StrokeThickness="0"
+							VerticalOptions="Center">
+
+							<Border.StrokeShape>
+								<RoundRectangle CornerRadius="{StaticResource CornerControl}" />
+							</Border.StrokeShape>
+
+							<controls:Icon
+								Glyph="Document"
+								HorizontalOptions="Center"
+								Size="20"
+								VerticalOptions="Center"
+								Color="{DynamicResource Accent}" />
+						</Border>
+
+						<VerticalStackLayout
+							Grid.Column="1"
+							Spacing="1"
+							VerticalOptions="Center">
+
+							<Label
+								FontFamily="{DynamicResource FontSemibold}"
+								Text="{localization:Tr Extras.ShareStopCopyLink}" />
+
+							<Label
+								LineBreakMode="WordWrap"
+								StyleClass="Caption"
+								Text="{localization:Tr Extras.ShareStopCopyHint}" />
+						</VerticalStackLayout>
+
+						<controls:Icon
+							Grid.Column="2"
+							Glyph="ChevronRight"
+							Size="20"
+							VerticalOptions="Center"
+							Color="{DynamicResource InkMuted}" />
+
+						<Grid.GestureRecognizers>
+							<TapGestureRecognizer Tapped="CopyTapped" />
+						</Grid.GestureRecognizers>
+					</Grid>
+
+					<BoxView StyleClass="Divider" />
+
+					<!--  Footer  -->
+					<Grid
+						support:Dense.Padding="12,8"
+						ColumnDefinitions="*,Auto"
+						ColumnSpacing="{StaticResource SpaceM}">
+
+						<Label
+							x:Name="CopiedLabel"
+							IsVisible="false"
+							StyleClass="Caption"
+							Text="{localization:Tr Extras.ShareStopCopied}"
+							VerticalOptions="Center" />
+
+						<Button
+							Grid.Column="1"
+							support:Dense.MinHeight="{StaticResource HitButton}"
+							Clicked="ShareClicked"
+							StyleClass="Tonal"
+							Text="{localization:Tr Common.Share}"
+							VerticalOptions="Center" />
+					</Grid>
+				</VerticalStackLayout>
+			</Border>
+		</Border>
+	</Grid>
+</ContentView>

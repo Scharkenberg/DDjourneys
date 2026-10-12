@@ -1,3 +1,4 @@
+using DDjourneys.Core.Diagnostics;
 using DDjourneys.Core.Models;
 using DDjourneys.Core.Providers;
 using DDjourneys.Core.Providers.Abstractions;
@@ -13,8 +14,8 @@ public sealed class StopAreaService(
 	LocationService locations,
 	ProviderRegistry registry)
 {
-	/// <summary>Most stops a map shows at once; more is clutter, and more requests.</summary>
-	public const int MaxStops = 80;
+	/// <summary>Most stops a map shows at once (the map page culls what is out of view); the cap only guards against a runaway answer.</summary>
+	public const int MaxStops = 300;
 
 	public async Task<IReadOnlyList<NearbyStop>> GetStopsAsync(
 		double latitude,
@@ -27,14 +28,23 @@ public sealed class StopAreaService(
 
 		if (provider is not null)
 		{
-			IReadOnlyList<NearbyStop> found =
-				await provider
-					.GetStopsAroundAsync(latitude, longitude, radiusMeters, MaxStops, cancellationToken)
-					.ConfigureAwait(false);
-
-			if (found.Count > 0)
+			try
 			{
-				return found;
+				IReadOnlyList<NearbyStop> found =
+					await provider
+						.GetStopsAroundAsync(latitude, longitude, radiusMeters, MaxStops, cancellationToken)
+						.ConfigureAwait(false);
+
+				if (found.Count > 0)
+				{
+					return found;
+				}
+
+				DiagnosticLog.Write($"[Stops] the provider's area query found nothing at {latitude:F5},{longitude:F5} radius {radiusMeters} m: the stops around the centre instead");
+			}
+			catch (Exception ex) when (ex is not OperationCanceledException)
+			{
+				DiagnosticLog.Write($"[Stops] the provider's area query failed ({ex.Message}): the stops around the centre instead");
 			}
 		}
 

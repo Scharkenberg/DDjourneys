@@ -54,7 +54,7 @@ public static class VvoPathMapper
 	}
 
 	/// <summary>One map data entry ("Tram|5660211|4630082|…"): the mode prefix, then GK4 pairs.</summary>
-	private static IReadOnlyList<(double Latitude, double Longitude)> Parse(
+	private static List<(double Latitude, double Longitude)> Parse(
 		string? mapData)
 	{
 		if (string.IsNullOrWhiteSpace(mapData))

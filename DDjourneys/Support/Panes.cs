@@ -64,12 +64,12 @@ public static class Panes
 		await shell.GoToAsync(route, parameters);
 	}
 
-	/// <summary>Back to the start page: every page on the stack drops its panes first.</summary>
+	/// <summary>Back to the start page: every page on every stack drops its panes first (the phone keeps one stack per tab).</summary>
 	public static Task ToStartAsync(Shell shell)
 	{
 		ArgumentNullException.ThrowIfNull(shell);
 
-		foreach (Page? page in StackOf(shell))
+		foreach (Page? page in StacksOf(shell))
 		{
 			(page as PanePage)?.CloseAllPanes();
 		}
@@ -230,6 +230,46 @@ public static class Panes
 		}
 
 		return stack;
+	}
+
+	/// <summary>
+	/// The stacks of every section, the current one first: the phone keeps one per tab (see AppShell), and the
+	/// start page can be reached from any of them, so their panes all have to go. A tab never opened has no page
+	/// yet (<see cref="IShellContentController.Page"/> returns the cache without creating), so nothing is built here.
+	/// </summary>
+	private static List<Page?> StacksOf(Shell shell)
+	{
+		List<Page?> pages = StackOf(shell);
+
+		ShellItem? item = shell.CurrentItem;
+
+		if (item?.Items is not { Count: > 1 } sections)
+		{
+			return pages;
+		}
+
+		ShellSection? current = item.CurrentItem;
+
+		foreach (ShellSection section in sections)
+		{
+			if (ReferenceEquals(section, current))
+			{
+				continue;
+			}
+
+			List<Page?> stack = [.. section.Stack];
+
+			if (stack.Count > 0
+				&& stack[0] is null
+				&& section.CurrentItem is IShellContentController content)
+			{
+				stack[0] = content.Page;
+			}
+
+			pages.AddRange(stack);
+		}
+
+		return pages;
 	}
 
 	private static PanePage? Create(string route)

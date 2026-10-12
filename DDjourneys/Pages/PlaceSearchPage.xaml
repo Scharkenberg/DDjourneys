@@ -82,6 +82,64 @@
 					StyleClass="Caption"
 					Text="{Binding Message}" />
 
+				<!--  The line search: "11" names a line as well as a place; tapping shows its course  -->
+				<VerticalStackLayout
+					IsVisible="{Binding HasLines}"
+					Spacing="{DynamicResource SpaceS}">
+					<Label StyleClass="Section" Text="{localization:Tr PlaceSearch.LinesTitle}" />
+					<Border Padding="0" StyleClass="Card">
+						<VerticalStackLayout BindableLayout.ItemsSource="{Binding Lines}">
+							<BindableLayout.ItemTemplate>
+								<DataTemplate x:DataType="local:LineRow">
+									<Grid RowDefinitions="Auto,Auto" RowSpacing="0">
+										<Grid
+											support:Dense.Padding="12,8"
+											support:Dense.MinHeight="{StaticResource HitRow}"
+											support:Motion.Feedback="True"
+											ColumnDefinitions="56,*,Auto"
+											ColumnSpacing="10">
+												<Border
+													BackgroundColor="{Binding Look.Fill}"
+													StrokeDashArray="{Binding Look.Dashes}"
+													StrokeShape="{Binding Look.Shape}"
+													StrokeThickness="{Binding Look.StrokeThickness}"
+													StyleClass="Chip"
+													Stroke="{Binding Look.Stroke}"
+													HorizontalOptions="Start"
+													VerticalOptions="Center"
+													WidthRequest="56">
+														<support:PillScroll>
+															<Label
+																FontFamily="{DynamicResource FontSemibold}"
+																FontSize="{StaticResource FontCaption}"
+																StyleClass="ChipLabel"
+																Text="{Binding Name}"
+																TextColor="{Binding Look.Text}" />
+														</support:PillScroll>
+													</Border>
+												<VerticalStackLayout
+													Grid.Column="1"
+													Spacing="1"
+													VerticalOptions="Center">
+														<Label Text="{Binding Title}" />
+														<Label StyleClass="Caption" Text="{Binding Detail}" />
+													</VerticalStackLayout>
+												<controls:Icon
+													Grid.Column="2"
+													Glyph="Route"
+													Color="{DynamicResource InkMuted}"
+													VerticalOptions="Center" />
+												<Grid.GestureRecognizers>
+													<TapGestureRecognizer Tapped="LineTapped" />
+												</Grid.GestureRecognizers>
+											</Grid>
+										<BoxView Grid.Row="1" StyleClass="Divider" />
+									</Grid>
+								</DataTemplate>
+							</BindableLayout.ItemTemplate>
+						</VerticalStackLayout>
+					</Border>
+				</VerticalStackLayout>
 				<Border
 					Padding="0"
 					IsVisible="{Binding HasResults}"

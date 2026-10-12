@@ -38,6 +38,7 @@ public enum IconGlyph
 	Globe,
 	Code,
 	Walk,
+	Bike,
 	History,
 	Locate,
 	Home,
@@ -47,6 +48,7 @@ public enum IconGlyph
 	Document,
 	Image,
 	Map,
+	Route,
 	Fit,
 	Eye,
 	EyeOff,
@@ -55,7 +57,9 @@ public enum IconGlyph
 	External,
 	Accessible,
 	Bus,
-	Edit
+	Edit,
+	Sun,
+	Detour
 }
 
 /// <summary>One icon: path markup on the 24x24 grid, and whether it is drawn solid.</summary>
@@ -191,6 +195,14 @@ internal static class IconPaths
 					+ "M11 21 L13 15.5 L9.8 12.8 L10.6 9.2 L14.2 10.6 L16.6 13.4 "
 					+ "M10.6 9.2 L7.4 11 L6 14 M13 15.5 L16.2 21"),
 
+			// A bicycle: two wheels, a frame with a seat and a handlebar, on the same half-unit grid.
+			[IconGlyph.Bike] =
+				new("M2.9 17.4 A3.5 3.5 0 1 0 9.9 17.4 A3.5 3.5 0 1 0 2.9 17.4 Z "
+					+ "M14.1 17.4 A3.5 3.5 0 1 0 21.1 17.4 A3.5 3.5 0 1 0 14.1 17.4 Z "
+					+ "M6.4 17.4 L12 15.4 L10.6 9.4 L16.8 9.4 L17.6 17.4 "
+					+ "M12 15.4 L17.6 17.4 M6.4 17.4 L10.6 9.4 "
+					+ "M8.6 8.2 H12.2 M15 8.2 H18"),
+
 			[IconGlyph.History] =
 				new("M4.4 8.6 A8 8 0 1 0 12 4 M4.4 8.6 H9.4 M4.4 8.6 V3.6 M12 7.6 V12.4 L15.6 14.6"),
 
@@ -245,13 +257,25 @@ internal static class IconPaths
 				new("M13.5 4 H20 V10.5 M20 4 L11 13 M17.5 14 V20 H4 V6.5 H10"),
 
 			// A person with open arms: accessibility.
+			// A route with two endpoints: the course of a whole line.
+			[IconGlyph.Route] =
+				new("M5.5 18.6 C6.5 13.5 11 14.6 11 10 C11 6.4 14 5.4 18.6 5.4 M5.5 18.6 V18.7 M18.6 5.4 V5.5"),
+
 			[IconGlyph.Bus] =
 				new("M5.5 3.5 H18.5 V17 H5.5 Z M5.5 11 H18.5 M8 17 V20.5 M16 17 V20.5 M8.6 14 V14.1 M15.4 14 V14.1"),
 
 			[IconGlyph.Edit] =
 				new("M4 20 H8.2 L19.4 8.8 L15.2 4.6 L4 15.8 Z M13 6.8 L17.2 11"),
 
+			// A circle with rays: the sun-following theme.
+			[IconGlyph.Sun] =
+				new("M12 7.6 A4.4 4.4 0 1 0 12 16.4 A4.4 4.4 0 1 0 12 7.6 Z M12 2.2 V4.4 M12 19.6 V21.8 M2.2 12 H4.4 M19.6 12 H21.8 M5.2 5.2 L6.7 6.7 M17.3 17.3 L18.8 18.8 M18.8 5.2 L17.3 6.7 M6.7 17.3 L5.2 18.8"),
+
 			[IconGlyph.Accessible] =
-				new("M12 3.4 A1.9 1.9 0 1 0 12 7.2 A1.9 1.9 0 1 0 12 3.4 Z M5 9.4 H19 M12 9.4 V14.4 M12 14.4 L8.6 21 M12 14.4 L15.4 21")
+				new("M12 3.4 A1.9 1.9 0 1 0 12 7.2 A1.9 1.9 0 1 0 12 3.4 Z M5 9.4 H19 M12 9.4 V14.4 M12 14.4 L8.6 21 M12 14.4 L15.4 21"),
+
+			// A way around: the straight path dips aside and continues - alternatives for a broken connection.
+			[IconGlyph.Detour] =
+				new("M3.5 12 V12.1 M3.5 12 H8.5 C12 12 10.5 18.6 14.5 18.6 H20.5 M16 15.6 L20.5 18.6 L16 21.6")
 		};
 }

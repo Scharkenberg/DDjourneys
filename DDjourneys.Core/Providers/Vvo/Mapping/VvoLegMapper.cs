@@ -118,6 +118,11 @@ public static class VvoLegMapper
 	route.PartialRouteId.ToString(
 		System.Globalization.CultureInfo.InvariantCulture),
 
+			BookingContact =
+				string.IsNullOrWhiteSpace(route.BookingLink)
+					? null
+					: route.BookingLink.Trim(),
+
 			Notices =
 				VvoNoticeParser.Parse(
 					route.Infos)

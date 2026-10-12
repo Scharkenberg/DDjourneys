@@ -135,7 +135,8 @@ internal static class WindowsNotificationHost
 					or TrackingActions.Resume
 					or TrackingActions.Stop
 					or TrackingActions.Dismissed
-					or TrackingActions.Open;
+					or TrackingActions.Open
+					or TrackingActions.Replan;
 
 			if (!known || (action != TrackingActions.Open && planId.Length == 0))
 			{
@@ -205,6 +206,12 @@ internal static class WindowsNotificationHost
 				WindowsTrace.Write("Open delivered");
 
 				return;
+			}
+
+			// The recovery search opens the planner: the window must be there (like the Open action).
+			if (action == TrackingActions.Replan)
+			{
+				await WindowsBackground.RevealAsync();
 			}
 
 			if (services.GetService<TrackingCallbackBridge>() is { } bridge)

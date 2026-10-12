@@ -92,6 +92,10 @@ public static class ModeChips
 	private static readonly ChipLook WalkLook =
 		new(Colors.Transparent, Colors.Gray, Colors.Gray, 1.5, Pill, true, "InkMuted");
 
+	// The bike feeder leg: the walk's shape, but solid — riding is not strolling.
+	private static readonly ChipLook BikeLook =
+		new(Colors.Transparent, Colors.Gray, Colors.Gray, 1.5, Pill, false, "InkMuted");
+
 	public static ChipLook For(TransitMode mode)
 	{
 		Color fill = ModeColors.For(mode);
@@ -121,6 +125,9 @@ public static class ModeChips
 
 			TransitMode.Walk =>
 				WalkLook,
+
+			TransitMode.Bike =>
+				BikeLook,
 
 			// Trains and everything else
 			_ =>

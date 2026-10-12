@@ -72,7 +72,9 @@ public static class Dense
 		var profile = Density.Profile;
 
 		// Rows and touch targets grow with the OS text size, so bigger text never gets clipped or cramped.
-		double textScale = Math.Max(1, SystemAccessibility.TextScale);
+		// Rows and touch targets grow with the OS text size and the app-side text size (B11), so bigger
+		// text never gets clipped or cramped.
+		double textScale = Math.Max(1, SystemAccessibility.TextScale) * Theme.TextFactor;
 
 		if (bindable is VisualElement element)
 		{

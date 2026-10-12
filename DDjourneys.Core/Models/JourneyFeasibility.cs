@@ -109,4 +109,46 @@ public static class JourneyFeasibility
 
 		return false;
 	}
+
+	// ----- Walk pace (roadmap #6, B5: "tight at your pace") -----
+
+	/// <summary>
+	/// How much longer (or shorter) a walk takes at this pace than at <see cref="WalkingPace.Normal"/> - the
+	/// pace the providers' own footpath quotes assume (the VVO is sent the chosen pace, so its quotes already
+	/// carry it; the tracking service's walks do not). Each step away from Normal changes the time by a
+	/// quarter: this is the app's own convention, not a published provider factor.
+	/// </summary>
+	public static double PaceFactor(WalkingPace pace) =>
+			pace switch
+			{
+				WalkingPace.VerySlow => 1.5625,
+				WalkingPace.Slow => 1.25,
+				WalkingPace.Normal => 1.0,
+				WalkingPace.Fast => 0.8,
+				WalkingPace.VeryFast => 0.64,
+				_ => 1.0
+			};
+
+	/// <summary>The quoted walk duration at the user's own pace (rounded up to the second).</summary>
+	public static TimeSpan WalkAtPace(TimeSpan quoted, WalkingPace pace) =>
+			TimeSpan.FromSeconds(Math.Ceiling(quoted.TotalSeconds * PaceFactor(pace)));
+
+	/// <summary>
+	/// True when the change works only because the passenger walks faster than their own setting: the quoted
+	/// walk still fits the window, but at the user's pace it does not. A pace at or above Normal is never
+	/// tight at the user's pace (a faster pace only makes the change easier); a difference of less than half a
+	/// minute is rounding, not tightness.
+	/// </summary>
+	/// <param name="quotedWalk">The walk duration the data quotes for the change (see <c>TimelineBuilder</c>).</param>
+	/// <param name="wait">The time left to change once the quoted walk is subtracted (the change's own wait).</param>
+	public static bool IsTightAtPace(TimeSpan? quotedWalk, TimeSpan wait, WalkingPace pace)
+	{
+		if (quotedWalk is not { } walk || walk <= TimeSpan.Zero || PaceFactor(pace) <= 1.0)
+		{
+			return false;
+		}
+
+		// The window the walk may use is the wait plus the quoted walk itself; at the user's pace the walk needs more.
+		return WalkAtPace(walk, pace) > wait + walk + TimeSpan.FromSeconds(30);
+	}
 }

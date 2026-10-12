@@ -126,6 +126,89 @@
 
 			<Label StyleClass="Section" Text="{localization:Tr Settings.MapSection}" />
 
+			<!--  Where the map and the network plan live: the same pages the planner's map button opens  -->
+			<Border Padding="0" StyleClass="Card">
+				<VerticalStackLayout>
+					<Grid
+						support:Dense.MinHeight="{StaticResource HitRow}"
+						support:Dense.Padding="12,8"
+						support:Motion.Feedback="True"
+						ColumnDefinitions="*,Auto"
+						ColumnSpacing="10">
+						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
+							<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Extras.MapTitle}" />
+							<Label StyleClass="Caption" Text="{localization:Tr Extras.MapOpenSummary}" />
+						</VerticalStackLayout>
+
+						<controls:Icon
+							Grid.Column="1"
+							Glyph="ChevronRight"
+							Size="20"
+							VerticalOptions="Center"
+							Color="{DynamicResource InkMuted}" />
+
+						<Grid.GestureRecognizers>
+							<TapGestureRecognizer Command="{Binding OpenExploreMapCommand}" />
+						</Grid.GestureRecognizers>
+					</Grid>
+
+					<BoxView StyleClass="Divider" />
+
+					<Grid
+						support:Dense.MinHeight="{StaticResource HitRow}"
+						support:Dense.Padding="12,8"
+						support:Motion.Feedback="True"
+						ColumnDefinitions="*,Auto"
+						ColumnSpacing="10">
+						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
+							<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Extras.NetworkMap}" />
+							<Label StyleClass="Caption" Text="{localization:Tr Extras.NetworkMapSummary}" />
+						</VerticalStackLayout>
+
+						<controls:Icon
+							Grid.Column="1"
+							Glyph="ChevronRight"
+							Size="20"
+							VerticalOptions="Center"
+							Color="{DynamicResource InkMuted}" />
+
+						<Grid.GestureRecognizers>
+							<TapGestureRecognizer Command="{Binding OpenNetworkMapCommand}" />
+						</Grid.GestureRecognizers>
+					</Grid>
+
+						<BoxView StyleClass="Divider" />
+
+						<!--  B4: route changes, with the watched lines' own count  -->
+						<Grid
+							IsVisible="{Binding ShowDisruptions}"
+							support:Dense.MinHeight="{StaticResource HitRow}"
+							support:Dense.Padding="12,8"
+							support:Motion.Feedback="True"
+							ColumnDefinitions="*,Auto"
+							ColumnSpacing="10">
+							<VerticalStackLayout Spacing="1" VerticalOptions="Center">
+								<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Disruptions.Title}" />
+								<Label
+									LineBreakMode="TailTruncation"
+									StyleClass="Caption"
+									Text="{Binding DisruptionsSummary}" />
+							</VerticalStackLayout>
+
+							<controls:Icon
+								Grid.Column="1"
+								Glyph="ChevronRight"
+								Size="20"
+								VerticalOptions="Center"
+								Color="{DynamicResource InkMuted}" />
+
+							<Grid.GestureRecognizers>
+								<TapGestureRecognizer Command="{Binding OpenDisruptionsCommand}" />
+							</Grid.GestureRecognizers>
+						</Grid>
+					</VerticalStackLayout>
+				</Border>
+
 			<!--  Which library draws the map: CARTO vector (needs a key and WebGL 2) or Leaflet raster (anything)  -->
 			<Border Padding="0" StyleClass="Card">
 				<VerticalStackLayout>
@@ -221,6 +304,85 @@
 				</VerticalStackLayout>
 			</Border>
 
+			<!--  B7: the offline city map download, and the departure boards kept per stop  -->
+			<Label StyleClass="Section" Text="{localization:Tr Settings.OfflineSection}" />
+
+			<Border Padding="0" StyleClass="Card">
+				<VerticalStackLayout>
+
+					<VerticalStackLayout support:Dense.Padding="12,8" Spacing="6">
+						<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.OfflineCityMap}" />
+						<Label StyleClass="Caption" Text="{localization:Tr Settings.OfflineCityMapDescription}" />
+						<Label StyleClass="Faint" Text="{Binding CityTilesEstimate}" />
+
+						<ProgressBar
+							IsVisible="{Binding HasCityTilesProgress}"
+							Progress="{Binding CityTilesProgress}"
+							ProgressColor="{DynamicResource Accent}" />
+
+						<Label
+							IsVisible="{Binding HasCityTilesStatus}"
+							StyleClass="Faint"
+							Text="{Binding CityTilesStatus}" />
+
+						<Button
+							Command="{Binding DownloadCityTilesCommand}"
+							HorizontalOptions="Start"
+							StyleClass="Tonal"
+							Text="{localization:Tr Settings.OfflineDownload}" />
+					</VerticalStackLayout>
+
+					<BoxView StyleClass="Divider" />
+
+					<Grid
+						support:Dense.MinHeight="{StaticResource HitRow}"
+						support:Dense.Padding="12,8"
+						ColumnDefinitions="*,Auto"
+						ColumnSpacing="12">
+
+						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
+							<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.OfflineWifiOnly}" />
+							<Label StyleClass="Caption" Text="{localization:Tr Settings.OfflineWifiOnlyDescription}" />
+						</VerticalStackLayout>
+
+						<Switch
+							Grid.Column="1"
+							IsToggled="{Binding CityTilesWifiOnly}"
+							SemanticProperties.Description="{localization:Tr Settings.OfflineWifiOnly}"
+							VerticalOptions="Center" />
+					</Grid>
+
+					<BoxView StyleClass="Divider" />
+
+					<Grid
+						support:Dense.MinHeight="{StaticResource HitRow}"
+						support:Dense.Padding="12,8"
+						ColumnDefinitions="*,Auto"
+						ColumnSpacing="12">
+
+						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
+							<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.OfflineOnDevice}" />
+							<Label StyleClass="Caption" Text="{Binding CityTilesSizeText}" />
+						</VerticalStackLayout>
+
+						<Button
+							Grid.Column="1"
+							Command="{Binding RemoveCityTilesCommand}"
+							StyleClass="Tonal"
+							Text="{localization:Tr Settings.OfflineRemove}"
+							VerticalOptions="Center" />
+					</Grid>
+
+					<BoxView StyleClass="Divider" />
+
+					<!--  Informational only: the boards are kept automatically, nothing to press here  -->
+					<VerticalStackLayout support:Dense.Padding="12,8" Spacing="1">
+						<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.OfflineBoardsTitle}" />
+						<Label StyleClass="Caption" Text="{localization:Tr Settings.OfflineBoardsDescription}" />
+					</VerticalStackLayout>
+				</VerticalStackLayout>
+			</Border>
+
 			<Label StyleClass="Section" Text="{localization:Tr Settings.JourneyOptions}" />
 
 			<Border Padding="0" StyleClass="Card">
@@ -255,6 +417,36 @@
 
 					<BoxView StyleClass="Divider" />
 
+					<!--  Windows only: the widgets of the Widgets Board  -->
+					<Grid
+						support:Dense.MinHeight="{StaticResource HitRow}"
+						support:Dense.Padding="12,8"
+						support:Motion.Feedback="True"
+						IsVisible="{Binding ShowWindowsWidgets}"
+						ColumnDefinitions="*,Auto"
+						ColumnSpacing="10">
+						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
+							<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Widgets.SetupTitle}" />
+							<Label
+								LineBreakMode="TailTruncation"
+								StyleClass="Caption"
+								Text="{localization:Tr Widgets.SetupSummary}" />
+						</VerticalStackLayout>
+
+						<controls:Icon
+							Grid.Column="1"
+							Glyph="ChevronRight"
+							Size="20"
+							VerticalOptions="Center"
+							Color="{DynamicResource InkMuted}" />
+
+						<Grid.GestureRecognizers>
+							<TapGestureRecognizer Command="{Binding OpenWidgetsCommand}" />
+						</Grid.GestureRecognizers>
+					</Grid>
+
+					<BoxView StyleClass="Divider" />
+
 					<VerticalStackLayout support:Dense.Padding="12,8" Spacing="4">
 						<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.Results}" />
 
@@ -280,6 +472,42 @@
 							SemanticProperties.Description="{localization:Tr Settings.LeadMinutes}"
 							Value="{Binding LeadMinutes}" />
 					</VerticalStackLayout>
+
+					<BoxView StyleClass="Divider" />
+
+					<!--  B5: the get-off alarm of a followed journey (0/1/2/3 minutes; off at 0)  -->
+					<VerticalStackLayout support:Dense.Padding="12,8" Spacing="4">
+						<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.GetOffAlarmTitle}" />
+
+						<Label StyleClass="Caption" Text="{Binding GetOffAlarmText}" />
+
+						<Slider
+							Maximum="{x:Static local:SettingsViewModel.GetOffAlarmCeiling}"
+							Minimum="{x:Static local:SettingsViewModel.GetOffAlarmFloor}"
+							SemanticProperties.Description="{localization:Tr Settings.GetOffAlarmTitle}"
+							Value="{Binding GetOffAlarmMinutes}" />
+					</VerticalStackLayout>
+
+					<BoxView StyleClass="Divider" />
+
+					<!--  B5: the get-off alarm's sound (the alerts channel with sound, or gentle without)  -->
+					<Grid
+						support:Dense.MinHeight="{StaticResource HitRow}"
+						support:Dense.Padding="12,8"
+						ColumnDefinitions="*,Auto"
+						ColumnSpacing="12">
+
+						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
+							<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.GetOffAlarmSound}" />
+							<Label StyleClass="Caption" Text="{localization:Tr Settings.GetOffAlarmSoundDescription}" />
+						</VerticalStackLayout>
+
+						<Switch
+							Grid.Column="1"
+							IsToggled="{Binding GetOffAlarmSound}"
+							SemanticProperties.Description="{localization:Tr Settings.GetOffAlarmSound}"
+							VerticalOptions="Center" />
+					</Grid>
 
 					<BoxView StyleClass="Divider" />
 

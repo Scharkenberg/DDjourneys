@@ -1,6 +1,8 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using DDjourneys.Core.Diagnostics;
 using DDjourneys.Core.Mapping;
+using DDjourneys.Core.Serialization;
 using DDjourneys.Localization;
 using DDjourneys.Support;
 
@@ -9,7 +11,8 @@ namespace DDjourneys.Controls;
 /// <summary>
 /// A map: MapLibre GL (vector tiles, embedded in the app under Resources/Raw/wwwroot) in a
 /// <see cref="HybridWebView"/>. C# calls the page's <c>ddMapCall</c> through InvokeJavaScriptAsync; the page
-/// reports back with raw messages ("ready", "open:url", "error:text"). The basemap is recoloured from the
+/// reports back with raw messages ("ready", "open:url", "error:text", "tile:z/x/y" - the Leaflet engine's
+/// ask for a cached city tile). The basemap is recoloured from the
 /// active app theme and needs the user's CARTO key (<see cref="MapAvailability"/>): without a usable one the map is
 /// replaced by a quiet notice. Give it a <see cref="MapScene"/>; it keeps the scene and re-applies it when needed.
 /// </summary>
@@ -26,6 +29,9 @@ public sealed partial class MapView : ContentView
 
 	/// <summary>Height the map starts with when the grip chin can resize it (see <see cref="ResizableByGrip"/>).</summary>
 	private const double DefaultHeight = 320;
+
+	/// <summary>Height of the grip chin where it drags: a little taller than the plain strip, still slim.</summary>
+	private const double GripHeight = 28;
 
 	/// <summary>The grip chin never drags the map below this: the strip itself and a first look at the scene must fit.</summary>
 	private const double MinHeight = 160;
@@ -50,7 +56,10 @@ public sealed partial class MapView : ContentView
 	private readonly Grid _grid;
 	private readonly Button _settingsButton;
 	private readonly Label _noticeText;
-	private MapScene? _overlay;
+	private readonly Dictionary<string, MapScene> _layers = new(StringComparer.Ordinal);
+
+	// The layer panel's rows, re-pushed when the page (re)boots: they arrive before the map is ready.
+	private (string Title, IReadOnlyList<MapLayerRow> Rows)? _layerRows;
 	private (bool Explore, bool Pick, double? Latitude, double? Longitude, int Zoom)? _mode;
 
 	// The grip chin: the strip under the map, and the handle that drags its height (see ResizableByGrip).
@@ -107,7 +116,7 @@ public sealed partial class MapView : ContentView
 				StyleClass = ["Tonal"]
 			};
 
-		_settingsButton.Clicked += async (_, _) => await Shell.Current.GoToAsync(Routes.Settings);
+		_settingsButton.Clicked += async (_, _) => await TabRoots.OpenAsync(Routes.Settings);
 
 		_bypassButton =
 			new Button
@@ -244,23 +253,72 @@ public sealed partial class MapView : ContentView
 	/// <summary>The visible area changed (after a pan or zoom, debounced by the page).</summary>
 	public event EventHandler<MapViewport>? ViewportChanged;
 
-	/// <summary>A marker of the overlay (see <see cref="SetOverlayAsync"/>) was tapped: its id.</summary>
+	/// <summary>A marker of a layer (see <see cref="SetLayerAsync"/>) was tapped: its id.</summary>
 	public event EventHandler<string>? MarkerTapped;
 
 	/// <summary>The map was tapped in pick mode: the point.</summary>
 	public event EventHandler<(double Latitude, double Longitude)>? PointTapped;
 
+	/// <summary>A row of the map's layer switch panel; a link row announces its tap instead of toggling.</summary>
+	public sealed record MapLayerRow(string Id, string Label, bool Checked, bool Link = false);
+
+	/// <summary>The rows of the map's layer panel were used: their ids and states (false clears a layer).</summary>
+	public event EventHandler<IReadOnlyDictionary<string, bool>>? LayersChanged;
+
 	/// <summary>
-	/// Markers on top of the scene that the page loads itself (stops in the viewport). They are tappable: a tap raises
-	/// <see cref="MarkerTapped"/> instead of opening a popup.
+	/// One layer of the map: markers on top of the scene (stops in the viewport, later live vehicles), filled
+	/// areas (tariff zones) and lines - sent once per change, never on every viewport change. Layer ids are
+	/// marker-id namespaces ("stops"; Tier 2 adds "parking", "bikes", "vehicles"). An empty scene clears the
+	/// layer. Markers of a layer are tappable: a tap raises <see cref="MarkerTapped"/> instead of a popup.
 	/// </summary>
-	public Task SetOverlayAsync(MapScene overlay)
+	public Task SetLayerAsync(string id, MapScene layer)
 	{
-		ArgumentNullException.ThrowIfNull(overlay);
+		ArgumentNullException.ThrowIfNull(id);
 
-		_overlay = overlay;
+		ArgumentNullException.ThrowIfNull(layer);
 
-		return PushOverlayAsync();
+		_layers[id] = layer;
+
+		return PushLayerAsync(id);
+	}
+
+	/// <summary>
+	/// The rows of the map's layer panel (the labels are localised here, the page owns no strings). Without
+	/// rows the panel disappears; a link row (no checkbox) posts its id on tap for the host page to act on.
+	/// </summary>
+	public Task SetLayersAsync(string title, IReadOnlyList<MapLayerRow> rows)
+	{
+		ArgumentNullException.ThrowIfNull(title);
+
+		ArgumentNullException.ThrowIfNull(rows);
+
+		_layerRows = (title, rows);
+
+		// A node tree, not a reflected dictionary: the app serialises by source-generated metadata only.
+		var state = new JsonObject();
+
+		foreach (MapLayerRow row in rows.Where(row => !row.Link))
+		{
+			state[row.Id] = row.Checked;
+		}
+
+		string json =
+			new JsonObject
+			{
+				["label"] = title,
+				["rows"] =
+					Wire.Array(
+						rows.Select(
+							row => (JsonNode?)new JsonObject
+							{
+								["id"] = row.Id,
+								["label"] = row.Label,
+								["link"] = row.Link
+							})),
+				["state"] = state
+			}.ToJsonString();
+
+		return CallAsync("layers", json);
 	}
 
 	/// <summary>
@@ -312,6 +370,9 @@ public sealed partial class MapView : ContentView
 			{
 				HeightRequest = Math.Max(MinHeight, Preferences.Default.Get(HeightKey, DefaultHeight));
 
+				// The handle is a thumb target, not a hairline: the strip is taller where it can be dragged.
+				_chin.HeightRequest = GripHeight;
+
 				SemanticProperties.SetDescription(
 					_chin,
 					LocalizationService.Current.CurrentStrings.Extras.MapGrip);
@@ -337,6 +398,13 @@ public sealed partial class MapView : ContentView
 	{
 		_draggingHeight = true;
 		_pressHeight = HeightRequest >= MinHeight ? HeightRequest : Height;
+
+		// The handle answers the touch: it lights up while it is held.
+		if (_chin.Content is BoxView bar)
+		{
+			bar.Opacity = 1;
+			bar.WidthRequest = 56;
+		}
 	}
 
 	/// <summary>The chin moved this far down since the drag began (negative: up).</summary>
@@ -359,6 +427,12 @@ public sealed partial class MapView : ContentView
 		}
 
 		_draggingHeight = false;
+
+		if (_chin.Content is BoxView bar)
+		{
+			bar.Opacity = 0.6;
+			bar.WidthRequest = 40;
+		}
 
 		Preferences.Default.Set(HeightKey, HeightRequest);
 	}
@@ -492,6 +566,11 @@ public sealed partial class MapView : ContentView
 			{
 				Preferences.Default.Set(AutoFitKey, message == "auto:true");
 			}
+			else if (message.StartsWith("layers:", StringComparison.Ordinal))
+			{
+				// The layer panel was used: every row's state, so the page host stays stateless.
+				TryRaiseLayersChanged(message[7..]);
+			}
 			else if (message.StartsWith("error:", StringComparison.Ordinal))
 			{
 				DiagnosticLog.Write($"[Map JS] {message[6..]}");
@@ -501,11 +580,57 @@ public sealed partial class MapView : ContentView
 				// The page's own diagnostics (engine, language features, WebGL, errors with stack, map events).
 				DiagnosticLog.Write($"[Map page] {message[4..]}");
 			}
+			else if (message.StartsWith("tile:", StringComparison.Ordinal))
+			{
+				// The Leaflet engine asks for a cached city tile after its network tile failed (offline).
+				await ServeTileAsync(message[5..]);
+			}
 		}
 		catch (Exception ex)
 		{
 			DiagnosticLog.Write($"[Map] message '{message}' failed: {ex.Message}");
 		}
+	}
+
+	/// <summary>
+	/// Answers the page's ask for one offline city tile: the cached bytes as a data URL, or a miss (the page
+	/// then shows its own error tile). Only the Leaflet engine asks, and only after a network tile failed, so
+	/// the online path never pays a bridge round-trip.
+	/// </summary>
+	private async Task ServeTileAsync(string address)
+	{
+		if (address.Split('/') is not [var zoomText, var xText, var yText]
+			|| !int.TryParse(zoomText, out int zoom)
+			|| !int.TryParse(xText, out int x)
+			|| !int.TryParse(yText, out int y))
+		{
+			return;
+		}
+
+		byte[]? png = null;
+
+		try
+		{
+			if (Handler?.MauiContext?.Services.GetService(typeof(CityTilesStore)) is CityTilesStore store)
+			{
+				png = await store.ReadAsync(zoom, x, y);
+			}
+		}
+		catch (Exception ex)
+		{
+			DiagnosticLog.Write($"[Map] serving city tile {zoom}/{x}/{y} failed: {ex.Message}");
+		}
+
+		var answer =
+			new JsonObject
+			{
+				["z"] = zoom,
+				["x"] = x,
+				["y"] = y,
+				["data"] = png is null ? null : $"data:image/png;base64,{Convert.ToBase64String(png)}"
+			};
+
+		await CallAsync("tile", answer.ToJsonString());
 	}
 
 	private async Task InitializeAsync()
@@ -523,15 +648,21 @@ public sealed partial class MapView : ContentView
 				Preferences.Default.Get(AutoFitKey, true),
 				strings.MapAutoFit,
 				strings.MapFitNow,
-				strings.MapInfo));
+				strings.MapInfo,
+				strings.MapOfflineTiles));
 
 		_ready = true;
 
-		DiagnosticLog.Write($"[Map] init answered ({_created.ElapsedMilliseconds} ms), pushing scene, mode and overlay");
+		DiagnosticLog.Write($"[Map] init answered ({_created.ElapsedMilliseconds} ms), pushing scene, mode and layers");
 
 		await PushSceneAsync();
 		await PushModeAsync();
-		await PushOverlayAsync();
+		await PushLayersAsync();
+
+		if (_layerRows is { } panel)
+		{
+			await SetLayersAsync(panel.Title, panel.Rows);
+		}
 
 		if (_pendingFocus is { } id)
 		{
@@ -681,7 +812,29 @@ public sealed partial class MapView : ContentView
 			await CallAsync("set", scene.ToJson(Theme.IsDark, MapScenes.Resolve, fit: false));
 		}
 
-		await PushOverlayAsync();
+		await PushLayersAsync();
+	}
+
+	private void TryRaiseLayersChanged(string json)
+	{
+		try
+		{
+			var states = new Dictionary<string, bool>(StringComparer.Ordinal);
+
+			using (JsonDocument document = JsonDocument.Parse(json))
+			{
+				foreach (JsonProperty property in document.RootElement.EnumerateObject())
+				{
+					states[property.Name] = property.Value.ValueKind == JsonValueKind.True;
+				}
+			}
+
+			MainThread.BeginInvokeOnMainThread(() => LayersChanged?.Invoke(this, states));
+		}
+		catch (Exception ex)
+		{
+			DiagnosticLog.Write($"[Map] layer states '{json}' failed: {ex.Message}");
+		}
 	}
 
 	// The page reports on a background thread; listeners touch views, so they are called on the UI thread.
@@ -703,15 +856,23 @@ public sealed partial class MapView : ContentView
 		MainThread.BeginInvokeOnMainThread(() => ViewportChanged?.Invoke(this, viewport));
 	}
 
-	private async Task PushOverlayAsync()
+	private async Task PushLayerAsync(string id)
 	{
 		if (!_ready
-			|| _overlay is not { } overlay)
+			|| !_layers.TryGetValue(id, out MapScene? layer))
 		{
 			return;
 		}
 
-		await CallAsync("overlay", overlay.ToJson(Theme.IsDark, MapScenes.Resolve));
+		await CallAsync("layer", id, layer.ToJson(Theme.IsDark, MapScenes.Resolve));
+	}
+
+	private async Task PushLayersAsync()
+	{
+		foreach (string id in _layers.Keys)
+		{
+			await PushLayerAsync(id);
+		}
 	}
 
 	private async Task PushModeAsync()
@@ -750,6 +911,9 @@ public sealed partial class MapView : ContentView
 
 	private Task CallAsync(string command, string? json) =>
 		WebBridge.CallAsync(_web, "ddMapCall", command, json, "Map");
+
+	private Task CallAsync(string command, string argument, string? json) =>
+		WebBridge.CallAsync(_web, "ddMapCall", command, argument, json, "Map");
 
 #if WINDOWS
 	private Microsoft.UI.Xaml.UIElement? _chinView;
@@ -799,14 +963,16 @@ public sealed partial class MapView : ContentView
 
 		view.CapturePointer(e.Pointer);
 
-		_pressY = e.GetCurrentPoint(view).Position.Y;
+		// The window's coordinates, not the chin's own: the chin moves with the drag, so a position measured
+		// from it would stand still under the finger and the height would never follow.
+		_pressY = e.GetCurrentPoint(null).Position.Y;
 
 		BeginHeightDrag();
 	}
 
 	private void OnChinMoved(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
 	{
-		if (_chinView is not { } view
+		if (_chinView is null
 			|| !_draggingHeight)
 		{
 			return;
@@ -814,7 +980,7 @@ public sealed partial class MapView : ContentView
 
 		e.Handled = true;
 
-		MoveHeightDrag(e.GetCurrentPoint(view).Position.Y - _pressY);
+		MoveHeightDrag(e.GetCurrentPoint(null).Position.Y - _pressY);
 	}
 
 	private void OnChinReleased(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
@@ -866,7 +1032,8 @@ public sealed partial class MapView : ContentView
 					// As long as the finger is down, no parent may intercept the drag.
 					view.Parent?.RequestDisallowInterceptTouchEvent(true);
 
-					_downY = motion.GetY();
+					// Screen coordinates: the chin moves with the drag, a position relative to it would not change.
+					_downY = motion.RawY;
 					_density = view.Resources?.DisplayMetrics?.Density ?? 1;
 
 					_map.BeginHeightDrag();
@@ -874,7 +1041,7 @@ public sealed partial class MapView : ContentView
 					return true;
 
 				case Android.Views.MotionEventActions.Move:
-					_map.MoveHeightDrag((motion.GetY() - _downY) / _density);
+					_map.MoveHeightDrag((motion.RawY - _downY) / _density);
 
 					return true;
 

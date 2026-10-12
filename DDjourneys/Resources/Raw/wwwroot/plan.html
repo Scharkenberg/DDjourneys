@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="color-scheme" content="light dark">
+<title>DDjourneys plan</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="leaflet/leaflet.css">
+<script src="_framework/hybridwebview.js"></script>
+<script src="leaflet/leaflet.js"></script>
+<style>
+:root { --bg: #f2f4f5; --paper: #ffffff; --accent: #0b6e8a; --surface: #ffffff; --ink: #0f1a1f; }
+html, body, #plan { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: var(--bg); }
+/* Nothing is shown before the app has sent its theme: no flash of the wrong colours. */
+html:not(.themed) body { visibility: hidden; }
+#plan { background: var(--bg); outline: none; -webkit-tap-highlight-color: transparent; }
+/* The plan is a print product: a sheet of paper with a soft edge, whatever the theme. */
+.leaflet-paper-pane path { filter: drop-shadow(0 1px 6px rgba(0, 0, 0, .28)); }
+/* In the dark a white sheet glares: dimmed a little, never inverted (the colours carry meaning). */
+html.dark .leaflet-tile-pane, html.dark .leaflet-paper-pane, html.dark .leaflet-overlay-pane img { filter: brightness(.9); }
+.leaflet-container { font: inherit; }
+.leaflet-tile { image-rendering: auto; }
+/* No overlap between tiles: Leaflet 1.9 closes seams with mix-blend-mode: plus-lighter, which turns any overlap white. */
+
+/* Marks on stops: the one picked (ring that breathes), where the passenger is (dot), a journey's ends (rings). */
+.mark { width: 0; height: 0; }
+.mark .ring { position: absolute; left: -15px; top: -15px; width: 30px; height: 30px; border-radius: 50%; box-sizing: border-box;
+	border: 3px solid var(--accent); box-shadow: 0 0 0 2px rgba(255, 255, 255, .9), 0 1px 6px rgba(0, 0, 0, .3); }
+.mark.focus .ring::after { content: ""; position: absolute; inset: -3px; border-radius: 50%; border: 3px solid var(--accent); animation: breathe 1.8s ease-out infinite; }
+.mark.here .ring { left: -9px; top: -9px; width: 18px; height: 18px; border: 3px solid #fff; background: var(--accent); box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 25%, transparent), 0 1px 4px rgba(0, 0, 0, .35); }
+.mark.to .ring { border-style: double; border-width: 5px; }
+.mark .label { position: absolute; left: 20px; top: -14px; white-space: nowrap; padding: 4px 9px; border-radius: 10px; background: var(--surface); color: var(--ink);
+	font: 600 13px/18px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; box-shadow: 0 1px 6px rgba(0, 0, 0, .25); pointer-events: none; }
+.mark.here .label { left: 16px; }
+.mark .label:empty { display: none; }
+@keyframes breathe { 0% { transform: scale(1); opacity: .9; } 80%, 100% { transform: scale(1.9); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .mark.focus .ring::after { animation: none; opacity: 0; } }
+.leaflet-tooltip.stop-tip { font: 600 13px/18px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; padding: 3px 8px; border-radius: 8px; border: 0; background: var(--surface); color: var(--ink); box-shadow: 0 1px 6px rgba(0, 0, 0, .25); }
+.leaflet-tooltip.stop-tip::before { display: none; }
+</style>
+</head>
+<body>
+<div id="plan"></div>
+<script>
+(function () {
+	'use strict';
+
+	var map = null, tiles = null, image = null, paper = null, bounds = null;
+	var shown = false, loaded = 0, failed = 0, lastState = '';
+
+	// Stops: tap targets drawn on one canvas, shown from a scale on (below it a tap zooms in towards the tap instead).
+	var stops = null, stopIndex = {}, stopScale = 0.5, stopsShown = false, renderer = null, marks = {};
+	var hover = window.matchMedia && window.matchMedia('(hover: hover)').matches;
+
+	function send(text) { try { window.HybridWebView.SendRawMessage(text); } catch (e) { } }
+	// Lines for the app's log ("Log to file"): what the page was told and what its tiles did.
+	function log(text) { send('log:' + text); }
+	window.addEventListener('error', function (e) { send('error:' + e.message); });
+
+	// ---- theme ----
+	function applyTheme(t) {
+		var root = document.documentElement;
+		root.style.setProperty('--bg', t.bg);
+		if (t.accent) { root.style.setProperty('--accent', t.accent); }
+		if (t.surface) { root.style.setProperty('--surface', t.surface); }
+		if (t.ink) { root.style.setProperty('--ink', t.ink); }
+		if (stops) { stops.eachLayer(function (m) { m.setStyle({ color: t.accent, fillColor: t.accent }); }); }
+		root.style.colorScheme = t.dark ? 'dark' : 'light';
+		root.classList.toggle('dark', !!t.dark);
+		root.classList.add('themed');
+	}
+
+	// ---- projection ----
+	// A plan is a picture, not the globe: one unit is one CSS pixel at the deepest native level (LatLng = [y, x], y down).
+	// The native levels need not be powers of two (the VVO plans are not), so the zoom scale is the level table,
+	// interpolated geometrically between levels and doubled or halved per zoom step beyond either end.
+	function crsFor(scales) {
+		var n = scales.length - 1, ln = scales.map(Math.log);
+
+		function scale(z) {
+			if (z <= 0) { return scales[0] * Math.pow(2, z); }
+			if (z >= n) { return scales[n] * Math.pow(2, z - n); }
+			var i = Math.floor(z);
+			return Math.exp(ln[i] + (ln[i + 1] - ln[i]) * (z - i));
+		}
+
+		function zoom(s) {
+			if (s <= scales[0]) { return Math.log(s / scales[0]) / Math.LN2; }
+			if (s >= scales[n]) { return n + Math.log(s / scales[n]) / Math.LN2; }
+			var l = Math.log(s);
+			for (var i = 0; i < n; i++) {
+				if (s <= scales[i + 1]) { return i + (l - ln[i]) / (ln[i + 1] - ln[i]); }
+			}
+			return n;
+		}
+
+		return L.extend({}, L.CRS.Simple, { scale: scale, zoom: zoom, transformation: new L.Transformation(1, 0, 1, 0) });
+	}
+
+	// Tiles drawn from a vector source are made for the screen's pixel density; 1.25 already gets the 2x tile.
+	function ratio() { return Math.max(1, Math.min(3, Math.ceil((window.devicePixelRatio || 1) - 0.15))); }
+
+	// ---- view state ----
+	function fitZoom() { return map.getBoundsZoom(bounds, false, L.point(12, 12)); }
+
+	function reportZoom() {
+		if (!map) { return; }
+		var z = map.getZoom();
+		var state = 'zoom:' + (z < map.getMaxZoom() - 0.01 ? 1 : 0) + ',' + (z > map.getMinZoom() + 0.01 ? 1 : 0);
+		if (state !== lastState) { lastState = state; send(state); }
+	}
+
+	// The sheet can never be zoomed out beyond the whole of it; the bound follows the window size.
+	function updateMinZoom() {
+		var min = fitZoom();
+		map.setMinZoom(min);
+		if (map.getZoom() < min) { map.setZoom(min, { animate: false }); }
+		reportZoom();
+	}
+
+	function announce(ok) {
+		if (shown) { return; }
+		shown = true;
+		send(ok ? 'shown' : 'failed');
+	}
+
+	// ---- plan ----
+	// A tile that came back empty (drawing failed, request cut off) is asked for again, twice, a little later; Leaflet
+	// keeps the img and its load handler, so a late success counts as loaded. Without it the hole stays, and the tiles
+	// of the level before show through it at their own scale.
+	var RETRIES = 3;
+
+	function retry(tile, coords) {
+		var tries = (tile._tries || 0) + 1;
+		if (tries > RETRIES || !tiles) { return false; }
+		tile._tries = tries;
+		var layer = tiles;
+		setTimeout(function () {
+			if (layer !== tiles || !tile.isConnected) { return; }
+			var url = layer.getTileUrl(coords);
+			tile.src = url + (url.indexOf('?') < 0 ? '?' : '&') + 'try=' + tries;
+		}, 300 * tries * tries);
+		return true;
+	}
+
+	// ---- stops ----
+	function scaleNow() { return map.options.crs.scale(map.getZoom()); }
+
+	// The tap target grows with the plan (the drawn stop does), never below a finger's worth on a touch screen.
+	function stopRadius() { return Math.max(hover ? 6 : 9, Math.min(18, scaleNow() * 10)); }
+
+	function setStops(arg) {
+		if (stops) { stops.remove(); stops = null; }
+		stopIndex = {};
+		stopScale = arg.minScale || 0.5;
+		renderer = renderer || L.canvas({ padding: 0.3, tolerance: hover ? 2 : 8 });
+		stops = L.featureGroup();
+
+		var accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#0b6e8a';
+
+		arg.pins.forEach(function (p) {
+			var m = L.circleMarker([p[2], p[1]], {
+				renderer: renderer, radius: 9, stroke: false, weight: 2.5, color: accent, opacity: 0.95,
+				fill: true, fillColor: accent, fillOpacity: 0, bubblingMouseEvents: false
+			});
+			m.stopId = p[0];
+			m.stopLabel = p[3];
+			if (hover) {
+				m.bindTooltip(p[3], { direction: 'top', offset: [0, -10], className: 'stop-tip' });
+				m.on('mouseover', function () { m.setStyle({ stroke: true, fillOpacity: 0.12 }); });
+				m.on('mouseout', function () { m.setStyle({ stroke: false, fillOpacity: 0 }); });
+			}
+			m.on('click', function () { pick(m); });
+			stopIndex[p[0]] = m;
+			stops.addLayer(m);
+		});
+
+		syncStops();
+	}
+
+	function syncStops() {
+		if (!map || !stops) { return; }
+		var show = scaleNow() >= stopScale;
+		if (show !== stopsShown) {
+			stopsShown = show;
+			if (show) { stops.addTo(map); } else { stops.remove(); }
+		}
+		if (show) {
+			var r = stopRadius();
+			stops.eachLayer(function (m) { m.setRadius(r); });
+		}
+	}
+
+	function pick(m) {
+		setMark('focus', m.stopId, m.stopLabel);
+		send('pin:' + m.stopId);
+	}
+
+	// ---- marks ----
+	function setMark(kind, id, label) {
+		if (marks[kind]) { marks[kind].remove(); delete marks[kind]; }
+		var m = id && stopIndex[id];
+		if (!m) { return null; }
+		var div = document.createElement('div');
+		div.innerHTML = '<div class="ring"></div><div class="label"></div>';
+		div.lastChild.textContent = label || '';
+		marks[kind] = L.marker(m.getLatLng(), {
+			icon: L.divIcon({ className: 'mark ' + kind, html: div.innerHTML, iconSize: [0, 0] }),
+			interactive: false, keyboard: false, zIndexOffset: kind === 'focus' ? 1000 : 500
+		}).addTo(map);
+		return m.getLatLng();
+	}
+
+	// Close enough to read the stop and its neighbours, never further out than the view already is.
+	function readableZoom() { return Math.max(map.getZoom(), map.options.crs.zoom(0.85)); }
+
+	function mark(arg) {
+		if (!map) { return; }
+		var at = setMark(arg.kind, arg.id, arg.label);
+		var animate = arg.animate !== false;
+		if (arg.fit === 'center' && at) {
+			if (animate) { map.flyTo(at, readableZoom(), { duration: 0.7 }); } else { map.setView(at, readableZoom(), { animate: false }); }
+		} else if (arg.fit === 'all') {
+			var points = Object.keys(marks).map(function (k) { return marks[k].getLatLng(); });
+			if (points.length === 1) {
+				map.setView(points[0], readableZoom(), { animate: animate });
+			} else if (points.length > 1) {
+				var options = { padding: [70, 70], maxZoom: map.options.crs.zoom(1) };
+				if (animate) { map.flyToBounds(L.latLngBounds(points), options); } else { map.fitBounds(L.latLngBounds(points), options); }
+			}
+		}
+	}
+
+	function clear() {
+		if (map) { map.remove(); map = null; }
+		if (stops) { stops = null; }
+		stopIndex = {}; stopsShown = false; renderer = null; marks = {};
+		tiles = image = paper = null;
+		shown = false; loaded = failed = 0; lastState = '';
+	}
+
+	function open(plan) {
+		clear();
+
+		var levels = plan.scales.length - 1;
+		var base = '/_plan/' + encodeURIComponent(plan.key) + '/';
+		var r = ratio();
+
+		bounds = L.latLngBounds([0, 0], [plan.height, plan.width]);
+
+		map = L.map('plan', {
+			crs: crsFor(plan.scales),
+			zoomControl: false,
+			attributionControl: false,
+			zoomSnap: 0,
+			zoomDelta: 1,
+			wheelPxPerZoomLevel: 90,
+			wheelDebounceTime: 20,
+			maxBounds: bounds,
+			maxBoundsViscosity: 1,
+			bounceAtZoomLimits: false,
+			maxZoom: levels + (plan.overZoom || 0),
+			minZoom: -8,
+			fadeAnimation: true,
+			zoomAnimation: true
+		});
+
+		map.createPane('paper').style.zIndex = 150;
+		paper = L.rectangle(bounds, { pane: 'paper', stroke: false, fill: true, fillColor: plan.paper || '#ffffff', fillOpacity: 1, interactive: false }).addTo(map);
+
+		if (plan.image) {
+			image = L.imageOverlay(base + 'image', bounds, { interactive: false }).addTo(map);
+			image.on('load', function () { announce(true); });
+			image.on('error', function () { announce(false); });
+		} else {
+			var Tiles = L.TileLayer.extend({
+				getTileUrl: function (c) { return base + c.z + '/' + c.x + '/' + c.y + (plan.retina ? '?r=' + r : ''); }
+			});
+
+			tiles = new Tiles('', {
+				tileSize: plan.tileSize,
+				minNativeZoom: plan.minNative || 0,
+				maxNativeZoom: levels,
+				minZoom: -8,
+				maxZoom: levels + (plan.overZoom || 0),
+				bounds: bounds,
+				noWrap: true,
+				keepBuffer: 4,
+				updateWhenZooming: false,
+				className: 'plan-tiles'
+			});
+
+			tiles.on('tileload', function () { loaded++; });
+			tiles.on('tileerror', function (e) {
+				if (failed < 3) { log('tile error ' + (e.tile && e.tile.src)); }
+				retry(e.tile, e.coords) || failed++;
+			});
+			// The first complete view decides: the plan is up (some tile drew), or nothing of it could be drawn. A view
+			// that asked for no tile at all is no plan either: the white sheet under the tiles must never count as shown.
+			tiles.on('load', function () {
+				log('tiles: ' + loaded + ' loaded, ' + failed + ' failed');
+				announce(loaded > 0);
+			});
+			tiles.addTo(map);
+		}
+
+		map.fitBounds(bounds, { animate: false, padding: [12, 12] });
+		updateMinZoom();
+
+		log('plan ' + plan.key + ' ' + plan.width + 'x' + plan.height + ', ' + (plan.image ? 'image' : plan.scales.length + ' levels, tile ' + plan.tileSize + (plan.retina ? ', ratio ' + r : '')) +
+			'; view ' + map.getSize().x + 'x' + map.getSize().y + ', zoom ' + map.getZoom().toFixed(2) + ' (min ' + map.getMinZoom().toFixed(2) + ', max ' + map.getMaxZoom() + ')');
+
+		map.on('zoomend', reportZoom);
+		map.on('zoomend', syncStops);
+		map.on('resize', updateMinZoom);
+
+		// A tap on the plan: below the stop scale it zooms in towards the tap (stops come into reach); above it, a tap
+		// beside the stops lets go of the picked one.
+		map.on('click', function (e) {
+			if (!stops) { return; }
+			if (!stopsShown) {
+				map.setZoomAround(e.containerPoint, Math.max(map.getZoom() + 1, map.options.crs.zoom(stopScale) + 0.25));
+			} else if (marks.focus) {
+				marks.focus.remove();
+				delete marks.focus;
+				send('unpin');
+			}
+		});
+	}
+
+	// The one entry point C# calls (HybridWebView.InvokeJavaScriptAsync).
+	window.ddPlanCall = function (command, json) {
+		var arg = json ? JSON.parse(json) : null;
+
+		switch (command) {
+			case 'init': applyTheme(arg.theme); open(arg.plan); break;
+			case 'theme': applyTheme(arg); break;
+			case 'zoom': if (map) { arg.by > 0 ? map.zoomIn(arg.by) : map.zoomOut(-arg.by); } break;
+			case 'fit': if (map) { map.fitBounds(bounds, { padding: [12, 12] }); } break;
+			case 'clear': clear(); break;
+			case 'stops': if (map) { setStops(arg); } break;
+			case 'mark': mark(arg); break;
+		}
+	};
+
+	send('ready');
+})();
+</script>
+</body>
+</html>

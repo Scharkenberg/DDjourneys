@@ -2,11 +2,13 @@ using DDjourneys.Core.Diagnostics;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using DDjourneys.Core.Mapping;
+using DDjourneys.Core.Tracking.Live;
 using DDjourneys.Core.Models;
 using DDjourneys.Core.Providers;
 using DDjourneys.Core.Services;
 using DDjourneys.Localization;
 using DDjourneys.Support;
+using Location = DDjourneys.Core.Models.Location;
 
 namespace DDjourneys.Pages;
 
@@ -132,12 +134,12 @@ public sealed partial class VehiclesViewModel : DisposableViewModel, IQueryAttri
 	/// them may still be under way, the vehicle may report yet.</summary>
 	private static readonly TimeSpan TripOverAfter = TimeSpan.FromMinutes(5);
 
-	/// <summary>The pauses between the reconnects of a broken stream; the last one repeats.</summary>
-	private static readonly TimeSpan[] ReconnectPauses =
-		[TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(20)];
-
 	private readonly VehicleService _vehicles;
+	private readonly VehicleStreamHub _hub;
 	private readonly LocalizationService _localization;
+	private readonly LocationService _locations;
+	private readonly LineCourseService _lineCourses;
+	private VehicleStreamSubscription? _vehicleSubscription;
 	private readonly Dictionary<string, VehicleRow> _byKey = [];
 	private CancellationTokenSource? _stream;
 	private DateTimeOffset _startedAt;
@@ -161,20 +163,47 @@ public sealed partial class VehiclesViewModel : DisposableViewModel, IQueryAttri
 	// The lines of the running stream: a resume continues with them, not with whatever is typed but not started.
 	private IReadOnlyList<int> _activeLines = [];
 
+	// The course of the watched lines under the vehicle pills (the connecting line with its stops), fetched once
+	// from the departure board of a stop one of the line's vehicles stands at. Without a followed trip the map
+	// would show nothing but spots.
+	private IReadOnlyList<MapMarker>? _courseMarkers;
+	private IReadOnlyList<MapLine>? _courseLines;
+	private bool _courseTried;
+
+	// B5: the opt-in "you are probably here" marker. A per-run choice (off for every newly followed run),
+	// foreground only: the loop takes a fix every 20 s while the page tracks a run, and only when the
+	// location permission is already granted - the tracking surface never asks for it.
+	private CancellationTokenSource? _positionLoop;
+	private (double Latitude, double Longitude)? _myPosition;
+
 	public VehiclesViewModel(
 		VehicleService vehicles,
-		ProviderRegistry providers)
+		VehicleStreamHub hub,
+		ProviderRegistry providers,
+		LocationService locations,
+		LineCourseService lineCourses)
 	{
 		ArgumentNullException.ThrowIfNull(vehicles);
+		ArgumentNullException.ThrowIfNull(hub);
 		ArgumentNullException.ThrowIfNull(providers);
+		ArgumentNullException.ThrowIfNull(locations);
+		ArgumentNullException.ThrowIfNull(lineCourses);
 
 		_vehicles = vehicles;
+		_hub = hub;
 		_localization = LocalizationService.Current;
+		_locations = locations;
+		_lineCourses = lineCourses;
 
 		// Positions, lines and the followed run belong to one provider: a switch stops the stream and drops them.
 		Subscribe(
 			() => providers.SelectionChanged += OnProviderChanged,
 			() => providers.SelectionChanged -= OnProviderChanged);
+
+		// The one shared stream tells the page where it stands; the page maps it to its own texts.
+		Subscribe(
+			() => hub.StateChanged += OnHubStateChanged,
+			() => hub.StateChanged -= OnHubStateChanged);
 
 		StartCommand =
 			new AsyncCommand(
@@ -200,6 +229,7 @@ public sealed partial class VehiclesViewModel : DisposableViewModel, IQueryAttri
 				{
 					_target = null;
 					_slots.Clear();
+					ShowMyPosition = false;
 					OnPropertyChanged(nameof(IsTracking));
 					OnPropertyChanged(nameof(IsNotTracking));
 					OnPropertyChanged(nameof(IsIdle));
@@ -235,6 +265,30 @@ public sealed partial class VehiclesViewModel : DisposableViewModel, IQueryAttri
 
 	public bool IsTracking =>
 		_target is not null;
+
+	/// <summary>
+	/// B5: snap the device position onto the stops of the run being followed and show it as "you are probably
+	/// here" - only while the vehicle's own position is missing or stale (the vehicles layer's 90 s rule).
+	/// </summary>
+	public bool ShowMyPosition
+	{
+		get;
+
+		set
+		{
+			if (SetProperty(ref field, value))
+			{
+				if (value)
+				{
+					_ = StartMyPositionAsync();
+				}
+				else
+				{
+					StopMyPosition();
+				}
+			}
+		}
+	} = false;
 
 	public string TrackText =>
 		_target is { } target
@@ -368,6 +422,9 @@ public sealed partial class VehiclesViewModel : DisposableViewModel, IQueryAttri
 			row.Refresh();
 		}
 
+		// The course of the watched lines is asked for once, when the first positions are there to ask at.
+		LoadCourse();
+
 		if (_dirty)
 		{
 			PublishScene();
@@ -449,13 +506,129 @@ public sealed partial class VehiclesViewModel : DisposableViewModel, IQueryAttri
 			_fitNext = false;
 		}
 
+		// B5: the snapped dot of the device position - only for the run being ridden, and only while the
+		// live marker of that run is missing or stale (a fresh vehicle position wins, the dot is not drawn).
+		(double Latitude, double Longitude)? you = null;
+
+		if (ShowMyPosition
+			&& _myPosition is { } fix
+			&& _slots.FirstOrDefault(slot => !Over(slot.Target)) is { } ridden
+			&& !PositionSnapping.IsFresh(ridden.Matched?.Time, DateTimeOffset.UtcNow)
+			&& ridden.Target.Course.Count >= 2)
+		{
+			you =
+				PositionSnapping.Snap(
+					fix.Latitude,
+					fix.Longitude,
+					(List<(double Latitude, double Longitude)>)[.. ridden.Target.Course.Select(point => (point.Latitude, point.Longitude))]);
+		}
+
 		SceneChanged?.Invoke(
 			this,
 			_slots.Count > 0
-				? MapScenes.FromTracks((List<TrackTarget>)[.. _slots.Select(slot => slot.Target)], (List<LiveVehicle?>)[.. _slots.Select(slot => slot.Matched)], false)
-				: MapScenes.FromVehicles(
+				? MapScenes.FromTracks((List<TrackTarget>)[.. _slots.Select(slot => slot.Target)], (List<LiveVehicle?>)[.. _slots.Select(slot => slot.Matched)], false, you)
+				: WithCourse(
+					MapScenes.FromVehicles(
 					Rows.Select(row => row.Vehicle),
-					fit));
+						fit)));
+	}
+
+	/// <summary>
+	/// The course of the watched lines under the vehicle pills: the stops the line connects, quietly drawn under
+	/// the positions (a map of only spots says nothing about where the line goes).
+	/// </summary>
+	private MapScene WithCourse(MapScene vehicles) =>
+		_courseLines is not { Count: > 0 }
+			? vehicles
+			: new MapScene
+			{
+				Markers = (List<MapMarker>)[.. (_courseMarkers ?? []), .. vehicles.Markers],
+				Lines = _courseLines,
+				Fit = vehicles.Fit
+			};
+
+	/// <summary>Asks once for the courses of the watched lines: a vehicle of the line stands on it, so the stop
+	/// next to it carries the line's departure board, and the board carries the course (both directions).</summary>
+	private void LoadCourse()
+	{
+		if (_courseTried
+			|| _target is not null
+			|| _activeLines.Count == 0
+			|| Rows.Count == 0)
+		{
+			return;
+		}
+
+		_courseTried = true;
+
+		_ = LoadCourseAsync();
+	}
+
+	private async Task LoadCourseAsync()
+	{
+		try
+		{
+			var markers = new List<MapMarker>();
+			var lines = new List<MapLine>();
+
+			foreach (int line in _activeLines.Take(3))
+			{
+				VehicleRow? standing = Rows.FirstOrDefault(row => row.Vehicle.Line == line);
+
+				if (standing is null)
+				{
+					continue;
+				}
+
+				IReadOnlyList<Location> near = await _locations
+					.SearchByCoordinatesAsync(standing.Vehicle.Latitude, standing.Vehicle.Longitude, TimeSpan.FromSeconds(8))
+					.ConfigureAwait(false);
+
+				Location? at = near.FirstOrDefault(place => place.IsStation) ?? (near.Count > 0 ? near[0] : null);
+
+				if (at is null)
+				{
+					continue;
+				}
+
+				IReadOnlyList<LineCourse> courses = await _lineCourses
+					.BothDirectionsAsync(
+						new TransitLine { Name = line.ToString(CultureInfo.InvariantCulture), Mode = TransitMode.Unknown },
+						new Station
+						{
+							Id = at.Id ?? string.Empty,
+							ProviderId = at.ProviderId,
+							Name = at.Name,
+							Place = at.Place,
+							Latitude = at.Latitude,
+							Longitude = at.Longitude
+						},
+						15)
+					.ConfigureAwait(false);
+
+				if (courses.Count == 0)
+				{
+					continue;
+				}
+
+				MapScene course = MapScenes.FromLineCourses(courses, fit: false);
+
+				// Ids of their own namespace: whatever a vehicle key is built of, it is not this.
+				markers.AddRange(course.Markers.Select(marker => marker with { Id = $"c{line}:{marker.Id}" }));
+				lines.AddRange(course.Lines);
+			}
+
+			if (lines.Count > 0)
+			{
+				_courseMarkers = markers;
+				_courseLines = lines;
+				_dirty = true;
+			}
+		}
+		catch (Exception ex)
+		{
+			DiagnosticLog.Write($"[Vehicles] line course failed: {ex.Message}");
+		}
 	}
 
 	private static (IReadOnlyList<int> Lines, IReadOnlyList<string> Ignored) ParseLines(string text)
@@ -499,6 +672,9 @@ public sealed partial class VehiclesViewModel : DisposableViewModel, IQueryAttri
 		Rows.Clear();
 		_byKey.Clear();
 		_previous.Clear();
+		_courseMarkers = null;
+		_courseLines = null;
+		_courseTried = _target is not null;
 
 		foreach (Slot slot in _slots)
 		{
@@ -534,19 +710,18 @@ public sealed partial class VehiclesViewModel : DisposableViewModel, IQueryAttri
 	}
 
 	/// <summary>
-	/// Runs the stream until it is cancelled — and does not stop there: a stream that ended (the service
-	/// closed it, or it failed) is reconnected after a pause, for as long as the page watches. Rows, the
-	/// filter and the matches stay untouched, so a restart after a pause continues with them.
+	/// Attaches to the one shared stream (the hub) and applies what arrives until it is cancelled. The
+	/// reconnect ladder lives in the hub now; the line filter is applied here, client-side, because the
+	/// shared stream is unfiltered - a set lookup per position.
 	/// </summary>
 	private async Task ConnectAsync(CancellationTokenSource cts, IReadOnlyList<int> lines)
 	{
-		ExtrasStrings strings = _localization.CurrentStrings.Extras;
-
 		try
 		{
-			int failures = 0;
+			_vehicleSubscription?.Dispose();
+			_vehicleSubscription = _hub.Subscribe();
 
-			while (!cts.IsCancellationRequested && !IsDisposed)
+			await foreach (LiveVehicle vehicle in _vehicleSubscription.Reader.ReadAllAsync(cts.Token))
 			{
 				bool delivered = false;
 
@@ -600,25 +775,28 @@ public sealed partial class VehiclesViewModel : DisposableViewModel, IQueryAttri
 				{
 					failures = 0;
 				}
-				else
+
+				if (lines.Count > 0 && !lines.Contains(vehicle.Line))
+				{
+					continue;
+				}
+
+				if (HasStatus)
 				{
 					failures++;
 				}
 
-				TimeSpan pause = ReconnectPauses[Math.Min(failures, ReconnectPauses.Length - 1)];
-
-				try
-				{
-					await Task.Delay(pause, cts.Token);
-				}
-				catch (OperationCanceledException)
-				{
-					return;
-				}
+				Apply(vehicle);
 			}
+		}
+		catch (OperationCanceledException)
+		{
 		}
 		finally
 		{
+			_vehicleSubscription?.Dispose();
+			_vehicleSubscription = null;
+
 			if (ReferenceEquals(_stream, cts))
 			{
 				IsStreaming = false;
@@ -808,11 +986,156 @@ public sealed partial class VehiclesViewModel : DisposableViewModel, IQueryAttri
 				Rows.Clear();
 			});
 
+	/// <summary>Where the one shared stream stands, as the page says it (connecting, delivering, broken).</summary>
+	private void OnHubStateChanged(VehicleStreamState state) =>
+			MainThread.BeginInvokeOnMainThread(
+					() =>
+					{
+						if (IsDisposed || !IsStreaming)
+						{
+							return;
+						}
+
+						ExtrasStrings strings = _localization.CurrentStrings.Extras;
+
+						if (state == VehicleStreamState.Degraded)
+						{
+							Status = strings.LiveError;
+						}
+						else if (state == VehicleStreamState.Connecting && HasStatus)
+						{
+							Status = strings.LiveConnecting;
+						}
+						else if (state == VehicleStreamState.Live && Status == strings.LiveConnecting)
+						{
+							Status = string.Empty;
+						}
+						});
+
+	/// <summary>
+	/// B5: checks the permission the nearby features already use (never asks for it from here), then keeps a
+	/// fix coming while the page tracks a run. A failed fix is logged and retried on the next round.
+	/// </summary>
+	private async Task StartMyPositionAsync()
+	{
+		if (IsDisposed)
+		{
+			return;
+		}
+
+		PermissionStatus status;
+
+		try
+		{
+			// The nearby features already use this permission; this surface only reads the answer, never asks.
+			status = await Permissions.CheckStatusAsync<Permissions.LocationWhenInUse>();
+		}
+		catch (Exception ex)
+		{
+			DiagnosticLog.Write($"[Live] checking the location permission failed: {ex.Message}");
+
+			return;
+		}
+
+		if (status != PermissionStatus.Granted)
+		{
+			ShowMyPosition = false;
+			Status = _localization.CurrentStrings.Extras.ShowMyPositionHint;
+
+			return;
+		}
+
+		StopMyPosition();
+
+		CancellationTokenSource cts = new();
+		_positionLoop = cts;
+
+		_ = PumpMyPositionAsync(cts.Token);
+	}
+
+	private async Task PumpMyPositionAsync(CancellationToken cancellationToken)
+	{
+		try
+		{
+			while (!cancellationToken.IsCancellationRequested
+				&& ShowMyPosition
+				&& _target is not null)
+			{
+				try
+				{
+					var request =
+						new GeolocationRequest(GeolocationAccuracy.Medium, TimeSpan.FromSeconds(10));
+
+					Microsoft.Maui.Devices.Sensors.Location? fix =
+						await Geolocation.Default.GetLocationAsync(request, cancellationToken);
+
+					if (fix is not null)
+					{
+						_myPosition = (fix.Latitude, fix.Longitude);
+						_dirty = true;
+					}
+				}
+				catch (Exception ex) when (ex is not OperationCanceledException)
+				{
+					DiagnosticLog.Write($"[Live] the device position failed: {ex.Message}");
+				}
+
+				await Task.Delay(TimeSpan.FromSeconds(20), cancellationToken);
+			}
+		}
+		catch (OperationCanceledException)
+		{
+		}
+	}
+
+	private void StopMyPosition()
+	{
+		_positionLoop?.Cancel();
+		_positionLoop = null;
+		_myPosition = null;
+		_dirty = true;
+	}
+
 	private void Stop()
 	{
 		_stream?.Cancel();
 		_stream = null;
 		IsStreaming = false;
+
+		StopMyPosition();
+	}
+
+	/// <summary>
+	/// A page nobody looks at stops reading the stream: the subscription ends, so the hub can close its
+	/// socket after the linger. The stream itself stays on - what it shows stays, only the reading pauses.
+	/// </summary>
+	public void PauseStream()
+	{
+		if (!IsStreaming)
+		{
+			return;
+		}
+
+		_stream?.Cancel();
+		_stream = null;
+	}
+
+	/// <summary>A page seen again continues its stream where it was: the lines it had, not what is typed but not started.</summary>
+	public void ResumeStream()
+	{
+		if (!IsStreaming
+			|| _stream is not null
+			|| IsDisposed)
+		{
+			return;
+		}
+
+		CancellationTokenSource cts = new();
+		_stream = cts;
+
+		// The cancellation of the pause detached the subscription; ConnectAsync subscribes again, and the
+		// hub reopens its socket with the first reader. What the board shows stays standing while it connects.
+		_ = ConnectAsync(cts, _activeLines);
 	}
 
 	protected override void OnDisposing() =>
