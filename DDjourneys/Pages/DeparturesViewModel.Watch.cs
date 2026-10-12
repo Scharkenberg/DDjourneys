@@ -1,10 +1,14 @@
 using DDjourneys.Core.Diagnostics;
+using DDjourneys.Support;
 
 namespace DDjourneys.Pages;
 
 public sealed partial class DeparturesViewModel
 {
-	public Command<StopLineRow> ToggleWatchCommand { get; } = new Command<StopLineRow>(ToggleWatchLine);
+	public Command<StopLineRow> ToggleWatchCommand { get; set; }
+
+	private void InitializeWatchCommands() =>
+		ToggleWatchCommand = new Command<StopLineRow>(ToggleWatchLine);
 
 	private void ToggleWatchLine(StopLineRow? row)
 	{
