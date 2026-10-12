@@ -304,6 +304,18 @@ public sealed class ContractInbox
 					return false;
 				}
 
+				// The map without a place to centre on is the phone's map tab: switching there unwinds that tab
+				// too. Everywhere else, and every parameterized page (a stop's board, a line's vehicles), is pushed
+				// over the unwound planner as always.
+				if (TabRoots.Enabled
+					&& route == Routes.Map
+					&& parameters is null)
+				{
+					await shell.GoToAsync($"//{Routes.Map}");
+
+					return true;
+				}
+
 				await Panes.ToStartAsync(shell);
 				await shell.GoToAsync(route, parameters ?? []);
 

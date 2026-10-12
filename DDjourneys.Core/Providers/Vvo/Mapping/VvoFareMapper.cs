@@ -46,7 +46,48 @@ public static partial class VvoFareMapper
 				});
 		}
 
+		// A ticket the planner names beyond the two prices: shown as the provider words it, and only when
+		// it is not one of them (the same kind at the same price). A list that carries nothing beyond them -
+		// the observed answer - leaves the fares exactly the two.
+		foreach (VvoTicket ticket in route.Tickets)
+		{
+			if (string.IsNullOrWhiteSpace(ticket.Name)
+				|| ParsePrice(ticket.Price) is not { } price)
+			{
+				continue;
+			}
+
+			FareKind kind = KindOf(ticket.Name);
+
+			if (fares.Any(fare => fare.Kind == kind && fare.Price == price))
+			{
+				continue;
+			}
+
+			fares.Add(
+				new JourneyFare
+				{
+					Name = ticket.Name.Trim(),
+					Kind = kind,
+					Price = price,
+					Zones = CleanZones(ticket.FareZoneNames),
+					Description = Level(ticket.NumberOfFareZones)
+				});
+		}
+
 		return fares;
+	}
+
+	/// <summary>A ticket the planner names: a day ticket when its name says so, a single ticket likewise, anything else as it is.</summary>
+	private static FareKind KindOf(string name)
+	{
+		string words = name.ToLowerInvariant();
+
+		return words.Contains("tages") || words.Contains("day")
+			? FareKind.Day
+			: words.Contains("einzel") || words.Contains("single")
+				? FareKind.Single
+				: FareKind.Other;
 	}
 
 	/// <summary>"2,70" or "2.70" (also "2,70 €"): the decimal, or null when there is no usable price.</summary>

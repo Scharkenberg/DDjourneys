@@ -232,6 +232,25 @@ public sealed partial class RoutingSettingsViewModel : DisposableViewModel
 	/// <summary>Who the tickets are for.</summary>
 	public bool ShowPassenger => _providers.Supports(ProviderCapabilities.PassengerFares);
 
+	/// <summary>The tickets section: shown for a provider that quotes fares (the passenger choice only when it quotes by passenger).</summary>
+	public bool ShowTickets => _providers.Supports(ProviderCapabilities.Fares);
+
+	/// <summary>Whether the passenger owns a Deutschlandticket (see AppSettings): switches the ticket advice of a journey on.</summary>
+	public bool DeutschlandTicket
+	{
+		get => _settings.HasDeutschlandTicket;
+
+		set
+		{
+			if (value != _settings.HasDeutschlandTicket)
+			{
+				_settings.HasDeutschlandTicket = value;
+
+				OnPropertyChanged();
+			}
+		}
+	}
+
 	/// <summary>Fastest, fewest changes, least walking, lowest fare.</summary>
 	public bool ShowOptimisation => _providers.Supports(ProviderCapabilities.RouteOptimisation);
 
@@ -246,6 +265,7 @@ public sealed partial class RoutingSettingsViewModel : DisposableViewModel
 				{
 					OnPropertyChanged(nameof(ShowWalkToStops));
 					OnPropertyChanged(nameof(ShowPassenger));
+					OnPropertyChanged(nameof(ShowTickets));
 					OnPropertyChanged(nameof(ShowOptimisation));
 					OnPropertyChanged(nameof(ShowExtraCharge));
 					RefreshAll();

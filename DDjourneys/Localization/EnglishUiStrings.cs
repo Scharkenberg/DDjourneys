@@ -95,7 +95,16 @@ public sealed class EnglishUiStrings : IUiStrings
 		RunTitle = "Course",
 		NoRun = "No course available for this departure.",
 		VehicleHere = "Vehicle is here",
-		OpenDepartures = "Departures at this stop"
+		OpenDepartures = "Departures at this stop",
+
+		// B1 — line-centric departures
+		ShowCancelled = "Show cancelled",
+		AllLines = "All lines",
+		OnlyThisLine = "Only this line",
+		LineChipDescription = "Line {0}",
+		InMinutesShort = "{0}\u2032",
+		NowShort = "now",
+		MoreDepartures = "Show more departures"
 	};
 
 	public DisruptionsStrings Disruptions { get; } = new()
@@ -176,7 +185,7 @@ public sealed class EnglishUiStrings : IUiStrings
 		FareDay = "Day ticket",
 		FareZones = "Zones",
 		FareValidFor = "For",
-		FareNotAll = "Prices of the provider for this journey. Other tickets (weekly, monthly, reduced, Deutschland-Ticket) are not part of its answer.",
+		FareNotAll = "Prices of the provider for this journey. Other tickets (weekly, monthly, reduced, Deutschlandticket) are not part of its answer; the BahnCard 25 line is the app's own estimate.",
 		FareBuy = "Buy ticket, opens the website of the transport authority",
 		ShortcutHome = "Take me home",
 		ShortcutDepartures = "Departures from here",
@@ -191,6 +200,12 @@ public sealed class EnglishUiStrings : IUiStrings
 		RunsOn = "Runs {0}",
 		RunsDaily = "Runs daily",
 		VehicleReported = "Vehicle (reported position)",
+
+		// B5 — ride companion (the "you are probably here" marker)
+		YouAreHere = "You are probably here",
+		ShowMyPosition = "Show my position",
+		ShowMyPositionDescription = "While the vehicle's own position is missing or stale, your device position is snapped onto the stops of the run — an estimate",
+		ShowMyPositionHint = "The app has no permission for your location. Allow it in the system settings to use this."
 		PdfFailed = "The PDF could not be loaded. Details are in the log file diagnostics.log.",
 		LiveHowTitle = "How it works",
 		LiveHowText = "Type one or more line numbers separated by commas (for example 3, 11); leave the field empty to see every vehicle. Then tap Show: the vehicles appear on the map and in the list and move as new positions arrive. Tap a vehicle in the list to find it on the map.",
@@ -319,7 +334,12 @@ public sealed class EnglishUiStrings : IUiStrings
 		Searching = "Searching...",
 		CouldNotReachService =
 		"Could not reach the timetable service. Check your connection.",
-		SearchForPlace = "Search for a place"
+		SearchForPlace = "Search for a place",
+
+		// B1 — line-centric departures
+		LinesTitle = "Lines",
+		LineCourse = "Line {0} — show course",
+		LineSeenAt = "Seen at {0}"
 	};
 
 	public ResultsStrings Results { get; } = new()
@@ -432,7 +452,10 @@ public sealed class EnglishUiStrings : IUiStrings
 		OccupancyMedium = "Moderate",
 		OccupancyHigh = "Many passengers",
 		OccupancyFull = "Full",
-		OccupancyOverloaded = "Overloaded"
+		OccupancyOverloaded = "Overloaded",
+
+		// B5 — ride companion
+		PaceTight = "Tight at your pace — the walk takes about {0}"
 	};
 
 	public SettingsStrings Settings { get; } = new()
@@ -567,7 +590,15 @@ public sealed class EnglishUiStrings : IUiStrings
 		InterfaceVersions = "Interface versions",
 		InterfaceVersionsDescription = "The versions of every interface this build uses: the services, the stored data and the contract. Add them to a bug report.",
 		CopyInterfaces = "Copy versions",
-		InterfacesCopied = "Copied to clipboard"
+		InterfacesCopied = "Copied to clipboard",
+
+		// B5 — ride companion (the get-off alarm)
+		GetOffAlarmTitle = "Get-off alarm",
+		GetOffAlarmDescription = "How long before your stop the alarm rings while you are riding (applies to every followed journey)",
+		GetOffAlarmLead = "{0} min before your stop",
+		GetOffAlarmOff = "Off",
+		GetOffAlarmSound = "Alarm with sound",
+		GetOffAlarmSoundDescription = "The get-off alarm rings with a sound (the alerts channel) or gently without one"
 	};
 
 	public RoutingStrings Routing { get; } = new()
@@ -740,7 +771,15 @@ public sealed class EnglishUiStrings : IUiStrings
 		NotifChangeAlertTitle = "Journey updated",
 		NotifProblemAlertTitle = "Journey problem",
 		NotifMinutes = "{0} min",
-		NotifNow = "now"
+		NotifNow = "now",
+
+		// B5 — ride companion
+		StayInVehicle = "Stay in the vehicle — this line also reaches {0}",
+		StayInVehicleAt = "Stay in the vehicle — this line also reaches {0} at {1}",
+		NotifStopsToGo = "{0} stops to go",
+		NotifOneStopToGo = "1 stop to go",
+		NotifExitIn = "exit in about {0} min",
+		NotifGetOffAlertTitle = "Get off soon"
 	};
 
 	public TransportStrings Transport { get; } = new()
@@ -837,5 +876,57 @@ public sealed class EnglishUiStrings : IUiStrings
 		DiagHint = "Windows only says \"Error adding your widget\". This report shows what Windows has on record for this app. Turn on Settings, Developer options, Log to file, try to add the widget once more, and share the log together with this report.",
 		DiagCopy = "Copy the report",
 		DiagCopied = "Copied."
+	};
+
+	// B2 — phone navigation
+	public ShellStrings Shell { get; } = new()
+	{
+		TabPlan = "Plan",
+		TabMore = "More",
+		StartScreenTitle = "Start screen",
+		StartScreenPlanner = "Planner",
+		StartScreenPlannerDescription = "Where you plan a journey",
+		StartScreenMap = "Map",
+		StartScreenMapDescription = "Stops and layers on the map"
+	};
+
+	// B3 — ticketing advice
+	public TicketStrings Ticket { get; } = new()
+	{
+		Title = "Ticket advice",
+		OneZone = "1 zone",
+		Zones = "{0} zones",
+		Single = "single {0}",
+		Day = "day ticket {0}",
+		DayWins = "the day ticket pays off from {0} rides",
+		Covered = "Your Deutschlandticket covers this journey; you need no other ticket for it.",
+		CoveredShort = "covered by the Deutschlandticket",
+		LongDistance = "The Deutschlandticket does not cover long-distance trains; those legs need a ticket of their own.",
+		Amortize = "At {0} a month, this route pays for itself after about {1} single rides.",
+		BahnCard25 = "BahnCard 25",
+		BahnCardEstimate = "estimate: about 25 % off the regional single fare",
+		DTicketSetting = "I have a Deutschlandticket",
+		DTicketSettingDescription = "The ticket advice then treats what the provider prices by its own fare zones as already paid for.",
+		OnDemandText = "On demand: book this ride before it starts.",
+		OnDemandLink = "Booking information"
+	};
+
+	// B4 — disruption intelligence
+	public WatchedLineStrings WatchedLines { get; } = new()
+	{
+			YourLinesTitle = "Your lines",
+			YourLinesNone = "None of your watched lines has a current change.",
+			WatchHint = "Watch lines with the star beside a line under \u201eAround this stop\u201c or on the run page, and their disruptions appear here.",
+			WatchLine = "Watch line {0}",
+			UnwatchLine = "Stop watching line {0}",
+			BannerAffected = "{0} of your lines are affected by disruptions.",
+			BannerDismiss = "Hide",
+			ChannelWatched = "Watched lines",
+			NotifTitle = "Watched lines",
+			NotifChangedSingle = "The disruptions of your line {0} changed.",
+			NotifChangedMany = "The disruptions of {0} of your lines changed: {1}.",
+			TrackedDisruption = "New disruption on your line: {0}",
+			StopNotServed = "not served",
+			SummaryClear = "Your watched lines have no current disruptions."
 	};
 }

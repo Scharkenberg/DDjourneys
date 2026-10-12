@@ -184,6 +184,22 @@ public sealed class AppSettings
 		set => Write("leadMinutes", Math.Clamp(value, 1, 60));
 	}
 
+	// B5 — ride companion: the get-off alarm (a preference, not a stored or wire format - no schema bump).
+
+	/// <summary>Minutes before the get-off stop the alarm rings while a followed journey is under way (0 = off, 1..3; the default is the alarm the notification alone could not give).</summary>
+	public int GetOffAlarmLeadMinutes
+	{
+		get => Math.Clamp(Read("getOffAlarmLead", 1), 0, 3);
+		set => Write("getOffAlarmLead", Math.Clamp(value, 0, 3));
+	}
+
+	/// <summary>True: the get-off alarm rings with a sound (the alerts channel); false: gently, without one.</summary>
+	public bool GetOffAlarmSound
+	{
+		get => Read("getOffAlarmSound", true);
+		set => Write("getOffAlarmSound", value);
+	}
+
 	/// <summary>Request timeout for provider calls, seconds (5..60).</summary>
 	public int TimeoutSeconds
 	{
@@ -225,6 +241,13 @@ public sealed class AppSettings
 		| (SearchPois ? PlaceKinds.Pois : PlaceKinds.None);
 
 	// ----- Start in input mode -----
+
+	/// <summary>The screen the app opens on: the planner or (on the phone, with its tabs) the map.</summary>
+	public StartScreen StartScreen
+	{
+		get => Read("startScreen", StartScreen.Planner);
+		set => Write("startScreen", value);
+	}
 
 	/// <summary>The app opens as if the passenger had tapped the start already: start filled, destination search ready.</summary>
 	public bool StartInput
@@ -388,6 +411,19 @@ public sealed class AppSettings
 	{
 		get => Math.Clamp(Read("minQueryLength", MinQueryLengthFloor), MinQueryLengthFloor, MinQueryLengthCeiling);
 		set => Write("minQueryLength", Math.Clamp(value, MinQueryLengthFloor, MinQueryLengthCeiling));
+	}
+
+	// ----- Tickets -----
+
+	/// <summary>
+	/// The passenger owns a Deutschlandticket. The ticket advice of a journey then treats what the provider
+	/// prices by its own fare zones as already paid for. Not provider-scoped: the ticket is valid
+	/// Germany-wide. An advice only - the app sells nothing.
+	/// </summary>
+	public bool HasDeutschlandTicket
+	{
+		get => Read("deutschlandTicket", false);
+		set => Write("deutschlandTicket", value);
 	}
 
 	// ----- Routing preferences -----
@@ -555,6 +591,8 @@ public sealed class AppSettings
 		ExpandStops = false;
 		SearchDelayMs = 500;
 		MinQueryLength = MinQueryLengthFloor;
+		GetOffAlarmLeadMinutes = 1;
+		GetOffAlarmSound = true;
 		ResetRoutingDefaults();
 	}
 
@@ -617,6 +655,16 @@ public sealed class AppSettings
 
 	private static string NormalizeCulture(string languageCode) =>
 	CultureInfo.GetCultureInfo(languageCode).Name;
+}
+
+/// <summary>The screen the app opens on.</summary>
+public enum StartScreen
+{
+	/// <summary>The planner (the default, everywhere).</summary>
+	Planner = 0,
+
+	/// <summary>The map (the phone's map tab; every other form factor opens the planner all the same).</summary>
+	Map
 }
 
 /// <summary>The start of the input mode.</summary>

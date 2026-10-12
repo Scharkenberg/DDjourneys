@@ -141,6 +141,9 @@ public static class MauiProgram
 		builder.Services.AddSingleton<Support.PlannerLauncher>();
 		builder.Services.AddSingleton<DepartureService>();
 		builder.Services.AddSingleton<LineCourseService>();
+
+		// The lines seen at the stops the app loaded (line search); fed by the two services as a side effect.
+		builder.Services.AddSingleton<LineIndex>();
 		builder.Services.AddSingleton<LegRunResolver>();
 		builder.Services.AddSingleton<Support.Widgets.WidgetLoader>();
 #if WINDOWS
@@ -192,7 +195,11 @@ public static class MauiProgram
 				defaultLeadMinutes: () => services.GetRequiredService<AppSettings>().DefaultLeadMinutes,
 				locations: services.GetRequiredService<LocationService>(),
 				planner: services.GetRequiredService<Support.PlannerLauncher>(),
-				navigator: services.GetRequiredService<Tracking.TrackedJourneyNavigator>()));
+				navigator: services.GetRequiredService<Tracking.TrackedJourneyNavigator>(),
+				network: services.GetRequiredService<NetworkService>(),
+				providers: services.GetRequiredService<ProviderRegistry>(),
+				getOffLeadMinutes: () => services.GetRequiredService<AppSettings>().GetOffAlarmLeadMinutes,
+				getOffAlarmSound: () => services.GetRequiredService<AppSettings>().GetOffAlarmSound));
 
 		builder.Services.AddSingleton(
 			services => new Lazy<IJourneyTracker>(() => services.GetRequiredService<IJourneyTracker>()));

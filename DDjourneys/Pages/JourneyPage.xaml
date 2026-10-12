@@ -398,6 +398,59 @@
 		</DataTemplate>
 
 
+		<!--  An on-demand leg (Anruf-Linien-Bus / alita): booked before it starts; the link goes where the data says  -->
+		<DataTemplate x:Key="OnDemandTemplate" x:DataType="support:OnDemandRow">
+
+			<Grid
+				ColumnDefinitions="60,18,*"
+				ColumnSpacing="12"
+				Loaded="RowLoaded"
+				SemanticProperties.Description="{Binding Description}">
+
+				<Grid Grid.Column="1">
+
+					<BoxView
+						HorizontalOptions="Center"
+						WidthRequest="4"
+						Color="{Binding RailBottom}" />
+				</Grid>
+
+				<VerticalStackLayout
+					Grid.Column="2"
+					Padding="0,4,0,12"
+					Spacing="4">
+
+					<Label
+						FontSize="{StaticResource FontCaption}"
+						LineBreakMode="WordWrap"
+						Text="{Binding Text}"
+						TextColor="{DynamicResource InkMuted}" />
+
+					<Border
+						Padding="10,6"
+						HorizontalOptions="Start"
+						SemanticProperties.Description="{Binding Label}"
+						StyleClass="ChipButton"
+						support:Motion.Feedback="True">
+						<HorizontalStackLayout Spacing="6">
+							<controls:Icon
+								Glyph="External"
+								Size="16"
+								VerticalOptions="Center"
+								Color="{DynamicResource Accent}" />
+							<Label Text="{Binding Label}" VerticalOptions="Center" />
+						</HorizontalStackLayout>
+						<Border.GestureRecognizers>
+							<TapGestureRecognizer
+								Command="{Binding Source={RelativeSource AncestorType={x:Type local:JourneyViewModel}}, x:DataType=local:JourneyViewModel, Path=OpenBookingCommand}"
+								CommandParameter="{Binding .}" />
+						</Border.GestureRecognizers>
+					</Border>
+				</VerticalStackLayout>
+			</Grid>
+		</DataTemplate>
+
+
 		<!--
 			Change from one ride to the next.
 			Left: arrival time above the node, departure time below it, symmetric.
@@ -554,6 +607,13 @@
 						StyleClass="Delay"
 						Text="{Binding RiskText}" />
 
+					<!--  B5: the walk only works for a faster pace than the user's setting  -->
+					<Label
+						IsVisible="{Binding HasPace}"
+						LineBreakMode="WordWrap"
+						StyleClass="Delay"
+						Text="{Binding PaceText}" />
+
 					<Border
 						Padding="10,3"
 						BackgroundColor="{DynamicResource AccentSoft}"
@@ -614,6 +674,7 @@
 			Intermediate="{StaticResource IntermediateTemplate}"
 			Leg="{StaticResource LegTemplate}"
 			Notice="{StaticResource NoticeTemplate}"
+			OnDemand="{StaticResource OnDemandTemplate}"
 			Stop="{StaticResource StopTemplate}"
 			Walk="{StaticResource WalkTemplate}" />
 
@@ -724,6 +785,47 @@
 
 			</VerticalStackLayout>
 
+			<!--  Ticket advice: zones, single versus day, the Deutschlandticket - one card, the words of one place  -->
+			<Border
+				Padding="12"
+				IsVisible="{Binding HasTicketAdvice}"
+				StyleClass="Card">
+
+				<VerticalStackLayout Spacing="{DynamicResource SpaceS}">
+
+					<HorizontalStackLayout Spacing="10">
+						<controls:Icon
+							Glyph="Ticket"
+							Size="20"
+							VerticalOptions="Center"
+							Color="{DynamicResource Accent}" />
+
+						<Label
+							Margin="0"
+							StyleClass="Section"
+							Text="{localization:Tr Ticket.Title}"
+							VerticalOptions="Center" />
+					</HorizontalStackLayout>
+
+					<Label
+						IsVisible="{Binding HasTicketAdviceComparison}"
+						LineBreakMode="WordWrap"
+						Text="{Binding TicketAdviceComparison}" />
+
+					<Label
+						IsVisible="{Binding HasTicketAdviceCoverage}"
+						LineBreakMode="WordWrap"
+						StyleClass="Caption"
+						Text="{Binding TicketAdviceCoverage}" />
+
+					<Label
+						IsVisible="{Binding HasTicketAdviceAmortization}"
+						LineBreakMode="WordWrap"
+						StyleClass="Faint"
+						Text="{Binding TicketAdviceAmortization}" />
+				</VerticalStackLayout>
+			</Border>
+
 			<!--  Tickets: collapsed to the passenger's own ticket, every ticket on demand  -->
 			<Border
 				Padding="12"
@@ -803,7 +905,7 @@
 										StrokeThickness="0">
 										<Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="12">
 											<VerticalStackLayout Spacing="0" VerticalOptions="Center">
-												<Label LineBreakMode="WordWrap" Text="{Binding Name}" />
+												<Label LineBreakMode="WordWrap" Text="{Binding Name}" TextDecorations="{Binding TextDecorations}" />
 												<Label
 													IsVisible="{Binding HasDetail}"
 													LineBreakMode="WordWrap"
@@ -814,6 +916,7 @@
 												Grid.Column="1"
 												FontFamily="{DynamicResource FontSemibold}"
 												Text="{Binding PriceText}"
+												TextDecorations="{Binding TextDecorations}"
 												VerticalOptions="Center" />
 											<!--  Where the authority or the provider names a sale page: an honest hand-off, the app sells nothing  -->
 											<controls:IconButton

@@ -257,10 +257,10 @@
 				</VerticalStackLayout>
 			</Border>
 
-			<VerticalStackLayout IsVisible="{Binding ShowPassenger}" Spacing="{DynamicResource SpaceS}">
+			<VerticalStackLayout IsVisible="{Binding ShowTickets}" Spacing="{DynamicResource SpaceS}">
 				<Label StyleClass="Section" Text="{localization:Tr Routing.SectionTickets}" />
 
-				<Border Padding="0" StyleClass="Card">
+				<Border Padding="0" IsVisible="{Binding ShowPassenger}" StyleClass="Card">
 					<VerticalStackLayout>
 						<VerticalStackLayout BindableLayout.ItemsSource="{Binding Passenger.Options}">
 							<BindableLayout.ItemTemplate>
@@ -291,6 +291,26 @@
 							</BindableLayout.ItemTemplate>
 						</VerticalStackLayout>
 					</VerticalStackLayout>
+				</Border>
+
+				<!--  What the passenger already owns: switches the ticket advice of a journey on  -->
+				<Border Padding="12" StyleClass="Card">
+					<Grid
+						ColumnDefinitions="*,Auto"
+						ColumnSpacing="12"
+						support:Dense.MinHeight="{StaticResource HitRow}">
+
+						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
+							<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Ticket.DTicketSetting}" />
+							<Label StyleClass="Caption" Text="{localization:Tr Ticket.DTicketSettingDescription}" />
+						</VerticalStackLayout>
+
+						<Switch
+							Grid.Column="1"
+							IsToggled="{Binding DeutschlandTicket}"
+							SemanticProperties.Description="{localization:Tr Ticket.DTicketSetting}"
+							VerticalOptions="Center" />
+					</Grid>
 				</Border>
 			</VerticalStackLayout>
 

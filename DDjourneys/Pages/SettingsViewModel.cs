@@ -1,4 +1,5 @@
 using CommunityToolkit.Maui.Alerts;
+using System.Globalization;
 using DDjourneys.Core.Diagnostics;
 using DDjourneys.Core.Providers;
 using DDjourneys.Localization;
@@ -33,9 +34,10 @@ public sealed partial class SettingsViewModel : DisposableViewModel
 		OpenStartCommand = new AsyncCommand(OpenStartAsync);
 		OpenProvidersCommand = new AsyncCommand(OpenProvidersAsync);
 		OpenWidgetsCommand = new AsyncCommand(OpenWidgetsAsync);
-		OpenExploreMapCommand = new AsyncCommand(() => Shell.Current.GoToAsync(Routes.Map));
+		OpenExploreMapCommand = new AsyncCommand(() => TabRoots.OpenAsync(Routes.Map));
 		OpenNetworkMapCommand = new AsyncCommand(() => Shell.Current.GoToAsync(Routes.NetworkMap));
 		OpenZonePlanCommand = new AsyncCommand(() => Shell.Current.GoToAsync(Routes.ZonePlan));
+		OpenDisruptionsCommand = new AsyncCommand(() => Shell.Current.GoToAsync(Routes.Disruptions));
 		ShareLogCommand = new AsyncCommand(ShareLogAsync);
 		ClearLogCommand = new Command(ClearLog);
 		OpenAboutCommand = new AsyncCommand(OpenAboutAsync);
@@ -167,6 +169,36 @@ public sealed partial class SettingsViewModel : DisposableViewModel
 	public void RefreshProvider() =>
 		OnPropertyChanged(nameof(ProviderText));
 
+	/// <summary>Whether the selected provider names route changes (the disruptions entry of the More tab, B4).</summary>
+	public bool ShowDisruptions =>
+		_providers.Supports(ProviderCapabilities.Disruptions);
+
+	/// <summary>
+	/// The count on the disruptions entry of the More tab: "2 of your lines are affected by disruptions.", or
+	/// the calm "no current disruptions" when nothing is. Fed by <see cref="WatchedLineStatus"/> (the session
+	/// state); refreshed whenever the page shows.
+	/// </summary>
+	public string DisruptionsSummary
+	{
+		get
+		{
+			WatchedLineStrings strings = _localization.CurrentStrings.WatchedLines;
+
+			int affected = WatchedLineStatus
+					.BannerLines(_providers.SelectedId)
+					.Count;
+
+			return affected > 0
+					? string.Format(CultureInfo.CurrentCulture, strings.BannerAffected, affected)
+						: strings.SummaryClear;
+		}
+	}
+
+	public AsyncCommand OpenDisruptionsCommand { get; }
+
+	public void RefreshDisruptions() =>
+			OnPropertyChanged(nameof(DisruptionsSummary));
+
 	// ----- Localization -----
 
 	public IReadOnlyList<LocalizationPack> AvailableLanguages =>
@@ -244,6 +276,50 @@ public sealed partial class SettingsViewModel : DisposableViewModel
 		string.Format(
 			_localization.CurrentStrings.Settings.LeadMinutesDescription,
 			_settings.DefaultLeadMinutes);
+
+	// B5 — ride companion: the get-off alarm (0/1/2/3 minutes, off at 0; a sound choice beside it).
+
+	public const int GetOffAlarmFloor = 0;
+	public const int GetOffAlarmCeiling = 3;
+
+	/// <summary>Slider value; a whole minute is stored, like the other lead sliders.</summary>
+	public double GetOffAlarmMinutes
+	{
+		get => _settings.GetOffAlarmLeadMinutes;
+		set
+		{
+			int minutes = (int)Math.Round(value);
+
+			if (minutes != _settings.GetOffAlarmLeadMinutes)
+			{
+				_settings.GetOffAlarmLeadMinutes = minutes;
+			}
+
+			OnPropertyChanged();
+			OnPropertyChanged(nameof(GetOffAlarmText));
+		}
+	}
+
+	public string GetOffAlarmText =>
+		_settings.GetOffAlarmLeadMinutes <= GetOffAlarmFloor
+			? _localization.CurrentStrings.Settings.GetOffAlarmOff
+			: string.Format(
+				_localization.CurrentStrings.Settings.GetOffAlarmLead,
+				_settings.GetOffAlarmLeadMinutes);
+
+	public bool GetOffAlarmSound
+	{
+		get => _settings.GetOffAlarmSound;
+		set
+		{
+			if (value != _settings.GetOffAlarmSound)
+			{
+				_settings.GetOffAlarmSound = value;
+			}
+
+			OnPropertyChanged();
+		}
+	}
 
 	public double TimeoutSeconds
 	{
@@ -608,6 +684,7 @@ public sealed partial class SettingsViewModel : DisposableViewModel
 		OnPropertyChanged(nameof(SearchDelayText));
 		OnPropertyChanged(nameof(MinQueryLengthText));
 		OnPropertyChanged(nameof(Version));
+		OnPropertyChanged(nameof(DisruptionsSummary));
 	}
 
 	private void Reset()

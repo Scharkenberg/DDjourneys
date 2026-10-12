@@ -426,7 +426,25 @@
 																			TextColor="{DynamicResource OnAccent}" />
 																	</Border>
 
-																	<!--  Walk heading: dashed outline, like the walking pill elsewhere  -->
+																	<!--  B5: the plan transfers here, but this run also reaches the destination  -->
+										<Border
+											Grid.Column="2"
+											Margin="0,4,0,8"
+											Padding="10,3"
+											BackgroundColor="{DynamicResource AccentSoft}"
+											HorizontalOptions="Start"
+											IsVisible="{Binding IsHint}"
+											StrokeShape="RoundRectangle 100"
+											StrokeThickness="0">
+											<Label
+												FontFamily="{DynamicResource FontSemibold}"
+												FontSize="{StaticResource FontCaption}"
+												LineBreakMode="WordWrap"
+												Text="{Binding Text}"
+												TextColor="{DynamicResource Accent}" />
+										</Border>
+
+										<!--  Walk heading: dashed outline, like the walking pill elsewhere  -->
 																	<Border
 																		Grid.Column="2"
 																		Margin="0,8,0,4"

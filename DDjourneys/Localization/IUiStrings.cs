@@ -17,6 +17,9 @@ public interface IUiStrings
 	SettingsStrings Settings { get; }
 	TransportStrings Transport { get; }
 	WidgetStrings Widgets { get; }
+	ShellStrings Shell { get; }
+	TicketStrings Ticket { get; }
+	WatchedLineStrings WatchedLines { get; }
 }
 
 public sealed class CommonStrings
@@ -112,6 +115,15 @@ public sealed class DeparturesStrings
 	public required string NoRun { get; init; }
 	public required string VehicleHere { get; init; }
 	public required string OpenDepartures { get; init; }
+
+	// B1 — line-centric departures
+	public required string ShowCancelled { get; init; }
+	public required string AllLines { get; init; }
+	public required string OnlyThisLine { get; init; }
+	public required string LineChipDescription { get; init; }
+	public required string InMinutesShort { get; init; }
+	public required string NowShort { get; init; }
+	public required string MoreDepartures { get; init; }
 }
 
 
@@ -145,6 +157,11 @@ public sealed class PlaceSearchStrings
 	public required string NoPlacesFound { get; init; }
 	public required string Searching { get; init; }
 	public required string CouldNotReachService { get; init; }
+
+	// B1 — line-centric departures
+	public required string LinesTitle { get; init; }
+	public required string LineCourse { get; init; }
+	public required string LineSeenAt { get; init; }
 }
 
 public sealed class ResultsStrings
@@ -250,6 +267,9 @@ public sealed class JourneyStrings
 	public required string OccupancyHigh { get; init; }
 	public required string OccupancyFull { get; init; }
 	public required string OccupancyOverloaded { get; init; }
+
+	// B5 — ride companion
+	public required string PaceTight { get; init; }
 }
 
 public sealed class SettingsStrings
@@ -380,6 +400,14 @@ public sealed class SettingsStrings
 	public required string InterfaceVersionsDescription { get; init; }
 	public required string CopyInterfaces { get; init; }
 	public required string InterfacesCopied { get; init; }
+
+	// B5 — ride companion (the get-off alarm)
+	public required string GetOffAlarmTitle { get; init; }
+	public required string GetOffAlarmDescription { get; init; }
+	public required string GetOffAlarmLead { get; init; }
+	public required string GetOffAlarmOff { get; init; }
+	public required string GetOffAlarmSound { get; init; }
+	public required string GetOffAlarmSoundDescription { get; init; }
 }
 
 public sealed class TransportStrings
@@ -568,6 +596,14 @@ public sealed class TrackingStrings
 	public required string NotifProblemAlertTitle { get; init; }
 	public required string NotifMinutes { get; init; }
 	public required string NotifNow { get; init; }
+
+	// B5 — ride companion
+	public required string StayInVehicle { get; init; }
+	public required string StayInVehicleAt { get; init; }
+	public required string NotifStopsToGo { get; init; }
+	public required string NotifOneStopToGo { get; init; }
+	public required string NotifExitIn { get; init; }
+	public required string NotifGetOffAlertTitle { get; init; }
 }
 
 // <extras>
@@ -644,6 +680,12 @@ public sealed class ExtrasStrings
 	public required string RunsOn { get; init; }
 	public required string RunsDaily { get; init; }
 	public required string VehicleReported { get; init; }
+
+	// B5 — ride companion (the "you are probably here" marker)
+	public required string YouAreHere { get; init; }
+	public required string ShowMyPosition { get; init; }
+	public required string ShowMyPositionDescription { get; init; }
+	public required string ShowMyPositionHint { get; init; }
 	public required string PdfFailed { get; init; }
 	public required string LiveHowTitle { get; init; }
 	public required string LiveHowText { get; init; }
@@ -840,4 +882,62 @@ public sealed class WidgetStrings
 	public required string DiagHint { get; init; }
 	public required string DiagCopy { get; init; }
 	public required string DiagCopied { get; init; }
+}
+
+// B2 — phone navigation
+
+/// <summary>The phone's tab bar and the start screen choice (see AppShell).</summary>
+public sealed class ShellStrings
+{
+	public required string TabPlan { get; init; }
+	public required string TabMore { get; init; }
+	public required string StartScreenTitle { get; init; }
+	public required string StartScreenPlanner { get; init; }
+	public required string StartScreenPlannerDescription { get; init; }
+	public required string StartScreenMap { get; init; }
+	public required string StartScreenMapDescription { get; init; }
+}
+
+// B3 — ticketing advice
+
+/// <summary>The ticket advice of a journey, the Deutschlandticket setting and the on-demand booking card (see TicketAdvisor).</summary>
+public sealed class TicketStrings
+{
+	public required string Title { get; init; }
+	public required string OneZone { get; init; }
+	public required string Zones { get; init; }
+	public required string Single { get; init; }
+	public required string Day { get; init; }
+	public required string DayWins { get; init; }
+	public required string Covered { get; init; }
+	public required string CoveredShort { get; init; }
+	public required string LongDistance { get; init; }
+	public required string Amortize { get; init; }
+	public required string BahnCard25 { get; init; }
+	public required string BahnCardEstimate { get; init; }
+	public required string DTicketSetting { get; init; }
+	public required string DTicketSettingDescription { get; init; }
+	public required string OnDemandText { get; init; }
+	public required string OnDemandLink { get; init; }
+}
+
+// B4 — disruption intelligence
+
+/// <summary>The watched lines: the stars, the planner banner, the "Your lines" section and the disruption notifications.</summary>
+public sealed class WatchedLineStrings
+{
+	public required string YourLinesTitle { get; init; }
+	public required string YourLinesNone { get; init; }
+	public required string WatchHint { get; init; }
+	public required string WatchLine { get; init; }
+	public required string UnwatchLine { get; init; }
+	public required string BannerAffected { get; init; }
+	public required string BannerDismiss { get; init; }
+	public required string ChannelWatched { get; init; }
+	public required string NotifTitle { get; init; }
+	public required string NotifChangedSingle { get; init; }
+	public required string NotifChangedMany { get; init; }
+	public required string TrackedDisruption { get; init; }
+	public required string StopNotServed { get; init; }
+	public required string SummaryClear { get; init; }
 }

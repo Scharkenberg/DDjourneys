@@ -111,6 +111,14 @@ public sealed partial class JourneyViewModel :
 					? Launcher.Default.OpenAsync(link)
 					: Task.CompletedTask);
 
+		// An on-demand leg (Anruf-Linien-Bus / alita): the booking link its data carries, or the page of
+		// the transport authority (OnDemandBooking). The app books nothing itself.
+		OpenBookingCommand =
+			new AsyncCommand<OnDemandRow>(
+				row => row?.Link is { } booking
+					? Launcher.Default.OpenAsync(booking)
+					: Task.CompletedTask);
+
 
 		ShareCommand =
 			new AsyncCommand(
@@ -835,9 +843,92 @@ public sealed partial class JourneyViewModel :
 		!string.IsNullOrWhiteSpace(FaresNotesText);
 
 
+	/// <summary>The zones-and-prices line of the ticket advice card (null when there is nothing to compare).</summary>
+	public string? TicketAdviceComparison
+	{
+		get;
+
+		private set
+		{
+			if (SetProperty(
+					ref field,
+					value))
+			{
+				OnPropertyChanged(
+						nameof(HasTicketAdviceComparison));
+
+				OnPropertyChanged(
+						nameof(HasTicketAdvice));
+			}
+		}
+	}
+
+
+	public bool HasTicketAdviceComparison =>
+		!string.IsNullOrWhiteSpace(TicketAdviceComparison);
+
+
+	/// <summary>What a Deutschlandticket of the passenger means for this journey ("covers it" / "does not cover its long-distance legs").</summary>
+	public string? TicketAdviceCoverage
+	{
+		get;
+
+		private set
+		{
+			if (SetProperty(
+					ref field,
+					value))
+			{
+				OnPropertyChanged(
+						nameof(HasTicketAdviceCoverage));
+
+				OnPropertyChanged(
+						nameof(HasTicketAdvice));
+			}
+		}
+	}
+
+
+	public bool HasTicketAdviceCoverage =>
+		!string.IsNullOrWhiteSpace(TicketAdviceCoverage);
+
+
+	/// <summary>When a Deutschlandticket at its public price has paid for itself on this route.</summary>
+	public string? TicketAdviceAmortization
+	{
+		get;
+
+		private set
+		{
+			if (SetProperty(
+					ref field,
+					value))
+			{
+				OnPropertyChanged(
+						nameof(HasTicketAdviceAmortization));
+
+				OnPropertyChanged(
+						nameof(HasTicketAdvice));
+			}
+		}
+	}
+
+
+	public bool HasTicketAdviceAmortization =>
+		!string.IsNullOrWhiteSpace(TicketAdviceAmortization);
+
+
+	public bool HasTicketAdvice =>
+		HasTicketAdviceComparison
+		|| HasTicketAdviceCoverage
+		|| HasTicketAdviceAmortization;
+
+
 	public Command ToggleFaresCommand { get; }
 
 	public AsyncCommand<FareRow> OpenFareCommand { get; }
+
+	public AsyncCommand<OnDemandRow> OpenBookingCommand { get; }
 
 	public AsyncCommand ShowZonePlanCommand { get; }
 
@@ -1198,7 +1289,10 @@ public sealed partial class JourneyViewModel :
 			_settings.ShowTechnicalDetails,
 			_settings.ShowOccupancy,
 			_settings.ShowPlatforms,
-			_settings.ExpandStops);
+			_settings.ExpandStops,
+
+			// B5: the walk pace the routing preferences carry, so a change can say "tight at your pace".
+			_settings.Routing.Pace);
 
 	/// <summary>Rebuilds the timeline if a display setting changed since it was built.</summary>
 	public void RefreshFromSettings()
@@ -1302,7 +1396,23 @@ public sealed partial class JourneyViewModel :
 								strings)))
 				: fare.ValidFor;
 
-		Fares =
+		// What the quoted fares say about the zones, the day ticket and the Deutschlandticket of this journey.
+		TicketAdvice advice =
+			TicketAdvisor.Advise(
+				journey,
+				quoted,
+				_settings.Passenger);
+
+		TicketStrings ticket =
+			_localization.CurrentStrings.Ticket;
+
+		// A Deutschlandticket that covers the journey: its quoted fares are already paid for, so they are
+		// struck through, their buy buttons are gone and the header says why instead of naming a price.
+		bool covered =
+			_settings.HasDeutschlandTicket
+			&& advice.Coverage == TicketCoverage.WithinVerbund;
+
+		List<FareRow> fareRows =
 			(List<FareRow>)
 			[.. quoted
 				.OrderBy(
@@ -1350,14 +1460,41 @@ public sealed partial class JourneyViewModel :
 								fare,
 								preferred),
 
+						IsStruck = covered,
+
 						Link =
-							FareLinks.For(
-								fare,
-								_providers.SelectedId)
+							covered
+								? null
+								: FareLinks.For(
+									fare,
+									_providers.SelectedId)
 					})];
 
+		// The BahnCard 25 price is the app's own estimate from the single fare - the provider quotes no
+		// conditional prices - so it is labelled as one, never preferred and never offered for buying.
+		if (!covered
+			&& advice.BahnCard25Estimate is { } estimate)
+		{
+			fareRows.Add(
+				new FareRow
+				{
+					Name = ticket.BahnCard25,
+
+					PriceText =
+						"~" + Format.Price(
+							estimate,
+							advice.SingleCurrency ?? "EUR"),
+
+					Detail = ticket.BahnCardEstimate
+				});
+		}
+
+		Fares = fareRows;
+
 		FaresSummaryName =
-			preferred is null
+			covered
+				? ticket.CoveredShort
+				: preferred is null
 				? string.Empty
 				: string.Join(
 					" · ",
@@ -1372,7 +1509,9 @@ public sealed partial class JourneyViewModel :
 							part)));
 
 		FaresSummaryPrice =
-			preferred is { Price: { } best }
+			covered
+				? string.Empty
+				: preferred is { Price: { } best }
 				? Format.Price(
 					best,
 					preferred.Currency)
@@ -1410,8 +1549,86 @@ public sealed partial class JourneyViewModel :
 				? notes
 				: null;
 
+		BuildTicketAdvice(
+			advice,
+			covered);
+
 		OnPropertyChanged(
 			nameof(FaresToggleDescription));
+	}
+
+
+	/// <summary>
+	/// The one wording place of the ticket advice (the JourneyFacts discipline): the numbers of the
+	/// <see cref="TicketAdvisor"/> become the sentences of the advice card, in the language of the app.
+	/// </summary>
+	private void BuildTicketAdvice(
+		TicketAdvice advice,
+		bool covered)
+	{
+		TicketStrings ticket =
+			_localization.CurrentStrings.Ticket;
+
+		string? zones =
+			advice.ZoneCount is not { } count
+				? null
+				: count == 1
+					? ticket.OneZone
+					: string.Format(
+						CultureInfo.CurrentCulture,
+						ticket.Zones,
+						count);
+
+		string? single =
+			advice.SinglePrice is { } one
+				? string.Format(
+						CultureInfo.CurrentCulture,
+						ticket.Single,
+						Format.Price(
+							one,
+							advice.SingleCurrency ?? "EUR"))
+				: null;
+
+		string? day =
+			advice.DayPrice is { } all
+				? string.Format(
+						CultureInfo.CurrentCulture,
+						ticket.Day,
+						Format.Price(
+							all,
+							advice.DayCurrency ?? "EUR"))
+				: null;
+
+		string? comparison =
+			covered
+				? null
+				: string.Join(
+						" · ",
+						new[] { zones, single, day }.Where(part => !string.IsNullOrWhiteSpace(part))) is { Length: > 0 } parts
+					? advice.DayWinsFromRide is { } from
+						? $"{parts} – {string.Format(CultureInfo.CurrentCulture, ticket.DayWins, from)}"
+						: parts
+					: null;
+
+		TicketAdviceComparison = comparison;
+
+		TicketAdviceCoverage =
+			!_settings.HasDeutschlandTicket
+				? null
+				: covered
+					? ticket.Covered
+					: advice.Coverage == TicketCoverage.LongDistance
+						? ticket.LongDistance
+						: null;
+
+		TicketAdviceAmortization =
+			advice.DeutschlandTicketRides is { } rides
+				? string.Format(
+						CultureInfo.CurrentCulture,
+						ticket.Amortize,
+						Format.Price(TicketAdvisor.DeutschlandTicketPrice),
+						rides)
+				: null;
 	}
 
 

@@ -1,7 +1,10 @@
 using DDjourneys.Core.Diagnostics;
+using DDjourneys.Core.Providers;
+using DDjourneys.Controls;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using DDjourneys.Core.Models;
+using DDjourneys.Core.Tracking;
 using DDjourneys.Core.Services;
 using DDjourneys.Localization;
 using DDjourneys.Support;
@@ -65,7 +68,13 @@ public sealed partial class RunViewModel : DisposableViewModel, IQueryAttributab
 	private readonly DepartureService _departures;
 	private readonly AppSettings _settings;
 	private readonly LocalizationService _localization;
+	private readonly ProviderRegistry _providers;
+	private readonly NetworkService _network;
+	private readonly IJourneyTracker _tracker;
 	private Departure? _departure;
+
+	// The provider that answered the departure (frozen with it: the star writes the watch of that provider).
+	private string _providerId = string.Empty;
 	private GeoPosition? _vehicle;
 
 	// The whole answer the run came in: the vehicle's itinerary around the run, and the real line
@@ -76,13 +85,22 @@ public sealed partial class RunViewModel : DisposableViewModel, IQueryAttributab
 
 	public RunViewModel(
 		DepartureService departures,
-		AppSettings settings)
+		AppSettings settings,
+		ProviderRegistry providers,
+		NetworkService network,
+		IJourneyTracker tracker)
 	{
 		ArgumentNullException.ThrowIfNull(departures);
 		ArgumentNullException.ThrowIfNull(settings);
+		ArgumentNullException.ThrowIfNull(providers);
+		ArgumentNullException.ThrowIfNull(network);
+		ArgumentNullException.ThrowIfNull(tracker);
 
 		_departures = departures;
 		_settings = settings;
+		_providers = providers;
+		_network = network;
+		_tracker = tracker;
 		_localization = LocalizationService.Current;
 
 		// A plain command, not an AsyncCommand: the RefreshView must stay usable the whole time (an AsyncCommand
@@ -98,6 +116,10 @@ public sealed partial class RunViewModel : DisposableViewModel, IQueryAttributab
 		OpenLineMapCommand =
 			new AsyncCommand(
 				OpenLineMapAsync);
+
+		ToggleWatchCommand =
+			new Command(
+				ToggleWatch);
 	}
 
 	/// <summary>Pull to refresh.</summary>
@@ -111,6 +133,9 @@ public sealed partial class RunViewModel : DisposableViewModel, IQueryAttributab
 
 	/// <summary>Shows the course of the whole line (the window already loaded, no extra request).</summary>
 	public AsyncCommand OpenLineMapCommand { get; }
+
+	/// <summary>Watches or forgets the run's line for disruptions (the star of B4, filled when watched).</summary>
+	public Command ToggleWatchCommand { get; }
 
 	/// <summary>At least two stops of the run have a position.</summary>
 	public bool CanShowMap =>
@@ -166,6 +191,33 @@ public sealed partial class RunViewModel : DisposableViewModel, IQueryAttributab
 		private set => SetProperty(ref field, value);
 	}
 
+	/// <summary>Whether the passenger watches the run's line for disruptions (provider-scoped).</summary>
+	public bool IsWatched
+	{
+		get;
+
+		private set
+		{
+			if (SetProperty(ref field, value))
+			{
+				OnPropertyChanged(nameof(WatchStar));
+				OnPropertyChanged(nameof(WatchDescription));
+			}
+		}
+	}
+
+	public IconGlyph WatchStar =>
+		IsWatched ? IconGlyph.StarFilled : IconGlyph.Star;
+
+	/// <summary>"Watch line 11" / "Stop watching line 11": what the star says to a screen reader.</summary>
+	public string WatchDescription =>
+		string.Format(
+			CultureInfo.CurrentCulture,
+			IsWatched
+				? _localization.CurrentStrings.WatchedLines.UnwatchLine
+				: _localization.CurrentStrings.WatchedLines.WatchLine,
+			Title);
+
 	/// <summary>True while the run loads; the RefreshView shows its spinner with it (one way).</summary>
 	public bool IsBusy
 	{
@@ -209,6 +261,27 @@ public sealed partial class RunViewModel : DisposableViewModel, IQueryAttributab
 	public bool HasOperatingText =>
 		!string.IsNullOrWhiteSpace(OperatingText);
 
+	/// <summary>
+	/// B5: "Stay in the vehicle - this line also reaches the destination". Shown when the passenger is riding
+	/// this very run as part of a followed journey, the plan says to transfer at the end of this ride, and the
+	/// run's own stop list serves the journey's destination after that.
+	/// </summary>
+	public string? StayText
+	{
+		get;
+
+		private set
+		{
+			if (SetProperty(ref field, value))
+			{
+				OnPropertyChanged(nameof(HasStayText));
+			}
+		}
+	}
+
+	public bool HasStayText =>
+		!string.IsNullOrWhiteSpace(StayText);
+
 	public bool HasMessage =>
 		Message.Length > 0;
 
@@ -220,6 +293,9 @@ public sealed partial class RunViewModel : DisposableViewModel, IQueryAttributab
 		{
 			_departure = departure;
 
+			// The provider of the board this departure came from owns the watch of its line.
+			_providerId = _providers.SelectedId;
+
 			Title =
 				string.IsNullOrWhiteSpace(departure.Line.Name)
 					? Format.TransportMode(departure.Line.Mode)
@@ -227,8 +303,28 @@ public sealed partial class RunViewModel : DisposableViewModel, IQueryAttributab
 
 			Direction = departure.Line.Destination;
 			Look = ModeChips.For(departure.Line.Mode);
+			IsWatched = WatchedLines.IsWatched(_providerId, departure.Line.Name);
 
 			_ = LoadAsync();
+		}
+	}
+
+	/// <summary>The star in the header: watches or forgets the run's line (the provider of this run owns it).</summary>
+	private void ToggleWatch()
+	{
+		if (_providerId.Length == 0
+			|| string.IsNullOrWhiteSpace(Title))
+		{
+			return;
+		}
+
+		try
+		{
+			IsWatched = WatchedLines.Toggle(_providerId, Title);
+		}
+		catch (Exception ex)
+		{
+			DiagnosticLog.Write($"Watching the line {Title} failed: {ex.Message}");
 		}
 	}
 
@@ -302,10 +398,14 @@ public sealed partial class RunViewModel : DisposableViewModel, IQueryAttributab
 				course.FirstTerminus ?? string.Empty,
 				course.LastTerminus ?? string.Empty);
 
+		// B4: the diversions note of the line rides along (active route changes; failures stay quiet).
+		string? notice = await LineCourseNotices.OfLineAsync(_network, course.LineName);
+
 		await MapScenes.OpenAsync(
 			MapScenes.FromLineCourse(course),
 			title,
-			this);
+			this,
+			notice: notice);
 	}
 
 	private async Task ShowLiveAsync()
@@ -385,6 +485,110 @@ public sealed partial class RunViewModel : DisposableViewModel, IQueryAttributab
 		}
 	}
 
+	/// <summary>
+	/// B5: looks for the followed journey whose current ride is this run (same line, and the run serves the
+	/// boarding stop at the ride's own time) and asks <see cref="StayInVehicle"/> whether the run also serves
+	/// the journey's destination after the stop the plan transfers at. Nothing is guessed: no match, no hint.
+	/// </summary>
+	private void UpdateStayHint()
+	{
+		StayText = null;
+
+		if (_departure is not { } departure
+			|| Rows.Count == 0
+			|| string.IsNullOrWhiteSpace(departure.Line.Name))
+		{
+			return;
+		}
+
+		foreach (WatchedJourney journey in _tracker.Watched)
+		{
+			if (journey.Status != WatchStatus.Active
+				|| journey.Phase != TrackingPhase.InProgress
+				|| string.IsNullOrWhiteSpace(journey.CurrentLine)
+				|| !SameLine(departure.Line.Name, journey.CurrentLine))
+			{
+				continue;
+			}
+
+			if (_tracker.GetTrip(journey.PlanId) is not { } trip)
+			{
+				continue;
+			}
+
+			TrackedSegment? ride =
+				trip.Segments.FirstOrDefault(segment => segment.IsCurrent && !segment.IsWalk);
+
+			if (ride is null || ride.Stops.Count == 0 || ride.Stops[0].Effective is not { } boarded)
+			{
+				continue;
+			}
+
+			// This run must really be the ride under way: it serves the boarding stop at the ride's own time.
+			if (!Rows.Any(
+					row =>
+						row.Stop.Effective is { } at
+						&& Math.Abs((at - boarded).TotalSeconds) <= 90
+						&& string.Equals(
+							row.Stop.Station.Name,
+							ride.Stops[0].Name,
+							StringComparison.OrdinalIgnoreCase)))
+			{
+				continue;
+			}
+
+			List<CourseStop> run =
+				[.. Rows.Select(
+					row =>
+						new CourseStop(
+							row.Stop.Station.Id,
+							row.Stop.Station.Name,
+							row.Stop.Effective))];
+
+			if (StayInVehicle.After(
+					run,
+					transferId: null,
+					transferName: ride.Stops[^1].Name,
+					destinationId: null,
+					destinationName: journey.Destination ?? string.Empty)
+					is not { } hint)
+			{
+				continue;
+			}
+
+			TrackingStrings strings =
+				_localization.CurrentStrings.Tracking;
+
+			StayText =
+				hint.At is { } reaches
+					? string.Format(
+						CultureInfo.CurrentCulture,
+						strings.StayInVehicleAt,
+						journey.Destination,
+						Format.Time(reaches))
+					: string.Format(
+						CultureInfo.CurrentCulture,
+						strings.StayInVehicle,
+						journey.Destination);
+
+			return;
+		}
+	}
+
+	/// <summary>Line names with or without spaces are the same line (the boards' rule).</summary>
+	private static bool SameLine(string? one, string? two)
+	{
+		if (one is null || two is null)
+		{
+			return false;
+		}
+
+		return string.Equals(
+			one.Replace(" ", string.Empty, StringComparison.Ordinal).Trim(),
+			two.Replace(" ", string.Empty, StringComparison.Ordinal).Trim(),
+			StringComparison.OrdinalIgnoreCase);
+	}
+
 	private async Task LoadAsync()
 	{
 		if (_departure is not { } departure || IsDisposed)
@@ -453,6 +657,8 @@ public sealed partial class RunViewModel : DisposableViewModel, IQueryAttributab
 				OperatingDaysText.Describe(
 					detail.OperatingDays,
 					_localization.CurrentStrings.Extras);
+
+			UpdateStayHint();
 
 			OnPropertyChanged(nameof(CanShowMap));
 			OnPropertyChanged(nameof(CanShowLineMap));

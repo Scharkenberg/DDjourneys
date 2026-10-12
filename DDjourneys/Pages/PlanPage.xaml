@@ -55,6 +55,36 @@
 				</HorizontalStackLayout>
 			</Grid>
 
+			<!--  B4: the watched-lines banner, dismissible for this session  -->
+			<Border
+				Padding="12,8"
+				IsVisible="{Binding HasWatchedBanner}"
+				SemanticProperties.Description="{Binding WatchedBannerText}"
+				StyleClass="Card">
+				<Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+					<HorizontalStackLayout Spacing="8">
+						<controls:Icon
+							Glyph="Warning"
+							Size="18"
+							VerticalOptions="Center"
+							Color="{DynamicResource Delay}" />
+						<Label
+							StyleClass="Caption"
+							Text="{Binding WatchedBannerText}"
+							VerticalOptions="Center" />
+					</HorizontalStackLayout>
+					<Button
+						Grid.Column="1"
+						Command="{Binding DismissWatchedBannerCommand}"
+						StyleClass="Tonal"
+						Text="{localization:Tr WatchedLines.BannerDismiss}"
+						support:Dense.MinHeight="{StaticResource HitButton}" />
+				</Grid>
+				<Grid.GestureRecognizers>
+					<TapGestureRecognizer Command="{Binding OpenWatchedDisruptionsCommand}" />
+				</Grid.GestureRecognizers>
+			</Border>
+
 			<!--  From / To  -->
 			<Border StyleClass="Card">
 				<Grid

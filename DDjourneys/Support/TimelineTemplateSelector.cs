@@ -19,6 +19,7 @@ public sealed class TimelineTemplateSelector : DataTemplateSelector
 			WalkRow => Walk,
 			InterchangeRow => Interchange,
 			NoticeRow => Notice,
+			OnDemandRow => OnDemand,
 			_ => null
 		}) ?? throw new InvalidOperationException($"No timeline template for {item.GetType().Name}.");
 }

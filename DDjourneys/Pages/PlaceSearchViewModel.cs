@@ -1,6 +1,7 @@
 using DDjourneys.Core.Diagnostics;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Globalization;
 using DDjourneys.Core.Api;
 using DDjourneys.Core.Models;
 using DDjourneys.Core.Providers;
@@ -36,6 +37,33 @@ public sealed record PlaceRow(Location Place)
 	}
 
 	public bool HasKind => KindText is not null;
+}
+
+/// <summary>
+/// A line the app has seen at a stop it loaded (the line search): tapping shows the course of the whole
+/// line, exactly like the line rows under "Around this stop".
+/// </summary>
+public sealed record LineRow(IndexedLine Line)
+{
+	public string Name =>
+		Line.Name;
+
+	public ChipLook Look =>
+		ModeChips.For(Line.Mode);
+
+	/// <summary>"Line 11 — show course".</summary>
+	public string Title =>
+		string.Format(
+			CultureInfo.CurrentCulture,
+			LocalizationService.Current.CurrentStrings.PlaceSearch.LineCourse,
+			Line.Name);
+
+	/// <summary>Where the app saw the line (the stop its course is looked up from).</summary>
+	public string Detail =>
+		string.Format(
+			CultureInfo.CurrentCulture,
+			LocalizationService.Current.CurrentStrings.PlaceSearch.LineSeenAt,
+			Line.SeenAt.Name);
 }
 
 public sealed partial class PlaceSearchViewModel : DisposableViewModel, IQueryAttributable
@@ -77,6 +105,9 @@ public sealed partial class PlaceSearchViewModel : DisposableViewModel, IQueryAt
 	private readonly Queue<string> _cacheOrder = new();
 
 	private readonly LocationService _locations;
+	private readonly LineIndex _lineIndex;
+	private readonly LineCourseService _lineCourses;
+	private readonly NetworkService _network;
 	private readonly PlaceStore _store;
 	private readonly AppSettings _settings;
 	private readonly LocalizationService _localization;
@@ -87,20 +118,30 @@ public sealed partial class PlaceSearchViewModel : DisposableViewModel, IQueryAt
 	private bool _targetIsFrom;
 	private string? _target;
 	private bool _isNavigating;
+	private bool _openingLine;
 	private MessageKind _messageKind;
 
 	public PlaceSearchViewModel(
 	LocationService locations,
+	LineIndex lineIndex,
+	LineCourseService lineCourses,
+	NetworkService network,
 	PlaceStore store,
 	AppSettings settings,
 	ProviderRegistry providers)
 	{
 		ArgumentNullException.ThrowIfNull(locations);
+		ArgumentNullException.ThrowIfNull(network);
+		ArgumentNullException.ThrowIfNull(lineIndex);
+		ArgumentNullException.ThrowIfNull(lineCourses);
 		ArgumentNullException.ThrowIfNull(store);
 		ArgumentNullException.ThrowIfNull(settings);
 		ArgumentNullException.ThrowIfNull(providers);
 
 		_locations = locations;
+		_lineIndex = lineIndex;
+		_lineCourses = lineCourses;
+		_network = network;
 		_store = store;
 		_settings = settings;
 		_providers = providers;
@@ -113,6 +154,8 @@ public sealed partial class PlaceSearchViewModel : DisposableViewModel, IQueryAt
 			() => _providers.SelectionChanged -= OnProviderChanged);
 
 		SelectPlaceCommand = new AsyncCommand<Location>(SelectPlaceAsync);
+
+		SelectLineCommand = new AsyncCommand<LineRow>(SelectLineAsync);
 
 		try
 		{
@@ -135,8 +178,15 @@ public sealed partial class PlaceSearchViewModel : DisposableViewModel, IQueryAt
 
 	public AsyncCommand<Location> SelectPlaceCommand { get; }
 
+	/// <summary>Shows the course of the whole line on the map (both directions when they can be told apart).</summary>
+	public AsyncCommand<LineRow> SelectLineCommand { get; }
+
 	public ObservableCollection<PlaceRow> Results { get; } = [];
+
 	public ObservableCollection<PlaceRow> Recents { get; } = [];
+
+	/// <summary>The line search's rows (see <see cref="UpdateLines"/>).</summary>
+	public ObservableCollection<LineRow> Lines { get; } = [];
 
 	public string Query
 	{
@@ -165,6 +215,7 @@ public sealed partial class PlaceSearchViewModel : DisposableViewModel, IQueryAt
 
 	public bool HasMessage => Message.Length > 0;
 	public bool HasResults => Results.Count > 0;
+	public bool HasLines => Lines.Count > 0;
 	public bool ShowRecents =>
 		Query.Trim().Length == 0 && Recents.Count > 0;
 
@@ -228,6 +279,7 @@ public sealed partial class PlaceSearchViewModel : DisposableViewModel, IQueryAt
 
 			CancelCurrent();
 			Results.Clear();
+			UpdateLines(Query.Trim());
 
 			if (Query.Trim().Length >= MinQueryLength)
 			{
@@ -245,6 +297,8 @@ public sealed partial class PlaceSearchViewModel : DisposableViewModel, IQueryAt
 		CancelCurrent();
 
 		string text = Query.Trim();
+
+		UpdateLines(text);
 
 		if (text.Length < MinQueryLength)
 		{
@@ -401,6 +455,80 @@ public sealed partial class PlaceSearchViewModel : DisposableViewModel, IQueryAt
 			{
 				_cache.Remove(_cacheOrder.Dequeue());
 			}
+		}
+	}
+
+	/// <summary>
+	/// The line search: a short digit form ("11", "S1", "RE01") names a line as well as a place. The
+	/// candidates are the lines the app has seen at the stops it loaded (nothing is asked of a provider for
+	/// this), so the rows appear at once, above the place results.
+	/// </summary>
+	private void UpdateLines(string text)
+	{
+		Lines.Clear();
+
+		if (LineIndex.IsLineQuery(text))
+		{
+			foreach (IndexedLine line in _lineIndex.Search(_providerId, text))
+			{
+				Lines.Add(new LineRow(line));
+			}
+		}
+
+		OnPropertyChanged(nameof(HasLines));
+	}
+
+	/// <summary>Opens the course of the whole line, the same map the departures page's line rows open.</summary>
+	private async Task SelectLineAsync(LineRow row)
+	{
+		if (row is null || _openingLine)
+		{
+			return;
+		}
+
+		_openingLine = true;
+
+		try
+		{
+			IReadOnlyList<LineCourse> courses =
+				await _lineCourses.BothDirectionsAsync(
+					new TransitLine { Name = row.Line.Name, Mode = row.Line.Mode },
+					row.Line.SeenAt,
+					_settings.TimeoutSeconds);
+
+			if (courses.Count == 0)
+			{
+				SetMessage(MessageKind.None, _localization.CurrentStrings.Extras.LineMapNone);
+				RefreshState();
+
+				return;
+			}
+
+			LineCourse first = courses[0];
+
+			string title =
+				string.Format(
+					CultureInfo.CurrentCulture,
+					_localization.CurrentStrings.Extras.LineCourseTitle,
+					first.LineName,
+					first.FirstTerminus ?? string.Empty,
+					first.LastTerminus ?? string.Empty);
+
+			// B4: the diversions note of the line rides along (active route changes; failures stay quiet).
+			string? notice = await LineCourseNotices.OfLineAsync(_network, first.LineName);
+
+			await MapScenes.OpenAsync(
+				MapScenes.FromLineCourses(courses),
+				title,
+				notice: notice);
+		}
+		catch (Exception ex)
+		{
+			DiagnosticLog.Write($"[Place search] line course for {row.Line.Name} failed: {ex.Message}");
+		}
+		finally
+		{
+			_openingLine = false;
 		}
 	}
 

@@ -201,8 +201,38 @@
 							<TapGestureRecognizer Command="{Binding OpenNetworkMapCommand}" />
 						</Grid.GestureRecognizers>
 					</Grid>
-				</VerticalStackLayout>
-			</Border>
+
+						<BoxView StyleClass="Divider" />
+
+						<!--  B4: route changes, with the watched lines' own count  -->
+						<Grid
+							IsVisible="{Binding ShowDisruptions}"
+							support:Dense.MinHeight="{StaticResource HitRow}"
+							support:Dense.Padding="12,8"
+							support:Motion.Feedback="True"
+							ColumnDefinitions="*,Auto"
+							ColumnSpacing="10">
+							<VerticalStackLayout Spacing="1" VerticalOptions="Center">
+								<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Disruptions.Title}" />
+								<Label
+									LineBreakMode="TailTruncation"
+									StyleClass="Caption"
+									Text="{Binding DisruptionsSummary}" />
+							</VerticalStackLayout>
+
+							<controls:Icon
+								Grid.Column="1"
+								Glyph="ChevronRight"
+								Size="20"
+								VerticalOptions="Center"
+								Color="{DynamicResource InkMuted}" />
+
+							<Grid.GestureRecognizers>
+								<TapGestureRecognizer Command="{Binding OpenDisruptionsCommand}" />
+							</Grid.GestureRecognizers>
+						</Grid>
+					</VerticalStackLayout>
+				</Border>
 
 			<!--  Which library draws the map: CARTO vector (needs a key and WebGL 2) or Leaflet raster (anything)  -->
 			<Border Padding="0" StyleClass="Card">
@@ -388,6 +418,42 @@
 							SemanticProperties.Description="{localization:Tr Settings.LeadMinutes}"
 							Value="{Binding LeadMinutes}" />
 					</VerticalStackLayout>
+
+					<BoxView StyleClass="Divider" />
+
+					<!--  B5: the get-off alarm of a followed journey (0/1/2/3 minutes; off at 0)  -->
+					<VerticalStackLayout support:Dense.Padding="12,8" Spacing="4">
+						<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.GetOffAlarmTitle}" />
+
+						<Label StyleClass="Caption" Text="{Binding GetOffAlarmText}" />
+
+						<Slider
+							Maximum="{x:Static local:SettingsViewModel.GetOffAlarmCeiling}"
+							Minimum="{x:Static local:SettingsViewModel.GetOffAlarmFloor}"
+							SemanticProperties.Description="{localization:Tr Settings.GetOffAlarmTitle}"
+							Value="{Binding GetOffAlarmMinutes}" />
+					</VerticalStackLayout>
+
+					<BoxView StyleClass="Divider" />
+
+					<!--  B5: the get-off alarm's sound (the alerts channel with sound, or gentle without)  -->
+					<Grid
+						support:Dense.MinHeight="{StaticResource HitRow}"
+						support:Dense.Padding="12,8"
+						ColumnDefinitions="*,Auto"
+						ColumnSpacing="12">
+
+						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
+							<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.GetOffAlarmSound}" />
+							<Label StyleClass="Caption" Text="{localization:Tr Settings.GetOffAlarmSoundDescription}" />
+						</VerticalStackLayout>
+
+						<Switch
+							Grid.Column="1"
+							IsToggled="{Binding GetOffAlarmSound}"
+							SemanticProperties.Description="{localization:Tr Settings.GetOffAlarmSound}"
+							VerticalOptions="Center" />
+					</Grid>
 
 					<BoxView StyleClass="Divider" />
 

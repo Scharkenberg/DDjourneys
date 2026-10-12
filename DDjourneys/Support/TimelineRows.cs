@@ -339,6 +339,12 @@ public sealed partial class InterchangeRow : TimelineRow
 	public bool HasRisk =>
 		RiskText is not null;
 
+	/// <summary>B5: "tight at your pace" - the walk of this change only just works for a faster pace than the user's setting.</summary>
+	public string? PaceText { get; init; }
+
+	public bool HasPace =>
+		PaceText is not null;
+
 	/// <summary>Why this change cannot be made; null when it can.</summary>
 	public string? BlockText { get; init; }
 
@@ -394,10 +400,41 @@ public sealed class FareRow
 	public bool HasLink =>
 		Link is not null;
 
+	/// <summary>A ticket the passenger already owns a covering one for: shown struck through, without its buy button.</summary>
+	public bool IsStruck { get; init; }
+
+	public TextDecorations TextDecorations =>
+		IsStruck
+			? TextDecorations.Strikethrough
+			: TextDecorations.None;
+
 	public string AccessibilityText =>
 		HasDetail
 			? $"{Name}, {Detail}, {PriceText}"
 			: $"{Name}, {PriceText}";
+}
+
+
+/// <summary>
+/// How an on-demand leg is booked: the words of the app, the contact and the link of the provider's
+/// data (see OnDemandBooking). The link is the ceiling of what the app does.
+/// </summary>
+public sealed class OnDemandRow : TimelineRow
+{
+	/// <summary>What the passenger has to do ("on demand: book this ride before it starts").</summary>
+	public required string Text { get; init; }
+
+	/// <summary>The provider's own booking contact (a phone number) when the data carries one; the label of the link then.</summary>
+	public string? ContactText { get; init; }
+
+	/// <summary>Where to book: the provider's page or number, else the authority's page. Never null.</summary>
+	public required Uri Link { get; init; }
+
+	/// <summary>The words on the link when the data carries no contact of its own.</summary>
+	public required string LinkText { get; init; }
+
+	public string Label =>
+		ContactText ?? LinkText;
 }
 
 
@@ -410,7 +447,10 @@ public sealed record TimelineOptions(
 	bool Technical = false,
 	bool ShowOccupancy = true,
 	bool ShowPlatforms = true,
-	bool ExpandStops = false);
+	bool ExpandStops = false,
+
+	/// <summary>B5: the user's walk pace (routing preferences); null keeps the old wording everywhere.</summary>
+	WalkingPace? Pace = null);
 
 
 /// <summary>
@@ -883,6 +923,40 @@ public static class TimelineRowFactory
 		}
 
 
+		// An on-demand leg is booked, not boarded: how and where, from the provider's data (OnDemandBooking).
+		if (OnDemandBooking.IsOnDemand(leg))
+		{
+			TicketStrings ticket =
+				LocalizationService.Current
+					.CurrentStrings
+					.Ticket;
+
+			rows.Add(
+				new OnDemandRow
+				{
+					Text =
+						ticket.OnDemandText,
+
+					ContactText =
+						OnDemandBooking.LabelOf(
+								leg.BookingContact),
+
+					Link =
+						OnDemandBooking.LinkOf(
+								leg.BookingContact),
+
+					LinkText =
+						ticket.OnDemandLink,
+
+					RailBottom =
+						color,
+
+					Description =
+						ticket.OnDemandText
+				});
+		}
+
+
 		foreach (string notice in leg.Notices.Distinct())
 		{
 			rows.Add(
@@ -1129,6 +1203,17 @@ public static class TimelineRowFactory
 						boundary.Endangered
 						&& ChangeBlock(from, to, strings, boundary.Ensured) is null
 							? strings.ConnectionMayBeMissed
+							: null,
+
+					// B5: the user's own pace makes the difference between a comfortable change and a tight one.
+					PaceText =
+						options.Pace is { } pace
+						&& JourneyFeasibility.IsTightAtPace(boundary.WalkTime, boundary.Wait, pace)
+							? string.Format(
+								System.Globalization.CultureInfo.CurrentCulture,
+								strings.PaceTight,
+								Format.Duration(
+									JourneyFeasibility.WalkAtPace(boundary.WalkTime ?? TimeSpan.Zero, pace)))
 							: null,
 
 					AssuranceText =

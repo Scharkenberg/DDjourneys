@@ -20,7 +20,7 @@ internal sealed class AndroidLiveJourneySurface : ILiveJourneySurface
 	{
 		ArgumentNullException.ThrowIfNull(alert);
 
-		LiveJourneyNotification.ShowAlert(alert.PlanId, alert.Kind, alert.Title, alert.Text);
+		LiveJourneyNotification.ShowAlert(alert.PlanId, alert.Kind, alert.Title, alert.Text, alert.Gentle);
 	}
 
 	public void ClearAlerts(string planId) =>

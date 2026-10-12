@@ -177,6 +177,18 @@ public partial class MapPage : PanePage, IQueryAttributable
 			TryStartExploring();
 		}
 
+		// B4: the diversions note of a line course (only line-course maps carry it).
+		if (query.TryGetValue(Routes.MapNotice, out object? note)
+			&& note is string { Length: > 0 } noticeText)
+		{
+			NoticeText.Text = noticeText;
+			Notice.IsVisible = true;
+		}
+		else
+		{
+			Notice.IsVisible = false;
+		}
+
 		UpdateHint(null);
 	}
 

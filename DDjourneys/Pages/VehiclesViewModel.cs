@@ -2,6 +2,7 @@ using DDjourneys.Core.Diagnostics;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using DDjourneys.Core.Mapping;
+using DDjourneys.Core.Tracking.Live;
 using DDjourneys.Core.Models;
 using DDjourneys.Core.Providers;
 using DDjourneys.Core.Services;
@@ -169,6 +170,12 @@ public sealed partial class VehiclesViewModel : DisposableViewModel, IQueryAttri
 	private IReadOnlyList<MapLine>? _courseLines;
 	private bool _courseTried;
 
+	// B5: the opt-in "you are probably here" marker. A per-run choice (off for every newly followed run),
+	// foreground only: the loop takes a fix every 20 s while the page tracks a run, and only when the
+	// location permission is already granted - the tracking surface never asks for it.
+	private CancellationTokenSource? _positionLoop;
+	private (double Latitude, double Longitude)? _myPosition;
+
 	public VehiclesViewModel(
 		VehicleService vehicles,
 		VehicleStreamHub hub,
@@ -222,6 +229,7 @@ public sealed partial class VehiclesViewModel : DisposableViewModel, IQueryAttri
 				{
 					_target = null;
 					_slots.Clear();
+					ShowMyPosition = false;
 					OnPropertyChanged(nameof(IsTracking));
 					OnPropertyChanged(nameof(IsNotTracking));
 					OnPropertyChanged(nameof(IsIdle));
@@ -257,6 +265,30 @@ public sealed partial class VehiclesViewModel : DisposableViewModel, IQueryAttri
 
 	public bool IsTracking =>
 		_target is not null;
+
+	/// <summary>
+	/// B5: snap the device position onto the stops of the run being followed and show it as "you are probably
+	/// here" - only while the vehicle's own position is missing or stale (the vehicles layer's 90 s rule).
+	/// </summary>
+	public bool ShowMyPosition
+	{
+		get;
+
+		set
+		{
+			if (SetProperty(ref field, value))
+			{
+				if (value)
+				{
+					_ = StartMyPositionAsync();
+				}
+				else
+				{
+					StopMyPosition();
+				}
+			}
+		}
+	} = false;
 
 	public string TrackText =>
 		_target is { } target
@@ -474,10 +506,27 @@ public sealed partial class VehiclesViewModel : DisposableViewModel, IQueryAttri
 			_fitNext = false;
 		}
 
+		// B5: the snapped dot of the device position - only for the run being ridden, and only while the
+		// live marker of that run is missing or stale (a fresh vehicle position wins, the dot is not drawn).
+		(double Latitude, double Longitude)? you = null;
+
+		if (ShowMyPosition
+			&& _myPosition is { } fix
+			&& _slots.FirstOrDefault(slot => !Over(slot.Target)) is { } ridden
+			&& !PositionSnapping.IsFresh(ridden.Matched?.Time, DateTimeOffset.UtcNow)
+			&& ridden.Target.Course.Count >= 2)
+		{
+			you =
+				PositionSnapping.Snap(
+					fix.Latitude,
+					fix.Longitude,
+					[.. ridden.Target.Course.Select(point => (point.Latitude, point.Longitude))]);
+		}
+
 		SceneChanged?.Invoke(
 			this,
 			_slots.Count > 0
-				? MapScenes.FromTracks((List<TrackTarget>)[.. _slots.Select(slot => slot.Target)], (List<LiveVehicle?>)[.. _slots.Select(slot => slot.Matched)], false)
+				? MapScenes.FromTracks((List<TrackTarget>)[.. _slots.Select(slot => slot.Target)], (List<LiveVehicle?>)[.. _slots.Select(slot => slot.Matched)], false, you)
 				: WithCourse(
 					MapScenes.FromVehicles(
 					Rows.Select(row => row.Vehicle),
@@ -895,11 +944,97 @@ public sealed partial class VehiclesViewModel : DisposableViewModel, IQueryAttri
 						}
 						});
 
+	/// <summary>
+	/// B5: checks the permission the nearby features already use (never asks for it from here), then keeps a
+	/// fix coming while the page tracks a run. A failed fix is logged and retried on the next round.
+	/// </summary>
+	private async Task StartMyPositionAsync()
+	{
+		if (IsDisposed)
+		{
+			return;
+		}
+
+		PermissionStatus status;
+
+		try
+		{
+			// The nearby features already use this permission; this surface only reads the answer, never asks.
+			status = await Permissions.CheckStatusAsync<Permissions.LocationWhenInUse>();
+		}
+		catch (Exception ex)
+		{
+			DiagnosticLog.Write($"[Live] checking the location permission failed: {ex.Message}");
+
+			return;
+		}
+
+		if (status != PermissionStatus.Granted)
+		{
+			ShowMyPosition = false;
+			Status = _localization.CurrentStrings.Extras.ShowMyPositionHint;
+
+			return;
+		}
+
+		StopMyPosition();
+
+		CancellationTokenSource cts = new();
+		_positionLoop = cts;
+
+		_ = PumpMyPositionAsync(cts.Token);
+	}
+
+	private async Task PumpMyPositionAsync(CancellationToken cancellationToken)
+	{
+		try
+		{
+			while (!cancellationToken.IsCancellationRequested
+				&& ShowMyPosition
+				&& _target is not null)
+			{
+				try
+				{
+					var request =
+						new GeolocationRequest(GeolocationAccuracy.Medium, TimeSpan.FromSeconds(10));
+
+					Microsoft.Maui.Devices.Sensors.Location? fix =
+						await Geolocation.Default.GetLocationAsync(request, cancellationToken);
+
+					if (fix is not null)
+					{
+						_myPosition = (fix.Latitude, fix.Longitude);
+						_dirty = true;
+					}
+				}
+				catch (Exception ex) when (ex is not OperationCanceledException)
+				{
+					DiagnosticLog.Write($"[Live] the device position failed: {ex.Message}");
+				}
+
+				await Task.Delay(TimeSpan.FromSeconds(20), cancellationToken);
+			}
+		}
+		catch (OperationCanceledException)
+		{
+		}
+	}
+
+	private void StopMyPosition()
+	{
+		_positionLoop?.Cancel();
+		_positionLoop = null;
+		_myPosition = null;
+		_dirty = true;
+	}
+
 	private void Stop()
 	{
 		_stream?.Cancel();
 		_stream = null;
 		IsStreaming = false;
+
+		StopMyPosition();
 	}
 
 	/// <summary>

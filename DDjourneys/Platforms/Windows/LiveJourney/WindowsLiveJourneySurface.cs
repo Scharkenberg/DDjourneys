@@ -158,7 +158,9 @@ internal sealed partial class WindowsLiveJourneySurface(TrackingCallbackBridge b
 			notification.Tag = AlertTag(alert.PlanId, alert.Kind);
 			notification.Group = WindowsNotificationHost.AlertGroup;
 			notification.Expiration = DateTimeOffset.Now.AddHours(6);
-			notification.SuppressDisplay = alert.Kind == JourneyAlertKind.Arrived;
+			// B5: a gentle alert (the get-off alarm's quiet choice) is placed in the notification centre
+			// without a banner - the honest equivalent of Android's quiet channel.
+			notification.SuppressDisplay = alert.Kind == JourneyAlertKind.Arrived || alert.Gentle;
 
 			AppNotificationManager.Default.Show(notification);
 

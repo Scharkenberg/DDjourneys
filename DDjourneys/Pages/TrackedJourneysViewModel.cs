@@ -35,6 +35,9 @@ public sealed class CourseRow
 	public bool IsNext { get; init; }
 	public bool IsWalk { get; init; }
 
+	/// <summary>B5: the "stay in the vehicle" hint below the stops of the ride under way.</summary>
+	public bool IsHint { get; init; }
+
 	/// <summary>Platform or track of a boarding/alighting stop; empty elsewhere.</summary>
 	public string Detail { get; init; } = string.Empty;
 
@@ -844,7 +847,7 @@ public sealed partial class TrackedJourneysViewModel : DisposableViewModel, IQue
 
 		bool live = _tracker.LivePlanId == journey.PlanId;
 		bool course = _courses.Contains(journey.PlanId);
-		IReadOnlyList<CourseRow> rows = course ? CreateCourse(journey.PlanId, strings) : [];
+		IReadOnlyList<CourseRow> rows = course ? CreateCourse(journey, strings) : [];
 
 		return new TrackedRow
 		{
@@ -983,9 +986,9 @@ public sealed partial class TrackedJourneysViewModel : DisposableViewModel, IQue
 	}
 
 	/// <summary>The course as flat rows: a heading per ride or walk, then its stops.</summary>
-	private List<CourseRow> CreateCourse(string planId, TrackingStrings strings)
+	private List<CourseRow> CreateCourse(WatchedJourney journey, TrackingStrings strings)
 	{
-		if (_tracker.GetTrip(planId) is not { IsEmpty: false } trip)
+		if (_tracker.GetTrip(journey.PlanId) is not { IsEmpty: false } trip)
 		{
 			return [];
 		}
@@ -1049,6 +1052,39 @@ public sealed partial class TrackedJourneysViewModel : DisposableViewModel, IQue
 						IsNext = stop.State == TrackedStopState.Next,
 						Detail = boardsOrAlights ? PlatformText(stop, strings) : string.Empty,
 						Eta = stop.State == TrackedStopState.Next ? EtaText(stop, trip.At, strings) : string.Empty
+					});
+			}
+
+			// B5: below the stops of the ride under way, the plan's transfer may be unnecessary - the run itself
+			// also serves the journey's destination (the tracked stop list ends at the plan's alighting stop, so
+			// the hint only ever fires when the service reports the run's stops beyond it).
+			if (segment.IsCurrent
+				&& !segment.IsWalk
+				&& segment.Stops.Count > 0
+				&& !string.IsNullOrWhiteSpace(journey.Destination)
+				&& StayInVehicle.After(
+					(List<CourseStop>)[.. segment.Stops.Select(stop => new CourseStop(null, stop.Name, stop.Effective))],
+					transferId: null,
+					transferName: segment.Stops[^1].Name,
+					destinationId: null,
+					destinationName: journey.Destination)
+					is { } hint)
+			{
+				rows.Add(
+					new CourseRow
+					{
+						IsHint = true,
+						Text =
+							hint.At is { } reaches
+								? string.Format(
+									CultureInfo.CurrentCulture,
+									strings.StayInVehicleAt,
+									journey.Destination,
+									Format.Time(reaches))
+								: string.Format(
+										CultureInfo.CurrentCulture,
+										strings.StayInVehicle,
+										journey.Destination)
 					});
 			}
 		}

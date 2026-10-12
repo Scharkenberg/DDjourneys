@@ -27,6 +27,21 @@ public static class VvoModeMapper
 		}
 
 
+		// An on-demand run (Anruf-Linien-Bus, the DVB brand alita): the VVO marks it by its mot type,
+		// the same marker the other apps of the region read. A taxi said by the line name alone stays a taxi.
+		if (string.Equals(
+			mot.Type,
+			"Alita",
+			StringComparison.OrdinalIgnoreCase)
+			|| string.Equals(
+				mot.Type,
+				"HailedSharedTaxi",
+				StringComparison.OrdinalIgnoreCase))
+		{
+			return TransitMode.OnDemand;
+		}
+
+
 		string value =
 			$"{mot.Type} {mot.Name}"
 				.ToLowerInvariant();

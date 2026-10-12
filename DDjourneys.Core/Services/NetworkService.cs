@@ -9,15 +9,18 @@ public sealed class NetworkService
 {
 	private readonly IEnumerable<INetworkInfoProvider> _providers;
 	private readonly ProviderRegistry? _registry;
+	private readonly LineIndex? _lineIndex;
 
 	public NetworkService(
 		IEnumerable<INetworkInfoProvider> providers,
-		ProviderRegistry? registry = null)
+		ProviderRegistry? registry = null,
+		LineIndex? lineIndex = null)
 	{
 		ArgumentNullException.ThrowIfNull(providers);
 
 		_providers = providers;
 		_registry = registry;
+		_lineIndex = lineIndex;
 	}
 
 	private INetworkInfoProvider? Provider =>
@@ -65,6 +68,22 @@ public sealed class NetworkService
 			&& lines.Count > 0)
 		{
 			_stopLines.Set(key, lines);
+		}
+
+		// The lines of a stop are the line search's candidates too (a side effect, never a request of its own).
+		if (_lineIndex is not null
+			&& provider is IProviderDescriptor described
+			&& lines.Count > 0)
+		{
+			Station seenAt = LineIndex.StopOf(stop);
+
+			foreach (StopLine line in lines)
+			{
+				_lineIndex.Remember(
+					described.Info.Id,
+					new TransitLine { Name = line.Name, Mode = line.Mode },
+					seenAt);
+			}
 		}
 
 		return lines;

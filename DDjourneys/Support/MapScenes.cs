@@ -79,11 +79,14 @@ public static class MapScenes
 	/// <summary>
 	/// Opens the map page with a scene; says so (returns false) when there is nothing to show. <paramref name="from"/>
 	/// (the asking page or view model) lets the map open beside it in a wide window (see <see cref="Panes"/>).
+	/// <paramref name="notice"/> is shown by the map page as its note (the diversions of a line course, see
+	/// <c>LineCourseNotices</c>); null or empty shows nothing.
 	/// </summary>
 	public static async Task<bool> OpenAsync(
 		MapScene scene,
 		string title,
-		object? from = null)
+		object? from = null,
+		string? notice = null)
 	{
 		ArgumentNullException.ThrowIfNull(scene);
 
@@ -92,13 +95,21 @@ public static class MapScenes
 			return false;
 		}
 
-		await Panes.GoToAsync(
-			Routes.Map,
+		var parameters =
 			new ShellNavigationQueryParameters
 			{
 				[Routes.MapScene] = scene,
 				[Routes.MapTitle] = title
-			},
+			};
+
+		if (notice is { Length: > 0 })
+		{
+			parameters[Routes.MapNotice] = notice;
+		}
+
+		await Panes.GoToAsync(
+			Routes.Map,
+			parameters,
 			from);
 
 		return true;
@@ -573,7 +584,9 @@ public static class MapScenes
 						color));
 			}
 
-			// The stops in between: quiet knots whose popup names the stop and its time.
+			// The stops in between: quiet knots whose popup names the stop and its time. A stop the run window
+			// marks cancelled is not served (the only machine-readable skipping the data offers, see
+			// LineDiversions): it keeps its place, takes the cancelled colour and says so instead of a time.
 			if (!further)
 			{
 				for (int stopIndex = 1; stopIndex < located.Count - 1; stopIndex++)
@@ -587,9 +600,11 @@ public static class MapScenes
 							stop.Station.Longitude!.Value,
 							string.Empty,
 							MapMarkerKind.Knot,
-							DullColor,
+							stop.IsCancelled ? ThemeRef("Cancelled", "#B91C1C") : DullColor,
 							stop.Station.Name,
-							stop.Effective is { } effective ? Format.Time(effective) : string.Empty));
+							stop.IsCancelled
+									? LocalizationService.Current.CurrentStrings.WatchedLines.StopNotServed
+									: (stop.Effective is { } effective ? Format.Time(effective) : string.Empty)));
 				}
 
 				if (course.Vehicle is { } vehicle
@@ -722,14 +737,20 @@ public static class MapScenes
 	public static MapScene FromTrack(
 		TrackTarget target,
 		LiveVehicle? vehicle,
-		bool fit) =>
-		FromTracks((List<TrackTarget>)[target], (List<LiveVehicle?>)[vehicle], fit);
+		bool fit,
+		(double Latitude, double Longitude)? you = null) =>
+		FromTracks((List<TrackTarget>)[target], (List<LiveVehicle?>)[vehicle], fit, you);
 
-	/// <summary>The runs of a followed journey together: every itinerary faintly, its stops, and each matched vehicle.</summary>
+	/// <summary>
+	/// The runs of a followed journey together: every itinerary faintly, its stops, and each matched vehicle.
+	/// The optional <paramref name="you"/> (B5) adds the "you are probably here" dot - the caller's snapped
+	/// device position, drawn only where no fresh vehicle position says where the run is.
+	/// </summary>
 	public static MapScene FromTracks(
 		IReadOnlyList<TrackTarget> targets,
 		IReadOnlyList<LiveVehicle?> vehicles,
-		bool fit)
+		bool fit,
+		(double Latitude, double Longitude)? you = null)
 	{
 		ArgumentNullException.ThrowIfNull(targets);
 		ArgumentNullException.ThrowIfNull(vehicles);
@@ -740,6 +761,22 @@ public static class MapScenes
 		for (int t = 0; t < targets.Count; t++)
 		{
 			AddTrack(targets[t], t < vehicles.Count ? vehicles[t] : null, t, markers, lines);
+		}
+
+		// B5: the honest position of the passenger - snapped onto the stops, clearly an estimate.
+		if (you is { } here
+			&& Position(here.Latitude, here.Longitude) is { } mine)
+		{
+			markers.Add(
+				new MapMarker(
+					"you",
+					mine.Latitude,
+					mine.Longitude,
+					string.Empty,
+					MapMarkerKind.Current,
+					AccentColor,
+					Strings.YouAreHere,
+					null));
 		}
 
 		return new MapScene

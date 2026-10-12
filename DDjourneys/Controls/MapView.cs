@@ -115,7 +115,7 @@ public sealed partial class MapView : ContentView
 				StyleClass = ["Tonal"]
 			};
 
-		_settingsButton.Clicked += async (_, _) => await Shell.Current.GoToAsync(Routes.Settings);
+		_settingsButton.Clicked += async (_, _) => await TabRoots.OpenAsync(Routes.Settings);
 
 		_bypassButton =
 			new Button

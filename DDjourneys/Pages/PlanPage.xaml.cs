@@ -67,6 +67,11 @@ public partial class PlanPage : PanePage, IQueryAttributable
 				_localization.CurrentStrings.Common.SomethingWentWrong,
 				message,
 				_localization.CurrentStrings.Common.Ok);
+
+		// B4: the watched-lines banner leads to the disruptions page (beside this page in a wide window).
+		vm.OpenWatchedDisruptions = () =>
+			NavigateAsync(
+				Routes.Disruptions);
 	}
 
 	protected override void OnAppearing()
@@ -102,6 +107,14 @@ public partial class PlanPage : PanePage, IQueryAttributable
 		await Task.Delay(500);
 
 		if (ContractEntry.HasPending || AppShortcuts.IsBusy)
+		{
+			return;
+		}
+
+		// A delivered request may have filled the planner already; the input mode would write over it.
+		// With the start screen "map" the planner first appears when such a request brings it into view,
+		// long after the request was delivered (the pending check above only catches the early ones).
+		if (_vm.From is not null || _vm.To is not null)
 		{
 			return;
 		}
@@ -232,27 +245,23 @@ public partial class PlanPage : PanePage, IQueryAttributable
 		}
 	}
 
+	// The three root pages: on the phone the app switches to their tab, everywhere else they are pushed
+	// (see TabRoots; none of them pairs as a pane).
 	private async void SettingsClicked(
 		object? sender,
 		EventArgs e) =>
-		await NavigateAsync(
-			Routes.Settings,
-			[]);
+		await TabRoots.OpenAsync(Routes.Settings);
 
 	/// <summary>The map on its own: stops around, tariff zones, park &amp; ride, bikes, vehicles (the layers button).</summary>
 	private async void MapClicked(
 		object? sender,
 		EventArgs e) =>
-		await NavigateAsync(
-			Routes.Map,
-			[]);
+		await TabRoots.OpenAsync(Routes.Map);
 
 	private async void DeparturesClicked(
 		object? sender,
 		EventArgs e) =>
-		await NavigateAsync(
-			Routes.Departures,
-			[]);
+		await TabRoots.OpenAsync(Routes.Departures);
 
 	private async void DisruptionsClicked(
 		object? sender,

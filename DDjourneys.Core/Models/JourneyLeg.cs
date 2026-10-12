@@ -143,6 +143,12 @@ public sealed class JourneyLeg
 	/// </summary>
 	public string? Id { get; init; }
 
+	/// <summary>
+	/// How to book this leg when it is an on-demand service (Anruf-Linien-Bus / alita): a phone number
+	/// or a web page, as the provider's data carries it. Null when the provider says nothing.
+	/// </summary>
+	public string? BookingContact { get; init; }
+
 	/// <summary>The provider's own object this leg was mapped from (diagnostics only).</summary>
 	public object? ProviderData { get; init; }
 

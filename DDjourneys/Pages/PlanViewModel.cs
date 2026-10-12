@@ -97,6 +97,7 @@ public sealed partial class PlanViewModel : DisposableViewModel
 	private readonly LocalizationService _localization;
 	private readonly LocationService _locations;
 	private readonly DeviceLocator _locator;
+	private readonly NetworkService _network;
 
 	private DateTime _when;
 	private bool _syncing;
@@ -111,15 +112,44 @@ public sealed partial class PlanViewModel : DisposableViewModel
 		_providers.Supports(ProviderCapabilities.Tracking)
 		&& (!_tracker.IsValueCreated || _tracker.Value.IsAvailable);
 
+	/// <summary>Whether the watched-lines banner has anything to say for the selected provider (B4).</summary>
+	public bool HasWatchedBanner
+	{
+		get;
+
+		private set
+		{
+			if (SetProperty(ref field, value))
+			{
+				OnPropertyChanged(nameof(WatchedBannerText));
+			}
+		}
+	}
+
+	/// <summary>"2 of your lines are affected by disruptions." — what the banner says (also its description).</summary>
+	public string WatchedBannerText =>
+		string.Format(
+			CultureInfo.CurrentCulture,
+			_localization.CurrentStrings.WatchedLines.BannerAffected,
+			WatchedLineStatus.BannerLines(_providers.SelectedId).Count);
+
+	/// <summary>Sends the banner away for this session (it returns when a disruption appears that was not dismissed).</summary>
+	public Command DismissWatchedBannerCommand { get; }
+
+	/// <summary>Opens the disruptions page (the banner and the settings row lead there).</summary>
+	public Command OpenWatchedDisruptionsCommand { get; }
+
 	public PlanViewModel(
 		PlaceStore store,
 		AppSettings settings,
 		Lazy<IJourneyTracker> tracker,
 		ProviderRegistry providers,
 		LocationService locations,
-		DeviceLocator locator)
+		DeviceLocator locator,
+		NetworkService network)
 	{
 		ArgumentNullException.ThrowIfNull(store);
+		ArgumentNullException.ThrowIfNull(network);
 		ArgumentNullException.ThrowIfNull(settings);
 		ArgumentNullException.ThrowIfNull(tracker);
 		ArgumentNullException.ThrowIfNull(providers);
@@ -136,6 +166,7 @@ public sealed partial class PlanViewModel : DisposableViewModel
 		_localization = LocalizationService.Current;
 		_locations = locations;
 		_locator = locator;
+		_network = network;
 
 		Subscribe(
 			() => _store.Changed += OnStoreChanged,
@@ -144,6 +175,18 @@ public sealed partial class PlanViewModel : DisposableViewModel
 		ListenToLocalization(
 			_localization,
 			OnLocalizationChanged);
+
+		DismissWatchedBannerCommand =
+			new Command(
+					() =>
+					{
+						WatchedLineStatus.DismissBanner();
+						UpdateWatchedBanner();
+					});
+
+		OpenWatchedDisruptionsCommand =
+			new Command(
+					() => _ = OpenWatchedDisruptionsAsync());
 
 		PickFromCommand =
 			new AsyncCommand(
@@ -340,6 +383,9 @@ public sealed partial class PlanViewModel : DisposableViewModel
 
 	/// <summary>Opens the place search for the home place; the answer comes back through <see cref="SetHome"/>.</summary>
 	public Func<Task>? OpenHomeSearch { get; set; }
+
+	/// <summary>Opens the disruptions page (the watched-lines banner leads there).</summary>
+	public Func<Task>? OpenWatchedDisruptions { get; set; }
 
 	/// <summary>Asks for a name (title, message, suggestion); null when the passenger cancels.</summary>
 
@@ -872,6 +918,45 @@ public sealed partial class PlanViewModel : DisposableViewModel
 			To);
 
 
+	/// <summary>
+	/// The watched-lines banner of B4: "N of your lines are affected by disruptions", dismissible for this
+	/// session (a new disruption brings it back). Fed by <see cref="WatchedLineStatus"/>: a fresh check when the
+	/// last answer is older than its quiet period, then whatever the session already knows.
+	/// </summary>
+	private async Task RefreshWatchedBannerAsync()
+	{
+		try
+		{
+			await WatchedLineStatus.RefreshAsync(
+				_network,
+				_providers.SelectedId);
+		}
+		catch (Exception ex)
+		{
+			DiagnosticLog.Write($"Checking the watched lines failed: {ex.Message}");
+		}
+
+		UpdateWatchedBanner();
+	}
+
+	/// <summary>Recomputes the banner from what the session knows (no fetch; called after every check).</summary>
+	private void UpdateWatchedBanner() =>
+			HasWatchedBanner =
+					_providers.Supports(ProviderCapabilities.Disruptions)
+							&& WatchedLineStatus.HasBanner(_providers.SelectedId);
+
+	private async Task OpenWatchedDisruptionsAsync()
+	{
+		if (OpenWatchedDisruptions is { } open)
+		{
+			await open();
+		}
+		else
+		{
+			await Shell.Current.GoToAsync(Routes.Disruptions);
+		}
+	}
+
 	public void Refresh()
 	{
 		Safe(
@@ -891,6 +976,9 @@ public sealed partial class PlanViewModel : DisposableViewModel
 					OnPropertyChanged(nameof(HasDepartures));
 					OnPropertyChanged(nameof(HasDisruptions));
 				}
+
+				// The watched-lines banner follows the provider switch (B4).
+				_ = RefreshWatchedBannerAsync();
 
 				MinDate =
 					now.Date;
@@ -1600,6 +1688,11 @@ public sealed partial class PlanViewModel : DisposableViewModel
 
 	private void RefreshLocalizedProperties()
 	{
+		UpdateWatchedBanner();
+
+		OnPropertyChanged(
+			nameof(WatchedBannerText));
+
 		OnPropertyChanged(
 			nameof(FromText));
 

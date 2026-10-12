@@ -13,7 +13,7 @@
 		<ScrollView>
 			<VerticalStackLayout Padding="{DynamicResource PadPage}" Spacing="{DynamicResource SpaceM}">
 
-				<Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="10">
+				<Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto" ColumnSpacing="10">
 					<Border
 						BackgroundColor="{Binding Look.Fill}"
 						StrokeDashArray="{Binding Look.Dashes}"
@@ -37,8 +37,15 @@
 						Text="{Binding Direction}"
 						VerticalOptions="Center" />
 
+					<!--  B4: the star watches the run's line for disruptions  -->
 					<controls:IconButton
 						Grid.Column="2"
+						Command="{Binding ToggleWatchCommand}"
+						Glyph="{Binding WatchStar}"
+						SemanticProperties.Description="{Binding WatchDescription}"
+						VerticalOptions="Center" />
+					<controls:IconButton
+						Grid.Column="3"
 						Command="{Binding OpenMapCommand}"
 						Glyph="MapPin"
 						HorizontalOptions="End"
@@ -46,7 +53,7 @@
 						SemanticProperties.Description="{localization:Tr Extras.MapShow}"
 						VerticalOptions="Center" />
 					<controls:IconButton
-						Grid.Column="3"
+						Grid.Column="4"
 						Command="{Binding OpenLineMapCommand}"
 						Glyph="Route"
 						HorizontalOptions="End"
@@ -60,6 +67,14 @@
 					IsVisible="{Binding HasOperatingText}"
 					StyleClass="Caption"
 					Text="{Binding OperatingText}" />
+
+				<!--  B5: the plan says transfer, but this run also reaches the destination  -->
+				<Label
+					HorizontalTextAlignment="Center"
+					IsVisible="{Binding HasStayText}"
+					LineBreakMode="WordWrap"
+					StyleClass="Delay"
+					Text="{Binding StayText}" />
 
 				<Label
 					HorizontalTextAlignment="Center"

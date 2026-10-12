@@ -23,9 +23,6 @@ public sealed class WidgetLoader(
 {
 	private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(10);
 
-	/// <summary>Rows kept beyond what is shown: departures that have left by the time the widget is drawn again.</summary>
-	private const int Spare = 2;
-
 	/// <summary>
 	/// How many rows to ask the providers for: the number the user chose, or (as many as fit) what the widget's size
 	/// shows right now.
@@ -99,7 +96,7 @@ public sealed class WidgetLoader(
 						To = to,
 						DateTime = DateTimeOffset.UtcNow,
 						SearchMode = JourneySearchMode.Departure,
-						MaxResults = Math.Clamp(wanted + Spare, 1, 10),
+						MaxResults = Math.Clamp(wanted + NearbyBoards.Spare, 1, 10),
 						Routing = RoutingPreferences.Default,
 						TimeoutSeconds = (int)Timeout.TotalSeconds
 					},
@@ -183,7 +180,15 @@ public sealed class WidgetLoader(
 		}
 
 		IReadOnlyList<Departure> list =
-			await DeparturesOfAsync(stop, arrival, config, wanted + Spare, cancellationToken).ConfigureAwait(false);
+			await NearbyBoards.NextOfAsync(
+				departures,
+				stop,
+				arrival,
+				wanted + NearbyBoards.Spare,
+				config.LineFilter,
+				config.Modes,
+				(int)Timeout.TotalSeconds,
+				cancellationToken).ConfigureAwait(false);
 
 		return new WidgetSnapshot
 		{
@@ -192,38 +197,6 @@ public sealed class WidgetLoader(
 			Message = list.Count == 0 ? (arrival ? strings.NoArrivals : strings.NoDepartures) : string.Empty,
 			Rows = (List<WidgetRow>)[.. list.Select(departure => WidgetSnapshots.ForDeparture(departure, all))]
 		};
-	}
-
-	private async Task<IReadOnlyList<Departure>> DeparturesOfAsync(
-		Location stop,
-		bool arrival,
-		WidgetConfig config,
-		int limit,
-		CancellationToken cancellationToken)
-	{
-		DepartureBoard board =
-			await departures
-				.GetDeparturesAsync(
-					new DepartureQuery
-					{
-						Stop = stop,
-						IsArrival = arrival,
-						Limit = limit * (config.LineFilter.Count > 0 ? 3 : 1),
-						Modes = config.Modes,
-						TimeoutSeconds = (int)Timeout.TotalSeconds
-					},
-					cancellationToken)
-				.ConfigureAwait(false);
-
-		IReadOnlyList<string> lines = config.LineFilter;
-
-		return
-			(List<Departure>)
-			[.. board.Departures
-				.Where(
-					departure => lines.Count == 0
-						|| lines.Contains(departure.Line.Name, StringComparer.OrdinalIgnoreCase))
-				.Take(limit)];
 	}
 
 	// ---------- Around the device ----------
@@ -275,33 +248,16 @@ public sealed class WidgetLoader(
 		// The nearest stops, each with its next departures (a few at a time: the provider is polite to its own servers).
 		NearbyStop[] chosen = [.. stops.Take(config.StopCount)];
 
-		var boards = new IReadOnlyList<Departure>[chosen.Length];
-
-		using var gate = new SemaphoreSlim(3);
-
-		await Task.WhenAll(
-			chosen.Select(
-				async (stop, index) =>
-				{
-					await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
-
-					try
-					{
-						boards[index] =
-							await DeparturesOfAsync(stop.Stop, arrival: false, config, config.PerStop, cancellationToken)
-								.ConfigureAwait(false);
-					}
-					catch (Exception ex) when (ex is not OperationCanceledException)
-					{
-						DiagnosticLog.Write($"Widget: departures of {stop.Stop.Name} failed: {ex.Message}");
-
-						boards[index] = (List<Departure>)[];
-					}
-					finally
-					{
-						gate.Release();
-					}
-				})).ConfigureAwait(false);
+		IReadOnlyList<Departure>[] boards =
+			await NearbyBoards.LoadAsync(
+				departures,
+				[.. chosen.Select(stop => stop.Stop)],
+				arrival: false,
+				config.PerStop,
+				config.LineFilter,
+				config.Modes,
+				(int)Timeout.TotalSeconds,
+				cancellationToken).ConfigureAwait(false);
 
 		var rows = new List<WidgetRow>();
 

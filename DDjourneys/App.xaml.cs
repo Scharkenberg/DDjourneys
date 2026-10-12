@@ -17,7 +17,7 @@ public partial class App : Application
 	public App(AppSettings settings)
 	{
 		_settings = settings;
-		_shellFactory = () => new AppShell();
+		_shellFactory = () => new AppShell(_settings);
 
 		AppDomain.CurrentDomain.UnhandledException += (_, e) =>
 			DiagnosticLog.Write($"Unhandled exception (terminating={e.IsTerminating}): {e.ExceptionObject}");

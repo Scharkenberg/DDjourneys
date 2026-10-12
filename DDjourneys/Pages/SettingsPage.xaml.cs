@@ -28,6 +28,7 @@ public partial class SettingsPage : ContentPage
 		_vm.RefreshAppearance();
 		_vm.RefreshProvider();
 		_vm.RefreshLog();
+		_vm.RefreshDisruptions();
 		Motion.EnterPage(this, cascade: true);
 	}
 }

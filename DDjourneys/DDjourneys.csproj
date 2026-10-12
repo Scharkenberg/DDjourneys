@@ -118,6 +118,8 @@
 		<PackageReference Include="Xamarin.Google.Android.Material" Version="1.14.0.6" Condition="'$(TargetFramework)' == 'net11.0-android'" />
 		<!-- Foldables: TwoPaneView and DualScreenInfo (Jetpack WindowManager on Android), versioned with MAUI. -->
 		<PackageReference Include="Microsoft.Maui.Controls.Foldable" Version="$(MauiVersion)" />
+		<!-- Watched lines: periodic background checks on Android (AndroidX WorkManager; the package brings its own merged manifest entries and proguard rules, nothing manual). -->
+		<PackageReference Include="Xamarin.AndroidX.Work.Runtime" Version="2.11.2.1" Condition="'$(TargetFramework)' == 'net11.0-android'" />
 	</ItemGroup>
 
 	<ItemGroup>

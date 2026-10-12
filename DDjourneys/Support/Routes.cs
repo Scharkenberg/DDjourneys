@@ -27,6 +27,10 @@ public static class Routes
 	public const string Providers = "providers";
 	public const string About = "about";
 	public const string Departures = "departures";
+
+	/// <summary>The fourth phone tab (see AppShell): the settings page, the hub of the pages behind the app's core.</summary>
+	public const string More = "more";
+
 	public const string Run = "run";
 	public const string Disruptions = "disruptions";
 	public const string Vehicles = "vehicles";
@@ -51,6 +55,9 @@ public static class Routes
 	public const string ZonePlanLayer = "zoneplan";
 	public const string MapScene = "MapScene";
 	public const string MapTitle = "MapTitle";
+
+	/// <summary>Query key: the note the map page shows under its controls (the diversions of a line course).</summary>
+	public const string MapNotice = "MapNotice";
 
 	/// <summary>
 	/// Query key: how the map page is used. <see cref="MapModePick"/> answers with a place like the place search

@@ -339,7 +339,7 @@ internal static class LiveJourneyNotification
 	// ----- Alerts -----
 
 	/// <summary>A heads-up notification for one event; replaces an earlier alert of the same kind.</summary>
-	public static void ShowAlert(string planId, JourneyAlertKind kind, string title, string text)
+	public static void ShowAlert(string planId, JourneyAlertKind kind, string title, string text, bool gentle = false)
 	{
 		try
 		{
@@ -347,7 +347,9 @@ internal static class LiveJourneyNotification
 
 			EnsureChannels();
 
-			bool silent = kind is JourneyAlertKind.Arrived;
+			// B5: a gentle alert goes to the quiet live channel (low importance, no sound); the alarm
+			// channel keeps its high importance and its sound.
+			bool silent = kind is JourneyAlertKind.Arrived || gentle;
 
 			Notification.Builder builder =
 				OperatingSystem.IsAndroidVersionAtLeast(26)
@@ -360,6 +362,7 @@ internal static class LiveJourneyNotification
 					JourneyAlertKind.Problem => RiskColor,
 					JourneyAlertKind.Change => ChangeColor,
 					JourneyAlertKind.Arrived => ArrivedColor,
+					JourneyAlertKind.GetOff => ArrivedColor,
 					_ => AccentColor
 				};
 

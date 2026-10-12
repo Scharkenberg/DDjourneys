@@ -99,7 +99,16 @@ public sealed class GermanUiStrings : IUiStrings
 		RunTitle = "Fahrtverlauf",
 		NoRun = "Für diese Fahrt ist kein Verlauf verfügbar.",
 		VehicleHere = "Fahrzeug ist hier",
-		OpenDepartures = "Abfahrten an dieser Haltestelle"
+		OpenDepartures = "Abfahrten an dieser Haltestelle",
+
+		// B1 — line-centric departures
+		ShowCancelled = "Ausgefallene anzeigen",
+		AllLines = "Alle Linien",
+		OnlyThisLine = "Nur diese Linie",
+		LineChipDescription = "Linie {0}",
+		InMinutesShort = "{0}\u2032",
+		NowShort = "jetzt",
+		MoreDepartures = "Weitere Abfahrten anzeigen"
 	};
 
 	public DisruptionsStrings Disruptions { get; } = new()
@@ -180,7 +189,7 @@ public sealed class GermanUiStrings : IUiStrings
 		FareDay = "Tageskarte",
 		FareZones = "Tarifzonen",
 		FareValidFor = "Für",
-		FareNotAll = "Preise des Anbieters für diese Verbindung. Weitere Tickets (Wochen-, Monats-, ermäßigte Karten, Deutschland-Ticket) liefert seine Antwort nicht.",
+		FareNotAll = "Preise des Anbieters für diese Verbindung. Weitere Tickets (Wochen-, Monats-, ermäßigte Karten, Deutschlandticket) liefert seine Antwort nicht; die BahnCard-25-Zeile ist eine Schätzung der App.",
 		FareBuy = "Ticket kaufen, öffnet die Website des Verkehrsverbunds",
 		ShortcutHome = "Bring mich nach Hause",
 		ShortcutDepartures = "Abfahrten von hier",
@@ -195,6 +204,12 @@ public sealed class GermanUiStrings : IUiStrings
 		RunsOn = "Verkehrt {0}",
 		RunsDaily = "Verkehrt täglich",
 		VehicleReported = "Fahrzeug (gemeldete Position)",
+
+		// B5 — ride companion (die „Sie sind wahrscheinlich hier“-Markierung)
+		YouAreHere = "Sie sind wahrscheinlich hier",
+		ShowMyPosition = "Meine Position zeigen",
+		ShowMyPositionDescription = "Solange die Position des Fahrzeugs fehlt oder veraltet ist, wird Ihre Geräteposition auf die Haltestellen der Fahrt gelegt — eine Schätzung",
+		ShowMyPositionHint = "Der App fehlt die Berechtigung für den Standort. Erteilen Sie sie in den Systemeinstellungen, um das zu nutzen."
 		PdfFailed = "Das PDF konnte nicht geladen werden. Details stehen in der Protokolldatei diagnostics.log.",
 		LiveHowTitle = "So funktioniert's",
 		LiveHowText = "Eine oder mehrere Liniennummern durch Komma getrennt eingeben (zum Beispiel 3, 11); leer lassen, um alle Fahrzeuge zu sehen. Dann auf Anzeigen tippen: Die Fahrzeuge erscheinen auf der Karte und in der Liste und bewegen sich mit jeder neuen Position. Ein Fahrzeug in der Liste antippen, um es auf der Karte zu finden.",
@@ -323,7 +338,12 @@ public sealed class GermanUiStrings : IUiStrings
 		Searching = "Suche...",
 		CouldNotReachService =
 			"Der Fahrplandienst ist nicht erreichbar. Verbindung prüfen.",
-		SearchForPlace = "Nach einem Ort suchen"
+		SearchForPlace = "Nach einem Ort suchen",
+
+		// B1 — line-centric departures
+		LinesTitle = "Linien",
+		LineCourse = "Linie {0} – Verlauf anzeigen",
+		LineSeenAt = "Gesehen an {0}"
 	};
 
 	public ResultsStrings Results { get; } = new()
@@ -441,7 +461,10 @@ public sealed class GermanUiStrings : IUiStrings
 		OccupancyMedium = "Mittel",
 		OccupancyHigh = "Viele Fahrgäste",
 		OccupancyFull = "Voll",
-		OccupancyOverloaded = "Überfüllt"
+		OccupancyOverloaded = "Überfüllt",
+
+		// B5 — ride companion
+		PaceTight = "Knapp für Ihr Tempo — der Weg dauert etwa {0}"
 	};
 
 	public SettingsStrings Settings { get; } = new()
@@ -577,7 +600,15 @@ public sealed class GermanUiStrings : IUiStrings
 		InterfaceVersions = "Schnittstellenversionen",
 		InterfaceVersionsDescription = "Die Versionen aller Schnittstellen dieser Version: Dienste, gespeicherte Daten und Contract. Gehören in jeden Fehlerbericht.",
 		CopyInterfaces = "Versionen kopieren",
-		InterfacesCopied = "In die Zwischenablage kopiert"
+		InterfacesCopied = "In die Zwischenablage kopiert",
+
+		// B5 — ride companion (Aussteige-Alarm)
+		GetOffAlarmTitle = "Aussteige-Alarm",
+		GetOffAlarmDescription = "Wie lange vor Ihrer Haltestelle der Alarm klingelt, während Sie fahren (gilt für alle begleiteten Fahrten)",
+		GetOffAlarmLead = "{0} Min. vor Ihrer Haltestelle",
+		GetOffAlarmOff = "Aus",
+		GetOffAlarmSound = "Alarm mit Ton",
+		GetOffAlarmSoundDescription = "Der Aussteige-Alarm klingelt mit Ton (der Alarmkanal) oder leise ohne"
 	};
 
 	public RoutingStrings Routing { get; } = new()
@@ -750,7 +781,15 @@ public sealed class GermanUiStrings : IUiStrings
 		NotifChangeAlertTitle = "Fahrt aktualisiert",
 		NotifProblemAlertTitle = "Problem auf deiner Fahrt",
 		NotifMinutes = "{0} Min.",
-		NotifNow = "jetzt"
+		NotifNow = "jetzt",
+
+		// B5 — ride companion
+		StayInVehicle = "Im Fahrzeug bleiben — diese Linie fährt auch {0} an",
+		StayInVehicleAt = "Im Fahrzeug bleiben — diese Linie fährt {0} um {1} an",
+		NotifStopsToGo = "Noch {0} Haltestellen",
+		NotifOneStopToGo = "Noch 1 Haltestelle",
+		NotifExitIn = "Aussteigen in ca. {0} Min.",
+		NotifGetOffAlertTitle = "Bald aussteigen"
 	};
 
 	public TransportStrings Transport { get; } = new()
@@ -847,5 +886,57 @@ public sealed class GermanUiStrings : IUiStrings
 		DiagHint = "Windows meldet nur \"Fehler beim Hinzufügen des Widgets\". Dieser Bericht zeigt, was Windows über diese App gespeichert hat. Schalten Sie unter Einstellungen, Entwickleroptionen, In Datei protokollieren ein, versuchen Sie das Hinzufügen noch einmal und schicken Sie das Protokoll zusammen mit diesem Bericht.",
 		DiagCopy = "Bericht kopieren",
 		DiagCopied = "Kopiert."
+	};
+
+	// B2 — phone navigation
+	public ShellStrings Shell { get; } = new()
+	{
+		TabPlan = "Planen",
+		TabMore = "Mehr",
+		StartScreenTitle = "Startbildschirm",
+		StartScreenPlanner = "Planen",
+		StartScreenPlannerDescription = "Wo Sie eine Verbindung planen",
+		StartScreenMap = "Karte",
+		StartScreenMapDescription = "Haltestellen und Ebenen auf der Karte"
+	};
+
+	// B3 — ticketing advice
+	public TicketStrings Ticket { get; } = new()
+	{
+		Title = "Ticketberatung",
+		OneZone = "1 Tarifzone",
+		Zones = "{0} Tarifzonen",
+		Single = "Einzelfahrt {0}",
+		Day = "Tageskarte {0}",
+		DayWins = "die Tageskarte lohnt sich ab {0} Fahrten",
+		Covered = "Ihr Deutschlandticket deckt diese Fahrt ab; Sie brauchen dafür kein weiteres Ticket.",
+		CoveredShort = "vom Deutschlandticket abgedeckt",
+		LongDistance = "Das Deutschlandticket deckt Fernverkehrszüge nicht ab; diese Abschnitte brauchen ein eigenes Ticket.",
+		Amortize = "Bei {0} im Monat hat sich diese Strecke nach rund {1} Einzelfahrten bezahlt.",
+		BahnCard25 = "BahnCard 25",
+		BahnCardEstimate = "geschätzt: rund 25 % Rabatt auf die Einzelfahrt im Regionalverkehr",
+		DTicketSetting = "Ich habe ein Deutschlandticket",
+		DTicketSettingDescription = "Die Ticketberatung behandelt, was der Anbieter nach eigenen Tarifzonen bepreist, dann als bereits bezahlt.",
+		OnDemandText = "Bedarfsverkehr: Diese Fahrt muss vor der Abfahrt gebucht werden.",
+		OnDemandLink = "Buchung & Infos"
+	};
+
+	// B4 — Störungen der beobachteten Linien
+	public WatchedLineStrings WatchedLines { get; } = new()
+	{
+			YourLinesTitle = "Deine Linien",
+			YourLinesNone = "Keine deiner beobachteten Linien hat eine aktuelle Meldung.",
+			WatchHint = "Beobachte Linien mit dem Stern neben einer Linie unter „Um diese Haltestelle“ oder auf der Laufseite, dann stehen ihre Störungen hier.",
+			WatchLine = "Linie {0} beobachten",
+			UnwatchLine = "Linie {0} nicht mehr beobachten",
+			BannerAffected = "{0} deiner Linien sind von Störungen betroffen.",
+			BannerDismiss = "Ausblenden",
+			ChannelWatched = "Beobachtete Linien",
+			NotifTitle = "Beobachtete Linien",
+			NotifChangedSingle = "Die Störungen deiner Linie {0} haben sich geändert.",
+			NotifChangedMany = "Die Störungen von {0} deiner Linien haben sich geändert: {1}.",
+			TrackedDisruption = "Neue Störung auf deiner Linie: {0}",
+			StopNotServed = "fällt aus",
+			SummaryClear = "Deine beobachteten Linien haben keine aktuellen Störungen."
 	};
 }
