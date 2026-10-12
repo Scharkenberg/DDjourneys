@@ -781,6 +781,11 @@ public sealed partial class VehiclesViewModel : DisposableViewModel, IQueryAttri
 					continue;
 				}
 
+				if (lines.Count > 0 && !lines.Contains(vehicle.Line))
+				{
+					continue;
+				}
+
 				if (HasStatus)
 				{
 					failures++;
