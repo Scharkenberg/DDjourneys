@@ -1,3 +1,5 @@
+using DDjourneys.Core.Diagnostics;
+using SkiaSharp;
 using Windows.Data.Pdf;
 using Windows.Foundation;
 using Windows.Storage;
@@ -27,7 +29,57 @@ public static partial class PdfPages
 
 		public double Aspect => _box.Height > 0 ? _box.Width / _box.Height : 1;
 
+		/// <summary>
+		/// What the renderer makes of a destination size: it came back 1.5 times larger than asked on a 150 % display
+		/// (seen in the log: 768x768 for 512x512), so the size asked for is divided by the factor measured on the first
+		/// answer, and what still differs by a pixel is resampled to the exact size.
+		/// </summary>
+		private static double s_scale = 1;
+
 		public async Task<byte[]> RenderPngAsync(
+			double left,
+			double top,
+			double width,
+			double height,
+			int pixelWidth,
+			int pixelHeight,
+			CancellationToken cancellationToken)
+		{
+			byte[] png = await DrawAsync(left, top, width, height, Ask(pixelWidth), Ask(pixelHeight), cancellationToken).ConfigureAwait(false);
+
+			if (SizeOf(png) is not { } size)
+			{
+				return png;
+			}
+
+			if (size.Width == pixelWidth && size.Height == pixelHeight)
+			{
+				return png;
+			}
+
+			// Measure the factor on a tile big enough to tell (a sliver rounds too coarsely).
+			if (pixelWidth >= 64 && pixelHeight >= 64)
+			{
+				double measured = size.Width / (double)Ask(pixelWidth);
+
+				if (measured is > 0.2 and < 8 && Math.Abs(measured - 1) > 0.02)
+				{
+					double before = s_scale;
+
+					s_scale = Math.Clamp(s_scale * measured, 0.2, 8);
+					DiagnosticLog.Write($"[Plan] the PDF renderer answers {measured:F2}x the size asked for; asking for 1/{s_scale / before:F2} from now on");
+
+					png = await DrawAsync(left, top, width, height, Ask(pixelWidth), Ask(pixelHeight), cancellationToken).ConfigureAwait(false);
+				}
+			}
+
+			return Exact(png, pixelWidth, pixelHeight);
+		}
+
+		private static int Ask(int pixels) =>
+			Math.Max(1, (int)Math.Round(pixels / s_scale));
+
+		private async Task<byte[]> DrawAsync(
 			double left,
 			double top,
 			double width,
@@ -62,6 +114,36 @@ public static partial class PdfPages
 			await input.CopyToAsync(output, cancellationToken).ConfigureAwait(false);
 
 			return output.ToArray();
+		}
+
+		private static SKSizeI? SizeOf(byte[] png)
+		{
+			using var data = SKData.CreateCopy(png);
+			using SKCodec? codec = SKCodec.Create(data);
+
+			return codec?.Info.Size;
+		}
+
+		/// <summary>The picture at exactly the wanted size (a pixel of rounding is resampled, not rejected).</summary>
+		private static byte[] Exact(byte[] png, int pixelWidth, int pixelHeight)
+		{
+			using SKBitmap? source = SKBitmap.Decode(png);
+
+			if (source is null || (source.Width == pixelWidth && source.Height == pixelHeight))
+			{
+				return png;
+			}
+
+			using SKBitmap? scaled = source.Resize(new SKImageInfo(pixelWidth, pixelHeight, source.ColorType, source.AlphaType), new SKSamplingOptions(SKCubicResampler.Mitchell));
+
+			if (scaled is null)
+			{
+				return png;
+			}
+
+			using SKData encoded = scaled.Encode(SKEncodedImageFormat.Png, 100);
+
+			return encoded.ToArray();
 		}
 
 		public void Dispose() => page.Dispose();
