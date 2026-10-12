@@ -15,6 +15,9 @@ public static class BoardCache
 {
 	private const string Key = "boards.cache";
 
+	/// <summary>A file, not a setting: Windows refuses a setting value above a few KB, and 30 boards are more than that.</summary>
+	private static string FilePath => Path.Combine(FileSystem.AppDataDirectory, "boards.cache.json");
+
 	/// <summary>A stop's board is kept at most this often: the page refreshes every 30 s, and every keep rewrites the whole list.</summary>
 	private static readonly TimeSpan KeepEvery = TimeSpan.FromMinutes(2);
 
@@ -50,12 +53,17 @@ public static class BoardCache
 
 		try
 		{
-			Preferences.Default.Set(
-				Key,
+			string json =
 				BoardCacheList.Write(
 					BoardCacheList.Touch(
 						Load(),
-						new CachedBoard(providerId, stop.Id, isArrival, DateTimeOffset.UtcNow, departures))));
+						new CachedBoard(providerId, stop.Id, isArrival, DateTimeOffset.UtcNow, departures)));
+
+			// Written aside and moved over, so a cut-off write never replaces a good file.
+			string part = FilePath + ".part";
+
+			File.WriteAllText(part, json);
+			File.Move(part, FilePath, overwrite: true);
 		}
 		catch (Exception ex)
 		{
@@ -70,7 +78,20 @@ public static class BoardCache
 	{
 		try
 		{
-			return BoardCacheList.Parse(Preferences.Default.Get(Key, string.Empty));
+			if (File.Exists(FilePath))
+			{
+				return BoardCacheList.Parse(File.ReadAllText(FilePath));
+			}
+
+			// Older builds kept the list in the preferences, which Windows limits to a few KB: it moves to the file.
+			string old = Preferences.Default.Get(Key, string.Empty);
+
+			if (old.Length > 0)
+			{
+				Preferences.Default.Remove(Key);
+			}
+
+			return BoardCacheList.Parse(old);
 		}
 		catch (Exception ex)
 		{
