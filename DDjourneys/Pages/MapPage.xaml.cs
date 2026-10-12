@@ -1167,7 +1167,7 @@ public partial class MapPage : PanePage, IQueryAttributable
 		}
 	}
 
-	/// <summary>The three things to do at a stop.</summary>
+	/// <summary>The four things to do at a stop.</summary>
 	private async Task OfferAsync(Location stop)
 	{
 		ExtrasStrings strings = Strings;
@@ -1179,7 +1179,8 @@ public partial class MapPage : PanePage, IQueryAttributable
 				null,
 				strings.MapStopDepartures,
 				strings.MapJourneyToHere,
-				strings.MapJourneyFromHere);
+				strings.MapJourneyFromHere,
+				strings.ShareStop);
 
 		if (choice == strings.MapStopDepartures)
 		{
@@ -1197,6 +1198,10 @@ public partial class MapPage : PanePage, IQueryAttributable
 		else if (choice == strings.MapJourneyFromHere)
 		{
 			await PlannerLauncher.FromAsync(stop);
+		}
+		else if (choice == strings.ShareStop)
+		{
+			await StopSharePopup.ShowAsync(DialogPage, stop);
 		}
 	}
 

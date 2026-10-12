@@ -11,7 +11,8 @@ namespace DDjourneys.Controls;
 /// <summary>
 /// A map: MapLibre GL (vector tiles, embedded in the app under Resources/Raw/wwwroot) in a
 /// <see cref="HybridWebView"/>. C# calls the page's <c>ddMapCall</c> through InvokeJavaScriptAsync; the page
-/// reports back with raw messages ("ready", "open:url", "error:text"). The basemap is recoloured from the
+/// reports back with raw messages ("ready", "open:url", "error:text", "tile:z/x/y" - the Leaflet engine's
+/// ask for a cached city tile). The basemap is recoloured from the
 /// active app theme and needs the user's CARTO key (<see cref="MapAvailability"/>): without a usable one the map is
 /// replaced by a quiet notice. Give it a <see cref="MapScene"/>; it keeps the scene and re-applies it when needed.
 /// </summary>
@@ -579,11 +580,57 @@ public sealed partial class MapView : ContentView
 				// The page's own diagnostics (engine, language features, WebGL, errors with stack, map events).
 				DiagnosticLog.Write($"[Map page] {message[4..]}");
 			}
+			else if (message.StartsWith("tile:", StringComparison.Ordinal))
+			{
+				// The Leaflet engine asks for a cached city tile after its network tile failed (offline).
+				await ServeTileAsync(message[5..]);
+			}
 		}
 		catch (Exception ex)
 		{
 			DiagnosticLog.Write($"[Map] message '{message}' failed: {ex.Message}");
 		}
+	}
+
+	/// <summary>
+	/// Answers the page's ask for one offline city tile: the cached bytes as a data URL, or a miss (the page
+	/// then shows its own error tile). Only the Leaflet engine asks, and only after a network tile failed, so
+	/// the online path never pays a bridge round-trip.
+	/// </summary>
+	private async Task ServeTileAsync(string address)
+	{
+		if (address.Split('/') is not [var zoomText, var xText, var yText]
+			|| !int.TryParse(zoomText, out int zoom)
+			|| !int.TryParse(xText, out int x)
+			|| !int.TryParse(yText, out int y))
+		{
+			return;
+		}
+
+		byte[]? png = null;
+
+		try
+		{
+			if (Handler?.MauiContext?.Services.GetService(typeof(CityTilesStore)) is CityTilesStore store)
+			{
+				png = await store.ReadAsync(zoom, x, y);
+			}
+		}
+		catch (Exception ex)
+		{
+			DiagnosticLog.Write($"[Map] serving city tile {zoom}/{x}/{y} failed: {ex.Message}");
+		}
+
+		var answer =
+			new JsonObject
+			{
+				["z"] = zoom,
+				["x"] = x,
+				["y"] = y,
+				["data"] = png is null ? null : $"data:image/png;base64,{Convert.ToBase64String(png)}"
+			};
+
+		await CallAsync("tile", answer.ToJsonString());
 	}
 
 	private async Task InitializeAsync()
@@ -601,7 +648,8 @@ public sealed partial class MapView : ContentView
 				Preferences.Default.Get(AutoFitKey, true),
 				strings.MapAutoFit,
 				strings.MapFitNow,
-				strings.MapInfo));
+				strings.MapInfo,
+				strings.MapOfflineTiles));
 
 		_ready = true;
 

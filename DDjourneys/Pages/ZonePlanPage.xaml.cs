@@ -261,11 +261,13 @@ public sealed partial class ZonePlanPage : ContentPage, IQueryAttributable
 					null,
 					strings.MapStopDepartures,
 					strings.MapJourneyToHere,
-					strings.MapJourneyFromHere);
+					strings.MapJourneyFromHere,
+					strings.ShareStop);
 
 			if (choice != strings.MapStopDepartures
 				&& choice != strings.MapJourneyToHere
-				&& choice != strings.MapJourneyFromHere)
+				&& choice != strings.MapJourneyFromHere
+				&& choice != strings.ShareStop)
 			{
 				return;
 			}
@@ -289,6 +291,10 @@ public sealed partial class ZonePlanPage : ContentPage, IQueryAttributable
 			else if (choice == strings.MapJourneyToHere)
 			{
 				await _planner.ToAsync(stop);
+			}
+			else if (choice == strings.ShareStop)
+			{
+				await StopSharePopup.ShowAsync(this, stop);
 			}
 			else
 			{

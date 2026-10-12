@@ -190,6 +190,10 @@ public sealed class WidgetLoader(
 				(int)Timeout.TotalSeconds,
 				cancellationToken).ConfigureAwait(false);
 
+			// The same cache the departures page reads (B7): a widget's successful board pass keeps this stop
+			// answering offline. A failed pass keeps the widget's own snapshot, as before.
+			BoardCache.Store(config.ProviderId, stop, arrival, list);
+
 		return new WidgetSnapshot
 		{
 			Title = stop.Name,

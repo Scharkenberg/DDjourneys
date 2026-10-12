@@ -89,16 +89,16 @@ public static class InterfaceSchemas
 	/// </summary>
 	public static class Revision
 	{
-		// History: r1 = first schema of the interface list (October 2026). Map bridge r2 = the page's diagnostics (log: messages), r3 = the page loads MapLibre only after its own check and reports unsupported:reason, r4 = the page waits for the app (boot, ddBoot start with engine carto|leaflet and force), r5 = per-layer sends (ddMapCall layer/layers with a layer id, the overlay command is gone), polygon payloads (tariff zones) and the reserved marker kinds parking and bike of the Tier 2 city layers. Carto r2 = raster tiles for the Leaflet engine (OpenStreetMap tiles first, CARTO raster as fallback). Plan bridge r1 = the plan page's own protocol (ddPlanCall and its messages, the /_plan/ tile addresses). Gbfs r2 = Lime's dockless feed read (free_bike_status and vehicle_types of the v2 partner feed). Plan bridge r2 = the zone plan's stops and marks (the stops and mark commands, the pin and unpin messages). VvoWebApi r2 = a trip answer's named ticket list is read (Tickets with Name, Price and the fare zone texts, beyond the two route prices), on-demand runs are recognised by their mot type (Alita, HailedSharedTaxi) and their booking contact (BookingLink) is carried on the leg.
+		// History: r1 = first schema of the interface list (October 2026). Map bridge r2 = the page's diagnostics (log: messages), r3 = the page loads MapLibre only after its own check and reports unsupported:reason, r4 = the page waits for the app (boot, ddBoot start with engine carto|leaflet and force), r5 = per-layer sends (ddMapCall layer/layers with a layer id, the overlay command is gone), polygon payloads (tariff zones) and the reserved marker kinds parking and bike of the Tier 2 city layers. Carto r2 = raster tiles for the Leaflet engine (OpenStreetMap tiles first, CARTO raster as fallback). Plan bridge r1 = the plan page's own protocol (ddPlanCall and its messages, the /_plan/ tile addresses). Gbfs r2 = Lime's dockless feed read (free_bike_status and vehicle_types of the v2 partner feed). Plan bridge r2 = the zone plan's stops and marks (the stops and mark commands, the pin and unpin messages). VvoWebApi r2 = a trip answer's named ticket list is read (Tickets with Name, Price and the fare zone texts, beyond the two route prices), on-demand runs are recognised by their mot type (Alita, HailedSharedTaxi) and their booking contact (BookingLink) is carried on the leg. Map bridge r6 = offline city tiles: the Leaflet engine asks for a cached tile after a network tile fails (raw message tile:{z}/{x}/{y}), the app answers ddMapCall('tile', {z, x, y, data}) with a data: URL or a miss, and the init carries the note label for serving from the cache (labels.offlineTile).
 		public const int VvoWebApi = 2;
 		public const int Schutzengel = 1;
 		public const int Tlms = 1;
 		public const int OpenData = 1;
 		public const int Carto = 2;
-		public const int MapBridge = 5;
+		public const int MapBridge = 6;
 		public const int PlanBridge = 2;
 		public const int OsmTiles = 1;
-		public const int DvbNetworkMap = 1;
+		public const int DvbNetworkMap = 2;
 		public const int VvoPur = 1;
 		public const int Gbfs = 2;
 		public const int WidgetData = 2;
@@ -139,7 +139,7 @@ public static class InterfaceSchemas
 		new(
 			"dvb-networkmap", InterfaceKind.External, "DVB Liniennetzplan page",
 			R(Revision.DvbNetworkMap), DvbNetworkMapUrl,
-			"the page is read for dvb_lnp_n_st_n_jpg.jpg / _pdf.pdf links; the plan is DVB's, downloaded on demand and credited, never bundled"),
+			"the page is read as a catalog of plans: standard dvb_lnp_n_st_n, night GuteNachtLinien gnl_n_pip, the barrier-free line network plan (PDF only) and the MOBI city map; the plans are DVB's, downloaded on demand and credited, never bundled"),
 		new(
 			"vvo-pur", InterfaceKind.External, "VVO park & ride occupancy",
 			R(Revision.VvoPur), VvoPurUrl,
@@ -155,7 +155,7 @@ public static class InterfaceSchemas
 		new(
 			"map-bridge", InterfaceKind.Internal, "Map page messages",
 			R(Revision.MapBridge), string.Empty,
-			"ddMapCall(command, json) or ddMapCall('layer', id, json) for the layer/layers commands, and the raw messages boot, ready, layers, open, tap, view, point, error, auto, log, unsupported"),
+			"ddMapCall(command, json) or ddMapCall('layer', id, json) for the layer/layers commands, and the raw messages boot, ready, layers, open, tap, view, point, error, auto, log, unsupported, tile; the tile answer carries a data: URL of the cached city tile or a miss"),
 		new(
 			"plan-bridge", InterfaceKind.Internal, "Plan page messages",
 			R(Revision.PlanBridge), string.Empty,

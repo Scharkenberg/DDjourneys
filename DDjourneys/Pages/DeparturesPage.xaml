@@ -21,7 +21,7 @@
 				<Grid
 					support:Dense.Padding="12,4"
 					support:Dense.MinHeight="{StaticResource HitRowTight}"
-					ColumnDefinitions="*,Auto,Auto,Auto"
+					ColumnDefinitions="*,Auto,Auto,Auto,Auto"
 					ColumnSpacing="0"
 					SemanticProperties.Description="{localization:Tr Departures.Stop}">
 
@@ -53,6 +53,15 @@
 						Glyph="Refresh"
 						IsVisible="{Binding HasStop}"
 						SemanticProperties.Description="{localization:Tr Departures.Refresh}"
+						TargetSize="{StaticResource HitIconTight}" />
+
+					<!--  Share this stop: the QR sheet with the text and links (the stop, not a row)  -->
+					<controls:IconButton
+						Grid.Column="4"
+						Clicked="ShareClicked"
+						Glyph="Share"
+						IsVisible="{Binding HasStop}"
+						SemanticProperties.Description="{localization:Tr Extras.ShareStop}"
 						TargetSize="{StaticResource HitIconTight}" />
 
 					<Grid.GestureRecognizers>

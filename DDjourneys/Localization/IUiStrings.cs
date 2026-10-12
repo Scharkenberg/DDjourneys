@@ -124,6 +124,9 @@ public sealed class DeparturesStrings
 	public required string InMinutesShort { get; init; }
 	public required string NowShort { get; init; }
 	public required string MoreDepartures { get; init; }
+
+	// B7 — offline comfort
+	public required string CachedBoard { get; init; }
 }
 
 
@@ -408,6 +411,25 @@ public sealed class SettingsStrings
 	public required string GetOffAlarmOff { get; init; }
 	public required string GetOffAlarmSound { get; init; }
 	public required string GetOffAlarmSoundDescription { get; init; }
+
+	// B7 — offline comfort
+	public required string OfflineSection { get; init; }
+	public required string OfflineCityMap { get; init; }
+	public required string OfflineCityMapDescription { get; init; }
+	public required string OfflineEstimate { get; init; }
+	public required string OfflineDownload { get; init; }
+	public required string OfflineDownloading { get; init; }
+	public required string OfflineDone { get; init; }
+	public required string OfflineStopped { get; init; }
+	public required string OfflineSkippedMetered { get; init; }
+	public required string OfflineWifiOnly { get; init; }
+	public required string OfflineWifiOnlyDescription { get; init; }
+	public required string OfflineOnDevice { get; init; }
+	public required string OfflineRemove { get; init; }
+	public required string OfflineNone { get; init; }
+	public required string OfflineSize { get; init; }
+	public required string OfflineBoardsTitle { get; init; }
+	public required string OfflineBoardsDescription { get; init; }
 }
 
 public sealed class TransportStrings
@@ -761,6 +783,11 @@ public sealed class ExtrasStrings
 	public required string NetworkMapZoomOut { get; init; }
 	public required string MapOpenSummary { get; init; }
 	public required string NetworkMapSummary { get; init; }
+	// B6 — night and barrier-free plans
+	public required string NetworkMapPlanStandard { get; init; }
+	public required string NetworkMapPlanNight { get; init; }
+	public required string NetworkMapPlanBarrierFree { get; init; }
+	public required string NetworkMapPlanCityMap { get; init; }
 	public required string ZonePlan { get; init; }
 	public required string ZonePlanSummary { get; init; }
 	public required string ZonePlanRegion { get; init; }
@@ -798,6 +825,18 @@ public sealed class ExtrasStrings
 	public required string LiveSummary { get; init; }
 	public required string HomeTitle { get; init; }
 	public required string HomeNotSet { get; init; }
+
+	// B7 — offline comfort
+	public required string MapOfflineTiles { get; init; }
+
+	// B8 — share a stop
+	public required string ShareStop { get; init; }
+	public required string ShareStopMeetAt { get; init; }
+	public required string ShareStopQrCaption { get; init; }
+	public required string ShareStopTextCaption { get; init; }
+	public required string ShareStopCopyLink { get; init; }
+	public required string ShareStopCopyHint { get; init; }
+	public required string ShareStopCopied { get; init; }
 }
 // </extras>
 

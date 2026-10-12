@@ -390,6 +390,13 @@ public sealed class AppSettings
 		}
 	}
 
+	/// <summary>Download the offline city map only on an unmetered connection (Wi-Fi or cable; on by default).</summary>
+	public bool CityTilesWifiOnly
+	{
+		get => Read("cityTilesWifiOnly", true);
+		set => Write("cityTilesWifiOnly", value);
+	}
+
 	// ----- Place search -----
 
 	public const int MinSearchDelayMs = 200;

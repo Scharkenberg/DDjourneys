@@ -1,26 +1,32 @@
 using DDjourneys.Controls;
 using DDjourneys.Core.Diagnostics;
+using DDjourneys.Core.Providers.Vvo;
 using DDjourneys.Localization;
 using DDjourneys.Support;
 
 namespace DDjourneys.Pages;
 
 /// <summary>
-/// The DVB line network map: downloaded on demand (see <see cref="NetworkMapStore"/>), cached for a week, shown
-/// from the vector PDF in a <see cref="PlanView"/> (pinch, pan, double tap, wheel, keys and the zoom buttons) with
-/// all its detail at every zoom; the JPG at full size only when the PDF cannot be shown. The PDF also opens in the
-/// system viewer. A document, not a pane page: it is pushed with a plain Shell navigation and popped by back.
+/// The DVB's plan catalog in the app: the standard line network plan, the GuteNachtLinien plan of the night
+/// traffic, the barrier-free line network plan and the MOBI city map (see <see cref="NetworkMapStore"/>),
+/// chosen with the chip row at the top - the standard plan is the one the page opens with, a choice of the
+/// moment and not a setting. The plan is downloaded on demand, cached for a week, shown from the vector PDF
+/// in a <see cref="PlanView"/> (pinch, pan, double tap, wheel, keys and the zoom buttons) with all its detail
+/// at every zoom; the JPG at full size only when the PDF cannot be shown (the barrier-free plan names no JPG,
+/// so its fallback is the message). The PDF also opens in the system viewer. A document, not a pane page: it
+/// is pushed with a plain Shell navigation and popped by back.
 /// </summary>
 public sealed partial class NetworkMapPage : ContentPage
 {
-	private const string PlanName = "dvb";
-
 	private readonly NetworkMapStore _maps;
 	private CancellationTokenSource? _load;
 	private string? _key;
 
+	// Which plan of the catalog the page shows; the refresh and PDF buttons act on it too.
+	private VvoNetworkMapKind _kind = VvoNetworkMapKind.Standard;
+
 	// The plan on its way in: until the view answers (shown or failed), a watchdog makes sure the page never
-	// stays a silent white sheet — the JPG stands in first, the message with a retry after that.
+	// stays a silent white sheet - the JPG stands in first, the message with a retry after that.
 	private CancellationTokenSource? _await;
 	private bool _awaiting;
 	private bool _fellBack;
@@ -32,7 +38,11 @@ public sealed partial class NetworkMapPage : ContentPage
 		InitializeComponent();
 
 		_maps = maps;
+
+		ShowKind();
 	}
+
+	private static ExtrasStrings Strings => LocalizationService.Current.CurrentStrings.Extras;
 
 	protected override void OnAppearing()
 	{
@@ -51,17 +61,80 @@ public sealed partial class NetworkMapPage : ContentPage
 		base.OnDisappearing();
 	}
 
+	// ---- the plan choice ----
+
+	private void StandardTapped(object? sender, TappedEventArgs e) =>
+			Switch(VvoNetworkMapKind.Standard);
+
+	private void NightTapped(object? sender, TappedEventArgs e) =>
+			Switch(VvoNetworkMapKind.Night);
+
+	private void BarrierFreeTapped(object? sender, TappedEventArgs e) =>
+			Switch(VvoNetworkMapKind.BarrierFree);
+
+	private void CityTapped(object? sender, TappedEventArgs e) =>
+			Switch(VvoNetworkMapKind.CityMap);
+
+	/// <summary>Shows the chosen plan: the one on screen stays until the new one is in, like a refresh.</summary>
+	private void Switch(VvoNetworkMapKind kind)
+	{
+		if (kind == _kind)
+		{
+			return;
+		}
+
+		_kind = kind;
+
+		// The key belongs to the plan that was loaded; the chosen plan is a fresh load (a same-key refresh
+		// would keep the old plan on screen).
+		_key = null;
+
+		ShowKind();
+		Load(refresh: false);
+	}
+
+	/// <summary>The chosen chip says so - the accent fill, and in words the screen reader hears.</summary>
+	private void ShowKind()
+	{
+		Mark(PlanStandard, PlanStandardLabel, _kind == VvoNetworkMapKind.Standard);
+		Mark(PlanNight, PlanNightLabel, _kind == VvoNetworkMapKind.Night);
+		Mark(PlanBarrierFree, PlanBarrierFreeLabel, _kind == VvoNetworkMapKind.BarrierFree);
+		Mark(PlanCityMap, PlanCityMapLabel, _kind == VvoNetworkMapKind.CityMap);
+	}
+
+	private static void Mark(Border chip, Label text, bool on)
+	{
+		Themed.SetIsOn(chip, on);
+		Themed.SetIsOn(text, on);
+	}
+
+	/// <summary>The plan's own title, the chip row's word for it (the viewer request carries it).</summary>
+	private static string PlanTitle(VvoNetworkMapKind kind)
+	{
+		ExtrasStrings strings = Strings;
+
+		return kind switch
+		{
+				VvoNetworkMapKind.Night => strings.NetworkMapPlanNight,
+				VvoNetworkMapKind.BarrierFree => strings.NetworkMapPlanBarrierFree,
+				VvoNetworkMapKind.CityMap => strings.NetworkMapPlanCityMap,
+				_ => strings.NetworkMapPlanStandard
+		};
+	}
+
+	// ---- loading and showing ----
+
 	private void RefreshClicked(object? sender, EventArgs e) =>
-		Load(refresh: true);
+			Load(refresh: true);
 
 	private void RetryClicked(object? sender, EventArgs e) =>
-		Load(refresh: false);
+			Load(refresh: false);
 
 	private void ZoomInClicked(object? sender, EventArgs e) =>
-		_ = Plan.ZoomAsync(1);
+			_ = Plan.ZoomAsync(1);
 
 	private void ZoomOutClicked(object? sender, EventArgs e) =>
-		_ = Plan.ZoomAsync(-1);
+			_ = Plan.ZoomAsync(-1);
 
 	/// <summary>
 	/// The plan view was rebuilt (its web view torn down and re-created, e.g. by a window change): the plan it
@@ -119,7 +192,7 @@ public sealed partial class NetworkMapPage : ContentPage
 	}
 
 	/// <summary>Shows a plan and keeps watch: a view that says nothing for half a minute counts as failed
-	/// (a web view that never loaded leaves the page white — the JPG stands in before the message).</summary>
+	/// (a web view that never loaded leaves the page white - the JPG stands in before the message).</summary>
 	private async Task ShowAsync(IPlanTiles tiles)
 	{
 		_awaiting = true;
@@ -148,7 +221,7 @@ public sealed partial class NetworkMapPage : ContentPage
 		}
 
 		if (!_awaiting
-			|| !ReferenceEquals(_await, watch))
+				|| !ReferenceEquals(_await, watch))
 		{
 			return;
 		}
@@ -158,7 +231,9 @@ public sealed partial class NetworkMapPage : ContentPage
 		await FallBackAsync();
 	}
 
-	/// <summary>The plan at full size as a picture, when the vector plan did not draw; the message after that.</summary>
+	/// <summary>The plan at full size as a picture, when the vector plan did not draw; the message after that.
+	/// The barrier-free plan has no JPG - its try is the friendly no-plan error, which lands here as the
+	/// message.</summary>
 	private async Task FallBackAsync()
 	{
 		if (_fellBack)
@@ -172,9 +247,9 @@ public sealed partial class NetworkMapPage : ContentPage
 
 		try
 		{
-			NetworkMapFile jpg = await _maps.GetJpgAsync();
+			NetworkMapFile jpg = await _maps.GetJpgAsync(_kind);
 
-			IPlanTiles tiles = await ImagePlanTiles.OpenAsync(jpg.Path, PlanName, CancellationToken.None);
+			IPlanTiles tiles = await ImagePlanTiles.OpenAsync(jpg.Path, VvoNetworkMap.PlanName(_kind), CancellationToken.None);
 
 			_key = tiles.Spec.Key;
 
@@ -205,12 +280,12 @@ public sealed partial class NetworkMapPage : ContentPage
 
 		try
 		{
-			NetworkMapFile pdf = await _maps.GetPdfAsync();
+			NetworkMapFile pdf = await _maps.GetPdfAsync(_kind);
 
 			await Launcher.Default.OpenAsync(
-				new OpenFileRequest(
-					LocalizationService.Current.CurrentStrings.Extras.NetworkMap,
-					new ReadOnlyFile(pdf.Path, "application/pdf")));
+					new OpenFileRequest(
+							PlanTitle(_kind),
+							new ReadOnlyFile(pdf.Path, "application/pdf")));
 		}
 		catch (Exception ex) when (ex is not OperationCanceledException)
 		{
@@ -291,21 +366,23 @@ public sealed partial class NetworkMapPage : ContentPage
 	/// <summary>The PDF, drawn from its vectors; the JPG at full size when the PDF cannot be had or read.</summary>
 	private async Task<(IPlanTiles Tiles, bool Fresh)> OpenAsync(bool refresh, CancellationToken cancellationToken)
 	{
+		string plan = VvoNetworkMap.PlanName(_kind);
+
 		try
 		{
 			NetworkMapFile pdf = refresh
-				? await _maps.RefreshPdfAsync(cancellationToken)
-				: await _maps.GetPdfAsync(cancellationToken);
+					? await _maps.RefreshPdfAsync(_kind, cancellationToken)
+					: await _maps.GetPdfAsync(_kind, cancellationToken);
 
-			return (await PdfPlanTiles.OpenAsync(pdf.Path, PlanName, cancellationToken), pdf.Fresh);
+			return (await PdfPlanTiles.OpenAsync(pdf.Path, plan, cancellationToken), pdf.Fresh);
 		}
 		catch (Exception ex) when (ex is not OperationCanceledException)
 		{
 			DiagnosticLog.Write($"[Network map] PDF not shown, trying the JPG: {ex.Message}");
 		}
 
-		NetworkMapFile jpg = await _maps.GetJpgAsync(refresh, cancellationToken);
+		NetworkMapFile jpg = await _maps.GetJpgAsync(_kind, refresh, cancellationToken);
 
-		return (await ImagePlanTiles.OpenAsync(jpg.Path, PlanName, cancellationToken), jpg.Fresh);
+		return (await ImagePlanTiles.OpenAsync(jpg.Path, plan, cancellationToken), jpg.Fresh);
 	}
 }

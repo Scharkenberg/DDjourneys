@@ -73,6 +73,15 @@ public partial class DeparturesPage : PanePage, IQueryAttributable
 				[Routes.Target] = Routes.TargetDepartures
 			});
 
+	/// <summary>Shares the stop of the board: the sheet with the QR code, the text and the links.</summary>
+	private void ShareClicked(object? sender, EventArgs e)
+	{
+		if (_vm.Stop is { } stop)
+		{
+			_ = StopSharePopup.ShowAsync(DialogPage, stop);
+		}
+	}
+
 	/// <summary>The quick action "departures from here": locates the device; the nearest stop becomes the stop.</summary>
 	public void StartHere() =>
 		_vm.LocateCommand.Execute(null);

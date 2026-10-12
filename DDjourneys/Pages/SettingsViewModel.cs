@@ -1,6 +1,7 @@
 using CommunityToolkit.Maui.Alerts;
 using System.Globalization;
 using DDjourneys.Core.Diagnostics;
+using DDjourneys.Core.Mapping;
 using DDjourneys.Core.Providers;
 using DDjourneys.Localization;
 using DDjourneys.Support;
@@ -15,14 +16,17 @@ public sealed partial class SettingsViewModel : DisposableViewModel
 	private readonly LocalizationService _localization;
 
 	private readonly ProviderRegistry _providers;
+	private readonly CityTilesStore _cityTiles;
 
-	public SettingsViewModel(AppSettings settings, ProviderRegistry providers)
+	public SettingsViewModel(AppSettings settings, ProviderRegistry providers, CityTilesStore cityTiles)
 	{
 		ArgumentNullException.ThrowIfNull(settings);
 		ArgumentNullException.ThrowIfNull(providers);
+		ArgumentNullException.ThrowIfNull(cityTiles);
 
 		_settings = settings;
 		_providers = providers;
+		_cityTiles = cityTiles;
 		_localization = LocalizationService.Current;
 
 		ListenToLocalization(_localization, OnLocalizationChanged);
@@ -44,6 +48,8 @@ public sealed partial class SettingsViewModel : DisposableViewModel
 		CopyInterfacesCommand = new AsyncCommand(CopyInterfacesAsync);
 		SaveMapKeyCommand = new Command(SaveMapKey, () => MapKeyChanged);
 		SelectMapEngineCommand = new Command<string>(SelectMapEngine);
+		DownloadCityTilesCommand = new AsyncCommand(DownloadCityTilesAsync);
+		RemoveCityTilesCommand = new AsyncCommand(RemoveCityTilesAsync);
 
 		_mapKeyDraft = _settings.MapApiKey;
 
@@ -113,6 +119,175 @@ public sealed partial class SettingsViewModel : DisposableViewModel
 		OnPropertyChanged(nameof(MapKeyChanged));
 		OnPropertyChanged(nameof(MapKeyStatus));
 		SaveMapKeyCommand.ChangeCanExecute();
+	}
+
+	// B7 — offline: the city map download (Settings, Offline) and the boards kept per stop.
+
+	private CancellationTokenSource? _cityTilesCancellation;
+
+	/// <summary>Downloads the city map once: the honest estimate first, progress while it runs, a summary after.</summary>
+	public AsyncCommand DownloadCityTilesCommand { get; }
+
+	/// <summary>Deletes the downloaded city map from the device.</summary>
+	public AsyncCommand RemoveCityTilesCommand { get; }
+
+	/// <summary>Whether the city-map download waits for Wi-Fi or a cable (on by default).</summary>
+	public bool CityTilesWifiOnly
+	{
+		get => _settings.CityTilesWifiOnly;
+		set
+		{
+			_settings.CityTilesWifiOnly = value;
+			OnPropertyChanged();
+		}
+	}
+
+	/// <summary>The honest estimate shown BEFORE the download: the tile count times an average tile weight.</summary>
+	public string CityTilesEstimate =>
+		string.Format(
+			CultureInfo.CurrentCulture,
+			_localization.CurrentStrings.Settings.OfflineEstimate,
+			Math.Round(CityTiles.EstimateBytes() / (1024.0 * 1024.0), 1),
+			CityTiles.Count());
+
+	public bool CityTilesDownloading
+	{
+		get;
+		private set
+		{
+			if (SetProperty(ref field, value))
+			{
+				OnPropertyChanged(nameof(HasCityTilesProgress));
+			}
+		}
+	}
+
+	/// <summary>0..1 while the download runs (the bar is hidden at the ends).</summary>
+	public double CityTilesProgress
+	{
+		get;
+		private set
+		{
+			if (SetProperty(ref field, value))
+			{
+				OnPropertyChanged(nameof(HasCityTilesProgress));
+			}
+		}
+	}
+
+	public bool HasCityTilesProgress =>
+		CityTilesDownloading && CityTilesProgress is > 0 and < 1;
+
+	public string CityTilesStatus
+	{
+		get;
+		private set
+		{
+			if (SetProperty(ref field, value))
+			{
+				OnPropertyChanged(nameof(HasCityTilesStatus));
+			}
+		}
+	} = string.Empty;
+
+	public bool HasCityTilesStatus =>
+		CityTilesStatus.Length > 0;
+
+	/// <summary>What the offline section says about the downloaded city map (“nothing yet” is honest too).</summary>
+	public string CityTilesSizeText
+	{
+		get;
+		private set => SetProperty(ref field, value);
+	} = string.Empty;
+
+	private async Task DownloadCityTilesAsync()
+	{
+		if (CityTilesDownloading)
+		{
+			return;
+		}
+
+		CityTilesDownloading = true;
+		CityTilesProgress = 0;
+		CityTilesStatus = string.Empty;
+
+		int total = CityTiles.Count();
+
+		var progress =
+			new Progress<int>(
+				settled =>
+				{
+					CityTilesProgress = (double)settled / Math.Max(1, total);
+
+					CityTilesStatus = string.Format(
+						CultureInfo.CurrentCulture,
+						_localization.CurrentStrings.Settings.OfflineDownloading,
+						settled,
+						total);
+				});
+
+		_cityTilesCancellation?.Cancel();
+		_cityTilesCancellation = new CancellationTokenSource();
+
+		try
+		{
+			SettingsStrings strings = _localization.CurrentStrings.Settings;
+
+			CityTilesDownload result =
+				await _cityTiles.PrefetchAsync(
+					progress,
+					_settings.CityTilesWifiOnly,
+					MapAvailability.Key,
+					_cityTilesCancellation.Token);
+
+			if (result.Skipped)
+			{
+				CityTilesStatus = strings.OfflineSkippedMetered;
+			}
+			else if (result.Cancelled)
+			{
+				CityTilesStatus = string.Format(CultureInfo.CurrentCulture, strings.OfflineStopped, result.Fetched);
+			}
+			else
+			{
+				CityTilesStatus = string.Format(CultureInfo.CurrentCulture, strings.OfflineDone, result.Fetched, result.Failed);
+			}
+		}
+		finally
+		{
+			CityTilesDownloading = false;
+
+			await RefreshCityTilesAsync();
+		}
+	}
+
+	private async Task RemoveCityTilesAsync()
+	{
+		CityTilesStatus = string.Empty;
+
+		await _cityTiles.RemoveAsync();
+		await RefreshCityTilesAsync();
+	}
+
+	/// <summary>Reads the size of the downloaded city map; called when the page shows and after downloads.</summary>
+	public async Task RefreshCityTilesAsync()
+	{
+		(long bytes, int tiles) = await _cityTiles.MeasureAsync();
+
+		CityTilesSizeText =
+			tiles == 0
+				? _localization.CurrentStrings.Settings.OfflineNone
+				: string.Format(
+					CultureInfo.CurrentCulture,
+					_localization.CurrentStrings.Settings.OfflineSize,
+					Math.Round(bytes / (1024.0 * 1024.0), 1),
+					tiles);
+	}
+
+	protected override void OnDisposing()
+	{
+		// A download still running when the page is left stops with it (what arrived stays).
+		_cityTilesCancellation?.Cancel();
 	}
 
 	private void OnMapAvailabilityChanged(object? sender, EventArgs e) =>
@@ -710,5 +885,7 @@ public sealed partial class SettingsViewModel : DisposableViewModel
 		OnPropertyChanged(nameof(SearchDelayText));
 		OnPropertyChanged(nameof(MinQueryLength));
 		OnPropertyChanged(nameof(MinQueryLengthText));
+		OnPropertyChanged(nameof(CityTilesEstimate));
+		OnPropertyChanged(nameof(CityTilesSizeText));
 	}
 }

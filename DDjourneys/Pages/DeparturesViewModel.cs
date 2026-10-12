@@ -422,6 +422,7 @@ public sealed partial class DeparturesViewModel : DisposableViewModel
 	private readonly PlaceStore _store;
 	private readonly AppSettings _settings;
 	private readonly LocalizationService _localization;
+	private readonly ProviderRegistry _providers;
 
 	private DateTime _when;
 	private bool _syncing;
@@ -470,6 +471,7 @@ public sealed partial class DeparturesViewModel : DisposableViewModel
 		_store = store;
 		_settings = settings;
 		_localization = LocalizationService.Current;
+		_providers = providers;
 		_when = Format.NowLocal();
 
 		ListenToLocalization(
@@ -1178,6 +1180,13 @@ public sealed partial class DeparturesViewModel : DisposableViewModel
 			RebuildRows();
 			RebuildLineChips();
 
+			// The board of now is what the page can still answer offline (B7); a board for a chosen
+			// other time is not. The widget board passes write the same cache from their own side.
+			if (IsNow)
+			{
+				BoardCache.Store(_providers.SelectedId, stop, IsArrival, _current);
+			}
+
 			// What is shown, not what was fetched: a filter that empties the board is honest about it.
 			Message =
 				Rows.Count == 0
@@ -1197,7 +1206,24 @@ public sealed partial class DeparturesViewModel : DisposableViewModel
 		{
 			DiagnosticLog.Write($"Departures failed: {ex}");
 
-			if (!silent || Rows.Count == 0)
+			// Offline, or the provider is down: the last board of this stop still answers, stamped with
+			// when it was fetched (B7). Only when nothing is on screen — a silent pass keeps the rows it
+			// has, and those are at least as fresh as the cache. A cache miss is today's error path.
+			if (IsNow
+				&& Rows.Count == 0
+				&& BoardCache.Find(_providers.SelectedId, stop.Id, IsArrival) is { } cached)
+			{
+				_current = cached.Departures;
+				RebuildRows();
+				RebuildLineChips();
+
+				Message =
+					string.Format(
+						CultureInfo.CurrentCulture,
+						_localization.CurrentStrings.Departures.CachedBoard,
+						Format.Time(cached.Fetched));
+			}
+			else if (!silent || Rows.Count == 0)
 			{
 				Message =
 					string.IsNullOrWhiteSpace(ex.Message)

@@ -9,41 +9,119 @@
 
 	<Grid RowDefinitions="Auto,*,Auto" RowSpacing="0">
 
-		<!--  The title is the page's own (the shell bar says it); this row holds only the tools, at the trailing edge.  -->
-		<HorizontalStackLayout
-			HorizontalOptions="End"
-			support:Dense.Padding="12,4"
-			Spacing="4">
-			<controls:IconButton
-				x:Name="ZoomOutButton"
-				Clicked="ZoomOutClicked"
-				Glyph="Minus"
-				IsEnabled="False"
-				SemanticProperties.Description="{localization:Tr Extras.NetworkMapZoomOut}"
-				TargetSize="{StaticResource HitIcon}" />
+		<!--  Which plan of the DVB catalog (chips, they scroll when narrow), then the tools at the trailing edge.  -->
+		<Grid
+			ColumnDefinitions="*,Auto"
+			ColumnSpacing="8"
+			support:Dense.Padding="12,4">
+			<ScrollView HorizontalOptions="Start" Orientation="Horizontal" VerticalOptions="Center">
+				<HorizontalStackLayout Padding="0,0,8,0" Spacing="4">
+					<Border
+						x:Name="PlanStandard"
+						StyleClass="ChipButton"
+						support:Themed.Background="Clear"
+						support:Themed.OnBackground="Accent"
+						SemanticProperties.Description="{localization:Tr Extras.NetworkMapPlanStandard}">
+						<Label
+							x:Name="PlanStandardLabel"
+							FontFamily="{DynamicResource FontSemibold}"
+							Text="{localization:Tr Extras.NetworkMapPlanStandard}"
+							support:Themed.OnText="OnAccent"
+							support:Themed.Text="Ink" />
+						<Border.GestureRecognizers>
+							<TapGestureRecognizer Tapped="StandardTapped" />
+						</Border.GestureRecognizers>
+					</Border>
 
-			<controls:IconButton
-				x:Name="ZoomInButton"
-				Clicked="ZoomInClicked"
-				Glyph="Plus"
-				IsEnabled="False"
-				SemanticProperties.Description="{localization:Tr Extras.NetworkMapZoomIn}"
-				TargetSize="{StaticResource HitIcon}" />
+					<Border
+						x:Name="PlanNight"
+						StyleClass="ChipButton"
+						support:Themed.Background="Clear"
+						support:Themed.OnBackground="Accent"
+						SemanticProperties.Description="{localization:Tr Extras.NetworkMapPlanNight}">
+						<Label
+							x:Name="PlanNightLabel"
+							FontFamily="{DynamicResource FontSemibold}"
+							Text="{localization:Tr Extras.NetworkMapPlanNight}"
+							support:Themed.OnText="OnAccent"
+							support:Themed.Text="Ink" />
+						<Border.GestureRecognizers>
+							<TapGestureRecognizer Tapped="NightTapped" />
+						</Border.GestureRecognizers>
+					</Border>
 
-			<controls:IconButton
-				x:Name="RefreshButton"
-				Clicked="RefreshClicked"
-				Glyph="Refresh"
-				SemanticProperties.Description="{localization:Tr Extras.NetworkMapRefresh}"
-				TargetSize="{StaticResource HitIcon}" />
+					<Border
+						x:Name="PlanBarrierFree"
+						StyleClass="ChipButton"
+						support:Themed.Background="Clear"
+						support:Themed.OnBackground="Accent"
+						SemanticProperties.Description="{localization:Tr Extras.NetworkMapPlanBarrierFree}">
+						<Label
+							x:Name="PlanBarrierFreeLabel"
+							FontFamily="{DynamicResource FontSemibold}"
+							Text="{localization:Tr Extras.NetworkMapPlanBarrierFree}"
+							support:Themed.OnText="OnAccent"
+							support:Themed.Text="Ink" />
+						<Border.GestureRecognizers>
+							<TapGestureRecognizer Tapped="BarrierFreeTapped" />
+						</Border.GestureRecognizers>
+					</Border>
 
-			<controls:IconButton
-				x:Name="PdfButton"
-				Clicked="OpenPdfClicked"
-				Glyph="Document"
-				SemanticProperties.Description="{localization:Tr Extras.NetworkMapOpenPdf}"
-				TargetSize="{StaticResource HitIcon}" />
-		</HorizontalStackLayout>
+					<Border
+						x:Name="PlanCityMap"
+						StyleClass="ChipButton"
+						support:Themed.Background="Clear"
+						support:Themed.OnBackground="Accent"
+						SemanticProperties.Description="{localization:Tr Extras.NetworkMapPlanCityMap}">
+						<Label
+							x:Name="PlanCityMapLabel"
+							FontFamily="{DynamicResource FontSemibold}"
+							Text="{localization:Tr Extras.NetworkMapPlanCityMap}"
+							support:Themed.OnText="OnAccent"
+							support:Themed.Text="Ink" />
+						<Border.GestureRecognizers>
+							<TapGestureRecognizer Tapped="CityTapped" />
+						</Border.GestureRecognizers>
+					</Border>
+				</HorizontalStackLayout>
+			</ScrollView>
+
+			<HorizontalStackLayout
+				Grid.Column="1"
+				HorizontalOptions="End"
+				Spacing="4"
+				VerticalOptions="Center">
+				<controls:IconButton
+					x:Name="ZoomOutButton"
+					Clicked="ZoomOutClicked"
+					Glyph="Minus"
+					IsEnabled="False"
+					SemanticProperties.Description="{localization:Tr Extras.NetworkMapZoomOut}"
+					TargetSize="{StaticResource HitIcon}" />
+
+				<controls:IconButton
+					x:Name="ZoomInButton"
+					Clicked="ZoomInClicked"
+					Glyph="Plus"
+					IsEnabled="False"
+					SemanticProperties.Description="{localization:Tr Extras.NetworkMapZoomIn}"
+					TargetSize="{StaticResource HitIcon}" />
+
+				<controls:IconButton
+					x:Name="RefreshButton"
+					Clicked="RefreshClicked"
+					Glyph="Refresh"
+					SemanticProperties.Description="{localization:Tr Extras.NetworkMapRefresh}"
+					TargetSize="{StaticResource HitIcon}" />
+
+				<controls:IconButton
+					x:Name="PdfButton"
+					Clicked="OpenPdfClicked"
+					Glyph="Document"
+					SemanticProperties.Description="{localization:Tr Extras.NetworkMapOpenPdf}"
+					TargetSize="{StaticResource HitIcon}" />
+			</HorizontalStackLayout>
+		</Grid>
 
 		<!--  The plan stays a light paper in dark mode: it is a print product (plan.html only dims it a little).  -->
 		<Grid Grid.Row="1" BackgroundColor="{DynamicResource Bg}">

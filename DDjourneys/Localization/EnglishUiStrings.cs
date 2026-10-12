@@ -104,7 +104,10 @@ public sealed class EnglishUiStrings : IUiStrings
 		LineChipDescription = "Line {0}",
 		InMinutesShort = "{0}\u2032",
 		NowShort = "now",
-		MoreDepartures = "Show more departures"
+		MoreDepartures = "Show more departures",
+
+		// B7 — offline comfort
+		CachedBoard = "The departures could not be loaded; this is the board as of {0}."
 	};
 
 	public DisruptionsStrings Disruptions { get; } = new()
@@ -205,7 +208,7 @@ public sealed class EnglishUiStrings : IUiStrings
 		YouAreHere = "You are probably here",
 		ShowMyPosition = "Show my position",
 		ShowMyPositionDescription = "While the vehicle's own position is missing or stale, your device position is snapped onto the stops of the run — an estimate",
-		ShowMyPositionHint = "The app has no permission for your location. Allow it in the system settings to use this."
+		ShowMyPositionHint = "The app has no permission for your location. Allow it in the system settings to use this.",
 		PdfFailed = "The PDF could not be loaded. Details are in the log file diagnostics.log.",
 		LiveHowTitle = "How it works",
 		LiveHowText = "Type one or more line numbers separated by commas (for example 3, 11); leave the field empty to see every vehicle. Then tap Show: the vehicles appear on the map and in the list and move as new positions arrive. Tap a vehicle in the list to find it on the map.",
@@ -274,13 +277,18 @@ public sealed class EnglishUiStrings : IUiStrings
 		NetworkMap = "Network map",
 		NetworkMapRefresh = "Load the current network map",
 		NetworkMapOpenPdf = "Open the network map as PDF",
-		NetworkMapCredit = "Liniennetzplan: Dresdner Verkehrsbetriebe (DVB). The map is downloaded from the DVB website; all rights to it stay with the DVB.",
+		NetworkMapCredit = "Liniennetzplan: Dresdner Verkehrsbetriebe (DVB). The plans are downloaded from the DVB website; all rights to them stay with the DVB.",
 		NetworkMapStale = "The current plan could not be loaded; this is the saved version.",
 		NetworkMapFailed = "The network map could not be loaded. Check the connection and try again.",
 		NetworkMapZoomIn = "Zoom in",
 		NetworkMapZoomOut = "Zoom out",
 		MapOpenSummary = "Stops, tariff zones, park & ride, bikes and moving vehicles. The layers button on the map switches them on.",
-		NetworkMapSummary = "The DVB line network plan: zoom with two fingers, the mouse wheel or the buttons.",
+		NetworkMapSummary = "The DVB's network plans: standard, night and barrier-free. Zoom with two fingers, the mouse wheel or the buttons.",
+		// B6 — night and barrier-free plans
+		NetworkMapPlanStandard = "Standard",
+		NetworkMapPlanNight = "Night",
+		NetworkMapPlanBarrierFree = "Barrier-free",
+		NetworkMapPlanCityMap = "City map",
 		ZonePlan = "Fare zone plan",
 		ZonePlanSummary = "The VVO fare zones with every line, interactive: tap a stop for its departures and journeys. Works offline once loaded.",
 		ZonePlanRegion = "VVO area",
@@ -317,7 +325,19 @@ public sealed class EnglishUiStrings : IUiStrings
 		MapSummary = "Stop, stops nearby and open sections on a map",
 		LiveSummary = "Where the vehicles of a line are right now",
 		HomeTitle = "Home",
-		HomeNotSet = "Not set: tap to choose"
+		HomeNotSet = "Not set: tap to choose",
+
+		// B7 — offline comfort
+		MapOfflineTiles = "Offline: city map from this device",
+
+		// B8 — share a stop
+		ShareStop = "Share this stop",
+		ShareStopMeetAt = "Meet me at {0}.",
+		ShareStopQrCaption = "The code opens the stop on a map, in any camera app.",
+		ShareStopTextCaption = "Text for messages",
+		ShareStopCopyLink = "Copy link",
+		ShareStopCopyHint = "The link opens this stop's departures in DDjourneys.",
+		ShareStopCopied = "Copied",
 	};
 	// </extras>
 
@@ -598,7 +618,26 @@ public sealed class EnglishUiStrings : IUiStrings
 		GetOffAlarmLead = "{0} min before your stop",
 		GetOffAlarmOff = "Off",
 		GetOffAlarmSound = "Alarm with sound",
-		GetOffAlarmSoundDescription = "The get-off alarm rings with a sound (the alerts channel) or gently without one"
+		GetOffAlarmSoundDescription = "The get-off alarm rings with a sound (the alerts channel) or gently without one",
+
+		// B7 — offline comfort
+		OfflineSection = "Offline",
+		OfflineCityMap = "City map for offline use",
+		OfflineCityMapDescription = "The tiles of the simple map (Leaflet) for Dresden and its close outskirts, downloaded once by this button; the vector map (CARTO) keeps needing its own connection.",
+		OfflineEstimate = "Estimate: about {0} MB ({1} tiles)",
+		OfflineDownload = "Download city map",
+		OfflineDownloading = "{0} of {1} tiles",
+		OfflineDone = "{0} tiles on the device ({1} failed)",
+		OfflineStopped = "Stopped after {0} tiles; what arrived stays on the device",
+		OfflineSkippedMetered = "Not downloaded: the connection is metered",
+		OfflineWifiOnly = "Wi-Fi only",
+		OfflineWifiOnlyDescription = "Download the city map only over an unmetered connection (Wi-Fi or cable)",
+		OfflineOnDevice = "On this device",
+		OfflineRemove = "Remove",
+		OfflineNone = "Nothing downloaded yet",
+		OfflineSize = "About {0} MB ({1} tiles)",
+		OfflineBoardsTitle = "Departure boards offline",
+		OfflineBoardsDescription = "The app keeps the last boards of the stops you look at and shows them, stamped with their time, when a board cannot be loaded.",
 	};
 
 	public RoutingStrings Routing { get; } = new()

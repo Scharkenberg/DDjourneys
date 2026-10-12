@@ -108,7 +108,10 @@ public sealed class GermanUiStrings : IUiStrings
 		LineChipDescription = "Linie {0}",
 		InMinutesShort = "{0}\u2032",
 		NowShort = "jetzt",
-		MoreDepartures = "Weitere Abfahrten anzeigen"
+		MoreDepartures = "Weitere Abfahrten anzeigen",
+
+		// B7 — offline comfort
+		CachedBoard = "Die Abfahrten konnten nicht geladen werden; dies ist die Tafel von {0}."
 	};
 
 	public DisruptionsStrings Disruptions { get; } = new()
@@ -209,7 +212,7 @@ public sealed class GermanUiStrings : IUiStrings
 		YouAreHere = "Sie sind wahrscheinlich hier",
 		ShowMyPosition = "Meine Position zeigen",
 		ShowMyPositionDescription = "Solange die Position des Fahrzeugs fehlt oder veraltet ist, wird Ihre Geräteposition auf die Haltestellen der Fahrt gelegt — eine Schätzung",
-		ShowMyPositionHint = "Der App fehlt die Berechtigung für den Standort. Erteilen Sie sie in den Systemeinstellungen, um das zu nutzen."
+		ShowMyPositionHint = "Der App fehlt die Berechtigung für den Standort. Erteilen Sie sie in den Systemeinstellungen, um das zu nutzen.",
 		PdfFailed = "Das PDF konnte nicht geladen werden. Details stehen in der Protokolldatei diagnostics.log.",
 		LiveHowTitle = "So funktioniert's",
 		LiveHowText = "Eine oder mehrere Liniennummern durch Komma getrennt eingeben (zum Beispiel 3, 11); leer lassen, um alle Fahrzeuge zu sehen. Dann auf Anzeigen tippen: Die Fahrzeuge erscheinen auf der Karte und in der Liste und bewegen sich mit jeder neuen Position. Ein Fahrzeug in der Liste antippen, um es auf der Karte zu finden.",
@@ -278,13 +281,18 @@ public sealed class GermanUiStrings : IUiStrings
 		NetworkMap = "Liniennetzplan",
 		NetworkMapRefresh = "Den aktuellen Liniennetzplan laden",
 		NetworkMapOpenPdf = "Liniennetzplan als PDF öffnen",
-		NetworkMapCredit = "Liniennetzplan: Dresdner Verkehrsbetriebe (DVB). Der Plan wird von der Website der DVB geladen; alle Rechte daran bleiben bei der DVB.",
+		NetworkMapCredit = "Liniennetzplan: Dresdner Verkehrsbetriebe (DVB). Die Pläne werden von der Website der DVB geladen; alle Rechte daran bleiben bei der DVB.",
 		NetworkMapStale = "Der aktuelle Plan konnte nicht geladen werden; dies ist die gespeicherte Version.",
 		NetworkMapFailed = "Der Liniennetzplan konnte nicht geladen werden. Prüfen Sie die Verbindung und versuchen Sie es erneut.",
 		NetworkMapZoomIn = "Vergrößern",
 		NetworkMapZoomOut = "Verkleinern",
 		MapOpenSummary = "Haltestellen, Tarifzonen, P+R, Leihräder und fahrende Fahrzeuge. Die Ebenen-Taste auf der Karte schaltet sie ein.",
-		NetworkMapSummary = "Der Liniennetzplan der DVB: mit zwei Fingern, dem Mausrad oder den Tasten zoomen.",
+		NetworkMapSummary = "Die Netzpläne der DVB: Standard, Nacht und Barrierefrei. Mit zwei Fingern, dem Mausrad oder den Tasten zoomen.",
+		// B6 — Nacht- und Barrierefrei-Pläne
+		NetworkMapPlanStandard = "Standard",
+		NetworkMapPlanNight = "Nacht",
+		NetworkMapPlanBarrierFree = "Barrierefrei",
+		NetworkMapPlanCityMap = "Stadtplan",
 		ZonePlan = "Tarifzonenplan",
 		ZonePlanSummary = "Die Tarifzonen des VVO mit allen Linien, interaktiv: Haltestelle antippen für Abfahrten und Verbindungen. Einmal geladen, auch offline.",
 		ZonePlanRegion = "Verbundraum",
@@ -321,7 +329,19 @@ public sealed class GermanUiStrings : IUiStrings
 		MapSummary = "Haltestelle, Haltestellen in der Nähe und geöffnete Bereiche auf der Karte",
 		LiveSummary = "Wo die Fahrzeuge einer Linie gerade sind",
 		HomeTitle = "Zuhause",
-		HomeNotSet = "Nicht festgelegt: Tippen zum Auswählen"
+		HomeNotSet = "Nicht festgelegt: Tippen zum Auswählen",
+
+		// B7 — offline comfort
+		MapOfflineTiles = "Offline: Stadtkarte von diesem Gerät",
+
+		// B8 — share a stop
+		ShareStop = "Haltestelle teilen",
+		ShareStopMeetAt = "Treffpunkt: {0}.",
+		ShareStopQrCaption = "Der Code öffnet die Haltestelle auf einer Karte, in jeder Kamera-App.",
+		ShareStopTextCaption = "Text für Nachrichten",
+		ShareStopCopyLink = "Link kopieren",
+		ShareStopCopyHint = "Der Link öffnet die Abfahrten dieser Haltestelle in DDjourneys.",
+		ShareStopCopied = "Kopiert",
 	};
 	// </extras>
 
@@ -608,7 +628,26 @@ public sealed class GermanUiStrings : IUiStrings
 		GetOffAlarmLead = "{0} Min. vor Ihrer Haltestelle",
 		GetOffAlarmOff = "Aus",
 		GetOffAlarmSound = "Alarm mit Ton",
-		GetOffAlarmSoundDescription = "Der Aussteige-Alarm klingelt mit Ton (der Alarmkanal) oder leise ohne"
+		GetOffAlarmSoundDescription = "Der Aussteige-Alarm klingelt mit Ton (der Alarmkanal) oder leise ohne",
+
+		// B7 — offline comfort
+		OfflineSection = "Offline",
+		OfflineCityMap = "Stadtkarte für offline",
+		OfflineCityMapDescription = "Die Kacheln der einfachen Karte (Leaflet) für Dresden und den nahen Rand, einmal über diese Taste geladen; die Vektorkarte (CARTO) braucht weiter ihre eigene Verbindung.",
+		OfflineEstimate = "Schätzung: rund {0} MB ({1} Kacheln)",
+		OfflineDownload = "Stadtkarte laden",
+		OfflineDownloading = "{0} von {1} Kacheln",
+		OfflineDone = "{0} Kacheln auf dem Gerät ({1} fehlgeschlagen)",
+		OfflineStopped = "Nach {0} Kacheln abgebrochen; was angekommen ist, bleibt auf dem Gerät",
+		OfflineSkippedMetered = "Nicht geladen: Die Verbindung ist getaktet",
+		OfflineWifiOnly = "Nur über WLAN",
+		OfflineWifiOnlyDescription = "Die Stadtkarte nur über eine ungetaktete Verbindung laden (WLAN oder Kabel)",
+		OfflineOnDevice = "Auf diesem Gerät",
+		OfflineRemove = "Entfernen",
+		OfflineNone = "Noch nichts geladen",
+		OfflineSize = "Rund {0} MB ({1} Kacheln)",
+		OfflineBoardsTitle = "Abfahrtstafeln offline",
+		OfflineBoardsDescription = "Die App behält die letzten Tafeln der angesehenen Haltestellen und zeigt sie, mit ihrem Zeitpunkt gestempelt, wenn sich eine Tafel nicht laden lässt.",
 	};
 
 	public RoutingStrings Routing { get; } = new()

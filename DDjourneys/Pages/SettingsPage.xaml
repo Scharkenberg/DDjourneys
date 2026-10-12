@@ -329,6 +329,85 @@
 				</VerticalStackLayout>
 			</Border>
 
+			<!--  B7: the offline city map download, and the departure boards kept per stop  -->
+			<Label StyleClass="Section" Text="{localization:Tr Settings.OfflineSection}" />
+
+			<Border Padding="0" StyleClass="Card">
+				<VerticalStackLayout>
+
+					<VerticalStackLayout support:Dense.Padding="12,8" Spacing="6">
+						<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.OfflineCityMap}" />
+						<Label StyleClass="Caption" Text="{localization:Tr Settings.OfflineCityMapDescription}" />
+						<Label StyleClass="Faint" Text="{Binding CityTilesEstimate}" />
+
+						<ProgressBar
+							IsVisible="{Binding HasCityTilesProgress}"
+							Progress="{Binding CityTilesProgress}"
+							ProgressColor="{DynamicResource Accent}" />
+
+						<Label
+							IsVisible="{Binding HasCityTilesStatus}"
+							StyleClass="Faint"
+							Text="{Binding CityTilesStatus}" />
+
+						<Button
+							Command="{Binding DownloadCityTilesCommand}"
+							HorizontalOptions="Start"
+							StyleClass="Tonal"
+							Text="{localization:Tr Settings.OfflineDownload}" />
+					</VerticalStackLayout>
+
+					<BoxView StyleClass="Divider" />
+
+					<Grid
+						support:Dense.MinHeight="{StaticResource HitRow}"
+						support:Dense.Padding="12,8"
+						ColumnDefinitions="*,Auto"
+						ColumnSpacing="12">
+
+						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
+							<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.OfflineWifiOnly}" />
+							<Label StyleClass="Caption" Text="{localization:Tr Settings.OfflineWifiOnlyDescription}" />
+						</VerticalStackLayout>
+
+						<Switch
+							Grid.Column="1"
+							IsToggled="{Binding CityTilesWifiOnly}"
+							SemanticProperties.Description="{localization:Tr Settings.OfflineWifiOnly}"
+							VerticalOptions="Center" />
+					</Grid>
+
+					<BoxView StyleClass="Divider" />
+
+					<Grid
+						support:Dense.MinHeight="{StaticResource HitRow}"
+						support:Dense.Padding="12,8"
+						ColumnDefinitions="*,Auto"
+						ColumnSpacing="12">
+
+						<VerticalStackLayout Spacing="1" VerticalOptions="Center">
+							<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.OfflineOnDevice}" />
+							<Label StyleClass="Caption" Text="{Binding CityTilesSizeText}" />
+						</VerticalStackLayout>
+
+						<Button
+							Grid.Column="1"
+							Command="{Binding RemoveCityTilesCommand}"
+							StyleClass="Tonal"
+							Text="{localization:Tr Settings.OfflineRemove}"
+							VerticalOptions="Center" />
+					</Grid>
+
+					<BoxView StyleClass="Divider" />
+
+					<!--  Informational only: the boards are kept automatically, nothing to press here  -->
+					<VerticalStackLayout support:Dense.Padding="12,8" Spacing="1">
+						<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.OfflineBoardsTitle}" />
+						<Label StyleClass="Caption" Text="{localization:Tr Settings.OfflineBoardsDescription}" />
+					</VerticalStackLayout>
+				</VerticalStackLayout>
+			</Border>
+
 			<Label StyleClass="Section" Text="{localization:Tr Settings.JourneyOptions}" />
 
 			<Border Padding="0" StyleClass="Card">
