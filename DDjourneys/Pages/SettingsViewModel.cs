@@ -18,8 +18,9 @@ public sealed partial class SettingsViewModel : DisposableViewModel
 
 	private readonly ProviderRegistry _providers;
 	private readonly CityTilesStore _cityTiles;
+	private readonly NetworkMapStore _networkMaps;
 
-	public SettingsViewModel(AppSettings settings, ProviderRegistry providers, CityTilesStore cityTiles)
+	public SettingsViewModel(AppSettings settings, ProviderRegistry providers, CityTilesStore cityTiles, NetworkMapStore networkMaps)
 	{
 		ArgumentNullException.ThrowIfNull(settings);
 		ArgumentNullException.ThrowIfNull(providers);
@@ -28,6 +29,7 @@ public sealed partial class SettingsViewModel : DisposableViewModel
 		_settings = settings;
 		_providers = providers;
 		_cityTiles = cityTiles;
+		_networkMaps = networkMaps;
 		_localization = LocalizationService.Current;
 
 		ListenToLocalization(_localization, OnLocalizationChanged);
@@ -239,6 +241,12 @@ public sealed partial class SettingsViewModel : DisposableViewModel
 					_settings.CityTilesWifiOnly,
 					MapAvailability.Key,
 					_cityTilesCancellation.Token);
+
+			if (!result.Skipped && !result.Cancelled)
+			{
+				// The DVB plans belong to the offline set: the same button brings their current editions.
+				await _networkMaps.SyncAsync(_settings.CityTilesWifiOnly, force: true, _cityTilesCancellation.Token);
+			}
 
 			if (result.Skipped)
 			{

@@ -23,7 +23,6 @@ public sealed record NetworkMapFile(string Path, bool Fresh);
 /// </summary>
 public sealed class NetworkMapStore(ApiClient api)
 {
-	private static readonly TimeSpan MaxAge = TimeSpan.FromDays(7);
 	private static readonly TimeSpan DownloadTimeout = TimeSpan.FromSeconds(60);
 
 	private readonly SemaphoreSlim _gate = new(1, 1);
@@ -130,9 +129,77 @@ public sealed class NetworkMapStore(ApiClient api)
 		return catalog;
 	}
 
+	/// <summary>A plan on the device is shown whatever its age: the plans hardly change, and the weekly
+	/// <see cref="SyncAsync"/> (or the refresh button) brings the new edition - a page never downloads because a file is old.</summary>
 	private static string? Cached(string path) =>
-			File.Exists(path)
-					&& File.GetLastWriteTimeUtc(path) > DateTime.UtcNow - MaxAge
-						? path
-						: null;
+			File.Exists(path) ? path : null;
+
+	private const string CheckedKey = "networkMapsCheckedAt";
+
+	private static readonly TimeSpan CheckEvery = TimeSpan.FromDays(7);
+
+	private static readonly VvoNetworkMapKind[] Synced = [VvoNetworkMapKind.Night, VvoNetworkMapKind.BarrierFree, VvoNetworkMapKind.CityMap];
+
+	/// <summary>
+	/// The offline upkeep of the plans: at most once a week (or when asked, <paramref name="force"/>) the DVB page is read and every
+	/// plan whose file name (it carries the edition) differs from the one on the device is downloaded. Not on a metered connection
+	/// when <paramref name="wifiOnly"/> is set (the same switch as the offline city map). A plan that did not change costs nothing
+	/// but the page read. Returns the number of plans that were updated.
+	/// </summary>
+	public async Task<int> SyncAsync(bool wifiOnly, bool force = false, CancellationToken cancellationToken = default)
+	{
+		if (!force
+			&& Preferences.Default.Get(CheckedKey, 0L) is > 0 and var ticks
+			&& DateTime.UtcNow - new DateTime(ticks, DateTimeKind.Utc) < CheckEvery)
+		{
+			return 0;
+		}
+
+		if (wifiOnly && !CityTilesStore.Unmetered())
+		{
+			DiagnosticLog.Write("[Network map] weekly check skipped: the connection is metered");
+
+			return 0;
+		}
+
+		int updated = 0;
+
+		try
+		{
+			VvoNetworkMapCatalog catalog = await FindCatalogAsync(cancellationToken).ConfigureAwait(false);
+
+			foreach (VvoNetworkMapKind kind in Synced)
+			{
+				if (catalog.Of(kind)?.Pdf is not { } link)
+				{
+					continue;
+				}
+
+				string key = "networkMapLink." + kind;
+				string path = PdfPath(kind);
+
+				if (File.Exists(path) && string.Equals(Preferences.Default.Get(key, string.Empty), link.ToString(), StringComparison.Ordinal))
+				{
+					continue;
+				}
+
+				NetworkMapFile file = await GetAsync(kind, pdf: true, force: true, cancellationToken).ConfigureAwait(false);
+
+				if (file.Fresh)
+				{
+					Preferences.Default.Set(key, link.ToString());
+					updated++;
+				}
+			}
+
+			Preferences.Default.Set(CheckedKey, DateTime.UtcNow.Ticks);
+			DiagnosticLog.Write($"[Network map] weekly check done: {updated} plan(s) updated");
+		}
+		catch (Exception ex) when (ex is ApiException or HttpRequestException or IOException)
+		{
+			DiagnosticLog.Write($"[Network map] weekly check failed: {ex.Message}");
+		}
+
+		return updated;
+	}
 }

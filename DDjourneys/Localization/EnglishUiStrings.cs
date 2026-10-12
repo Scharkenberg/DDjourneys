@@ -645,7 +645,7 @@ public sealed class EnglishUiStrings : IUiStrings
 		// B7 — offline comfort
 		OfflineSection = "Offline",
 		OfflineCityMap = "City map for offline use",
-		OfflineCityMapDescription = "The tiles of the simple map (Leaflet) for Dresden and its close outskirts, downloaded once by this button; the vector map (CARTO) keeps needing its own connection.",
+		OfflineCityMapDescription = "The tiles of the simple map (Leaflet) for Dresden and its close outskirts, downloaded once by this button; the vector map (CARTO) keeps needing its own connection. The DVB line network plans come with it and are checked for a new edition once a week (on Wi-Fi only while that switch is on).",
 		OfflineEstimate = "Estimate: about {0} MB ({1} tiles)",
 		OfflineDownload = "Download city map",
 		OfflineDownloading = "{0} of {1} tiles",

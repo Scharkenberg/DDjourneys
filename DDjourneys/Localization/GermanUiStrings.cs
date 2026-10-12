@@ -655,7 +655,7 @@ public sealed class GermanUiStrings : IUiStrings
 		// B7 — offline comfort
 		OfflineSection = "Offline",
 		OfflineCityMap = "Stadtkarte für offline",
-		OfflineCityMapDescription = "Die Kacheln der einfachen Karte (Leaflet) für Dresden und den nahen Rand, einmal über diese Taste geladen; die Vektorkarte (CARTO) braucht weiter ihre eigene Verbindung.",
+		OfflineCityMapDescription = "Die Kacheln der einfachen Karte (Leaflet) für Dresden und den nahen Rand, einmal über diese Taste geladen; die Vektorkarte (CARTO) braucht weiter ihre eigene Verbindung. Die DVB-Liniennetzpläne gehören dazu und werden einmal pro Woche auf eine neue Ausgabe geprüft (nur im WLAN, solange dieser Schalter an ist).",
 		OfflineEstimate = "Schätzung: rund {0} MB ({1} Kacheln)",
 		OfflineDownload = "Stadtkarte laden",
 		OfflineDownloading = "{0} von {1} Kacheln",

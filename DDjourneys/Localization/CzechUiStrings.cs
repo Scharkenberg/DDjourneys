@@ -629,7 +629,7 @@ public sealed class CzechUiStrings : IUiStrings
 		// B7 — offline comfort
 		OfflineSection = "Offline",
 		OfflineCityMap = "Městská mapa pro offline použití",
-		OfflineCityMapDescription = "Dlaždice jednoduché mapy (Leaflet) pro Drážďany a jejich blízké okolí; stáhnou se jednou tímto tlačítkem; vektorová mapa (CARTO) nadále vyžaduje vlastní připojení.",
+		OfflineCityMapDescription = "Dlaždice jednoduché mapy (Leaflet) pro Drážďany a jejich blízké okolí; stáhnou se jednou tímto tlačítkem; vektorová mapa (CARTO) nadále vyžaduje vlastní připojení. Součástí jsou i plány linkové sítě DVB; nové vydání se kontroluje jednou týdně (jen přes Wi-Fi, dokud je tento přepínač zapnutý).",
 		OfflineEstimate = "Odhad: asi {0} MB ({1} dlaždic)",
 		OfflineDownload = "Stáhnout městskou mapu",
 		OfflineDownloading = "{0} z {1} dlaždic",

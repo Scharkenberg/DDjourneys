@@ -79,9 +79,41 @@ public partial class App : Application
 		SystemAccessibility.Refresh();
 	}
 
+	private static bool _upkeepScheduled;
+
+	/// <summary>The DVB plans are part of the offline set: once a week, a while after the start, on the connection the offline switch allows.</summary>
+	private void ScheduleNetworkMapUpkeep()
+	{
+		if (_upkeepScheduled || StartupGuard.IsSafeStart)
+		{
+			return;
+		}
+
+		_upkeepScheduled = true;
+
+		_ = Task.Run(
+			async () =>
+			{
+				try
+				{
+					await Task.Delay(TimeSpan.FromSeconds(45)).ConfigureAwait(false);
+
+					if (IPlatformApplication.Current?.Services.GetService<NetworkMapStore>() is { } store)
+					{
+						await store.SyncAsync(_settings.CityTilesWifiOnly).ConfigureAwait(false);
+					}
+				}
+				catch (Exception ex)
+				{
+					DiagnosticLog.Write($"[Network map] upkeep failed: {ex.Message}");
+				}
+			});
+	}
+
 	protected override Window CreateWindow(IActivationState? activationState)
 	{
 		StartUi();
+		ScheduleNetworkMapUpkeep();
 
 		var window = new Window(_shellFactory());
 

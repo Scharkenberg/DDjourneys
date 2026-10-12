@@ -288,7 +288,7 @@ public sealed class CityTilesStore(ApiClient api)
 		}
 	}
 
-	private static bool Unmetered() =>
+	internal static bool Unmetered() =>
 		Connectivity.Current.NetworkAccess == NetworkAccess.Internet
 		&& Connectivity.Current.ConnectionProfiles.Any(profile => profile is ConnectionProfile.WiFi or ConnectionProfile.Ethernet);
 
