@@ -59,11 +59,15 @@ public sealed class VvoNetworkProvider :
 				[
 					wanted.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture),
 					$"/Date({wanted.ToUnixTimeMilliseconds()}+0000)/",
-					wanted.ToString("yyyy-MM-dd'T'HH:mm:sszzz", CultureInfo.InvariantCulture)
+					wanted.ToString("yyyy-MM-dd'T'HH:mm:sszzz", CultureInfo.InvariantCulture),
+					$"/Date({wanted.ToUnixTimeMilliseconds()}{(wanted.Offset < TimeSpan.Zero ? '-' : '+')}{Math.Abs(wanted.Offset.Hours):00}{Math.Abs(wanted.Offset.Minutes):00})/",
+					wanted.ToString("yyyy-MM-dd'T'HH:mm:ss", CultureInfo.InvariantCulture)
 				]
 				: [null];
 
 		DepartureBoard best = DepartureBoard.Empty;
+		List<DepartureBoard> closest = [];
+		bool found = false;
 
 		foreach (string? form in forms)
 		{
@@ -88,25 +92,50 @@ public sealed class VvoNetworkProvider :
 
 			best = board;
 
-			if (query.Time is not { } at || board.Departures.Count == 0)
+			if (query.Time is not { } at)
 			{
 				break;
 			}
+
+			bool past = at < DateTimeOffset.Now - TimeSpan.FromMinutes(2);
+
+			// An empty board for a time in the past is the service not reading the time, not a quiet stop: the other
+			// forms are tried. An empty board for a time to come is a quiet stop.
+			if (board.Departures.Count == 0)
+			{
+				DiagnosticLog.Write($"[VVO] board for {at:dd.MM. HH:mm} asked as '{form}': empty{(past ? ", trying the other form" : string.Empty)}");
+
+				if (!past)
+				{
+					break;
+				}
+
+				continue;
+			}
+
+			closest.Add(board);
 
 			DateTimeOffset first = board.Departures[0].Scheduled;
 
 			// Read: the board starts at the wanted time (a little before it, for the delayed ones). Not read: it starts
 			// long before, or - for a time in the past - at "now", which is what the service answers for a time it
 			// does not understand (the departures of the past are served only when the time is read).
-			bool past = at < DateTimeOffset.Now - TimeSpan.FromMinutes(2);
 			bool read = first >= at - TimeSpan.FromMinutes(10) && (!past || first <= at + TimeSpan.FromMinutes(45));
 
 			DiagnosticLog.Write($"[VVO] board for {at:dd.MM. HH:mm} asked as '{form}': {board.Departures.Count} rows from {first:dd.MM. HH:mm} to {board.Departures[^1].Scheduled:HH:mm}, {(read ? "read" : "not read")}");
 
 			if (read)
 			{
+				found = true;
+
 				break;
 			}
+		}
+
+		// Nothing read: the board that comes closest to the wanted time.
+		if (!found && query.Time is { } target && closest.Count > 0)
+		{
+			best = closest.OrderBy(board => (board.Departures[0].Scheduled - target).Duration()).First();
 		}
 
 		return best;

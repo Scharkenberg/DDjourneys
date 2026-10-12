@@ -52,8 +52,6 @@ public partial class MapPage : PanePage, IQueryAttributable
 	/// <summary>The map layer panel's link row for the network map (a reserved key, see <see cref="Routes.NetworkMapLayer"/>).</summary>
 	private const string NetworkMapRow = Routes.NetworkMapLayer;
 
-	/// <summary>The link row for the VVO's interactive fare zone plan (<see cref="Routes.ZonePlanLayer"/>).</summary>
-	private const string ZonePlanRow = Routes.ZonePlanLayer;
 
 	private IReadOnlyList<TariffZoneShape> _zoneShapes = [];
 	private bool _zonesPrepared;
@@ -457,12 +455,6 @@ public partial class MapPage : PanePage, IQueryAttributable
 		{
 			_ = Shell.Current.GoToAsync(Routes.NetworkMap);
 		}
-
-		if (states.TryGetValue(ZonePlanRow, out bool zonePlan)
-			&& zonePlan)
-		{
-			_ = Shell.Current.GoToAsync(Routes.ZonePlan);
-		}
 	}
 
 	/// <summary>
@@ -521,7 +513,6 @@ public partial class MapPage : PanePage, IQueryAttributable
 		rows.Add(new(ParkingLayer, strings.MapParking, _settings.MapParking));
 		rows.Add(new(BikesLayer, strings.MapBikes, _settings.MapBikes));
 		rows.Add(new(VehiclesLayer, strings.MapVehicles, _settings.MapVehicles));
-		rows.Add(new(ZonePlanRow, strings.ZonePlan, Checked: false, Link: true));
 		rows.Add(new(NetworkMapRow, strings.NetworkMap, Checked: false, Link: true));
 
 		return rows;

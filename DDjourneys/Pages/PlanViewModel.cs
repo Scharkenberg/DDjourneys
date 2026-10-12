@@ -413,6 +413,9 @@ public sealed partial class PlanViewModel : DisposableViewModel
 
 	public AsyncCommand SearchCommand { get; }
 
+	/// <summary>Opens the route preferences (they are part of a search, so they are one tap from the planner).</summary>
+	public AsyncCommand OpenRoutingCommand { get; } = new(() => Shell.Current.GoToAsync(Routes.Routing));
+
 	public Command ClearRoutesCommand { get; }
 
 	public Command ToggleRoutesCommand { get; }

@@ -387,11 +387,32 @@
 			</Border>
 
 			<!--  Search; the bookmark of the connection sits next to it: filled when saved, one tap toggles  -->
-			<Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource SpaceS}">
+			<Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="{DynamicResource SpaceS}">
 				<Button Command="{Binding SearchCommand}" Text="{localization:Tr Plan.SearchJourneys}" />
 
+				<!--  The route preferences belong to the search: one tap from here instead of the settings  -->
 				<Border
 					Grid.Column="1"
+					support:Dense.MinHeight="{StaticResource HitRow}"
+					support:Motion.Feedback="True"
+					BackgroundColor="{DynamicResource AccentSoft}"
+					SemanticProperties.Description="{localization:Tr Settings.RoutingEntry}"
+					StrokeShape="RoundRectangle 6"
+					StrokeThickness="0"
+					WidthRequest="52">
+					<controls:Icon
+						Glyph="Tune"
+						HorizontalOptions="Center"
+						Size="22"
+						VerticalOptions="Center"
+						Color="{DynamicResource Accent}" />
+					<Border.GestureRecognizers>
+						<TapGestureRecognizer Command="{Binding OpenRoutingCommand}" />
+					</Border.GestureRecognizers>
+				</Border>
+
+				<Border
+					Grid.Column="2"
 					support:Dense.MinHeight="{StaticResource HitRow}"
 					support:Motion.Feedback="True"
 					BackgroundColor="{DynamicResource AccentSoft}"

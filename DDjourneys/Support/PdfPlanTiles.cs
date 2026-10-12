@@ -19,7 +19,7 @@ namespace DDjourneys.Support;
 public sealed partial class PdfPlanTiles : IPlanTiles
 {
 	/// <summary>Bumped when the drawing changes: tiles of an older drawing are dropped with their folder.</summary>
-	private const string RenderVersion = "r3";
+	private const string RenderVersion = "r4";
 
 	/// <summary>Width of the deepest level in units (CSS pixels).</summary>
 	private const double DeepWidth = 8192;
@@ -45,7 +45,11 @@ public sealed partial class PdfPlanTiles : IPlanTiles
 		_page = page;
 		_directory = directory;
 
-		Spec = new PlanSpec(key, DeepWidth, Math.Round(DeepWidth / page.Aspect), Levels, Retina: true, OverZoom: 0);
+		// A page is drawn whole whatever part of it is wanted, so the cost of a tile is mostly a fixed price: on a desktop
+		// the tiles are twice the edge (a quarter of the calls for the same picture); a phone keeps the small ones.
+		int tile = DeviceInfo.Idiom == DeviceIdiom.Desktop ? 512 : 256;
+
+		Spec = new PlanSpec(key, DeepWidth, Math.Round(DeepWidth / page.Aspect), Levels, TileSize: tile, Retina: true, OverZoom: 0);
 	}
 
 	public PlanSpec Spec { get; }
