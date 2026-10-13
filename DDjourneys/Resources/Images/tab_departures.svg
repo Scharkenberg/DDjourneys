@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The phone's departures tab icon: the app's own geometry (Controls/IconGlyph.cs, tab_departures), drawn on the
+     24x24 grid with the 2-unit round stroke of the icon family, in plain black so the tab bar's
+     icon tint can recolour it (the bar follows the app's appearance; see AppShell.xaml). -->
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+	<path fill="none" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M12 3 A9 9 0 1 0 12 21 A9 9 0 1 0 12 3 Z M12 7 V12.4 L15.8 14.7" />
+</svg>

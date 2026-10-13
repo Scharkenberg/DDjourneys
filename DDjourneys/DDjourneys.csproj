@@ -89,8 +89,10 @@
   <ItemGroup>
 		<!-- Splash Screen -->
 
-		<!-- Images -->
+		<!-- Images. The tab icons are the app's own geometry (Controls/IconGlyph.cs) as SVGs,
+		     drawn black so the bar's icon tint can recolour them. -->
 		<MauiImage Include="Resources\Images\*" />
+		<MauiImage Update="Resources\Images\tab_*.svg" BaseSize="24,24" />
 		
 		<!-- Custom Fonts -->
 		<MauiFont Include="Resources\Fonts\*" />

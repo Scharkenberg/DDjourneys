@@ -8,7 +8,7 @@ I wrote it because I wanted something like the old Android app Öffi, but made f
 
 Open the app and you land on the planner. Tap the field for the start and type a few letters, for example "Hauptbahnhof". Pick the stop from the list. Do the same for the destination, say "Hellerau". Press the search button and you get a list of journeys.
 
-On a phone the app has a tab bar at the bottom with four tabs: the planner, departures, the map, and a fourth tab with the settings and everything behind them. On Windows there are no tabs; there everything opens from the planner.
+On a phone the app has a tab bar at the bottom with four tabs: the planner, departures, the map, and a fourth tab with the settings and everything behind them. The bar follows the app's colours and shows one of the app's own icons on each tab. The back key or the back gesture closes the app only on the planner itself; everywhere else it goes one level back, and from the start page of another tab it returns to the planner. On Windows there are no tabs; there everything opens from the planner.
 
 If you are standing at the start, tap the small location symbol next to the start field instead of typing. The app asks for permission to use your position and then fills in the stop nearest to you. If you would rather start from the exact address you are at, there is a switch for that under Settings, in the place search section.
 

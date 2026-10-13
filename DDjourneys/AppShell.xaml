@@ -7,18 +7,21 @@
 	Title="DDjourneys"
 	FlyoutBehavior="Disabled">
 
-	<!--  The phone: four tabs. The constructor removes the door below; a tab's page is built only when the tab is first opened.  -->
+	<!--  The phone: four tabs. The constructor removes the door below; a tab's page is built only when the tab is first opened.
+	      The icons are the app's own geometry, drawn as images in Resources/Images and tinted by the bar; its colours ride on the
+	      Shell style (Controls.xaml), and the pill behind the active icon is coloured natively (Platforms/Android/TabBars.cs).
+	      Back on the tabs never ends the app except on the planner itself (Platforms/Android/TabBackCallback).  -->
 	<TabBar x:Name="PhoneTabs">
-		<Tab Route="plan" Title="{localization:Tr Shell.TabPlan}">
+		<Tab Route="plan" Title="{localization:Tr Shell.TabPlan}" Icon="tab_plan">
 			<ShellContent ContentTemplate="{DataTemplate pages:PlanPage}" />
 		</Tab>
-		<Tab Route="departures" Title="{localization:Tr Departures.Title}">
+		<Tab Route="departures" Title="{localization:Tr Departures.Title}" Icon="tab_departures">
 			<ShellContent ContentTemplate="{DataTemplate pages:DeparturesPage}" />
 		</Tab>
-		<Tab x:Name="MapTab" Route="map" Title="{localization:Tr Extras.MapTitle}">
+		<Tab x:Name="MapTab" Route="map" Title="{localization:Tr Extras.MapTitle}" Icon="tab_map">
 			<ShellContent ContentTemplate="{DataTemplate pages:MapPage}" />
 		</Tab>
-		<Tab Route="more" Title="{localization:Tr Shell.TabMore}">
+		<Tab Route="more" Title="{localization:Tr Shell.TabMore}" Icon="tab_more">
 			<ShellContent ContentTemplate="{DataTemplate pages:SettingsPage}" />
 		</Tab>
 	</TabBar>

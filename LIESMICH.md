@@ -8,7 +8,7 @@ Ich habe sie geschrieben, weil ich etwas wie die alte Android-App Öffi haben wo
 
 Öffnen Sie die App, und Sie landen in der Planung. Tippen Sie auf das Feld für den Start und geben Sie ein paar Buchstaben ein, zum Beispiel "Hauptbahnhof". Wählen Sie die Haltestelle aus der Liste. Machen Sie dasselbe für das Ziel, etwa "Hellerau". Drücken Sie auf die Suchtaste, und Sie erhalten eine Liste von Verbindungen.
 
-Auf dem Telefon hat die App unten eine Leiste mit vier Registerkarten: die Planung, die Abfahrten, die Karte und eine vierte Registerkarte mit den Einstellungen und allem, was dahintersteckt. Unter Windows gibt es keine Registerkarten; dort öffnet sich alles aus der Planung.
+Auf dem Telefon hat die App unten eine Leiste mit vier Registerkarten: die Planung, die Abfahrten, die Karte und eine vierte Registerkarte mit den Einstellungen und allem, was dahintersteckt. Die Leiste folgt den Farben der App und zeigt auf jeder Registerkarte eines der eigenen Symbole der App. Die Zurück-Taste oder -Geste beendet die App nur auf der Planung selbst; überall sonst geht sie eine Stufe zurück, und von der Startseite eines anderen Registers wechselt sie zur Planung. Unter Windows gibt es keine Registerkarten; dort öffnet sich alles aus der Planung.
 
 Wenn Sie schon am Start stehen, tippen Sie statt der Eingabe auf das kleine Standortsymbol neben dem Startfeld. Die App fragt nach der Erlaubnis, Ihre Position zu verwenden, und trägt dann die Haltestelle ein, die Ihnen am nächsten ist. Wenn Sie lieber von der genauen Adresse starten möchten, an der Sie stehen, gibt es dafür unter Einstellungen im Abschnitt Ortssuche einen Schalter.
 

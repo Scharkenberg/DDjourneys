@@ -12,6 +12,7 @@
 		<Setter Property="Shell.BackgroundColor" Value="{DynamicResource Bg}" />
 		<Setter Property="Shell.ForegroundColor" Value="{DynamicResource Accent}" />
 		<Setter Property="Shell.TitleColor" Value="{DynamicResource Ink}" />
+		<Setter Property="Shell.TabBarUnselectedColor" Value="{DynamicResource InkMuted}" />
 		<Setter Property="Shell.NavBarHasShadow" Value="False" />
 	</Style>
 

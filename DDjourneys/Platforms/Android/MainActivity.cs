@@ -33,10 +33,17 @@ public class MainActivity : MauiAppCompatActivity
 	{
 		base.OnCreate(savedInstanceState);
 
+		// Back on the phone's tabs never ends the app except on the planner itself; this is asked only
+		// after the shell's own callback, and the pane callback stays ahead of it, so a pane closes first.
+		TabBackCallback.Register(this);
+
 		// After MAUI's own callback, so it is asked first: back closes the deepest pane while there is one.
 		PaneBackCallback.Register(this);
 
 		SystemBars.Apply(this, Support.Theme.IsDark);
+
+		// The tab bar's pill follows the palette; every other colour of the bar rides on the shell appearance.
+		TabBars.Watch(this);
 
 		// Whatever handler builds the text fields, none keeps a frame of its own.
 		NativeStyling.Watch(this);
@@ -102,6 +109,17 @@ public class MainActivity : MauiAppCompatActivity
 		SystemBars.Apply(this, Support.Theme.IsDark);
 	}
 
+	public override void OnWindowFocusChanged(bool hasFocus)
+	{
+		base.OnWindowFocusChanged(hasFocus);
+
+		// The first layout is through: the phone's tab bar exists now and takes its colour.
+		if (hasFocus)
+		{
+			TabBars.Apply(this);
+		}
+	}
+
 	protected override void OnNewIntent(Intent? intent)
 	{
 		base.OnNewIntent(intent);
@@ -118,6 +136,7 @@ public class MainActivity : MauiAppCompatActivity
 		base.OnResume();
 
 		SystemBars.Apply(this, Support.Theme.IsDark);
+		TabBars.Apply(this);
 
 		if (!StartupGuard.IsSafeStart)
 		{
