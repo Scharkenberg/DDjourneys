@@ -1,0 +1,19 @@
+name: android-arm64-debug
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-arm64-debug-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    uses: ./.github/workflows/_build.yml
+    with:
+      platform: android
+      architecture: arm64
+      configuration: Debug

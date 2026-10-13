@@ -1,0 +1,25 @@
+name: mostcommon (windows-x64-release + android-arm64-release)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mostcommon-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { platform: windows, architecture: x64, configuration: Release }
+          - { platform: android, architecture: arm64, configuration: Release }
+    uses: ./.github/workflows/_build.yml
+    with:
+      platform: ${{ matrix.platform }}
+      architecture: ${{ matrix.architecture }}
+      configuration: ${{ matrix.configuration }}

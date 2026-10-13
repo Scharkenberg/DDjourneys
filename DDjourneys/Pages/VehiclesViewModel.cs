@@ -810,33 +810,6 @@ public sealed partial class VehiclesViewModel : DisposableViewModel, IQueryAttri
 	}
 
 	/// <summary>
-	/// The page is no longer seen: the stream stops receiving (rows and matches stay as they are). While the page
-	/// is hidden the positions would cost battery for a picture nobody looks at.
-	/// </summary>
-	public void PauseStream()
-	{
-		_stream?.Cancel();
-		_stream = null;
-	}
-
-	/// <summary>The page is seen again: a stream that was paused continues where it left off.</summary>
-	public void ResumeStream()
-	{
-		if (IsDisposed
-			|| !IsStreaming
-			|| _stream is not null)
-		{
-			return;
-		}
-
-		var cts = new CancellationTokenSource();
-		_stream = cts;
-		_startedAt = DateTimeOffset.UtcNow;
-
-		_ = ConnectAsync(cts, _activeLines);
-	}
-
-	/// <summary>
 	/// Following runs: every position of a line is scored against the course of each run on that line; the best fit
 	/// is shown and kept until another vehicle fits clearly better or the shown one stops reporting.
 	/// </summary>
