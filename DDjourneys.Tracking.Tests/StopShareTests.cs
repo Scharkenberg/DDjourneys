@@ -125,9 +125,9 @@ public sealed class StopShareTests
 		StopSharePayload share = StopShare.For(Postplatz());
 
 		Assert.Equal(
-			"Meet me at Postplatz, Dresden.\n"
-			+ "geo:51.049311,13.7375?q=Postplatz\n"
-			+ "ddjourneys://v1/departures?at=Postplatz&at.stop=vvo%3A33000028\n"
+			"Meet me at Postplatz, Dresden.\r\n"
+			+ "geo:51.049311,13.7375?q=Postplatz\r\n"
+			+ "ddjourneys://v1/departures?at=Postplatz&at.stop=vvo%3A33000028\r\n"
 			+ "— DDjourneys",
 			StopShareText.Build(share, new EnglishUiStrings()));
 	}
@@ -138,9 +138,9 @@ public sealed class StopShareTests
 		StopSharePayload share = StopShare.For(Postplatz());
 
 		Assert.Equal(
-			"Treffpunkt: Postplatz, Dresden.\n"
-			+ "geo:51.049311,13.7375?q=Postplatz\n"
-			+ "ddjourneys://v1/departures?at=Postplatz&at.stop=vvo%3A33000028\n"
+			"Treffpunkt: Postplatz, Dresden.\r\n"
+			+ "geo:51.049311,13.7375?q=Postplatz\r\n"
+			+ "ddjourneys://v1/departures?at=Postplatz&at.stop=vvo%3A33000028\r\n"
 			+ "— DDjourneys",
 			StopShareText.Build(share, new GermanUiStrings()));
 	}
@@ -158,8 +158,8 @@ public sealed class StopShareTests
 			});
 
 		Assert.Equal(
-			"Meet me at Postplatz, Dresden.\n"
-			+ "ddjourneys://v1/departures?at=Postplatz&at.stop=vvo%3A33000028\n"
+			"Meet me at Postplatz, Dresden.\r\n"
+			+ "ddjourneys://v1/departures?at=Postplatz&at.stop=vvo%3A33000028\r\n"
 			+ "— DDjourneys",
 			StopShareText.Build(share, new EnglishUiStrings()));
 	}
