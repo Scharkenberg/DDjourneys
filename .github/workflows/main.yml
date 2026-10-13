@@ -1,6 +1,6 @@
 name: main (all eight targets)
 
-# On demand only: every platform x architecture x configuration. Use mostcommon.yml for everyday builds.
+# On demand only. For everyday builds use mostcommon.yml.
 on:
   workflow_dispatch:
 
@@ -12,15 +12,24 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
+  android:
     strategy:
       fail-fast: false
       matrix:
-        platform: [windows, android]
         architecture: [x64, arm64]
         configuration: [Debug, Release]
-    uses: ./.github/workflows/_build.yml
+    uses: ./.github/workflows/_android.yml
     with:
-      platform: ${{ matrix.platform }}
+      architecture: ${{ matrix.architecture }}
+      configuration: ${{ matrix.configuration }}
+
+  windows:
+    strategy:
+      fail-fast: false
+      matrix:
+        architecture: [x64, arm64]
+        configuration: [Debug, Release]
+    uses: ./.github/workflows/_windows.yml
+    with:
       architecture: ${{ matrix.architecture }}
       configuration: ${{ matrix.configuration }}

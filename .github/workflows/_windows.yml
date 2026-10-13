@@ -1,0 +1,81 @@
+# Reusable Windows build (MSIX) of ONE architecture and configuration. Called by windows-*.yml, main.yml, mostcommon.yml.
+name: _windows (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      architecture:
+        description: x64 or arm64
+        required: true
+        type: string
+      configuration:
+        description: Debug or Release
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_VERSION: 11.0.100-rc.1.26425.128
+  APP_PROJECT: DDjourneys/DDjourneys.csproj
+  TFM: net11.0-windows10.0.26100.0
+  RID: win-${{ inputs.architecture }}
+  DOTNET_NOLOGO: "1"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1"
+  MSBUILDDISABLENODEREUSE: "1"
+
+jobs:
+  build:
+    name: windows ${{ inputs.architecture }} ${{ inputs.configuration }}
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup .NET ${{ env.DOTNET_VERSION }}
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+          cache: true
+          cache-dependency-path: |
+            **/*.csproj
+
+      # Only the workload this target needs, with the manifests that ship with the SDK.
+      - name: Install workload maui-windows
+        shell: bash
+        run: |
+          dotnet workload install maui-windows --skip-manifest-update || dotnet workload install maui-windows
+          dotnet workload list
+
+      # -p:TargetFrameworks narrows RESTORE to this one platform; -f selects the framework to publish.
+      - name: Publish MSIX
+        run: >
+          dotnet publish ${{ env.APP_PROJECT }}
+          -f ${{ env.TFM }}
+          -c ${{ inputs.configuration }}
+          -r ${{ env.RID }}
+          -p:TargetFrameworks=${{ env.TFM }}
+          -p:GenerateAppxPackageOnBuild=true
+          -p:AppxPackageSigningEnabled=false
+
+      # An MSIX is written to <project>\bin\...\AppPackages, not to the publish folder.
+      - name: Collect package
+        run: |
+          New-Item -ItemType Directory -Force artifacts | Out-Null
+          $packages = Get-ChildItem DDjourneys\bin -Recurse -Directory -Filter AppPackages
+          if (-not $packages) { throw "No AppPackages folder: the MSIX was not produced." }
+          $packages | ForEach-Object { Copy-Item $_.FullName -Destination artifacts -Recurse -Force }
+          Get-ChildItem artifacts -Recurse -File | Select-Object -First 40 FullName
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DDjourneys-windows-${{ inputs.architecture }}-${{ inputs.configuration }}
+          path: artifacts
+          if-no-files-found: error
+          retention-days: 14

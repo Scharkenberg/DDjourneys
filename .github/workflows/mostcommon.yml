@@ -11,15 +11,14 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - { platform: windows, architecture: x64, configuration: Release }
-          - { platform: android, architecture: arm64, configuration: Release }
-    uses: ./.github/workflows/_build.yml
+  windows-x64-release:
+    uses: ./.github/workflows/_windows.yml
     with:
-      platform: ${{ matrix.platform }}
-      architecture: ${{ matrix.architecture }}
-      configuration: ${{ matrix.configuration }}
+      architecture: x64
+      configuration: Release
+
+  android-arm64-release:
+    uses: ./.github/workflows/_android.yml
+    with:
+      architecture: arm64
+      configuration: Release
