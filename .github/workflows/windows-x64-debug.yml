@@ -12,8 +12,7 @@ concurrency:
 
 jobs:
   build:
-    uses: ./.github/workflows/_build.yml
+    uses: ./.github/workflows/_windows.yml
     with:
-      platform: windows
       architecture: x64
       configuration: Debug
