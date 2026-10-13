@@ -1,0 +1,127 @@
+# Reusable build of ONE target (platform x architecture x configuration). Called by the eight per-target
+# workflows, main.yml and mostcommon.yml; never started by hand (the leading underscore is only a reminder).
+name: _build (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      platform:
+        description: windows or android
+        required: true
+        type: string
+      architecture:
+        description: x64 or arm64
+        required: true
+        type: string
+      configuration:
+        description: Debug or Release
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  # Pinned to the SDK the first CI run resolved ("11.0.x" + preview quality floats to the newest preview: a newer SDK
+  # than the one you build with locally is the usual cause of errors that never show on your machine).
+  # Change this when you move to a newer SDK locally.
+  DOTNET_VERSION: 11.0.100-rc.1.26425.128
+  APP_PROJECT: DDjourneys/DDjourneys.csproj
+  DOTNET_NOLOGO: "1"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1"
+  MSBUILDDISABLENODEREUSE: "1"
+
+jobs:
+  build:
+    name: ${{ inputs.platform }} ${{ inputs.architecture }} ${{ inputs.configuration }}
+    # Android builds on Linux: half the price of a Windows minute, and the Android SDK and a JDK are preinstalled.
+    # Windows (WinUI/MSIX) can only be built on Windows.
+    runs-on: ${{ inputs.platform == 'android' && 'ubuntu-latest' || 'windows-latest' }}
+    timeout-minutes: 60
+    env:
+      TFM: ${{ inputs.platform == 'android' && 'net11.0-android' || 'net11.0-windows10.0.26100.0' }}
+      RID: ${{ inputs.platform == 'android' && format('android-{0}', inputs.architecture) || format('win-{0}', inputs.architecture) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup .NET ${{ env.DOTNET_VERSION }}
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+          cache: true
+          cache-dependency-path: |
+            **/*.csproj
+            **/Directory.Build.*
+            **/Directory.Packages.props
+
+      # Exactly the one workload this target needs. "dotnet workload restore" installs what EVERY target framework of the
+      # project could want (it pulled in maui-tizen, and both platforms on every runner). The manifests that ship with
+      # the SDK are used as they are (--skip-manifest-update): the same versions your local SDK uses.
+      - name: Install workload (${{ inputs.platform == 'android' && 'maui-android' || 'maui-windows' }})
+        shell: bash
+        run: |
+          WORKLOAD=${{ inputs.platform == 'android' && 'maui-android' || 'maui-windows' }}
+          dotnet workload install "$WORKLOAD" --skip-manifest-update || dotnet workload install "$WORKLOAD"
+          dotnet workload list
+
+      - name: Android SDK and JDK
+        if: ${{ inputs.platform == 'android' }}
+        shell: bash
+        run: |
+          echo "JAVA_HOME=${JAVA_HOME_17_X64}" >> "$GITHUB_ENV"
+          # Brings in whatever SDK platform / build-tools this SDK build wants and is missing on the image
+          # (a no-op when the preinstalled SDK already has them).
+          dotnet build "$APP_PROJECT" -t:InstallAndroidDependencies -f "$TFM" \
+            -p:TargetFrameworks="$TFM" \
+            -p:AndroidSdkDirectory="$ANDROID_HOME" -p:AcceptAndroidSDKLicenses=True || echo "::warning::InstallAndroidDependencies failed; continuing with the preinstalled SDK"
+
+      # Restore and publish in ONE call, for ONE target framework: -p:TargetFrameworks narrows the multi-target project
+      # (otherwise restore downloads the packs of the other platform too: 1-4 minutes per job in the first run).
+      - name: Publish Android (${{ inputs.architecture }} ${{ inputs.configuration }})
+        if: ${{ inputs.platform == 'android' }}
+        shell: bash
+        run: |
+          # Debug is built for fast deployment (assemblies outside the APK) by the project; a CI artifact must run on its own.
+          EXTRA=""
+          if [ "${{ inputs.configuration }}" = "Debug" ]; then EXTRA="-p:EmbedAssembliesIntoApk=true"; fi
+          dotnet publish "$APP_PROJECT" \
+            -c ${{ inputs.configuration }} \
+            -r "$RID" \
+            -p:TargetFrameworks="$TFM" \
+            -p:AndroidPackageFormats=apk \
+            $EXTRA \
+            -o "$GITHUB_WORKSPACE/artifacts"
+
+      - name: Publish Windows (${{ inputs.architecture }} ${{ inputs.configuration }})
+        if: ${{ inputs.platform == 'windows' }}
+        shell: pwsh
+        run: |
+          dotnet publish $env:APP_PROJECT `
+            -c ${{ inputs.configuration }} `
+            -r $env:RID `
+            -p:TargetFrameworks=$env:TFM `
+            -p:GenerateAppxPackageOnBuild=true `
+            -p:AppxPackageSigningEnabled=false
+
+      - name: Collect Windows package
+        if: ${{ inputs.platform == 'windows' }}
+        shell: pwsh
+        run: |
+          # An MSIX is written to <project>\bin\...\AppPackages, not to the publish folder.
+          New-Item -ItemType Directory -Force artifacts | Out-Null
+          $packages = Get-ChildItem DDjourneys\bin -Recurse -Directory -Filter AppPackages
+          if (-not $packages) { throw "No AppPackages folder: the MSIX was not produced." }
+          $packages | ForEach-Object { Copy-Item $_.FullName -Destination artifacts -Recurse -Force }
+          Get-ChildItem artifacts -Recurse | Select-Object -First 40 FullName
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DDjourneys-${{ inputs.platform }}-${{ inputs.architecture }}-${{ inputs.configuration }}
+          path: artifacts
+          if-no-files-found: error
+          retention-days: 14
