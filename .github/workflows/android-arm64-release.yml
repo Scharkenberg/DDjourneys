@@ -1,0 +1,18 @@
+name: android-arm64-release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-arm64-release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    uses: ./.github/workflows/_android.yml
+    with:
+      architecture: arm64
+      configuration: Release

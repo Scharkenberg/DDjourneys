@@ -1,0 +1,24 @@
+name: mostcommon (windows-x64-release + android-arm64-release)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mostcommon-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows-x64-release:
+    uses: ./.github/workflows/_windows.yml
+    with:
+      architecture: x64
+      configuration: Release
+
+  android-arm64-release:
+    uses: ./.github/workflows/_android.yml
+    with:
+      architecture: arm64
+      configuration: Release

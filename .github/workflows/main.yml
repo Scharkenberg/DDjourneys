@@ -1,150 +1,35 @@
-name: Build DDjourneys artifacts
+name: main (all eight targets)
 
+# On demand only. For everyday builds use mostcommon.yml.
 on:
   workflow_dispatch:
 
 permissions:
   contents: read
 
-env:
-  DOTNET_VERSION: 11.0.x
-  APP_PROJECT: DDjourneys/DDjourneys.csproj
-  CORE_PROJECT: DDjourneys.Core/DDjourneys.Core.csproj
-  TEST_PROJECT: DDjourneys.Tracking.Tests/DDjourneys.Tracking.Tests.csproj
+concurrency:
+  group: main-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  build-core:
-    name: Build DDjourneys.Core
-    runs-on: windows-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: ${{ env.DOTNET_VERSION }}
-          include-prerelease: true
-          cache: true
-          cache-dependency-path: |
-            **/*.csproj
-            **/*.slnx
-
-      - name: Restore core
-        run: dotnet restore ${{ env.CORE_PROJECT }}
-
-      - name: Build core
-        run: dotnet build ${{ env.CORE_PROJECT }} -c Release --no-restore
-
-  test:
-    name: Test DDjourneys.Tracking.Tests
-    runs-on: windows-latest
-    needs: build-core
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: ${{ env.DOTNET_VERSION }}
-          include-prerelease: true
-          cache: true
-          cache-dependency-path: |
-            **/*.csproj
-            **/*.slnx
-
-      - name: Restore tests
-        run: dotnet restore ${{ env.TEST_PROJECT }}
-
-      - name: Run tests
-        run: dotnet test ${{ env.TEST_PROJECT }} -c Release --no-restore --logger "trx;LogFileName=tests.trx" --results-directory ${{ github.workspace }}\TestResults
-
-      - name: Upload test results
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: DDjourneys-tests
-          path: TestResults
-          if-no-files-found: warn
-
-  package:
-    name: Package ${{ matrix.platform }} ${{ matrix.architecture }} ${{ matrix.configuration }}
-    runs-on: windows-latest
-    needs: test
+  android:
     strategy:
       fail-fast: false
       matrix:
-        platform: [windows, android]
         architecture: [x64, arm64]
         configuration: [Debug, Release]
-        include:
-          - platform: windows
-            architecture: x64
-            tfm: net11.0-windows10.0.26100.0
-            runtime_identifier: win-x64
-          - platform: windows
-            architecture: arm64
-            tfm: net11.0-windows10.0.26100.0
-            runtime_identifier: win-arm64
-          - platform: android
-            architecture: x64
-            tfm: net11.0-android
-            runtime_identifier: android-x64
-          - platform: android
-            architecture: arm64
-            tfm: net11.0-android
-            runtime_identifier: android-arm64
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+    uses: ./.github/workflows/_android.yml
+    with:
+      architecture: ${{ matrix.architecture }}
+      configuration: ${{ matrix.configuration }}
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: ${{ env.DOTNET_VERSION }}
-          include-prerelease: true
-          cache: true
-          cache-dependency-path: |
-            **/*.csproj
-            **/*.slnx
-
-      - name: Restore MAUI workloads
-        run: dotnet workload restore ${{ env.APP_PROJECT }}
-
-      - name: Restore app
-        run: dotnet restore ${{ env.APP_PROJECT }}
-
-      - name: Publish Windows package
-        if: ${{ matrix.platform == 'windows' }}
-        shell: pwsh
-        run: |
-          dotnet publish ${{ env.APP_PROJECT }} `
-            -f ${{ matrix.tfm }} `
-            -r ${{ matrix.runtime_identifier }} `
-            -c ${{ matrix.configuration }} `
-            -p:WindowsPackageType=None `
-            -p:WindowsAppSDKSelfContained=true `
-            -p:AppxPackageSigningEnabled=false `
-            --no-restore `
-            -o "$env:GITHUB_WORKSPACE\artifacts\${{ matrix.platform }}\${{ matrix.architecture }}\${{ matrix.configuration }}"
-
-      - name: Publish Android package
-        if: ${{ matrix.platform == 'android' }}
-        shell: pwsh
-        run: |
-          dotnet publish ${{ env.APP_PROJECT }} `
-            -f ${{ matrix.tfm }} `
-            -r ${{ matrix.runtime_identifier }} `
-            -c ${{ matrix.configuration }} `
-            -p:AndroidPackageFormats=apk `
-            -p:AndroidKeyStore=false `
-            --no-restore `
-            -o "$env:GITHUB_WORKSPACE\artifacts\${{ matrix.platform }}\${{ matrix.architecture }}\${{ matrix.configuration }}"
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: DDjourneys-${{ matrix.platform }}-${{ matrix.architecture }}-${{ matrix.configuration }}
-          path: artifacts/${{ matrix.platform }}/${{ matrix.architecture }}/${{ matrix.configuration }}
-          if-no-files-found: error
+  windows:
+    strategy:
+      fail-fast: false
+      matrix:
+        architecture: [x64, arm64]
+        configuration: [Debug, Release]
+    uses: ./.github/workflows/_windows.yml
+    with:
+      architecture: ${{ matrix.architecture }}
+      configuration: ${{ matrix.configuration }}

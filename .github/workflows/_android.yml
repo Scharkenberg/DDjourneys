@@ -1,0 +1,91 @@
+# Reusable Android build (APK) of ONE architecture and configuration. Called by android-*.yml, main.yml, mostcommon.yml.
+name: _android (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      architecture:
+        description: x64 or arm64
+        required: true
+        type: string
+      configuration:
+        description: Debug or Release
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  # Pinned to the SDK the first CI run resolved ("11.0.x" + preview quality floats to the newest preview: a newer SDK
+  # than the one you build with locally is the usual cause of errors that never show on your machine).
+  # Change this (here and in _windows.yml, tests.yml) when you move to a newer SDK locally.
+  DOTNET_VERSION: 11.0.100-rc.1.26425.128
+  APP_PROJECT: DDjourneys/DDjourneys.csproj
+  TFM: net11.0-android
+  RID: android-${{ inputs.architecture }}
+  DOTNET_NOLOGO: "1"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1"
+  MSBUILDDISABLENODEREUSE: "1"
+
+jobs:
+  build:
+    name: android ${{ inputs.architecture }} ${{ inputs.configuration }}
+    # Linux: half the price of a Windows minute; the Android SDK and a JDK are preinstalled.
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup .NET ${{ env.DOTNET_VERSION }}
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+          cache: true
+          cache-dependency-path: |
+            **/*.csproj
+
+      # Only the workload this target needs ("dotnet workload restore" installed what every target framework of the
+      # project could want, maui-tizen included). The manifests that ship with the SDK are used as they are.
+      - name: Install workload maui-android
+        run: |
+          dotnet workload install maui-android --skip-manifest-update || dotnet workload install maui-android
+          dotnet workload list
+
+      - name: Android SDK and JDK
+        run: |
+          echo "JAVA_HOME=${JAVA_HOME_17_X64}" >> "$GITHUB_ENV"
+          # Installs whatever SDK platform / build-tools this SDK build wants and the image lacks (no-op otherwise).
+          dotnet build "$APP_PROJECT" -t:InstallAndroidDependencies -f "$TFM" \
+            -p:TargetFrameworks="$TFM" \
+            -p:AndroidSdkDirectory="$ANDROID_HOME" -p:AcceptAndroidSDKLicenses=True \
+            || echo "::warning::InstallAndroidDependencies failed; continuing with the preinstalled SDK"
+
+      # -p:TargetFrameworks narrows RESTORE to this one platform (the project is multi-target: without it the packs of the
+      # other platform are downloaded too); -f selects the framework to publish. Restore and publish in one call.
+      - name: Publish APK
+        run: |
+          # The project builds Debug with fast deployment (assemblies outside the APK); a CI artifact must run on its own.
+          EXTRA=""
+          if [ "${{ inputs.configuration }}" = "Debug" ]; then EXTRA="-p:EmbedAssembliesIntoApk=true"; fi
+          dotnet publish "$APP_PROJECT" \
+            -f "$TFM" \
+            -c ${{ inputs.configuration }} \
+            -r "$RID" \
+            -p:TargetFrameworks="$TFM" \
+            -p:AndroidPackageFormats=apk \
+            $EXTRA \
+            -o "$GITHUB_WORKSPACE/artifacts"
+          ls -la "$GITHUB_WORKSPACE/artifacts" | head -30
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DDjourneys-android-${{ inputs.architecture }}-${{ inputs.configuration }}
+          path: artifacts/*.apk
+          if-no-files-found: error
+          retention-days: 14
