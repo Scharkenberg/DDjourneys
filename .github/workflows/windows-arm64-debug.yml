@@ -1,0 +1,19 @@
+name: windows-arm64-debug
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-arm64-debug-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    uses: ./.github/workflows/_build.yml
+    with:
+      platform: windows
+      architecture: arm64
+      configuration: Debug
