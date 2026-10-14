@@ -361,7 +361,9 @@ public sealed partial class PdfPlanTiles : IPlanTiles
 		using (var canvas = new SKCanvas(tile))
 		{
 			canvas.Clear(SKColors.Transparent);
-			canvas.DrawBitmap(source, 0, 0);
+
+			using SKImage image = SKImage.FromBitmap(source);
+			canvas.DrawImage(image, 0, 0, SKSamplingOptions.Default);
 		}
 
 		using SKData data = tile.Encode(SKEncodedImageFormat.Png, 100);

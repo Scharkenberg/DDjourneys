@@ -723,61 +723,15 @@ public sealed partial class VehiclesViewModel : DisposableViewModel, IQueryAttri
 
 			await foreach (LiveVehicle vehicle in _vehicleSubscription.Reader.ReadAllAsync(cts.Token))
 			{
-				bool delivered = false;
-
-				try
-				{
-					await foreach (LiveVehicle vehicle in
-						_vehicles.StreamAsync(
-							new VehicleFilter { Lines = lines },
-							cts.Token))
-					{
-						if (cts.IsCancellationRequested || IsDisposed)
-						{
-							return;
-						}
-
-						delivered = true;
-
-						if (_slots.Count > 0)
-						{
-							ApplyTracked(vehicle);
-
-							continue;
-						}
-
-						if (HasStatus)
-						{
-							Status = string.Empty;
-						}
-
-						Apply(vehicle);
-					}
-				}
-				catch (OperationCanceledException)
-				{
-				}
-				catch (Exception ex)
-				{
-					DiagnosticLog.Write($"Live vehicles failed: {ex}");
-				}
-
 				if (cts.IsCancellationRequested || IsDisposed)
 				{
 					return;
 				}
 
-				// The stream ended without the page asking: say so, wait, and connect again. A stream that
-				// carried positions gets another go at once; a page nobody leaves keeps trying with a pause.
-				Status = strings.LiveError;
-
-				if (delivered)
+				if (_slots.Count > 0)
 				{
-					failures = 0;
-				}
+					ApplyTracked(vehicle);
 
-				if (lines.Count > 0 && !lines.Contains(vehicle.Line))
-				{
 					continue;
 				}
 
@@ -788,7 +742,7 @@ public sealed partial class VehiclesViewModel : DisposableViewModel, IQueryAttri
 
 				if (HasStatus)
 				{
-					failures++;
+					Status = string.Empty;
 				}
 
 				Apply(vehicle);

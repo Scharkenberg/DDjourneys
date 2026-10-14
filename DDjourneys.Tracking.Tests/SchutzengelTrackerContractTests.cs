@@ -700,49 +700,49 @@ public sealed class SchutzengelTrackerContractTests
 
 		using var time =
 			await api.GetServerTimeAsync(
-				default);
+				TestContext.Current.CancellationToken);
 
 
 		using var all =
 			await api.GetAllPlansAsync(
-				default);
+				TestContext.Current.CancellationToken);
 
 
 		using var realtime =
 			await api.GetRealtimeAsync(
 				"trip 9",
-				default);
+				TestContext.Current.CancellationToken);
 
 
 		using var notifications =
 			await api.GetNotificationsAsync(
 				"trip 9",
-				default);
+				TestContext.Current.CancellationToken);
 
 
 		using var options =
 			await api.SetOptionsAsync(
 				"plan-9",
 				SchutzengelOptions.Default,
-				default);
+				TestContext.Current.CancellationToken);
 
 
 		using var activated =
 			await api.ActivateAsync(
 				"plan-9",
-				default);
+				TestContext.Current.CancellationToken);
 
 
 		using var registered =
 			await api.RegisterFirebaseAsync(
 				"fcm-9",
-				default);
+				TestContext.Current.CancellationToken);
 
 
 		using var unregistered =
 			await api.UnregisterFirebaseAsync(
 				"fcm-9",
-				default);
+				TestContext.Current.CancellationToken);
 
 
 		Assert.Equal(
@@ -801,14 +801,14 @@ public sealed class SchutzengelTrackerContractTests
 			tracker.Find(journey));
 
 		Assert.False(
-			await tracker.CanNotifyAsync());
+			await tracker.CanNotifyAsync(TestContext.Current.CancellationToken));
 
 		await Assert.ThrowsAsync<NotSupportedException>(
-			() => tracker.FollowAsync(journey));
+			() => tracker.FollowAsync(journey, cancellationToken: TestContext.Current.CancellationToken));
 
-		await tracker.RefreshAsync();
+		await tracker.RefreshAsync(TestContext.Current.CancellationToken);
 
-		await tracker.DeleteAllAsync();
+		await tracker.DeleteAllAsync(TestContext.Current.CancellationToken);
 
 
 		await foreach (JourneyTrackingEvent _ in

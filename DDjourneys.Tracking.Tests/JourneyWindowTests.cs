@@ -49,7 +49,7 @@ public sealed class JourneyWindowTests
 		var timetable = new Timetable();
 		var service = new JourneyService([timetable]);
 
-		JourneyResult result = await service.SearchAsync(Query(At(8, 0), JourneySearchMode.Departure, 9));
+		JourneyResult result = await service.SearchAsync(Query(At(8, 0), JourneySearchMode.Departure, 9), TestContext.Current.CancellationToken);
 
 		Assert.Equal(9, result.Journeys.Count);
 	}
@@ -157,8 +157,8 @@ public sealed class JourneyWindowTests
 		var service = new JourneyService([timetable]);
 		JourneyQuery query = Query(At(8, 0), JourneySearchMode.Departure, 4);
 
-		JourneyResult first = await service.SearchAsync(query);
-		JourneyResult later = await service.PageAsync(query, first.Journeys, previous: false, 4);
+		JourneyResult first = await service.SearchAsync(query, TestContext.Current.CancellationToken);
+		JourneyResult later = await service.PageAsync(query, first.Journeys, previous: false, 4, TestContext.Current.CancellationToken);
 
 		Assert.Equal(Minutes(8, 40, 4), Starts(later.Journeys));
 		Assert.All(later.Journeys, journey => Assert.Null(journey.Context));
@@ -172,7 +172,7 @@ public sealed class JourneyWindowTests
 		Journey shown = Timetable.BuildForTest(At(8, 0));
 		JourneyQuery query = Query(At(8, 0), JourneySearchMode.Departure, 3);
 
-		JourneyResult result = await service.PageAsync(query, [shown], previous: false, 3);
+		JourneyResult result = await service.PageAsync(query, [shown], previous: false, 3, TestContext.Current.CancellationToken);
 
 		Assert.Equal(1, provider.ContinuationCalls);
 		Assert.Equal(0, provider.SearchCalls);

@@ -59,7 +59,7 @@ internal static class TabBars
 		}
 	}
 
-	private static BottomNavigationView? Find(View? view)
+	private static BottomNavigationView? Find(global::Android.Views.View? view)
 	{
 		if (view is BottomNavigationView bar)
 		{

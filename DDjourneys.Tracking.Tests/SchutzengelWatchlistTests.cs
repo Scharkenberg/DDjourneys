@@ -356,8 +356,8 @@ public sealed class SchutzengelWatchlistTests
 
 		api.Authenticate("token");
 
-		using SchutzengelResponse realtime = await api.FetchRealtimeAsync("trip", "7", 2, default);
-		using SchutzengelResponse notifications = await api.FetchNotificationsAsync("trip", "7", 2, default);
+		using SchutzengelResponse realtime = await api.FetchRealtimeAsync("trip", "7", 2, TestContext.Current.CancellationToken);
+		using SchutzengelResponse notifications = await api.FetchNotificationsAsync("trip", "7", 2, TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.Created, realtime.StatusCode);
 		Assert.Equal(HttpStatusCode.NoContent, notifications.StatusCode);
@@ -385,7 +385,7 @@ public sealed class SchutzengelWatchlistTests
 
 		api.Authenticate("token");
 
-		using JsonDocument time = await api.GetServerTimeAsync(default);
+		using JsonDocument time = await api.GetServerTimeAsync(TestContext.Current.CancellationToken);
 
 		TimeSpan? offset = SchutzengelTime.ReadServerOffset(time.RootElement, Base.AddSeconds(-30));
 

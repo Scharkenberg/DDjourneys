@@ -512,22 +512,18 @@ public static class JourneyShareImage
 				};
 
 			float s = size;
-			using var path = new SKPath();
 
-			// Upper arrow to the right, lower arrow to the left.
-			path.MoveTo(x + (s * 0.12f), y + (s * 0.32f));
-			path.LineTo(x + (s * 0.86f), y + (s * 0.32f));
-			path.MoveTo(x + (s * 0.66f), y + (s * 0.12f));
-			path.LineTo(x + (s * 0.88f), y + (s * 0.32f));
-			path.LineTo(x + (s * 0.66f), y + (s * 0.52f));
+			// Upper arrow to the right, lower arrow to the left. Plain segments instead of an
+			// SKPath (its MoveTo/LineTo are obsolete in SkiaSharp 4 and its builder does not exist
+			// in 3.116, which CI still restores): with this paint's round cap and join the segments
+			// draw exactly what the path drew.
+			canvas!.DrawLine(x + (s * 0.12f), y + (s * 0.32f), x + (s * 0.86f), y + (s * 0.32f), paint);
+			canvas!.DrawLine(x + (s * 0.66f), y + (s * 0.12f), x + (s * 0.88f), y + (s * 0.32f), paint);
+			canvas!.DrawLine(x + (s * 0.88f), y + (s * 0.32f), x + (s * 0.66f), y + (s * 0.52f), paint);
 
-			path.MoveTo(x + (s * 0.88f), y + (s * 0.70f));
-			path.LineTo(x + (s * 0.14f), y + (s * 0.70f));
-			path.MoveTo(x + (s * 0.34f), y + (s * 0.50f));
-			path.LineTo(x + (s * 0.12f), y + (s * 0.70f));
-			path.LineTo(x + (s * 0.34f), y + (s * 0.90f));
-
-			canvas!.DrawPath(path, paint);
+			canvas!.DrawLine(x + (s * 0.88f), y + (s * 0.70f), x + (s * 0.14f), y + (s * 0.70f), paint);
+			canvas!.DrawLine(x + (s * 0.34f), y + (s * 0.50f), x + (s * 0.12f), y + (s * 0.70f), paint);
+			canvas!.DrawLine(x + (s * 0.12f), y + (s * 0.70f), x + (s * 0.34f), y + (s * 0.90f), paint);
 		}
 
 		/// <summary>
@@ -635,7 +631,7 @@ public static class JourneyShareImage
 
 				if (spacing <= 0)
 				{
-					canvas!.DrawText(run, x, baseline, font, paint);
+					canvas!.DrawText(run, x, baseline, SKTextAlign.Left, font, paint);
 					x += font.MeasureText(run);
 				}
 				else
@@ -643,7 +639,7 @@ public static class JourneyShareImage
 					foreach (Rune rune in run.EnumerateRunes())
 					{
 						string glyph = rune.ToString();
-						canvas!.DrawText(glyph, x, baseline, font, paint);
+						canvas!.DrawText(glyph, x, baseline, SKTextAlign.Left, font, paint);
 						x += font.MeasureText(glyph) + spacing;
 					}
 				}

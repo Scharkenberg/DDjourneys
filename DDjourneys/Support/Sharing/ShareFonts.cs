@@ -44,7 +44,14 @@ internal sealed class ShareFonts
 	/// <summary>The face that can draw <paramref name="codepoint"/>: the preferred one, or a matching system face.</summary>
 	public SKTypeface For(SKTypeface preferred, int codepoint)
 	{
-		if (codepoint < 0x80 || preferred.ContainsGlyph(codepoint))
+		if (codepoint < 0x80)
+		{
+			return preferred;
+		}
+
+		using SKFont preferredFont = new(preferred);
+
+if (preferredFont.ContainsGlyph(codepoint))
 		{
 			return preferred;
 		}

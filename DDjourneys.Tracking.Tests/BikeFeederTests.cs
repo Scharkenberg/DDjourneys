@@ -179,7 +179,8 @@ public sealed class BikeFeederTests
 				(lat, lon, radius, token) => Task.FromResult<IReadOnlyList<NearbyStop>>(
 					[new NearbyStop { Stop = boardingStop, DistanceMeters = 800 }]),
 				(lat, lon, toLat, toLon, token) => Task.FromResult<BikeRoute?>(Track(minutes: 10, ascent: 5)),
-				Query(from: start, routing: new RoutingPreferences { BikeFeeder = true }));
+				Query(from: start, routing: new RoutingPreferences { BikeFeeder = true }),
+				TestContext.Current.CancellationToken);
 
 		Assert.Equal(BikeFeederOutcome.Composed, result.Outcome);
 		Assert.Equal("Postplatz", result.BoardingStop);
@@ -229,7 +230,8 @@ public sealed class BikeFeederTests
 				(lat, lon, radius, token) => Task.FromResult<IReadOnlyList<NearbyStop>>(
 					[new NearbyStop { Stop = boardingStop, DistanceMeters = 800 }]),
 				(lat, lon, toLat, toLon, token) => Task.FromResult<BikeRoute?>(Track(minutes: 10, ascent: 5)),
-				Query(from: start, routing: new RoutingPreferences { BikeFeeder = true }));
+				Query(from: start, routing: new RoutingPreferences { BikeFeeder = true }),
+				TestContext.Current.CancellationToken);
 
 		Assert.Equal(BikeFeederOutcome.NoTransit, result.Outcome);
 		Assert.Empty(result.Journeys);
@@ -262,7 +264,8 @@ public sealed class BikeFeederTests
 					from: start,
 					routing: new RoutingPreferences { BikeFeeder = true },
 					mode: JourneySearchMode.Arrival,
-					time: Day.AddHours(11)));
+					time: Day.AddHours(11)),
+				TestContext.Current.CancellationToken);
 
 		Assert.Equal(BikeFeederOutcome.Composed, result.Outcome);
 
@@ -284,7 +287,8 @@ public sealed class BikeFeederTests
 				(query, token) => Task.FromResult(JourneyResult.Success([Trip(Ride())])),
 				(lat, lon, radius, token) => Task.FromResult<IReadOnlyList<NearbyStop>>([]),
 				(lat, lon, toLat, toLon, token) => Task.FromResult<BikeRoute?>(null),
-				Query(from: start, routing: new RoutingPreferences { BikeFeeder = true }));
+				Query(from: start, routing: new RoutingPreferences { BikeFeeder = true }),
+				TestContext.Current.CancellationToken);
 
 		Assert.Equal(BikeFeederOutcome.NoBikeRoute, result.Outcome);
 		Assert.Empty(result.Journeys);
@@ -302,7 +306,8 @@ public sealed class BikeFeederTests
 				(lat, lon, radius, token) => Task.FromResult<IReadOnlyList<NearbyStop>>(
 					[new NearbyStop { Stop = boardingStop, DistanceMeters = 800 }]),
 				(lat, lon, toLat, toLon, token) => Task.FromResult<BikeRoute?>(Track(minutes: 10, ascent: 5)),
-				Query(from: start, routing: new RoutingPreferences { BikeFeeder = true }));
+				Query(from: start, routing: new RoutingPreferences { BikeFeeder = true }),
+				TestContext.Current.CancellationToken);
 
 		Assert.Equal(BikeFeederOutcome.NoTransit, result.Outcome);
 		Assert.Equal("Postplatz", result.BoardingStop);
@@ -343,7 +348,8 @@ public sealed class BikeFeederTests
 
 		JourneyResult result =
 			await service.SearchAsync(
-				Query(from: start, to: destination, routing: new RoutingPreferences { BikeFeeder = true }));
+				Query(from: start, to: destination, routing: new RoutingPreferences { BikeFeeder = true }),
+				TestContext.Current.CancellationToken);
 
 		Assert.Equal(JourneyOutcome.Found, result.Outcome);
 

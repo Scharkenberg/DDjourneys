@@ -28,16 +28,17 @@ public sealed class LifecycleTests
 						received.Add(item);
 						started.TrySetResult();
 					}
-				});
+				},
+				TestContext.Current.CancellationToken);
 
 		await Task.Delay(100, cancellation.Token);
 
 		broadcaster.Publish(1);
-		await started.Task.WaitAsync(Limit);
+		await started.Task.WaitAsync(Limit, TestContext.Current.CancellationToken);
 
 		broadcaster.Dispose();
 
-		await reader.WaitAsync(Limit);
+		await reader.WaitAsync(Limit, TestContext.Current.CancellationToken);
 
 		Assert.Equal([1], received);
 	}
@@ -72,7 +73,7 @@ public sealed class LifecycleTests
 
 		bridge.ServiceStopped();
 		await bridge.HandleActionAsync("pause", "plan");
-		await bridge.ResumeAsync();
+		await bridge.ResumeAsync(TestContext.Current.CancellationToken);
 
 		Assert.False(bridge.IsAttached);
 	}
@@ -87,7 +88,7 @@ public sealed class LifecycleTests
 
 		bridge.ServiceStopped();
 		await bridge.HandleActionAsync("pause", "plan-1");
-		await bridge.ResumeAsync();
+		await bridge.ResumeAsync(TestContext.Current.CancellationToken);
 
 		Assert.True(bridge.IsAttached);
 		Assert.Equal(1, tracker.Stopped);

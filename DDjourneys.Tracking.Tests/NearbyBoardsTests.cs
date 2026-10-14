@@ -77,7 +77,7 @@ public class NearbyBoardsTests
 			keep: 2,
 			lines: ["11"],
 			modes: ModeFilter.All,
-			timeoutSeconds: 15);
+			timeoutSeconds: 15, TestContext.Current.CancellationToken);
 
 		Assert.Equal(6, provider.Queries[0].Limit);
 	}
@@ -94,7 +94,7 @@ public class NearbyBoardsTests
 			keep: 4,
 			lines: null,
 			modes: ModeFilter.Tram,
-			timeoutSeconds: 15);
+			timeoutSeconds: 15, TestContext.Current.CancellationToken);
 
 		Assert.Equal(4, provider.Queries[0].Limit);
 		Assert.True(provider.Queries[0].IsArrival);
@@ -114,7 +114,7 @@ public class NearbyBoardsTests
 			keep: 1,
 			lines: null,
 			modes: ModeFilter.All,
-			timeoutSeconds: 15);
+			timeoutSeconds: 15, TestContext.Current.CancellationToken);
 
 		Assert.Equal(3, boards.Length);
 		Assert.Equal("Postplatz-0", boards[0][0].Id);
@@ -137,7 +137,7 @@ public class NearbyBoardsTests
 			keep: 1,
 			lines: null,
 			modes: ModeFilter.All,
-			timeoutSeconds: 15);
+			timeoutSeconds: 15, TestContext.Current.CancellationToken);
 
 		Assert.Equal(3, boards.Length);
 		Assert.Single(boards[0]);
@@ -176,7 +176,7 @@ public class NearbyBoardsTests
 			keep: 1,
 			lines: null,
 			modes: ModeFilter.All,
-			timeoutSeconds: 15);
+			timeoutSeconds: 15, TestContext.Current.CancellationToken);
 
 		Assert.InRange(busiest, 2, NearbyBoards.AtATime);
 	}
@@ -229,7 +229,7 @@ public class NearbyBoardsTests
 			keep: 1,
 			lines: null,
 			modes: ModeFilter.All,
-			timeoutSeconds: 15);
+			timeoutSeconds: 15, TestContext.Current.CancellationToken);
 
 		Assert.Empty(boards);
 		Assert.Empty(provider.Queries);

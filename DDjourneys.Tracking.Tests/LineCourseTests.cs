@@ -160,7 +160,8 @@ public class LineCourseTests
 		IReadOnlyList<LineCourse> courses =
 			await service.BothDirectionsAsync(
 				new TransitLine { Name = "8", Mode = TransitMode.Tram },
-				new Station { Id = "33000028", Name = "Postplatz" });
+				new Station { Id = "33000028", Name = "Postplatz" },
+				cancellationToken: TestContext.Current.CancellationToken);
 
 		Assert.Equal(2, courses.Count);
 		Assert.Equal("H", courses[0].Direction);
@@ -179,7 +180,8 @@ public class LineCourseTests
 		IReadOnlyList<LineCourse> courses =
 			await service.BothDirectionsAsync(
 				new TransitLine { Name = "8", Mode = TransitMode.Tram },
-				new Station { Id = "33000028", Name = "Postplatz" });
+				new Station { Id = "33000028", Name = "Postplatz" },
+				cancellationToken: TestContext.Current.CancellationToken);
 
 		Assert.Single(courses);
 		Assert.Equal("H", courses[0].Direction);
@@ -195,7 +197,8 @@ public class LineCourseTests
 		IReadOnlyList<LineCourse> courses =
 			await service.BothDirectionsAsync(
 				new TransitLine { Name = "8", Mode = TransitMode.Tram },
-				new Station { Id = "33000028", Name = "Postplatz" });
+				new Station { Id = "33000028", Name = "Postplatz" },
+				cancellationToken: TestContext.Current.CancellationToken);
 
 		Assert.Empty(courses);
 		Assert.Empty(provider.RequestedRuns);

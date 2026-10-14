@@ -95,7 +95,7 @@ internal static class WidgetChipImages
 
 		using var letters = new SKPaint { Color = ink, IsAntialias = true };
 
-		canvas.DrawText(text, (info.Width - textWidth) / 2f, baseline, font, letters);
+		canvas.DrawText(text, (info.Width - textWidth) / 2f, baseline, SKTextAlign.Left, font, letters);
 
 		using SKImage image = surface.Snapshot();
 		using SKData data = image.Encode(SKEncodedImageFormat.Png, 100);

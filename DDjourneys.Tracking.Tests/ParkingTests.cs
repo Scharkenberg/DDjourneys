@@ -202,8 +202,8 @@ public class ParkingTests
 
 		Assert.True(service.IsAvailable);
 
-		IReadOnlyList<ParkingSite> first = await service.GetSitesAsync();
-		IReadOnlyList<ParkingSite> second = await service.GetSitesAsync();
+		IReadOnlyList<ParkingSite> first = await service.GetSitesAsync(cancellationToken: TestContext.Current.CancellationToken);
+		IReadOnlyList<ParkingSite> second = await service.GetSitesAsync(cancellationToken: TestContext.Current.CancellationToken);
 
 		Assert.Equal(1, provider.Calls);
 		Assert.Same(first, second);
@@ -217,8 +217,8 @@ public class ParkingTests
 
 		ParkingService service = new([provider]);
 
-		await Assert.ThrowsAsync<InvalidOperationException>(() => service.GetSitesAsync());
-		await Assert.ThrowsAsync<InvalidOperationException>(() => service.GetSitesAsync());
+		await Assert.ThrowsAsync<InvalidOperationException>(() => service.GetSitesAsync(cancellationToken: TestContext.Current.CancellationToken));
+		await Assert.ThrowsAsync<InvalidOperationException>(() => service.GetSitesAsync(cancellationToken: TestContext.Current.CancellationToken));
 
 		Assert.Equal(2, provider.Calls);
 	}

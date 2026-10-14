@@ -128,11 +128,11 @@ public class VehicleStreamHubTests
 		VehicleStreamSubscription first = hub.Subscribe();
 		first.Dispose();
 
-		await Task.Delay(30);
+		await Task.Delay(30, TestContext.Current.CancellationToken);
 
 		// Within the linger: the socket should still be up, so this subscriber joins the same session.
 		VehicleStreamSubscription second = hub.Subscribe();
-		await Task.Delay(Linger + TimeSpan.FromSeconds(1));
+		await Task.Delay(Linger + TimeSpan.FromSeconds(1), TestContext.Current.CancellationToken);
 
 		// The linger window has passed and the session must still be standing: a position arrives.
 		Assert.False(provider.LastToken.IsCancellationRequested);
@@ -203,7 +203,7 @@ public class VehicleStreamHubTests
 
 		try
 		{
-			await completion.WaitAsync(TimeSpan.FromSeconds(2));
+			await completion.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
 		}
 		catch (TimeoutException)
 		{

@@ -49,7 +49,7 @@ public sealed class LegAlternativesAndViaTests
 		}
 
 		Journey? result =
-			await LegAlternatives.ComposeAsync(Search, Query(), original, 0, previous: false);
+			await LegAlternatives.ComposeAsync(Search, Query(), original, 0, previous: false, TestContext.Current.CancellationToken);
 
 		Assert.NotNull(result);
 		Assert.Equal(2, result.Legs.Count);
@@ -68,7 +68,7 @@ public sealed class LegAlternativesAndViaTests
 			Task.FromResult(JourneyResult.Success([Trip(Ride(A, B, "11", 10, 10, 10))]));
 
 		Journey? result =
-			await LegAlternatives.ComposeAsync(Search, Query(), original, 0, previous: false);
+			await LegAlternatives.ComposeAsync(Search, Query(), original, 0, previous: false, TestContext.Current.CancellationToken);
 
 		Assert.NotNull(result);
 		Assert.Same(kept, result.Legs[1]);
@@ -83,7 +83,7 @@ public sealed class LegAlternativesAndViaTests
 		Task<JourneyResult> Search(JourneyQuery query, CancellationToken token) =>
 			Task.FromResult(JourneyResult.Success([Trip(Ride(A, B, "11", 10, 0, 20))]));
 
-		Assert.Null(await LegAlternatives.ComposeAsync(Search, Query(), original, 0, previous: false));
+		Assert.Null(await LegAlternatives.ComposeAsync(Search, Query(), original, 0, previous: false, TestContext.Current.CancellationToken));
 	}
 
 	[Fact]
@@ -109,7 +109,7 @@ public sealed class LegAlternativesAndViaTests
 
 		JourneyQuery query = Query(via: ToLocation(B));
 
-		IReadOnlyList<Journey> built = await ViaRouting.ComposeAsync(Search, query);
+		IReadOnlyList<Journey> built = await ViaRouting.ComposeAsync(Search, query, TestContext.Current.CancellationToken);
 
 		Journey only = Assert.Single(built);
 		Assert.Equal(2, only.Legs.Count);
@@ -254,7 +254,7 @@ public sealed class LegAlternativesAndViaTests
 				Routing = new RoutingPreferences { ViaMinutes = 5 }
 			};
 
-		IReadOnlyList<Journey> built = await ViaRouting.ComposeAsync(Search, query);
+		IReadOnlyList<Journey> built = await ViaRouting.ComposeAsync(Search, query, TestContext.Current.CancellationToken);
 
 		Assert.NotEmpty(built);
 		Assert.Equal(Day.AddHours(10).AddMinutes(20).AddMinutes(5), askedForTail);

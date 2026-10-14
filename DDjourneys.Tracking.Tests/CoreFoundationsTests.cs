@@ -44,7 +44,7 @@ public sealed class CoreFoundationsTests
 
 		ApiException exception =
 			await Assert.ThrowsAsync<ApiException>(
-				() => client.GetAsync("https://example.test/trips"));
+				() => client.GetAsync("https://example.test/trips", cancellationToken: TestContext.Current.CancellationToken));
 
 		Assert.Equal(400, exception.StatusCode);
 		Assert.False(exception.IsTransient);
@@ -229,7 +229,8 @@ public sealed class CoreFoundationsTests
 				{
 					From = Place("1", "alpha"),
 					To = Place("2", "beta")
-				});
+				},
+				TestContext.Current.CancellationToken);
 
 		Assert.Equal(0, provider.Calls);
 		Assert.Equal(JourneyOutcome.NotSuitable, result.Outcome);
@@ -248,7 +249,8 @@ public sealed class CoreFoundationsTests
 				{
 					From = Place("1", string.Empty),
 					To = Place("2", "alpha")
-				});
+				},
+				TestContext.Current.CancellationToken);
 
 		Assert.Equal(1, provider.Calls);
 		Assert.Equal(JourneyOutcome.Found, result.Outcome);
@@ -265,7 +267,8 @@ public sealed class CoreFoundationsTests
 				{
 					From = Place("1", "alpha"),
 					To = Place("2", "alpha")
-				});
+				},
+				TestContext.Current.CancellationToken);
 
 		Assert.Equal(JourneyOutcome.Failed, result.Outcome);
 		Assert.Equal("journey_no_providers", result.ErrorMessage);
