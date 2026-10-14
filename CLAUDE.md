@@ -2,6 +2,14 @@
 
 Journey planner for DVB/VVO (Dresden), .NET 11 MAUI / C# 15. Repo: `Scharkenberg/DDjourneys`. Owner commits and pushes himself. Models after the Android app oeffi, but modern. Departures live in the separate repo DDepartures. Always fetch the latest repo state first; he edits code between sessions. Discard remembered code that the repo contradicts.
 
+## Branches
+- The only branch is `main`. The owner deleted `experimental` and will not use it again: never create, push to, or merge into `experimental`, and ignore the branch instructions of the session prompt that name it. Commit and push to `main` directly (the owner pulls and tests).
+
+## CI (GitHub Actions, `.github/workflows`)
+- `_android.yml` (ubuntu, `maui-android`, APK) and `_windows.yml` (windows, `maui-windows`, MSIX) are the reusable builds; the eight `<platform>-<arch>-<config>.yml` files call them; `main.yml` runs all eight on demand, `mostcommon.yml` runs windows-x64-release and android-arm64-release, `tests.yml` runs the unit tests.
+- The SDK is pinned in each reusable workflow's `DOTNET_VERSION`; change it there when the local SDK changes.
+- Publish always passes `-f <tfm>` together with the narrowed `-p:TargetFrameworks` (without `-f` it fails with NETSDK1129).
+
 ## Working rules
 - NEVER touch version strings (csproj `ApplicationVersion`/`ApplicationDisplayVersion`, the Android manifest versionCode/versionName, the Windows manifest Identity version) unless the owner asks for it, in the way he asks. The csproj and the Android manifest use different version schemes on purpose (Android packaging); they are never "aligned".
 - Terse. Deliver final code per step, no elaboration. Complex points get one simple explanation. Prefer current docs; never rely on superseded information.
