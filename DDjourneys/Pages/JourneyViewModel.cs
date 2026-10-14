@@ -123,10 +123,6 @@ public sealed partial class JourneyViewModel :
 		ShareCommand =
 			new AsyncCommand(
 				ShareAsync);
-		FollowJourneyCommand = new AsyncCommand(FollowJourneyAsync, () => _journey is not null && CanFollow, ShowTrackingError);
-		PauseCommand = new AsyncCommand(() => SetPausedAsync(true), () => CanPause, ShowTrackingError);
-		ResumeCommand = new AsyncCommand(() => SetPausedAsync(false), () => IsPaused, ShowTrackingError);
-		StopFollowingCommand = new AsyncCommand(StopFollowingAsync, () => IsFollowed, ShowTrackingError);
 		OpenFollowedCommand = new AsyncCommand(OpenFollowedAsync, null, ShowTrackingError);
 		OpenExpertCommand = new AsyncCommand(OpenExpertAsync);
 		HandOffCommand = new AsyncCommand(HandOffAsync);
@@ -198,14 +194,6 @@ public sealed partial class JourneyViewModel :
 
 	public AsyncCommand ShareCommand { get; }
 
-	public AsyncCommand FollowJourneyCommand { get; }
-
-	public AsyncCommand PauseCommand { get; }
-
-	public AsyncCommand ResumeCommand { get; }
-
-	public AsyncCommand StopFollowingCommand { get; }
-
 	public AsyncCommand OpenFollowedCommand { get; }
 
 	public AsyncCommand OpenExpertCommand { get; }
@@ -220,9 +208,6 @@ public sealed partial class JourneyViewModel :
 
 	/// <summary>Opens the live page for the line of a ride.</summary>
 	public AsyncCommand<LegRow> ShowLiveCommand { get; }
-
-	public bool HasLiveVehicles =>
-		_providers.Supports(ProviderCapabilities.LiveVehicles);
 
 	/// <summary>Shows the whole journey on a map.</summary>
 	public AsyncCommand OpenMapCommand { get; }
@@ -482,11 +467,6 @@ public sealed partial class JourneyViewModel :
 		OnPropertyChanged(nameof(ShowTrackingProblem));
 
 		RefreshActions();
-
-		FollowJourneyCommand.RaiseCanExecuteChanged();
-		PauseCommand.RaiseCanExecuteChanged();
-		ResumeCommand.RaiseCanExecuteChanged();
-		StopFollowingCommand.RaiseCanExecuteChanged();
 
 		TrackingStrings strings = _localization.CurrentStrings.Tracking;
 

@@ -99,8 +99,6 @@ public sealed class TrackedRow
 
 	public string? ToPlace { get; init; }
 
-	public required string LinesText { get; init; }
-
 	/// <summary>The rides as chips (a line, or the mark of a guaranteed change), in travel order.</summary>
 	public required IReadOnlyList<LinePart> LineParts { get; init; }
 
@@ -777,32 +775,6 @@ public sealed partial class TrackedJourneysViewModel : DisposableViewModel, IQue
 			});
 	}
 
-	/// <summary>"7 · gesicherter Anschluss · 6": the lines, with a guaranteed change named where it happens.</summary>
-	private static string LinesOf(WatchedJourney journey, TrackingStrings strings)
-	{
-		string[] lines = [.. journey.Lines.Where(item => !string.IsNullOrWhiteSpace(item))];
-
-		// The marks only line up when every ride has its own entry (equal names in a row were merged).
-		if (journey.EnsuredChanges is not { } ensured || ensured.Count != lines.Length - 1)
-		{
-			return string.Join(" · ", lines);
-		}
-
-		var parts = new List<string>(lines.Length * 2);
-
-		for (int i = 0; i < lines.Length; i++)
-		{
-			parts.Add(lines[i]);
-
-			if (i < ensured.Count && ensured[i])
-			{
-				parts.Add(strings.GuaranteedChange);
-			}
-		}
-
-		return string.Join(" · ", parts);
-	}
-
 	private TrackedRow CreateRow(WatchedJourney journey, TrackingStrings strings)
 	{
 		CultureInfo culture = CultureInfo.CurrentCulture;
@@ -863,7 +835,6 @@ public sealed partial class TrackedJourneysViewModel : DisposableViewModel, IQue
 			FromPlace = StopLabel.PlaceFor(journey.Origin, null),
 			ToName = StopLabel.NameFor(journey.Destination, null),
 			ToPlace = StopLabel.PlaceFor(journey.Destination, null),
-			LinesText = LinesOf(journey, strings),
 			LineParts = LinePartsOf(journey, strings),
 			HasMap = FollowedRides.Has(journey.PlanId),
 			MapCommand = new AsyncCommand(() => OpenMapAsync(journey), null, ShowError),
@@ -1058,14 +1029,17 @@ public sealed partial class TrackedJourneysViewModel : DisposableViewModel, IQue
 			// B5: below the stops of the ride under way, the plan's transfer may be unnecessary - the run itself
 			// also serves the journey's destination (the tracked stop list ends at the plan's alighting stop, so
 			// the hint only ever fires when the service reports the run's stops beyond it).
+			// The transfer is where the plan leaves this run: the start of the next segment (the run's own list may
+			// reach beyond it, which is exactly when the hint can fire); the last ride has no transfer to skip.
 			if (segment.IsCurrent
 				&& !segment.IsWalk
 				&& segment.Stops.Count > 0
 				&& !string.IsNullOrWhiteSpace(journey.Destination)
+				&& trip.Segments.SkipWhile(other => !ReferenceEquals(other, segment)).Skip(1).FirstOrDefault(other => other.From is not null)?.From?.Name is { Length: > 0 } transfer
 				&& StayInVehicle.After(
 					(List<CourseStop>)[.. segment.Stops.Select(stop => new CourseStop(null, stop.Name, stop.Effective))],
 					transferId: null,
-					transferName: segment.Stops[^1].Name,
+					transferName: transfer,
 					destinationId: null,
 					destinationName: journey.Destination)
 					is { } hint)

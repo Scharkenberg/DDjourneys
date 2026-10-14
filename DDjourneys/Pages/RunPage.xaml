@@ -24,7 +24,7 @@
 						VerticalOptions="Center">
 						<Label
 							FontFamily="{DynamicResource FontSemibold}"
-							FontSize="{StaticResource FontCaption}"
+							FontSize="{DynamicResource FontCaption}"
 							StyleClass="ChipLabel"
 							Text="{Binding Title}"
 							TextColor="{Binding Look.Text}" />

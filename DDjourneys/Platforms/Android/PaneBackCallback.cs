@@ -30,7 +30,7 @@ internal sealed class PaneBackCallback : OnBackPressedCallback
 		activity.OnBackPressedDispatcher.AddCallback(activity, callback);
 
 		// The activity can be recreated: the old callback stops following.
-		activity.Lifecycle.AddObserver(new Ending(() => Panes.BackChanged -= Follow));
+		activity.Lifecycle.AddObserver(new LifecycleEnd(() => Panes.BackChanged -= Follow));
 	}
 
 	public override void HandleOnBackPressed()
@@ -44,11 +44,5 @@ internal sealed class PaneBackCallback : OnBackPressedCallback
 		Enabled = false;
 		_activity.OnBackPressedDispatcher.OnBackPressed();
 		Enabled = Panes.CanGoBack;
-	}
-
-	private sealed class Ending(Action end) : Java.Lang.Object, AndroidX.Lifecycle.IDefaultLifecycleObserver
-	{
-		public void OnDestroy(AndroidX.Lifecycle.ILifecycleOwner owner) =>
-			end();
 	}
 }

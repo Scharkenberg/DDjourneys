@@ -94,6 +94,12 @@ public partial class AppShell : Shell
 				return;
 			}
 
+			// Back at a root raises a Pop that pops nothing (the app is about to close): no exit animation.
+			if (back && (CurrentItem?.CurrentItem?.Stack.Count ?? 0) <= 1 && Navigation.ModalStack.Count == 0)
+			{
+				return;
+			}
+
 			Motion.NavigationStarting(back);
 
 			if (CurrentPage is not ContentPage leaving)

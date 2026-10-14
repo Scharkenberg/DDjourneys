@@ -51,7 +51,7 @@
 														<Grid ColumnDefinitions="Auto,Auto,*" ColumnSpacing="8">
 															<Label
 																FontFamily="{DynamicResource FontSemibold}"
-																FontSize="{StaticResource FontSubtitle}"
+																FontSize="{DynamicResource FontSubtitle}"
 																Text="{Binding Name}"
 																VerticalOptions="Center" />
 
@@ -129,7 +129,7 @@
 
 													<Label
 														FontFamily="{DynamicResource FontSemibold}"
-														FontSize="{StaticResource FontCaption}"
+														FontSize="{DynamicResource FontCaption}"
 														IsVisible="{Binding IsSelected}"
 														Text="{Binding InUseText}"
 														TextColor="{DynamicResource Accent}" />

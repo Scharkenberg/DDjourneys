@@ -25,7 +25,7 @@ public static class Theme
 	public const string ModeDark = "dark";
 	public const string ModeSun = "sun";
 
-	private static readonly string[] BrushKeys = ["Outline", "Accent", "Surface", "Raised", "Ink", "InkMuted", "AccentSoft", "OnAccent"];
+	private static readonly string[] BrushKeys = ["Outline", "Accent", "Surface", "Ink", "AccentSoft", "OnAccent"];
 
 	// Everything currently written to Application.Resources by the theme (colours, brushes, fonts).
 	private static readonly Dictionary<string, object> Current = [];

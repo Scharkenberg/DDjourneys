@@ -273,16 +273,6 @@ internal sealed class SchutzengelApi
 			new JsonObject { ["token"] = token, ["app_id"] = appId }.ToJsonString(),
 			cancellationToken);
 
-	/// <summary>
-	/// Moves the plans of this anonymous account into a logged-in user (the reference client's login hand-over).
-	/// </summary>
-	public Task<JsonDocument> MigrateIntoUserAsync(string intoUser, CancellationToken cancellationToken) =>
-		SendJsonAsync(
-			HttpMethod.Post,
-			"migrate-into-user",
-			Wire.Single("into_user", intoUser),
-			cancellationToken);
-
 	// ----- Transport -----
 
 	private async Task<string> CreateAccountCoreAsync(CancellationToken cancellationToken)

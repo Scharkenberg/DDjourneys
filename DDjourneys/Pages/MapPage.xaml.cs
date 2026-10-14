@@ -89,6 +89,9 @@ public partial class MapPage : PanePage, IQueryAttributable
 	private MapViewport? _viewport;
 	private Dictionary<string, object>? _query;
 
+	/// <summary>The provider the page last showed: a switch made while it was hidden (Settings over the tab) is caught up on return.</summary>
+	private string? _providerShown;
+
 	public MapPage(
 		StopAreaService areas,
 		DeviceLocator locator,
@@ -216,6 +219,23 @@ public partial class MapPage : PanePage, IQueryAttributable
 		Theme.Changed += OnThemeChanged;
 		_providers.SelectionChanged += OnProviderChanged;
 		AppVisibility.Changed += OnVehicleWindowVisibility;
+
+		// A tab root is never handed an empty query (Shell skips ApplyQueryAttributes then): no query is the explore map.
+		if (_query is null)
+		{
+			_query = [];
+			_wantsExplore = true;
+			UpdateHint(null);
+		}
+
+		if (_providerShown is { } shown
+			&& shown != _providers.SelectedId)
+		{
+			OnProviderChanged(this, _providers.SelectedId);
+		}
+
+		_providerShown = _providers.SelectedId;
+
 		TryStartExploring();
 		_ = PrepareLayersAsync();
 
@@ -396,15 +416,23 @@ public partial class MapPage : PanePage, IQueryAttributable
 				_vehicleLayer.MarkDirty();
 			});
 
-	/// <summary>Another provider: its stops are already gone with the viewport load; the zones layer starts over.</summary>
+	/// <summary>Another provider: its stops and zones start over (a stop of the old provider must never be offered).</summary>
 	private void OnProviderChanged(object? sender, string providerId) =>
 		Dispatcher.Dispatch(
 			() =>
 			{
+				_providerShown = providerId;
 				_zoneShapes = [];
 				_zonesPrepared = false;
+				_stops.Clear();
 				_ = Map.SetLayerAsync(ZonesLayer, MapScene.Empty);
+				_ = Map.SetLayerAsync(StopsLayer, MapScene.Empty);
 				_ = PrepareLayersAsync();
+
+				if (_viewport is { } viewport)
+				{
+					OnViewportChanged(this, viewport);
+				}
 			});
 
 	private void OnLayersChanged(object? sender, IReadOnlyDictionary<string, bool> states)
@@ -686,12 +714,7 @@ public partial class MapPage : PanePage, IQueryAttributable
 				return;
 			}
 
-			await Shell.Current.GoToAsync(
-				Routes.Departures,
-				new ShellNavigationQueryParameters
-				{
-					[Routes.Stop] = stop
-				});
+			await StopActions.DeparturesAsync(stop);
 		}
 		else if (choice == strings.MapJourneyFromHere)
 		{
@@ -1158,43 +1181,8 @@ public partial class MapPage : PanePage, IQueryAttributable
 		}
 	}
 
-	/// <summary>The four things to do at a stop.</summary>
-	private async Task OfferAsync(Location stop)
-	{
-		ExtrasStrings strings = Strings;
-
-		string choice =
-			await DisplayActionSheetAsync(
-				stop.Name,
-				LocalizationService.Current.CurrentStrings.Common.Cancel,
-				null,
-				strings.MapStopDepartures,
-				strings.MapJourneyToHere,
-				strings.MapJourneyFromHere,
-				strings.ShareStop);
-
-		if (choice == strings.MapStopDepartures)
-		{
-			await Shell.Current.GoToAsync(
-				Routes.Departures,
-				new ShellNavigationQueryParameters
-				{
-					[Routes.Stop] = stop
-				});
-		}
-		else if (choice == strings.MapJourneyToHere)
-		{
-			await _planner.ToAsync(stop);
-		}
-		else if (choice == strings.MapJourneyFromHere)
-		{
-			await PlannerLauncher.FromAsync(stop);
-		}
-		else if (choice == strings.ShareStop)
-		{
-			await StopSharePopup.ShowAsync(DialogPage, stop);
-		}
-	}
+	private async Task OfferAsync(Location stop) =>
+		await StopActions.RunAsync(await StopActions.AskAsync(DialogPage, stop.Name), stop, DialogPage, _planner);
 
 	/// <summary>Pick mode: a point on the map becomes an address (journeys) or the nearest stop, and is confirmed once.</summary>
 	private async void OnPointTapped(object? sender, (double Latitude, double Longitude) point)

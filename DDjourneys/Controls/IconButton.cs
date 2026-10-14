@@ -172,11 +172,21 @@ public sealed partial class IconButton : ContentView
 	private void OnCanExecuteChanged(object? sender, EventArgs e) =>
 		RefreshEnabled();
 
+	protected override void OnPropertyChanged(string? propertyName = null)
+	{
+		base.OnPropertyChanged(propertyName);
+
+		if (propertyName == IsEnabledProperty.PropertyName || propertyName == CommandParameterProperty.PropertyName)
+		{
+			RefreshEnabled();
+		}
+	}
+
 	private void RefreshEnabled()
 	{
 		bool enabled =
-			Command is null
-			|| Command.CanExecute(CommandParameter);
+			IsEnabled
+			&& (Command?.CanExecute(CommandParameter) ?? true);
 
 		_surface.Opacity = enabled ? 1 : 0.35;
 		_surface.InputTransparent = !enabled;
@@ -196,6 +206,11 @@ public sealed partial class IconButton : ContentView
 		catch (Exception ex)
 		{
 			DiagnosticLog.Write($"Icon button feedback skipped: {ex.Message}");
+		}
+
+		if (!IsEnabled)
+		{
+			return;
 		}
 
 		Clicked?.Invoke(this, EventArgs.Empty);

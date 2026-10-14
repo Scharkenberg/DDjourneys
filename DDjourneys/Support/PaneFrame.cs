@@ -36,7 +36,6 @@ internal sealed partial class PaneFrame : TwoPaneView
 	private (int Row, int Column, int Span)[] _cells = [];
 	private double[] _lefts = [];
 	private bool _leftsRelative;
-	private List<(int Row, int Column, bool Horizontal)> _wantedLines = [];
 
 	public PaneFrame()
 	{

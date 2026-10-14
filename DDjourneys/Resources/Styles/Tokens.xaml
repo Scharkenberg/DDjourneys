@@ -37,9 +37,6 @@
 	<x:Double x:Key="HitPrimary">48</x:Double>
 
 	<!-- Radii: sharp. Pills are reserved for non-interactive elements. -->
-	<x:Double x:Key="RadiusControl">4</x:Double>
-	<x:Double x:Key="RadiusCard">6</x:Double>
-	<x:Double x:Key="RadiusSheet">8</x:Double>
 	<CornerRadius x:Key="CornerControl">4</CornerRadius>
 	<CornerRadius x:Key="CornerSheet">8</CornerRadius>
 
@@ -51,11 +48,6 @@
 	<x:Double x:Key="FontTitle">24</x:Double>
 	<x:Double x:Key="FontHeadline">28</x:Double>
 	<x:Double x:Key="FontTime">28</x:Double>
-
-	<!-- Motion (ms) -->
-	<x:Int32 x:Key="MotionFast">120</x:Int32>
-	<x:Int32 x:Key="MotionBase">220</x:Int32>
-	<x:Int32 x:Key="MotionSlow">360</x:Int32>
 
 	<!--  Transparent as a resource key, for support:Themed  -->
 	<Color x:Key="Clear">Transparent</Color>

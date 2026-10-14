@@ -21,18 +21,15 @@ namespace DDjourneys.Pages;
 /// </summary>
 public partial class StopSharePopup : ContentView
 {
-	private readonly Page _hostPage;
 	private readonly StopSharePayload _share;
 	private readonly string _text;
 
 	private bool _themeSubscribed;
 
-	private StopSharePopup(Page hostPage, Location stop)
+	private StopSharePopup(Location stop)
 	{
-		ArgumentNullException.ThrowIfNull(hostPage);
 		ArgumentNullException.ThrowIfNull(stop);
 
-		_hostPage = hostPage;
 		_share = StopShare.For(stop);
 		_text = StopShareText.Build(_share, LocalizationService.Current.CurrentStrings);
 
@@ -63,7 +60,7 @@ public partial class StopSharePopup : ContentView
 	/// <summary>Shows the share of the stop as a popup over the page (or the pane host that lends it).</summary>
 	public static async Task ShowAsync(Page host, Location stop)
 	{
-		var popup = new StopSharePopup(host, stop);
+		var popup = new StopSharePopup(stop);
 
 		await host.ShowPopupAsync(
 			popup,

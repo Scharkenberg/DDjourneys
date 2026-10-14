@@ -260,22 +260,6 @@ public sealed partial class PlanViewModel : DisposableViewModel
 			new Command(
 				() => ShowAllRoutes = !ShowAllRoutes);
 
-		UseRouteCommand =
-			new AsyncCommand<RouteRow>(
-				row => SafeAsync(
-					() => UseRouteAsync(row)));
-
-		ForgetRouteCommand =
-			new Command<RouteRow>(
-				row => Safe(
-					() =>
-					{
-						if (row is not null)
-						{
-							_store.RemoveRecentRoute(row.Route);
-						}
-					}));
-
 		UseLocationFromCommand =
 			new AsyncCommand(
 				() => SafeAsync(
@@ -292,10 +276,6 @@ public sealed partial class PlanViewModel : DisposableViewModel
 			new AsyncCommand(
 				() => SafeAsync(SetHomeAsync),
 				() => !IsLocating);
-
-		GoHomeCommand =
-			new Command(
-				() => Safe(GoHome));
 
 		HomeCommand =
 			new AsyncCommand(
@@ -342,22 +322,6 @@ public sealed partial class PlanViewModel : DisposableViewModel
 						else if (line?.Recent is { } recent)
 						{
 							_store.RemoveRecentRoute(recent.Route);
-						}
-					}));
-
-		UseSavedRouteCommand =
-			new AsyncCommand<SavedRoute>(
-				route => SafeAsync(
-					() => UseSavedRouteAsync(route)));
-
-		ForgetSavedRouteCommand =
-			new Command<SavedRoute>(
-				route => Safe(
-					() =>
-					{
-						if (route is not null)
-						{
-							_store.RemoveSavedRoute(route);
 						}
 					}));
 
@@ -429,8 +393,6 @@ public sealed partial class PlanViewModel : DisposableViewModel
 	/// <summary>The home row: goes home when home is set, otherwise sets it to the stop nearest to the passenger.</summary>
 	public AsyncCommand HomeCommand { get; }
 
-	public Command GoHomeCommand { get; }
-
 	/// <summary>Saves (and removes) the connection shown; the icon reflects whether it is saved.</summary>
 	public RouteBookmark Bookmark { get; }
 
@@ -447,26 +409,8 @@ public sealed partial class PlanViewModel : DisposableViewModel
 	public bool HasRouteLines =>
 		RouteLines.Count > 0;
 
-	public bool HasPlaceChips =>
-		PlaceChips.Count > 0;
-
-	public AsyncCommand<SavedRoute> UseSavedRouteCommand { get; }
-
-	public Command<SavedRoute> ForgetSavedRouteCommand { get; }
-
-	/// <summary>Takes a remembered connection and searches it again straight away.</summary>
-	public AsyncCommand<RouteRow> UseRouteCommand { get; }
-
-	public Command<RouteRow> ForgetRouteCommand { get; }
-
 	public Command ClearRecentsCommand { get; }
 
-
-	public ObservableCollection<Location> Recents { get; } = [];
-
-	public ObservableCollection<Location> Favourites { get; } = [];
-
-	public ObservableCollection<SavedRoute> SavedRoutes { get; } = [];
 
 
 	public Location? From
@@ -487,9 +431,6 @@ public sealed partial class PlanViewModel : DisposableViewModel
 
 				OnPropertyChanged(
 					nameof(FromPlace));
-
-				OnPropertyChanged(
-					nameof(HasFrom));
 
 				OnPropertyChanged(
 					nameof(NoFrom));
@@ -577,9 +518,6 @@ public sealed partial class PlanViewModel : DisposableViewModel
 					nameof(ToPlace));
 
 				OnPropertyChanged(
-					nameof(HasTo));
-
-				OnPropertyChanged(
 					nameof(NoTo));
 
 				OnPropertyChanged(
@@ -644,13 +582,9 @@ public sealed partial class PlanViewModel : DisposableViewModel
 				To.Place);
 
 
-	/// <summary>The connections searched before, most recent first.</summary>
-	public ObservableCollection<RouteRow> RecentRoutes { get; } =
-		[];
-
 
 	public bool HasRecentRoutes =>
-		RecentRoutes.Count > 0;
+		_store.RecentRoutes.Count > 0;
 
 
 	/// <summary>True while the list is cut short; the toggle then offers the rest.</summary>
@@ -695,9 +629,6 @@ public sealed partial class PlanViewModel : DisposableViewModel
 				_store.RecentRoutes.Count);
 
 
-	public bool HasFrom =>
-		From is not null;
-
 
 	public bool NoFrom =>
 		From is null;
@@ -718,9 +649,6 @@ public sealed partial class PlanViewModel : DisposableViewModel
 			? 0
 			: 1;
 
-
-	public bool HasTo =>
-		To is not null;
 
 
 	public IconGlyph FromStar =>
@@ -792,17 +720,6 @@ public sealed partial class PlanViewModel : DisposableViewModel
 				  CultureInfo.CurrentCulture)}";
 
 
-	public string ModeText =>
-		IsArrival
-			? _localization
-				.CurrentStrings
-				.Plan
-				.Arrival
-			: _localization
-				.CurrentStrings
-				.Plan
-				.Departure;
-
 
 	public bool IsArrival
 	{
@@ -818,9 +735,6 @@ public sealed partial class PlanViewModel : DisposableViewModel
 				{
 					IsNow = false;
 				}
-
-				OnPropertyChanged(
-					nameof(ModeText));
 
 				OnPropertyChanged(
 					nameof(WhenText));
@@ -860,32 +774,26 @@ public sealed partial class PlanViewModel : DisposableViewModel
 
 
 	public bool HasFavourites =>
-		Favourites.Count > 0;
+		_store.Favourites.Count > 0;
 
 
 	public bool HasRecents =>
-		Recents.Count > 0;
+		_store.Recents.Count > 0;
 
 
 	public bool HasSavedRoutes =>
-		SavedRoutes.Count > 0;
+		_store.SavedRoutes.Count > 0;
 
 
 	public bool HasHome =>
 		_store.Home is not null;
 
 
-	public bool NoHome =>
-		!HasHome;
-
 
 	public string HomeName =>
 		_store.Home?.Name
 		?? _localization.CurrentStrings.Extras.HomeNotSet;
 
-
-	public string? HomePlace =>
-		_store.Home?.Place;
 
 
 	/// <summary>True while the device position is being looked up.</summary>
@@ -1070,48 +978,6 @@ public sealed partial class PlanViewModel : DisposableViewModel
 			});
 	}
 
-
-	public JourneyQuery BuildQuery()
-	{
-		if (From is null
-			|| To is null)
-		{
-			throw new InvalidOperationException(
-				_localization
-					.CurrentStrings
-					.Plan
-					.StartAndDestinationRequired);
-		}
-
-		DateTime now =
-			Format.NowLocal();
-
-		// Past times are allowed: the user may look up a connection that has already left.
-		DateTime target =
-			IsNow
-				? now
-				: _when;
-
-		return new JourneyQuery
-		{
-			From = From,
-			To = To,
-			DateTime =
-				IsNow
-					? Format.Now()
-					: Format.ToOffset(target),
-			SearchMode =
-				IsArrival
-					? JourneySearchMode.Arrival
-					: JourneySearchMode.Departure,
-			MaxResults =
-				_settings.MaxResults,
-			TimeoutSeconds =
-				_settings.TimeoutSeconds,
-			Routing =
-				_settings.Routing
-		};
-	}
 
 
 	private void SetWhen(
@@ -1355,7 +1221,6 @@ public sealed partial class PlanViewModel : DisposableViewModel
 				? all
 				: all.Take(CollapsedRoutes);
 
-		RecentRoutes.Clear();
 		RouteLines.Clear();
 
 		foreach (SavedRoute saved in _store.SavedRoutes)
@@ -1367,7 +1232,6 @@ public sealed partial class PlanViewModel : DisposableViewModel
 		{
 			var row = new RouteRow(route);
 
-			RecentRoutes.Add(row);
 			RouteLines.Add(new RouteLine(route.From, route.To, null, row));
 		}
 
@@ -1625,21 +1489,6 @@ public sealed partial class PlanViewModel : DisposableViewModel
 			{
 				RefreshRoutes();
 
-				Replace(
-					Recents,
-					_store.Recents);
-
-				Replace(
-					Favourites,
-					_store.Favourites);
-
-				SavedRoutes.Clear();
-
-				foreach (SavedRoute route in _store.SavedRoutes)
-				{
-					SavedRoutes.Add(route);
-				}
-
 				PlaceChips.Clear();
 
 				foreach (Location favourite in _store.Favourites)
@@ -1654,9 +1503,6 @@ public sealed partial class PlanViewModel : DisposableViewModel
 				}
 
 				OnPropertyChanged(
-					nameof(HasPlaceChips));
-
-				OnPropertyChanged(
 					nameof(HasFavourites));
 
 				OnPropertyChanged(
@@ -1666,13 +1512,7 @@ public sealed partial class PlanViewModel : DisposableViewModel
 					nameof(HasHome));
 
 				OnPropertyChanged(
-					nameof(NoHome));
-
-				OnPropertyChanged(
 					nameof(HomeName));
-
-				OnPropertyChanged(
-					nameof(HomePlace));
 
 				OnPropertyChanged(
 					nameof(HasRecents));
@@ -1712,24 +1552,9 @@ public sealed partial class PlanViewModel : DisposableViewModel
 			nameof(WhenText));
 
 		OnPropertyChanged(
-			nameof(ModeText));
-
-		OnPropertyChanged(
 			nameof(RoutesToggleText));
 	}
 
-
-	private static void Replace(
-		ObservableCollection<Location> target,
-		IReadOnlyList<Location> source)
-	{
-		target.Clear();
-
-		foreach (Location place in source)
-		{
-			target.Add(place);
-		}
-	}
 
 
 	private static bool SamePlace(

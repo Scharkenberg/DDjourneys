@@ -729,19 +729,6 @@ public static class MapScenes
 	}
 
 	/// <summary>
-	/// One followed run: its whole itinerary drawn faintly — the vehicle's chained journeys around the
-	/// ride — the stops of the ride itself in the colour of its line, the rest quiet grey, the real line of
-	/// the route when the provider has it, and the matched vehicle (when one was found) on top, in the colour
-	/// of its delay.
-	/// </summary>
-	public static MapScene FromTrack(
-		TrackTarget target,
-		LiveVehicle? vehicle,
-		bool fit,
-		(double Latitude, double Longitude)? you = null) =>
-		FromTracks((List<TrackTarget>)[target], (List<LiveVehicle?>)[vehicle], fit, you);
-
-	/// <summary>
 	/// The runs of a followed journey together: every itinerary faintly, its stops, and each matched vehicle.
 	/// The optional <paramref name="you"/> (B5) adds the "you are probably here" dot - the caller's snapped
 	/// device position, drawn only where no fresh vehicle position says where the run is.

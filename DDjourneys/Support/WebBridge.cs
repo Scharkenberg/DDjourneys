@@ -18,6 +18,21 @@ public static class WebBridge
 			new JsonSerializerOptions { TypeInfoResolver = JsonTypeInfoResolver.Combine() },
 			JsonMetadataServices.StringConverter);
 
+	/// <summary>One JSON object for a page call, written by <paramref name="body"/> between its braces.</summary>
+	public static string Json(Action<Utf8JsonWriter> body)
+	{
+		var buffer = new System.Buffers.ArrayBufferWriter<byte>();
+
+		using (var writer = new Utf8JsonWriter(buffer))
+		{
+			writer.WriteStartObject();
+			body(writer);
+			writer.WriteEndObject();
+		}
+
+		return System.Text.Encoding.UTF8.GetString(buffer.WrittenSpan);
+	}
+
 	/// <summary>Calls <c>function(command, json)</c> in the page; failures are logged, never thrown.</summary>
 	public static async Task CallAsync(
 		HybridWebView web,

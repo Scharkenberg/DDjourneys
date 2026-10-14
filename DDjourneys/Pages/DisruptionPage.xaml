@@ -26,7 +26,7 @@
 							StyleClass="Chip">
 							<Label
 								FontFamily="{DynamicResource FontSemibold}"
-								FontSize="{StaticResource FontCaption}"
+								FontSize="{DynamicResource FontCaption}"
 								StyleClass="ChipLabel"
 								Text="{Binding Name}"
 								TextColor="{Binding Look.Text}" />

@@ -33,8 +33,8 @@ public class MainActivity : MauiAppCompatActivity
 	{
 		base.OnCreate(savedInstanceState);
 
-		// Back on the phone's tabs never ends the app except on the planner itself; this is asked only
-		// after the shell's own callback, and the pane callback stays ahead of it, so a pane closes first.
+		// Back on another tab's bare root switches to the planner instead of ending the app; registered
+		// after MAUI's callback (so asked before it) and before the pane callback (so asked after that).
 		TabBackCallback.Register(this);
 
 		// After MAUI's own callback, so it is asked first: back closes the deepest pane while there is one.

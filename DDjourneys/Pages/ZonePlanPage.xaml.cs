@@ -51,7 +51,6 @@ public sealed partial class ZonePlanPage : ContentPage, IQueryAttributable
 
 	private Choice _choice;
 	private bool _loaded;
-	private string? _key;
 	private ZonePlan? _plan;
 	private Dictionary<string, VvoPlanPin> _pins = [];
 	private ILookup<string, VvoPlanPin> _byName = Array.Empty<VvoPlanPin>().ToLookup(pin => pin.Id);
@@ -153,7 +152,6 @@ public sealed partial class ZonePlanPage : ContentPage, IQueryAttributable
 	private void ReloadPlan(object? sender, EventArgs e)
 	{
 		_loaded = false;
-		_key = null;
 
 		Load(refresh: false);
 	}
@@ -166,7 +164,6 @@ public sealed partial class ZonePlanPage : ContentPage, IQueryAttributable
 		}
 
 		_choice = choice;
-		_key = null;
 		Preferences.Default.Set(KindPreference, choice.ToString());
 		ShowKind();
 		Load(refresh: false);
@@ -258,8 +255,6 @@ public sealed partial class ZonePlanPage : ContentPage, IQueryAttributable
 				}
 
 				Stale.IsVisible = !fresh;
-				_key = tiles.Spec.Key;
-
 				await ShowDocumentAsync(tiles);
 			}
 		}
@@ -398,8 +393,6 @@ public sealed partial class ZonePlanPage : ContentPage, IQueryAttributable
 			NetworkMapFile jpg = await _maps.GetJpgAsync(DocumentKind);
 			ImagePlanTiles tiles = await ImagePlanTiles.OpenAsync(jpg.Path, VvoNetworkMap.PlanName(DocumentKind), CancellationToken.None);
 
-			_key = tiles.Spec.Key;
-
 			await ShowDocumentAsync(tiles);
 		}
 		catch (Exception ex) when (ex is not OperationCanceledException)
@@ -414,7 +407,6 @@ public sealed partial class ZonePlanPage : ContentPage, IQueryAttributable
 	{
 		_awaiting = false;
 		_await?.Cancel();
-		_key = null;
 		_loaded = false;
 		Busy.IsRunning = false;
 		Busy.IsVisible = false;
@@ -508,54 +500,21 @@ public sealed partial class ZonePlanPage : ContentPage, IQueryAttributable
 
 		try
 		{
-			ExtrasStrings strings = Strings;
+			StopAction action = await StopActions.AskAsync(this, pin.Title);
 
-			string choice =
-				await DisplayActionSheetAsync(
-					pin.Title,
-					LocalizationService.Current.CurrentStrings.Common.Cancel,
-					null,
-					strings.MapStopDepartures,
-					strings.MapJourneyToHere,
-					strings.MapJourneyFromHere,
-					strings.ShareStop);
-
-			if (choice != strings.MapStopDepartures
-				&& choice != strings.MapJourneyToHere
-				&& choice != strings.MapJourneyFromHere
-				&& choice != strings.ShareStop)
+			if (action == StopAction.None)
 			{
 				return;
 			}
 
 			if (await LocationOfAsync(pin) is not { } stop)
 			{
-				ShowToast(strings.ZonePlanNoMatch);
+				ShowToast(Strings.ZonePlanNoMatch);
 
 				return;
 			}
 
-			if (choice == strings.MapStopDepartures)
-			{
-				await Shell.Current.GoToAsync(
-					Routes.Departures,
-					new ShellNavigationQueryParameters
-					{
-						[Routes.Stop] = stop
-					});
-			}
-			else if (choice == strings.MapJourneyToHere)
-			{
-				await _planner.ToAsync(stop);
-			}
-			else if (choice == strings.ShareStop)
-			{
-				await StopSharePopup.ShowAsync(this, stop);
-			}
-			else
-			{
-				await PlannerLauncher.FromAsync(stop);
-			}
+			await StopActions.RunAsync(action, stop, this, _planner);
 		}
 		catch (Exception ex)
 		{

@@ -735,8 +735,5 @@ public static class JourneyShareImage
 
 			return $"{text.TrimEnd()}…";
 		}
-
-		private static string Suffix(string? platform) =>
-			string.IsNullOrWhiteSpace(platform) ? string.Empty : $" · {platform}";
 	}
 }

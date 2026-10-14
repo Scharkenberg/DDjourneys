@@ -86,19 +86,6 @@ internal static class WindowsNotificationHost
 		}
 	}
 
-	public static void Shutdown()
-	{
-		try
-		{
-			AppNotificationManager.Default.NotificationInvoked -= OnInvoked;
-			AppNotificationManager.Default.Unregister();
-		}
-		catch (Exception ex)
-		{
-			WindowsTrace.Write("Unregistering failed", ex);
-		}
-	}
-
 	private static async Task RemoveLeftoversAsync(AppNotificationManager manager)
 	{
 		try

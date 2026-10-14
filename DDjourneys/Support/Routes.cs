@@ -34,7 +34,6 @@ public static class Routes
 	public const string Run = "run";
 	public const string Disruptions = "disruptions";
 	public const string Vehicles = "vehicles";
-	public const string StopInfo = "stopinfo";
 
 	/// <summary>The map page, and its query keys: a <c>MapScene</c> and the page title.</summary>
 	public const string Map = "map";
@@ -51,8 +50,6 @@ public static class Routes
 	/// <summary>Reserved key of the map layer panel: the network map link row posts it when tapped.</summary>
 	public const string NetworkMapLayer = "networkmap";
 
-	/// <summary>Reserved key of the map layer panel: the fare zone plan link row.</summary>
-	public const string ZonePlanLayer = "zoneplan";
 	public const string MapScene = "MapScene";
 	public const string MapTitle = "MapTitle";
 

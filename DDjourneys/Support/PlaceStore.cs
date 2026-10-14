@@ -314,25 +314,6 @@ public sealed class PlaceStore
 	}
 
 
-	public void ClearHome()
-	{
-		lock (_gate)
-		{
-			if (_home is null)
-			{
-				return;
-			}
-
-			_home = null;
-
-			Save(
-				HomeKey,
-				[]);
-		}
-
-		RaiseChanged();
-	}
-
 
 	/// <summary>Keeps a named connection; a connection with the same name is replaced.</summary>
 	public void AddSavedRoute(
@@ -383,19 +364,6 @@ public sealed class PlaceStore
 		}
 	}
 
-
-	public bool HasSavedRoute(
-		string name)
-	{
-		lock (_gate)
-		{
-			return _savedRoutes.Any(
-				r => string.Equals(
-					r.Name,
-					name,
-					StringComparison.OrdinalIgnoreCase));
-		}
-	}
 
 
 	public void RemoveSavedRoute(

@@ -30,7 +30,6 @@ public sealed class CommonStrings
 	public required string Close { get; init; }
 	public required string Back { get; init; }
 	public required string Loading { get; init; }
-	public required string Searching { get; init; }
 	public required string Today { get; init; }
 	public required string Tomorrow { get; init; }
 	public required string Unknown { get; init; }
@@ -39,7 +38,6 @@ public sealed class CommonStrings
 	public required string Share { get; init; }
 	public required string Search { get; init; }
 	public required string Clear { get; init; }
-	public required string SearchFailed { get; init; }
 	public required string CouldNotReachService { get; init; }
 	public required string SomethingWentWrong { get; init; }
 	public required string NavigationError { get; init; }
@@ -56,7 +54,6 @@ public sealed class PlanStrings
 	public required string ToggleFavouriteFrom { get; init; }
 	public required string ToggleFavouriteTo { get; init; }
 	public required string SwapDescription { get; init; }
-	public required string Swap { get; init; }
 	public required string SearchJourneys { get; init; }
 	public required string Departure { get; init; }
 	public required string Arrival { get; init; }
@@ -65,11 +62,9 @@ public sealed class PlanStrings
 	public required string LeaveNow { get; init; }
 	public required string Favourites { get; init; }
 	public required string Recent { get; init; }
-	public required string RecentSearches { get; init; }
 	public required string ShowAllSearches { get; init; }
 	public required string ShowFewer { get; init; }
 	public required string ForgetSearch { get; init; }
-	public required string SearchAgain { get; init; }
 	public required string PlacesYouSearchForWillAppearHere { get; init; }
 	public required string StartAndDestinationRequired { get; init; }
 	public required string Via { get; init; }
@@ -77,10 +72,8 @@ public sealed class PlanStrings
 	public required string ClearVia { get; init; }
 	public required string UseLocationFrom { get; init; }
 	public required string UseLocationTo { get; init; }
-	public required string GoHome { get; init; }
 	public required string SetHome { get; init; }
 	public required string SaveRoute { get; init; }
-	public required string RouteNamePrompt { get; init; }
 	public required string SavedRoutes { get; init; }
 	public required string ForgetSavedRoute { get; init; }
 	public required string RouteSaved { get; init; }
@@ -101,7 +94,6 @@ public sealed class DeparturesStrings
 	public required string NoDepartures { get; init; }
 	public required string Lines { get; init; }
 	public required string ShowLines { get; init; }
-	public required string HideLines { get; init; }
 	public required string Nearby { get; init; }
 	public required string UseMyLocation { get; init; }
 	public required string TariffZone { get; init; }
@@ -114,7 +106,6 @@ public sealed class DeparturesStrings
 	public required string RunTitle { get; init; }
 	public required string NoRun { get; init; }
 	public required string VehicleHere { get; init; }
-	public required string OpenDepartures { get; init; }
 
 	// B1 — line-centric departures
 	public required string ShowCancelled { get; init; }
@@ -158,7 +149,6 @@ public sealed class PlaceSearchStrings
 	public required string Hint { get; init; }
 	public required string TypeAtLeastThreeCharacters { get; init; }
 	public required string NoPlacesFound { get; init; }
-	public required string Searching { get; init; }
 	public required string CouldNotReachService { get; init; }
 
 	// B1 — line-centric departures
@@ -195,8 +185,6 @@ public sealed class JourneyStrings
 	public required string DeactivateTracking { get; init; }
 	public required string Refresh { get; init; }
 	public required string Notes { get; init; }
-	public required string NoRealtimeData { get; init; }
-	public required string ShareJourney { get; init; }
 	public required string NotServed { get; init; }
 	public required string InProgress { get; init; }
 	public required string Cancelled { get; init; }
@@ -221,7 +209,6 @@ public sealed class JourneyStrings
 	public required string OneNotice { get; init; }
 	public required string MultipleNotices { get; init; }
 	public required string AccessibilitySummary { get; init; }
-	public required string AccessibilityCancelled { get; init; }
 	public required string AccessibilityArrivalDelay { get; init; }
 	public required string AccessibilityNotices { get; init; }
 	public required string HideStops { get; init; }
@@ -306,7 +293,6 @@ public sealed class SettingsStrings
 	public required string ThemeDark { get; init; }
 	public required string ThemeSun { get; init; }
 	public required string AppearanceTitle { get; init; }
-	public required string AppearanceHint { get; init; }
 	public required string ModeHeader { get; init; }
 	public required string ModeSystemDescription { get; init; }
 	public required string ModeLightDescription { get; init; }
@@ -610,7 +596,6 @@ public sealed class TrackingStrings
 	public required string LeadMinutes { get; init; }
 	public required string Periodic { get; init; }
 	public required string NextStop { get; init; }
-	public required string Departs { get; init; }
 	public required string ArrivedAt { get; init; }
 	public required string PhasePlanned { get; init; }
 	public required string PhaseInProgress { get; init; }
@@ -628,7 +613,6 @@ public sealed class TrackingStrings
 	public required string NotifStartsAt { get; init; }
 	public required string NotifRoute { get; init; }
 	public required string NotifRiding { get; init; }
-	public required string NotifNext { get; init; }
 	public required string NotifGetOff { get; init; }
 	public required string NotifBoard { get; init; }
 	public required string NotifChangeTitle { get; init; }
@@ -664,7 +648,6 @@ public sealed class TrackingStrings
 // <extras>
 public sealed class ExtrasStrings
 {
-	public required string KindStop { get; init; }
 	public required string KindAddress { get; init; }
 	public required string KindPoi { get; init; }
 	public required string SearchAddresses { get; init; }
@@ -691,9 +674,7 @@ public sealed class ExtrasStrings
 	public required string LiveSourceGps { get; init; }
 	public required string LiveSourceTelegram { get; init; }
 	public required string LiveHint { get; init; }
-	public required string LiveOpenMap { get; init; }
 	public required string AccessTitle { get; init; }
-	public required string AccessHide { get; init; }
 	public required string AccessNone { get; init; }
 	public required string AccessPlatform { get; init; }
 	public required string AccessBoarding { get; init; }
@@ -701,8 +682,6 @@ public sealed class ExtrasStrings
 	public required string AccessWidth { get; init; }
 	public required string AccessTactile { get; init; }
 	public required string AccessAudio { get; init; }
-	public required string ServiceShow { get; init; }
-	public required string ServiceHide { get; init; }
 	public required string ServiceNone { get; init; }
 	public required string ServiceNeedsPosition { get; init; }
 	public required string CapLive { get; init; }
@@ -719,7 +698,6 @@ public sealed class ExtrasStrings
 	public required string FareSingle { get; init; }
 	public required string FareDay { get; init; }
 	public required string FareZones { get; init; }
-	public required string FareValidFor { get; init; }
 	public required string FareNotAll { get; init; }
 	public required string FareBuy { get; init; }
 	public required string ShortcutHome { get; init; }
@@ -733,7 +711,6 @@ public sealed class ExtrasStrings
 	public required string PassengerSenior { get; init; }
 	public required string PassengerDisabled { get; init; }
 	public required string RunsOn { get; init; }
-	public required string RunsDaily { get; init; }
 	public required string VehicleReported { get; init; }
 
 	// B5 — ride companion (the "you are probably here" marker)
@@ -810,19 +787,16 @@ public sealed class ExtrasStrings
 	public required string NetworkMapRefresh { get; init; }
 	public required string NetworkMapOpenPdf { get; init; }
 	public required string NetworkMapCredit { get; init; }
-	public required string NetworkMapStale { get; init; }
 	public required string NetworkMapFailed { get; init; }
 	public required string NetworkMapZoomIn { get; init; }
 	public required string NetworkMapZoomOut { get; init; }
 	public required string MapOpenSummary { get; init; }
 	public required string NetworkMapSummary { get; init; }
 	// B6 — night and barrier-free plans
-	public required string NetworkMapPlanStandard { get; init; }
 	public required string NetworkMapPlanNight { get; init; }
 	public required string NetworkMapPlanBarrierFree { get; init; }
 	public required string NetworkMapPlanCityMap { get; init; }
 	public required string ZonePlan { get; init; }
-	public required string ZonePlanSummary { get; init; }
 	public required string ZonePlanRegion { get; init; }
 	public required string ZonePlanDresden { get; init; }
 	public required string ZonePlanSearch { get; init; }
@@ -892,9 +866,7 @@ public sealed class WidgetStrings
 	public required string NeedsLocation { get; init; }
 	public required string RefreshFailed { get; init; }
 	public required string UpdatedAt { get; init; }
-	public required string PositionFrom { get; init; }
 	public required string Meters { get; init; }
-	public required string ConfigTitle { get; init; }
 	public required string ConfigFrom { get; init; }
 	public required string ConfigTo { get; init; }
 	public required string ConfigStop { get; init; }

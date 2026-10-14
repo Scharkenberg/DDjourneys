@@ -52,9 +52,6 @@ public partial class PanePage : ContentPage
 	/// <summary>The route the page stands for; pairs are decided by route.</summary>
 	public string? PaneRoute { get; internal set; }
 
-	/// <summary>True while the page is shown as a pane of another page (it is then not in the window itself).</summary>
-	public bool IsLent => _host is not null;
-
 	/// <summary>The page that dialogs and popups go to: the host while lent.</summary>
 	protected ContentPage DialogPage => _host ?? (ContentPage)this;
 

@@ -34,7 +34,6 @@ internal static partial class WindowsWidgets
 	internal static Support.Widgets.WidgetLoader? Loader { get; private set; }
 
 	private static readonly Lock Gate = new();
-	private static uint _registrationCookie;
 	private static string? _pendingSetup;
 	private static int _registered;
 	private static string _registration = "not tried yet";
@@ -70,9 +69,6 @@ internal static partial class WindowsWidgets
 
 	/// <summary>Widgets the board created before the store existed: id and the manifest definition they came from.</summary>
 	private static readonly ConcurrentDictionary<string, string> Early = new(StringComparer.Ordinal);
-
-	internal static bool HasPinnedWidgets =>
-		PinnedIds().Length > 0;
 
 	/// <summary>Called while the app builds: the store, the loader, the refresh cycle - and what came in before.</summary>
 	internal static void Initialize(
@@ -147,7 +143,6 @@ internal static partial class WindowsWidgets
 
 			lock (Gate)
 			{
-				_registrationCookie = cookie;
 				_registration = $"registered (cookie {cookie}) at {DateTimeOffset.Now:HH:mm:ss.fff}";
 			}
 
@@ -435,11 +430,6 @@ internal static partial class WindowsWidgets
 		uint dwClsContext,
 		uint flags,
 		out uint lpdwRegister);
-
-#pragma warning disable SYSLIB1054
-	[DllImport("ole32.dll")]
-	private static extern int CoRevokeClassObject(uint dwRegister);
-#pragma warning restore SYSLIB1054
 
 	/// <summary>The IClassFactory of the docs' FactoryHelper, handed out for CoCreateInstance.</summary>
 	[ComVisible(true)]

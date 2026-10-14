@@ -192,7 +192,7 @@
 																		WidthRequest="6" />
 																	<Label
 																		FontFamily="{DynamicResource FontSemibold}"
-																		FontSize="{StaticResource FontCaption}"
+																		FontSize="{DynamicResource FontCaption}"
 																		Text="{Binding LiveBadgeText}"
 																		TextColor="{DynamicResource OnAccent}" />
 																</HorizontalStackLayout>
@@ -246,14 +246,14 @@
 																			VerticalOptions="Center">
 																			<Label
 																				FontFamily="{DynamicResource FontSemibold}"
-																				FontSize="{StaticResource FontCaption}"
+																				FontSize="{DynamicResource FontCaption}"
 																				LineBreakMode="NoWrap"
 																				StyleClass="ChipLabel"
 																				Text="{Binding Text}"
 																				TextColor="{Binding Look.Text}" />
 																		</Border>
 																		<Label
-																			FontSize="{StaticResource FontCaption}"
+																			FontSize="{DynamicResource FontCaption}"
 																			IsVisible="{Binding IsMark}"
 																			LineBreakMode="NoWrap"
 																			StyleClass="Faint"
@@ -267,7 +267,7 @@
 
 													<Label
 														FontFamily="{DynamicResource FontSemibold}"
-														FontSize="{StaticResource FontCaption}"
+														FontSize="{DynamicResource FontCaption}"
 														IsVisible="{Binding ShowNormalStatus}"
 														Text="{Binding StatusText}"
 														TextColor="{DynamicResource Accent}" />
@@ -352,7 +352,7 @@
 													<!--  Extended view: every stop, moving with the clock  -->
 													<Label support:Motion.Feedback="True"
 														FontFamily="{DynamicResource FontSemibold}"
-														FontSize="{StaticResource FontCaption}"
+														FontSize="{DynamicResource FontCaption}"
 														Text="{Binding CourseToggleText}"
 														TextColor="{DynamicResource Accent}">
 														<Label.GestureRecognizers>
@@ -403,7 +403,7 @@
 																		StrokeThickness="0">
 																		<Label
 																			FontFamily="{DynamicResource FontSemibold}"
-																			FontSize="{StaticResource FontCaption}"
+																			FontSize="{DynamicResource FontCaption}"
 																			LineBreakMode="TailTruncation"
 																			Text="{Binding Text}"
 																			TextColor="{DynamicResource Accent}" />
@@ -420,7 +420,7 @@
 																		StrokeThickness="0">
 																		<Label
 																			FontFamily="{DynamicResource FontSemibold}"
-																			FontSize="{StaticResource FontCaption}"
+																			FontSize="{DynamicResource FontCaption}"
 																			LineBreakMode="TailTruncation"
 																			Text="{Binding Text}"
 																			TextColor="{DynamicResource OnAccent}" />
@@ -438,7 +438,7 @@
 											StrokeThickness="0">
 											<Label
 												FontFamily="{DynamicResource FontSemibold}"
-												FontSize="{StaticResource FontCaption}"
+												FontSize="{DynamicResource FontCaption}"
 												LineBreakMode="WordWrap"
 												Text="{Binding Text}"
 												TextColor="{DynamicResource Accent}" />
@@ -462,7 +462,7 @@
 																				VerticalOptions="Center"
 																				Color="{DynamicResource InkMuted}" />
 																			<Label
-																				FontSize="{StaticResource FontCaption}"
+																				FontSize="{DynamicResource FontCaption}"
 																				LineBreakMode="TailTruncation"
 																				Text="{Binding Text}"
 																				TextColor="{DynamicResource InkMuted}"
@@ -476,17 +476,17 @@
 																		Spacing="0"
 																		VerticalOptions="Center">
 																		<Label
-																			FontSize="{StaticResource FontCaption}"
+																			FontSize="{DynamicResource FontCaption}"
 																			HorizontalTextAlignment="End"
 																			Text="{Binding Time}" />
 																		<Label
-																			FontSize="{StaticResource FontCaption}"
+																			FontSize="{DynamicResource FontCaption}"
 																			HorizontalTextAlignment="End"
 																			IsVisible="{Binding IsLate}"
 																			StyleClass="Delay"
 																			Text="{Binding LiveTime}" />
 																		<Label
-																			FontSize="{StaticResource FontCaption}"
+																			FontSize="{DynamicResource FontCaption}"
 																			HorizontalTextAlignment="End"
 																			IsVisible="{Binding IsOnTimeLive}"
 																			StyleClass="OnTime"
@@ -562,7 +562,7 @@
 																		<Label
 																			Grid.Column="1"
 																			FontFamily="{DynamicResource FontSemibold}"
-																			FontSize="{StaticResource FontCaption}"
+																			FontSize="{DynamicResource FontCaption}"
 																			IsVisible="{Binding HasEta}"
 																			Text="{Binding Eta}"
 																			TextColor="{DynamicResource Accent}"

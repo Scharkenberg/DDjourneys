@@ -348,8 +348,12 @@ public sealed partial class SettingsViewModel : DisposableViewModel
 				: $"{provider.Name} \u00b7 {provider.FullName}"
 			: string.Empty;
 
-	public void RefreshProvider() =>
+	public void RefreshProvider()
+	{
 		OnPropertyChanged(nameof(ProviderText));
+		OnPropertyChanged(nameof(ShowDisruptions));
+		OnPropertyChanged(nameof(DisruptionsSummary));
+	}
 
 	/// <summary>Whether the selected provider names route changes (the disruptions entry of the More tab, B4).</summary>
 	public bool ShowDisruptions =>
@@ -882,6 +886,9 @@ public sealed partial class SettingsViewModel : DisposableViewModel
 		OnPropertyChanged(nameof(TimeoutText));
 		OnPropertyChanged(nameof(LeadMinutes));
 		OnPropertyChanged(nameof(LeadText));
+		OnPropertyChanged(nameof(GetOffAlarmMinutes));
+		OnPropertyChanged(nameof(GetOffAlarmText));
+		OnPropertyChanged(nameof(GetOffAlarmSound));
 		OnPropertyChanged(nameof(ShowOccupancy));
 		OnPropertyChanged(nameof(SearchAddresses));
 		OnPropertyChanged(nameof(SearchPois));

@@ -356,7 +356,7 @@ window.ddMain = function (engineName) {
 	var map = null, key = '', theme = null, styleName = null, styleReady = false;
 	var autoFit = true, labels = { autoFit: 'Auto-fit', fitNow: 'Fit', info: 'Map data', offlineTile: 'Offline: city map from this device' }, autoButton = null;
 	var scene = { markers: [], lines: [] }, wantFit = false;
-	var markers = {}, explore = false, pickMode = false, pendingCenter = null, viewTimer = 0;
+	var markers = {}, explore = false, pickMode = false, viewTimer = 0;
 	var errors = 0, firstRender = false, firstStyle = false, firstIdle = false;
 	var engine = engineName, gl = engine === 'carto', eng = null, tiles = null, lineGroup = null, shapeGroup = null, programmatic = 0;
 
@@ -1582,14 +1582,6 @@ window.ddMain = function (engineName) {
 				layerState = (arg && arg.state) || {};
 				layerTitle = (arg && arg.label) || '';
 				refreshLayerRows();
-				break;
-
-			case 'center':
-				if (map) {
-					eng.ease(arg.lat, arg.lon, arg.zoom || Math.max(map.getZoom(), 15), 400);
-				} else {
-					pendingCenter = arg;
-				}
 				break;
 
 			case 'tile':

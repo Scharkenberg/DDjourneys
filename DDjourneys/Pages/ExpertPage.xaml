@@ -42,13 +42,13 @@
 												ColumnSpacing="10">
 
 												<Label
-													FontSize="{StaticResource FontCaption}"
+													FontSize="{DynamicResource FontCaption}"
 													StyleClass="Caption"
 													Text="{Binding Key}" />
 
 												<Label
 													Grid.Column="1"
-													FontSize="{StaticResource FontCaption}"
+													FontSize="{DynamicResource FontCaption}"
 													Text="{Binding Value}" />
 											</Grid>
 										</DataTemplate>

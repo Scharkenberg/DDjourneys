@@ -337,7 +337,6 @@ html.dark .leaflet-tile-pane, html.dark .leaflet-paper-pane, html.dark .leaflet-
 			case 'init': applyTheme(arg.theme); open(arg.plan); break;
 			case 'theme': applyTheme(arg); break;
 			case 'zoom': if (map) { arg.by > 0 ? map.zoomIn(arg.by) : map.zoomOut(-arg.by); } break;
-			case 'fit': if (map) { map.fitBounds(bounds, { padding: [12, 12] }); } break;
 			case 'clear': clear(); break;
 			case 'stops': if (map) { setStops(arg); } break;
 			case 'mark': mark(arg); break;

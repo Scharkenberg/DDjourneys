@@ -202,7 +202,7 @@
 							<support:PillScroll Fraction="0.6">
 								<Label
 									FontFamily="{DynamicResource FontSemibold}"
-									FontSize="{StaticResource FontCaption}"
+									FontSize="{DynamicResource FontCaption}"
 									StyleClass="ChipLabel"
 									Text="{Binding LineText}"
 									TextColor="{Binding Look.Text}" />
@@ -221,7 +221,7 @@
 							VerticalOptions="Center">
 							<Label
 								FontFamily="{DynamicResource FontSemibold}"
-								FontSize="{StaticResource FontCaption}"
+								FontSize="{DynamicResource FontCaption}"
 								LineBreakMode="TailTruncation"
 								Text="{Binding Direction}"
 								TextColor="{DynamicResource Accent}" />
@@ -262,13 +262,13 @@
 					<Label
 						support:Motion.Breathe="True"
 						FontFamily="{DynamicResource FontSemibold}"
-						FontSize="{StaticResource FontCaption}"
+						FontSize="{DynamicResource FontCaption}"
 						IsVisible="{Binding IsActive}"
 						Text="{localization:Tr Journey.InProgress}"
 						TextColor="{DynamicResource Accent}" />
 
 					<!--  Ride actions: live position of this vehicle (pin), earlier and later alternative  -->
-					<HorizontalStackLayout IsVisible="{Binding HasActions}" Spacing="{StaticResource SpaceS}">
+					<HorizontalStackLayout IsVisible="{Binding HasActions}" Spacing="{DynamicResource SpaceS}">
 
 						<Border
 							Padding="0"
@@ -292,7 +292,7 @@
 							support:Dense.MinHeight="{StaticResource HitButton}"
 							Command="{Binding Source={RelativeSource AncestorType={x:Type local:JourneyViewModel}}, x:DataType=local:JourneyViewModel, Path=LegEarlierCommand}"
 							CommandParameter="{Binding .}"
-							FontSize="{StaticResource FontCaption}"
+							FontSize="{DynamicResource FontCaption}"
 							IsVisible="{Binding CanSwapRide}"
 							SemanticProperties.Description="{localization:Tr Journey.LegEarlierHint}"
 							StyleClass="Tonal"
@@ -303,7 +303,7 @@
 							support:Dense.MinHeight="{StaticResource HitButton}"
 							Command="{Binding Source={RelativeSource AncestorType={x:Type local:JourneyViewModel}}, x:DataType=local:JourneyViewModel, Path=LegLaterCommand}"
 							CommandParameter="{Binding .}"
-							FontSize="{StaticResource FontCaption}"
+							FontSize="{DynamicResource FontCaption}"
 							IsVisible="{Binding CanSwapRide}"
 							SemanticProperties.Description="{localization:Tr Journey.LegLaterHint}"
 							StyleClass="Tonal"
@@ -320,7 +320,7 @@
 
 						<Label
 							FontFamily="{DynamicResource FontSemibold}"
-							FontSize="{StaticResource FontBody}"
+							FontSize="{DynamicResource FontBody}"
 							Text="{Binding StopsText}"
 							TextColor="{DynamicResource Accent}"
 							VerticalOptions="Center" />
@@ -379,7 +379,7 @@
 								VerticalOptions="Center"
 								Color="{DynamicResource InkMuted}" />
 							<Label
-								FontSize="{StaticResource FontCaption}"
+								FontSize="{DynamicResource FontCaption}"
 								LineBreakMode="WordWrap"
 								Text="{Binding Text}"
 								TextColor="{DynamicResource InkMuted}"
@@ -421,7 +421,7 @@
 					Spacing="4">
 
 					<Label
-						FontSize="{StaticResource FontCaption}"
+						FontSize="{DynamicResource FontCaption}"
 						LineBreakMode="WordWrap"
 						Text="{Binding Text}"
 						TextColor="{DynamicResource InkMuted}" />
@@ -562,7 +562,7 @@
 						StrokeThickness="0">
 						<Label
 							FontFamily="{DynamicResource FontSemibold}"
-							FontSize="{StaticResource FontCaption}"
+							FontSize="{DynamicResource FontCaption}"
 							LineBreakMode="WordWrap"
 							Text="{Binding ConnectionText}"
 							TextColor="{DynamicResource Accent}" />
@@ -583,7 +583,7 @@
 								VerticalOptions="Center"
 								Color="{DynamicResource InkMuted}" />
 							<Label
-								FontSize="{StaticResource FontCaption}"
+								FontSize="{DynamicResource FontCaption}"
 								LineBreakMode="WordWrap"
 								Text="{Binding WalkText}"
 								TextColor="{DynamicResource InkMuted}"
@@ -623,7 +623,7 @@
 						StrokeThickness="0">
 						<Label
 							FontFamily="{DynamicResource FontSemibold}"
-							FontSize="{StaticResource FontCaption}"
+							FontSize="{DynamicResource FontCaption}"
 							LineBreakMode="WordWrap"
 							Text="{Binding AssuranceText}"
 							TextColor="{DynamicResource Accent}" />
@@ -743,7 +743,7 @@
 						<Label
 							Grid.Column="1"
 							FontFamily="{DynamicResource FontSemibold}"
-							FontSize="{StaticResource FontCaption}"
+							FontSize="{DynamicResource FontCaption}"
 							LineBreakMode="TailTruncation"
 							Text="{Binding TrackingStatus}"
 							TextColor="{DynamicResource Accent}"
@@ -861,7 +861,7 @@
 							Grid.RowSpan="2"
 							Grid.Column="2"
 							FontFamily="{DynamicResource FontSemibold}"
-							FontSize="{StaticResource FontTitle}"
+							FontSize="{DynamicResource FontTitle}"
 							Text="{Binding FaresSummaryPrice}"
 							TextColor="{DynamicResource Accent}"
 							VerticalOptions="Center"
@@ -941,7 +941,7 @@
 							Text="{Binding FaresZonesText}" />
 
 						<!--  The zones the ticket counts, seen: the fare zone plan with both ends of the journey marked.  -->
-						<Border HorizontalOptions="Start" StyleClass="ChipButton">
+						<Border HorizontalOptions="Start" StyleClass="ChipButton" support:Motion.Feedback="True">
 							<HorizontalStackLayout Spacing="6">
 								<controls:Icon
 									Glyph="Map"

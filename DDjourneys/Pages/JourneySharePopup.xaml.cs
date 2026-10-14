@@ -1,4 +1,5 @@
 using CommunityToolkit.Maui.Extensions;
+using DDjourneys.Core.Diagnostics;
 using DDjourneys.Support;
 
 namespace DDjourneys.Pages;
@@ -15,6 +16,7 @@ public partial class JourneySharePopup : ContentView
 	private readonly string _calendarChoice;
 
 	private bool _themeSubscribed;
+	private bool _closing;
 
 	public JourneySharePopup(
 		Page hostPage,
@@ -63,23 +65,35 @@ public partial class JourneySharePopup : ContentView
 	private void PaintBase() =>
 		SheetBase.BackgroundColor = Theme.ColorOf("Bg", Colors.Transparent);
 
-	private async void TextTapped(object? sender, TappedEventArgs e)
-	{
-		await _hostPage.ClosePopupAsync(_textChoice, CancellationToken.None);
-	}
+	private void TextTapped(object? sender, TappedEventArgs e) =>
+		Close(_textChoice);
 
-	private async void ImageTapped(object? sender, TappedEventArgs e)
-	{
-		await _hostPage.ClosePopupAsync(_imageChoice, CancellationToken.None);
-	}
+	private void ImageTapped(object? sender, TappedEventArgs e) =>
+		Close(_imageChoice);
 
-	private async void CalendarTapped(object? sender, TappedEventArgs e)
-	{
-		await _hostPage.ClosePopupAsync(_calendarChoice, CancellationToken.None);
-	}
+	private void CalendarTapped(object? sender, TappedEventArgs e) =>
+		Close(_calendarChoice);
 
-	private async void CancelClicked(object? sender, EventArgs e)
+	private void CancelClicked(object? sender, EventArgs e) =>
+		Close(null);
+
+	/// <summary>Closes once: a second tap while the sheet animates away would close a popup that is gone.</summary>
+	private async void Close(string? choice)
 	{
-		await _hostPage.ClosePopupAsync<string?>(null, CancellationToken.None);
+		if (_closing)
+		{
+			return;
+		}
+
+		_closing = true;
+
+		try
+		{
+			await _hostPage.ClosePopupAsync(choice, CancellationToken.None);
+		}
+		catch (Exception ex)
+		{
+			DiagnosticLog.Write($"[Share] closing the sheet failed: {ex.Message}");
+		}
 	}
 }

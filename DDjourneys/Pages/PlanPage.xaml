@@ -215,7 +215,7 @@
 							Color="{DynamicResource Accent}" />
 						<Label
 							FontFamily="{DynamicResource FontSemibold}"
-							FontSize="{StaticResource FontCaption}"
+							FontSize="{DynamicResource FontCaption}"
 							Text="{localization:Tr Plan.AddVia}"
 							TextColor="{DynamicResource Accent}"
 							VerticalOptions="Center" />
@@ -327,7 +327,7 @@
 							support:Dense.MinHeight="{StaticResource HitButton}"
 							Command="{Binding NudgeCommand}"
 							CommandParameter="-60"
-							FontSize="{StaticResource FontCaption}"
+							FontSize="{DynamicResource FontCaption}"
 							LineBreakMode="NoWrap"
 							MinimumWidthRequest="0"
 							StyleClass="Tonal"
@@ -339,7 +339,7 @@
 							support:Dense.MinHeight="{StaticResource HitButton}"
 							Command="{Binding NudgeCommand}"
 							CommandParameter="-15"
-							FontSize="{StaticResource FontCaption}"
+							FontSize="{DynamicResource FontCaption}"
 							LineBreakMode="NoWrap"
 							MinimumWidthRequest="0"
 							StyleClass="Tonal"
@@ -351,7 +351,7 @@
 							Padding="0"
 							support:Dense.MinHeight="{StaticResource HitButton}"
 							Command="{Binding NowCommand}"
-							FontSize="{StaticResource FontCaption}"
+							FontSize="{DynamicResource FontCaption}"
 							IsEnabled="{Binding IsNotNow}"
 							LineBreakMode="NoWrap"
 							MinimumWidthRequest="0"
@@ -364,7 +364,7 @@
 							support:Dense.MinHeight="{StaticResource HitButton}"
 							Command="{Binding NudgeCommand}"
 							CommandParameter="15"
-							FontSize="{StaticResource FontCaption}"
+							FontSize="{DynamicResource FontCaption}"
 							LineBreakMode="NoWrap"
 							MinimumWidthRequest="0"
 							StyleClass="Tonal"
@@ -376,7 +376,7 @@
 							support:Dense.MinHeight="{StaticResource HitButton}"
 							Command="{Binding NudgeCommand}"
 							CommandParameter="60"
-							FontSize="{StaticResource FontCaption}"
+							FontSize="{DynamicResource FontCaption}"
 							LineBreakMode="NoWrap"
 							MinimumWidthRequest="0"
 							StyleClass="Tonal"
@@ -450,7 +450,7 @@
 								Color="{DynamicResource Accent}" />
 							<Label
 								FontFamily="{DynamicResource FontSemibold}"
-								FontSize="{StaticResource FontCaption}"
+								FontSize="{DynamicResource FontCaption}"
 								LineBreakMode="NoWrap"
 								Text="{Binding HomeName}"
 								VerticalOptions="Center" />
@@ -485,12 +485,12 @@
 											Color="{DynamicResource InkMuted}" />
 										<Label
 											FontFamily="{DynamicResource FontSemibold}"
-											FontSize="{StaticResource FontCaption}"
+											FontSize="{DynamicResource FontCaption}"
 											LineBreakMode="NoWrap"
 											Text="{Binding Name}"
 											VerticalOptions="Center" />
 										<Label
-											FontSize="{StaticResource FontCaption}"
+											FontSize="{DynamicResource FontCaption}"
 											IsVisible="{Binding HasCity}"
 											LineBreakMode="NoWrap"
 											StyleClass="Faint"
@@ -578,7 +578,7 @@
 							Padding="14,0"
 							support:Dense.MinHeight="{StaticResource HitButton}"
 							Command="{Binding ToggleRoutesCommand}"
-							FontSize="{StaticResource FontCaption}"
+							FontSize="{DynamicResource FontCaption}"
 							HorizontalOptions="Start"
 							IsVisible="{Binding CanExpandRoutes}"
 							StyleClass="Tonal"

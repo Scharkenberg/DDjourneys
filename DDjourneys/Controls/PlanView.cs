@@ -157,11 +157,7 @@ public sealed partial class PlanView : ContentView
 
 	/// <summary>Zooms by whole steps (positive: in), animated, around the centre.</summary>
 	public Task ZoomAsync(int steps) =>
-		_ready ? CallAsync("zoom", PlanAddress.Json(writer => writer.WriteNumber("by", steps))) : Task.CompletedTask;
-
-	/// <summary>Back to the whole sheet.</summary>
-	public Task FitAsync() =>
-		_ready ? CallAsync("fit", null) : Task.CompletedTask;
+		_ready ? CallAsync("zoom", WebBridge.Json(writer => writer.WriteNumber("by", steps))) : Task.CompletedTask;
 
 	/// <summary>
 	/// Answers the page's tile requests. Runs on a web view thread (Android: off the UI thread), so it only reads
@@ -326,7 +322,7 @@ public sealed partial class PlanView : ContentView
 	private Task PushPlanAsync(IPlanTiles tiles) =>
 		CallAsync(
 			"init",
-			PlanAddress.Json(
+			WebBridge.Json(
 				writer =>
 				{
 					writer.WritePropertyName("theme");
@@ -339,7 +335,7 @@ public sealed partial class PlanView : ContentView
 		_stops is { } stops
 			? CallAsync(
 				"stops",
-				PlanAddress.Json(
+				WebBridge.Json(
 					writer =>
 					{
 						writer.WriteNumber("minScale", _stopScale);
@@ -376,7 +372,7 @@ public sealed partial class PlanView : ContentView
 	private Task PushMarkAsync(PlanMark mark, string? id, string? title, PlanFit fit) =>
 		CallAsync(
 			"mark",
-			PlanAddress.Json(
+			WebBridge.Json(
 				writer =>
 				{
 					writer.WriteString("kind", KindOf(mark));

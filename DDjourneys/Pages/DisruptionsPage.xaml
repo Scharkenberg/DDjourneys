@@ -34,7 +34,7 @@
 									StyleClass="Chip">
 									<Label
 										FontFamily="{DynamicResource FontSemibold}"
-										FontSize="{StaticResource FontCaption}"
+										FontSize="{DynamicResource FontCaption}"
 										StyleClass="ChipLabel"
 										Text="{Binding Name}"
 										TextColor="{Binding Look.Text}" />
@@ -112,7 +112,6 @@
 						ClearButtonVisibility="WhileEditing"
 						Placeholder="{localization:Tr Disruptions.FilterPlaceholder}"
 						ReturnType="Search"
-						SemanticProperties.Description="{localization:Tr Disruptions.FilterPlaceholder}"
 						Text="{Binding Filter}" />
 				</Grid>
 			</Border>

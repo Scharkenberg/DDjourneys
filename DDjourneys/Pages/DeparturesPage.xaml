@@ -143,6 +143,7 @@
 							<Border
 								IsVisible="{Binding HasLineSelection}"
 								StyleClass="ChipButton"
+								support:Motion.Feedback="True"
 								support:Themed.Background="Clear"
 								SemanticProperties.Description="{localization:Tr Departures.AllLines}">
 								<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Departures.AllLines}" />
@@ -155,7 +156,6 @@
 								<BindableLayout.ItemTemplate>
 									<DataTemplate x:DataType="local:LineFilterChip">
 										<Border
-											Padding="12,6"
 											StyleClass="ChipButton"
 											support:Themed.Background="Clear"
 											support:Themed.IsOn="{Binding IsSelected}"
@@ -176,6 +176,7 @@
 							<!--  Cancelled rows: hidden by default, struck through when shown  -->
 							<Border
 								StyleClass="ChipButton"
+								support:Motion.Feedback="True"
 								support:Themed.Background="Clear"
 								support:Themed.IsOn="{Binding ShowCancelled}"
 								support:Themed.OnBackground="AccentSoft"
@@ -225,7 +226,7 @@
 											<support:PillScroll>
 												<Label
 													FontFamily="{DynamicResource FontSemibold}"
-													FontSize="{StaticResource FontCaption}"
+													FontSize="{DynamicResource FontCaption}"
 													StyleClass="ChipLabel"
 													Text="{Binding LineText}"
 													TextColor="{Binding Look.Text}" />
@@ -356,7 +357,7 @@
 																	<support:PillScroll>
 																		<Label
 																			FontFamily="{DynamicResource FontSemibold}"
-																			FontSize="{StaticResource FontCaption}"
+																			FontSize="{DynamicResource FontCaption}"
 																			StyleClass="ChipLabel"
 																			Text="{Binding LineText}"
 																			TextColor="{Binding Look.Text}" />
@@ -435,7 +436,7 @@
 													<support:PillScroll>
 														<Label
 															FontFamily="{DynamicResource FontSemibold}"
-															FontSize="{StaticResource FontCaption}"
+															FontSize="{DynamicResource FontCaption}"
 															StyleClass="ChipLabel"
 															Text="{Binding LineText}"
 															TextColor="{Binding Look.Text}" />
@@ -558,7 +559,7 @@
 					<FlexLayout AlignContent="Start" AlignItems="Start" BindableLayout.ItemsSource="{Binding QuickPicks}" Wrap="Wrap">
 						<BindableLayout.ItemTemplate>
 							<DataTemplate x:DataType="core:Location">
-								<Border Margin="0,0,8,8" StyleClass="ChipButton">
+								<Border Margin="0,0,8,8" StyleClass="ChipButton" support:Motion.Feedback="True">
 									<controls:StopNameView Place="{Binding Place}" Stop="{Binding Name}" />
 									<Border.GestureRecognizers>
 										<TapGestureRecognizer

@@ -1,22 +1,20 @@
 using AndroidX.Activity;
-using DDjourneys.Core.Diagnostics;
 using DDjourneys.Support;
 
 namespace DDjourneys.Platforms.Android;
 
 /// <summary>
-/// Android back (button and gesture) on the phone's tab bar: back never ends the app anywhere but the planner,
-/// the app's home page. A pushed page, a pane or a modal still closes one level - the shell's own callback runs
-/// first and handles all of that; this one is asked only when the shell had nothing to pop, and then the root
-/// of one of the other tabs switches to the planner instead of ending the app. Registered before
-/// <see cref="PaneBackCallback"/>, so on the way down the chain a pane closes before this decides.
+/// Android back (button and gesture) on the phone's tab bar: back ends the app only on the planner, the app's home.
+/// Enabled only while the tab in front is another tab's root with nothing above it (no pushed page, no modal, no
+/// pane), so predictive back knows in advance; then back switches to the planner. Otherwise it stays out of the
+/// chain and MAUI's callback pops as always. Registered before <see cref="PaneBackCallback"/>, which is asked first.
 /// </summary>
 internal sealed class TabBackCallback : OnBackPressedCallback
 {
 	private readonly ComponentActivity _activity;
 
 	private TabBackCallback(ComponentActivity activity)
-		: base(true)
+		: base(false)
 	{
 		_activity = activity;
 	}
@@ -25,74 +23,44 @@ internal sealed class TabBackCallback : OnBackPressedCallback
 	{
 		ArgumentNullException.ThrowIfNull(activity);
 
-		activity.OnBackPressedDispatcher.AddCallback(activity, new TabBackCallback(activity));
+		if (!TabRoots.Enabled)
+		{
+			return;
+		}
+
+		var callback = new TabBackCallback(activity);
+
+		void Follow(object? sender, EventArgs e) =>
+			callback.Enabled = ShouldSwitch();
+
+		// Raised by every shell navigation and every pane change (see AppShell, PanePage).
+		Panes.BackChanged += Follow;
+		activity.OnBackPressedDispatcher.AddCallback(activity, callback);
+		activity.Lifecycle.AddObserver(new LifecycleEnd(() => Panes.BackChanged -= Follow));
 	}
 
 	public override void HandleOnBackPressed()
 	{
-		Shell? shell = Shell.Current;
+		Enabled = false;
 
-		// Without the shell, or without the phone's tabs, the default applies: pop what is there, then close.
-		if (shell is null || !TabRoots.Enabled)
+		if (ShouldSwitch())
 		{
-			Forward();
+			_ = TabRoots.OpenAsync(Routes.Plan);
 
 			return;
 		}
 
-		try
-		{
-			if (shell.CurrentItem?.CurrentItem is not { } section)
-			{
-				Forward();
-
-				return;
-			}
-
-			// The tab in front is at its root when nothing sits above it: no pushed page in its stack, no pane, no modal.
-			bool atRoot = CountPages(section) <= 1
-				&& shell.Navigation.ModalStack.Count == 0
-				&& !Panes.CanGoBack;
-
-			// Something to close first, or the planner itself: hand the press on (the shell pipeline, a pane,
-			// or the activity's default, which is what ends the app).
-			if (!atRoot || section.Route == Routes.Plan)
-			{
-				Forward();
-
-				return;
-			}
-
-			// The root of another tab: never end the app - the planner is one step back.
-			_ = TabRoots.OpenAsync(Routes.Plan);
-		}
-		catch (Exception ex)
-		{
-			DiagnosticLog.Write($"Back on the tabs fell through to the default: {ex.Message}");
-
-			Forward();
-		}
-	}
-
-	private static int CountPages(ShellSection section)
-	{
-		int count = 0;
-
-		foreach (Page? page in section.Stack)
-		{
-			if (page is not null)
-			{
-				count++;
-			}
-		}
-
-		return count;
-	}
-
-	private void Forward()
-	{
-		Enabled = false;
+		// Something came on top without a navigation event (a modal pushed directly): MAUI pops it.
 		_activity.OnBackPressedDispatcher.OnBackPressed();
-		Enabled = true;
+		Enabled = ShouldSwitch();
 	}
+
+	// The section's stack starts as { null } for its root, so a root alone counts 1.
+	private static bool ShouldSwitch() =>
+		Shell.Current is { } shell
+		&& shell.CurrentItem?.CurrentItem is { } section
+		&& section.Route != Routes.Plan
+		&& section.Stack.Count <= 1
+		&& shell.Navigation.ModalStack.Count == 0
+		&& !Panes.CanGoBack;
 }

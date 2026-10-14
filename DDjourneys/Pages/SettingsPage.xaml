@@ -177,7 +177,7 @@
 						</Grid.GestureRecognizers>
 					</Grid>
 
-						<BoxView StyleClass="Divider" />
+						<BoxView IsVisible="{Binding ShowDisruptions}" StyleClass="Divider" />
 
 						<!--  B4: route changes, with the watched lines' own count  -->
 						<Grid
@@ -289,7 +289,7 @@
 							ClearButtonVisibility="WhileEditing"
 							Placeholder="{localization:Tr Settings.MapKeyPlaceholder}"
 							ReturnType="Done"
-							SemanticProperties.Description="{localization:Tr Settings.MapKeyTitle}"
+							SemanticProperties.Hint="{localization:Tr Settings.MapKeyTitle}"
 							Text="{Binding MapKeyDraft}"
 							VerticalOptions="Center" />
 						<Button
@@ -415,7 +415,7 @@
 						</Grid.GestureRecognizers>
 					</Grid>
 
-					<BoxView StyleClass="Divider" />
+					<BoxView IsVisible="{Binding ShowWindowsWidgets}" StyleClass="Divider" />
 
 					<!--  Windows only: the widgets of the Widgets Board  -->
 					<Grid
@@ -485,6 +485,7 @@
 							Maximum="{x:Static local:SettingsViewModel.GetOffAlarmCeiling}"
 							Minimum="{x:Static local:SettingsViewModel.GetOffAlarmFloor}"
 							SemanticProperties.Description="{localization:Tr Settings.GetOffAlarmTitle}"
+							SemanticProperties.Hint="{localization:Tr Settings.GetOffAlarmDescription}"
 							Value="{Binding GetOffAlarmMinutes}" />
 					</VerticalStackLayout>
 
@@ -905,7 +906,7 @@
 							<Label FontFamily="{DynamicResource FontSemibold}" Text="{localization:Tr Settings.InterfaceVersions}" />
 							<Label StyleClass="Caption" Text="{localization:Tr Settings.InterfaceVersionsDescription}" />
 							<Label
-								FontSize="{StaticResource FontMicro}"
+								FontSize="{DynamicResource FontMicro}"
 								LineBreakMode="CharacterWrap"
 								Text="{Binding InterfaceReport}" />
 							<Button

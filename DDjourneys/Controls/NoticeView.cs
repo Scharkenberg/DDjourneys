@@ -1,4 +1,3 @@
-using System.Text;
 using System.Text.Json;
 using DDjourneys.Core.Diagnostics;
 using DDjourneys.Localization;
@@ -71,7 +70,7 @@ public sealed partial class NoticeView : ContentView
 	{
 		ArgumentNullException.ThrowIfNull(uri);
 
-		return CallAsync("image", Write(writer => writer.WriteString("url", uri.AbsoluteUri)));
+		return CallAsync("image", WebBridge.Json(writer => writer.WriteString("url", uri.AbsoluteUri)));
 	}
 
 	private void OnHandlerChanged(object? sender, EventArgs e)
@@ -146,7 +145,7 @@ public sealed partial class NoticeView : ContentView
 		ExtrasStrings strings = LocalizationService.Current.CurrentStrings.Extras;
 
 		string json =
-			Write(
+			WebBridge.Json(
 				writer =>
 				{
 					writer.WritePropertyName("theme");
@@ -165,22 +164,8 @@ public sealed partial class NoticeView : ContentView
 
 	private Task PushHtmlAsync() =>
 		_ready
-			? CallAsync("html", Write(writer => writer.WriteString("html", Html)))
+			? CallAsync("html", WebBridge.Json(writer => writer.WriteString("html", Html)))
 			: Task.CompletedTask;
-
-	private static string Write(Action<Utf8JsonWriter> body)
-	{
-		using var stream = new MemoryStream();
-
-		using (var writer = new Utf8JsonWriter(stream))
-		{
-			writer.WriteStartObject();
-			body(writer);
-			writer.WriteEndObject();
-		}
-
-		return Encoding.UTF8.GetString(stream.ToArray());
-	}
 
 	private Task CallAsync(string command, string json) =>
 		WebBridge.CallAsync(_web, "ddNoticeCall", command, json, "Notice");

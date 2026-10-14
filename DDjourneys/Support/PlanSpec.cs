@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Text;
 using System.Text.Json;
 
 namespace DDjourneys.Support;
@@ -157,19 +156,5 @@ public static class PlanAddress
 		byte[] hash = System.Security.Cryptography.SHA256.HashData(stream);
 
 		return Convert.ToHexStringLower(hash.AsSpan(0, 8));
-	}
-
-	internal static string Json(Action<Utf8JsonWriter> body)
-	{
-		using var stream = new MemoryStream();
-
-		using (var writer = new Utf8JsonWriter(stream))
-		{
-			writer.WriteStartObject();
-			body(writer);
-			writer.WriteEndObject();
-		}
-
-		return Encoding.UTF8.GetString(stream.ToArray());
 	}
 }

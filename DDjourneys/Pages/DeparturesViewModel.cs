@@ -67,9 +67,6 @@ public sealed record DepartureRow(
 	public bool IsEarly =>
 		Departure.Delay is { } delay && delay < TimeSpan.Zero;
 
-	public string PlannedText =>
-		Format.Time(Departure.Scheduled);
-
 	/// <summary>"in 5 min" / "now" for what leaves within the hour.</summary>
 	public string? InText => InTextOf(Departure);
 
@@ -403,12 +400,6 @@ public sealed record ServicePointRow(
 			CultureInfo.CurrentCulture,
 			LocalizationService.Current.CurrentStrings.Departures.Metres,
 			Point.DistanceMeters);
-
-	public Uri MapUri =>
-		new(
-			string.Create(
-				CultureInfo.InvariantCulture,
-				$"https://www.openstreetmap.org/?mlat={Point.Latitude:F6}&mlon={Point.Longitude:F6}#map=17/{Point.Latitude:F6}/{Point.Longitude:F6}"));
 }
 
 
@@ -580,26 +571,6 @@ public sealed partial class DeparturesViewModel : DisposableViewModel
 					? OpenLineMapAsync(row)
 					: Task.CompletedTask);
 
-		ToggleLineCommand =
-			new Command<LineFilterChip>(
-				chip =>
-				{
-					if (chip is not null)
-					{
-						ToggleLine(chip);
-					}
-				});
-
-		OnlyLineCommand =
-			new Command<LineFilterChip>(
-				chip =>
-				{
-					if (chip is not null)
-					{
-						OnlyLine(chip);
-					}
-				});
-
 		ClearLineFilterCommand =
 			new Command(ClearLineFilter);
 
@@ -660,12 +631,6 @@ public sealed partial class DeparturesViewModel : DisposableViewModel
 
 	/// <summary>Shows the course of the whole line on the map (both directions when they can be told apart).</summary>
 	public AsyncCommand<StopLineRow> OpenLineMapCommand { get; }
-
-	/// <summary>Toggles one line of the filter chip row (multi-select).</summary>
-	public Command<LineFilterChip> ToggleLineCommand { get; }
-
-	/// <summary>Long press on a chip: exactly this line (a long press on the only picked line clears the filter).</summary>
-	public Command<LineFilterChip> OnlyLineCommand { get; }
 
 	/// <summary>Every line again: clears the line pick.</summary>
 	public Command ClearLineFilterCommand { get; }
@@ -864,19 +829,8 @@ public sealed partial class DeparturesViewModel : DisposableViewModel
 	{
 		get;
 
-		private set
-		{
-			if (SetProperty(ref field, value))
-			{
-				OnPropertyChanged(nameof(LinesToggleText));
-			}
-		}
+		private set => SetProperty(ref field, value);
 	}
-
-	public string LinesToggleText =>
-		ShowLines
-			? _localization.CurrentStrings.Departures.HideLines
-			: _localization.CurrentStrings.Departures.ShowLines;
 
 	public bool HasLines =>
 		Lines.Count > 0;
@@ -907,19 +861,8 @@ public sealed partial class DeparturesViewModel : DisposableViewModel
 	{
 		get;
 
-		private set
-		{
-			if (SetProperty(ref field, value))
-			{
-				OnPropertyChanged(nameof(AccessibilityToggleText));
-			}
-		}
+		private set => SetProperty(ref field, value);
 	}
-
-	public string AccessibilityToggleText =>
-		ShowAccessibility
-			? _localization.CurrentStrings.Extras.AccessHide
-			: _localization.CurrentStrings.Extras.AccessTitle;
 
 	/// <summary>What the lines section holds: how many lines serve the stop (once known).</summary>
 	public string LinesSummary =>
@@ -958,19 +901,8 @@ public sealed partial class DeparturesViewModel : DisposableViewModel
 	{
 		get;
 
-		private set
-		{
-			if (SetProperty(ref field, value))
-			{
-				OnPropertyChanged(nameof(ServicePointsToggleText));
-			}
-		}
+		private set => SetProperty(ref field, value);
 	}
-
-	public string ServicePointsToggleText =>
-		ShowServicePoints
-			? _localization.CurrentStrings.Extras.ServiceHide
-			: _localization.CurrentStrings.Extras.ServiceShow;
 
 	public string ServicePointsMessage
 	{
@@ -1869,9 +1801,6 @@ public sealed partial class DeparturesViewModel : DisposableViewModel
 				}
 
 				OnPropertyChanged(nameof(StopName));
-				OnPropertyChanged(nameof(LinesToggleText));
-				OnPropertyChanged(nameof(AccessibilityToggleText));
-				OnPropertyChanged(nameof(ServicePointsToggleText));
 				OnPropertyChanged(nameof(LinesSummary));
 				OnPropertyChanged(nameof(ServicePointsSummary));
 				RebuildRows();

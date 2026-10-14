@@ -10,46 +10,108 @@
 	Title="{localization:Tr Settings.AppearanceTitle}"
 	x:DataType="local:AppearanceViewModel">
 
+	<ContentPage.Resources>
+		<DataTemplate x:Key="ChoiceRow" x:DataType="local:AppearanceChoice">
+			<VerticalStackLayout>
+				<Grid support:Motion.Feedback="True"
+					support:Dense.Padding="12,8"
+					ColumnDefinitions="*,Auto"
+					ColumnSpacing="12"
+					support:Dense.MinHeight="{StaticResource HitRow}"
+					SemanticProperties.Description="{Binding Title}">
+
+					<VerticalStackLayout Spacing="1" VerticalOptions="Center">
+						<Label FontFamily="{DynamicResource FontSemibold}" Text="{Binding Title}" />
+						<Label StyleClass="Caption" Text="{Binding Description}" />
+					</VerticalStackLayout>
+
+					<controls:Icon
+						Grid.Column="1"
+						Glyph="Check"
+						IsVisible="{Binding IsSelected}"
+						Size="20"
+						VerticalOptions="Center"
+						Color="{DynamicResource Accent}" />
+
+					<Grid.GestureRecognizers>
+						<TapGestureRecognizer Command="{Binding Select}" CommandParameter="{Binding Id}" />
+					</Grid.GestureRecognizers>
+				</Grid>
+
+				<BoxView IsVisible="{Binding ShowDivider}" StyleClass="Divider" />
+			</VerticalStackLayout>
+		</DataTemplate>
+
+		<DataTemplate x:Key="SwatchRow" x:DataType="local:AppearanceChoice">
+			<VerticalStackLayout>
+				<Grid support:Motion.Feedback="True"
+					support:Dense.Padding="12,8"
+					ColumnDefinitions="Auto,*,Auto"
+					ColumnSpacing="12"
+					support:Dense.MinHeight="{StaticResource HitRow}"
+					SemanticProperties.Description="{Binding Title}">
+
+					<!--  Swatch: background, raised panel, accent and ink bars (for the mode currently in effect)  -->
+					<Border
+						Padding="4"
+						BackgroundColor="{Binding Bg}"
+						HeightRequest="32"
+						Stroke="{Binding Outline}"
+						StrokeShape="RoundRectangle 4"
+						StrokeThickness="1"
+						VerticalOptions="Center"
+						WidthRequest="48">
+						<Grid ColumnDefinitions="*,*" ColumnSpacing="3">
+							<BoxView CornerRadius="2" Color="{Binding Raised}" />
+							<VerticalStackLayout
+								Grid.Column="1"
+								Spacing="3"
+								VerticalOptions="Center">
+								<BoxView
+									CornerRadius="2"
+									HeightRequest="6"
+									Color="{Binding Accent}" />
+								<BoxView
+									CornerRadius="2"
+									HeightRequest="4"
+									Color="{Binding Ink}" />
+							</VerticalStackLayout>
+						</Grid>
+					</Border>
+
+					<VerticalStackLayout
+						Grid.Column="1"
+						Spacing="1"
+						VerticalOptions="Center">
+						<Label FontFamily="{DynamicResource FontSemibold}" Text="{Binding Title}" />
+						<Label StyleClass="Caption" Text="{Binding Description}" />
+					</VerticalStackLayout>
+
+					<controls:Icon
+						Grid.Column="2"
+						Glyph="Check"
+						IsVisible="{Binding IsSelected}"
+						Size="20"
+						VerticalOptions="Center"
+						Color="{DynamicResource Accent}" />
+
+					<Grid.GestureRecognizers>
+						<TapGestureRecognizer Command="{Binding Select}" CommandParameter="{Binding Id}" />
+					</Grid.GestureRecognizers>
+				</Grid>
+
+				<BoxView IsVisible="{Binding ShowDivider}" StyleClass="Divider" />
+			</VerticalStackLayout>
+		</DataTemplate>
+	</ContentPage.Resources>
+
 	<ScrollView>
 		<VerticalStackLayout Padding="{DynamicResource PadPage}" Spacing="{DynamicResource SpaceS}">
 
 			<Label StyleClass="Section" Text="{localization:Tr Settings.ModeHeader}" />
 
 			<Border Padding="0" StyleClass="Card">
-				<VerticalStackLayout BindableLayout.ItemsSource="{Binding Modes}">
-					<BindableLayout.ItemTemplate>
-						<DataTemplate x:DataType="local:AppearanceChoice">
-							<VerticalStackLayout>
-								<Grid support:Motion.Feedback="True"
-									support:Dense.Padding="12,8"
-									ColumnDefinitions="*,Auto"
-									ColumnSpacing="12"
-									support:Dense.MinHeight="{StaticResource HitRow}"
-									SemanticProperties.Description="{Binding Title}">
-
-									<VerticalStackLayout Spacing="1" VerticalOptions="Center">
-										<Label FontFamily="{DynamicResource FontSemibold}" Text="{Binding Title}" />
-										<Label StyleClass="Caption" Text="{Binding Description}" />
-									</VerticalStackLayout>
-
-									<controls:Icon
-										Grid.Column="1"
-										Glyph="Check"
-										IsVisible="{Binding IsSelected}"
-										Size="20"
-										VerticalOptions="Center"
-										Color="{DynamicResource Accent}" />
-
-									<Grid.GestureRecognizers>
-										<TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type local:AppearanceViewModel}}, x:DataType=local:AppearanceViewModel, Path=SelectModeCommand}" CommandParameter="{Binding Id}" />
-									</Grid.GestureRecognizers>
-								</Grid>
-
-								<BoxView StyleClass="Divider" />
-							</VerticalStackLayout>
-						</DataTemplate>
-					</BindableLayout.ItemTemplate>
-				</VerticalStackLayout>
+				<VerticalStackLayout BindableLayout.ItemsSource="{Binding Modes}" BindableLayout.ItemTemplate="{StaticResource ChoiceRow}" />
 			</Border>
 
 			<Border Padding="0" StyleClass="Card">
@@ -78,71 +140,7 @@
 				Text="{localization:Tr Settings.ColorsHeader}" />
 
 			<Border Padding="0" StyleClass="Card">
-				<VerticalStackLayout BindableLayout.ItemsSource="{Binding Colors}">
-					<BindableLayout.ItemTemplate>
-						<DataTemplate x:DataType="local:AppearanceChoice">
-							<VerticalStackLayout>
-								<Grid support:Motion.Feedback="True"
-									support:Dense.Padding="12,8"
-									ColumnDefinitions="Auto,*,Auto"
-									ColumnSpacing="12"
-									support:Dense.MinHeight="{StaticResource HitRow}"
-									SemanticProperties.Description="{Binding Title}">
-
-									<!--  Swatch: background, raised panel, accent and ink bars (for the mode currently in effect)  -->
-									<Border
-										Padding="4"
-										BackgroundColor="{Binding Bg}"
-										HeightRequest="32"
-										Stroke="{Binding Outline}"
-										StrokeShape="RoundRectangle 4"
-										StrokeThickness="1"
-										VerticalOptions="Center"
-										WidthRequest="48">
-										<Grid ColumnDefinitions="*,*" ColumnSpacing="3">
-											<BoxView CornerRadius="2" Color="{Binding Raised}" />
-											<VerticalStackLayout
-												Grid.Column="1"
-												Spacing="3"
-												VerticalOptions="Center">
-												<BoxView
-													CornerRadius="2"
-													HeightRequest="6"
-													Color="{Binding Accent}" />
-												<BoxView
-													CornerRadius="2"
-													HeightRequest="4"
-													Color="{Binding Ink}" />
-											</VerticalStackLayout>
-										</Grid>
-									</Border>
-
-									<VerticalStackLayout
-										Grid.Column="1"
-										Spacing="1"
-										VerticalOptions="Center">
-										<Label FontFamily="{DynamicResource FontSemibold}" Text="{Binding Title}" />
-										<Label StyleClass="Caption" Text="{Binding Description}" />
-									</VerticalStackLayout>
-
-									<controls:Icon
-										Grid.Column="2"
-										Glyph="Check"
-										IsVisible="{Binding IsSelected}"
-										Size="20"
-										VerticalOptions="Center"
-										Color="{DynamicResource Accent}" />
-
-									<Grid.GestureRecognizers>
-										<TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type local:AppearanceViewModel}}, x:DataType=local:AppearanceViewModel, Path=SelectColorCommand}" CommandParameter="{Binding Id}" />
-									</Grid.GestureRecognizers>
-								</Grid>
-
-								<BoxView StyleClass="Divider" />
-							</VerticalStackLayout>
-						</DataTemplate>
-					</BindableLayout.ItemTemplate>
-				</VerticalStackLayout>
+				<VerticalStackLayout BindableLayout.ItemsSource="{Binding Colors}" BindableLayout.ItemTemplate="{StaticResource SwatchRow}" />
 			</Border>
 
 			<Label
@@ -151,40 +149,7 @@
 				Text="{localization:Tr Settings.FontHeader}" />
 
 			<Border Padding="0" StyleClass="Card">
-				<VerticalStackLayout BindableLayout.ItemsSource="{Binding Fonts}">
-					<BindableLayout.ItemTemplate>
-						<DataTemplate x:DataType="local:AppearanceChoice">
-							<VerticalStackLayout>
-								<Grid support:Motion.Feedback="True"
-									support:Dense.Padding="12,8"
-									ColumnDefinitions="*,Auto"
-									ColumnSpacing="12"
-									support:Dense.MinHeight="{StaticResource HitRow}"
-									SemanticProperties.Description="{Binding Title}">
-
-									<VerticalStackLayout Spacing="1" VerticalOptions="Center">
-										<Label FontFamily="{DynamicResource FontSemibold}" Text="{Binding Title}" />
-										<Label StyleClass="Caption" Text="{Binding Description}" />
-									</VerticalStackLayout>
-
-									<controls:Icon
-										Grid.Column="1"
-										Glyph="Check"
-										IsVisible="{Binding IsSelected}"
-										Size="20"
-										VerticalOptions="Center"
-										Color="{DynamicResource Accent}" />
-
-									<Grid.GestureRecognizers>
-										<TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type local:AppearanceViewModel}}, x:DataType=local:AppearanceViewModel, Path=SelectFontCommand}" CommandParameter="{Binding Id}" />
-									</Grid.GestureRecognizers>
-								</Grid>
-
-								<BoxView StyleClass="Divider" />
-							</VerticalStackLayout>
-						</DataTemplate>
-					</BindableLayout.ItemTemplate>
-				</VerticalStackLayout>
+				<VerticalStackLayout BindableLayout.ItemsSource="{Binding Fonts}" BindableLayout.ItemTemplate="{StaticResource ChoiceRow}" />
 			</Border>
 
 			<Label
@@ -193,40 +158,7 @@
 				Text="{localization:Tr Settings.DensityHeader}" />
 
 			<Border Padding="0" StyleClass="Card">
-				<VerticalStackLayout BindableLayout.ItemsSource="{Binding Densities}">
-					<BindableLayout.ItemTemplate>
-						<DataTemplate x:DataType="local:AppearanceChoice">
-							<VerticalStackLayout>
-								<Grid support:Motion.Feedback="True"
-									support:Dense.Padding="12,8"
-									ColumnDefinitions="*,Auto"
-									ColumnSpacing="12"
-									support:Dense.MinHeight="{StaticResource HitRow}"
-									SemanticProperties.Description="{Binding Title}">
-
-									<VerticalStackLayout Spacing="1" VerticalOptions="Center">
-										<Label FontFamily="{DynamicResource FontSemibold}" Text="{Binding Title}" />
-										<Label StyleClass="Caption" Text="{Binding Description}" />
-									</VerticalStackLayout>
-
-									<controls:Icon
-										Grid.Column="1"
-										Glyph="Check"
-										IsVisible="{Binding IsSelected}"
-										Size="20"
-										VerticalOptions="Center"
-										Color="{DynamicResource Accent}" />
-
-									<Grid.GestureRecognizers>
-										<TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type local:AppearanceViewModel}}, x:DataType=local:AppearanceViewModel, Path=SelectDensityCommand}" CommandParameter="{Binding Id}" />
-									</Grid.GestureRecognizers>
-								</Grid>
-
-								<BoxView StyleClass="Divider" />
-							</VerticalStackLayout>
-						</DataTemplate>
-					</BindableLayout.ItemTemplate>
-				</VerticalStackLayout>
+				<VerticalStackLayout BindableLayout.ItemsSource="{Binding Densities}" BindableLayout.ItemTemplate="{StaticResource ChoiceRow}" />
 			</Border>
 
 						<Label
@@ -236,40 +168,7 @@
 
 			<!--  B11: the app's own text size - the type-scale tokens, scaled live  -->
 			<Border Padding="0" StyleClass="Card">
-				<VerticalStackLayout BindableLayout.ItemsSource="{Binding TextSizes}">
-					<BindableLayout.ItemTemplate>
-						<DataTemplate x:DataType="local:AppearanceChoice">
-							<VerticalStackLayout>
-								<Grid support:Motion.Feedback="True"
-									support:Dense.Padding="12,8"
-									ColumnDefinitions="*,Auto"
-									ColumnSpacing="12"
-									support:Dense.MinHeight="{StaticResource HitRow}"
-									SemanticProperties.Description="{Binding Title}">
-
-									<VerticalStackLayout Spacing="1" VerticalOptions="Center">
-										<Label FontFamily="{DynamicResource FontSemibold}" Text="{Binding Title}" />
-										<Label StyleClass="Caption" Text="{Binding Description}" />
-									</VerticalStackLayout>
-
-									<controls:Icon
-										Grid.Column="1"
-										Glyph="Check"
-										IsVisible="{Binding IsSelected}"
-										Size="20"
-										VerticalOptions="Center"
-										Color="{DynamicResource Accent}" />
-
-									<Grid.GestureRecognizers>
-										<TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type local:AppearanceViewModel}}, x:DataType=local:AppearanceViewModel, Path=SelectTextSizeCommand}" CommandParameter="{Binding Id}" />
-									</Grid.GestureRecognizers>
-								</Grid>
-
-								<BoxView StyleClass="Divider" />
-							</VerticalStackLayout>
-						</DataTemplate>
-					</BindableLayout.ItemTemplate>
-				</VerticalStackLayout>
+				<VerticalStackLayout BindableLayout.ItemsSource="{Binding TextSizes}" BindableLayout.ItemTemplate="{StaticResource ChoiceRow}" />
 			</Border>
 
 			<Label
@@ -279,40 +178,7 @@
 
 			<!--  B11: the line colours of the transport modes - the standard set, or one that stays distinct for a kind of colour vision  -->
 			<Border Padding="0" StyleClass="Card">
-				<VerticalStackLayout BindableLayout.ItemsSource="{Binding LineColours}">
-					<BindableLayout.ItemTemplate>
-						<DataTemplate x:DataType="local:AppearanceChoice">
-							<VerticalStackLayout>
-								<Grid support:Motion.Feedback="True"
-									support:Dense.Padding="12,8"
-									ColumnDefinitions="*,Auto"
-									ColumnSpacing="12"
-									support:Dense.MinHeight="{StaticResource HitRow}"
-									SemanticProperties.Description="{Binding Title}">
-
-									<VerticalStackLayout Spacing="1" VerticalOptions="Center">
-										<Label FontFamily="{DynamicResource FontSemibold}" Text="{Binding Title}" />
-										<Label StyleClass="Caption" Text="{Binding Description}" />
-									</VerticalStackLayout>
-
-									<controls:Icon
-										Grid.Column="1"
-										Glyph="Check"
-										IsVisible="{Binding IsSelected}"
-										Size="20"
-										VerticalOptions="Center"
-										Color="{DynamicResource Accent}" />
-
-									<Grid.GestureRecognizers>
-										<TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type local:AppearanceViewModel}}, x:DataType=local:AppearanceViewModel, Path=SelectLineColoursCommand}" CommandParameter="{Binding Id}" />
-									</Grid.GestureRecognizers>
-								</Grid>
-
-								<BoxView StyleClass="Divider" />
-							</VerticalStackLayout>
-						</DataTemplate>
-					</BindableLayout.ItemTemplate>
-				</VerticalStackLayout>
+				<VerticalStackLayout BindableLayout.ItemsSource="{Binding LineColours}" BindableLayout.ItemTemplate="{StaticResource ChoiceRow}" />
 			</Border>
 
 			<Border Padding="0" StyleClass="Card">
@@ -367,40 +233,7 @@
 				Padding="0"
 				IsVisible="{x:Static support:Material.Available}"
 				StyleClass="Card">
-				<VerticalStackLayout BindableLayout.ItemsSource="{Binding Materials}">
-					<BindableLayout.ItemTemplate>
-						<DataTemplate x:DataType="local:AppearanceChoice">
-							<VerticalStackLayout>
-								<Grid support:Motion.Feedback="True"
-									support:Dense.Padding="12,8"
-									ColumnDefinitions="*,Auto"
-									ColumnSpacing="12"
-									support:Dense.MinHeight="{StaticResource HitRow}"
-									SemanticProperties.Description="{Binding Title}">
-
-									<VerticalStackLayout Spacing="1" VerticalOptions="Center">
-										<Label FontFamily="{DynamicResource FontSemibold}" Text="{Binding Title}" />
-										<Label StyleClass="Caption" Text="{Binding Description}" />
-									</VerticalStackLayout>
-
-									<controls:Icon
-										Grid.Column="1"
-										Glyph="Check"
-										IsVisible="{Binding IsSelected}"
-										Size="20"
-										VerticalOptions="Center"
-										Color="{DynamicResource Accent}" />
-
-									<Grid.GestureRecognizers>
-										<TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type local:AppearanceViewModel}}, x:DataType=local:AppearanceViewModel, Path=SelectMaterialCommand}" CommandParameter="{Binding Id}" />
-									</Grid.GestureRecognizers>
-								</Grid>
-
-								<BoxView StyleClass="Divider" />
-							</VerticalStackLayout>
-						</DataTemplate>
-					</BindableLayout.ItemTemplate>
-				</VerticalStackLayout>
+				<VerticalStackLayout BindableLayout.ItemsSource="{Binding Materials}" BindableLayout.ItemTemplate="{StaticResource ChoiceRow}" />
 			</Border>
 
 			<Label
@@ -413,40 +246,7 @@
 				Padding="0"
 				IsVisible="{x:Static support:Material.Available}"
 				StyleClass="Card">
-				<VerticalStackLayout BindableLayout.ItemsSource="{Binding MaterialSurfaces}">
-					<BindableLayout.ItemTemplate>
-						<DataTemplate x:DataType="local:AppearanceChoice">
-							<VerticalStackLayout>
-								<Grid support:Motion.Feedback="True"
-									support:Dense.Padding="12,8"
-									ColumnDefinitions="*,Auto"
-									ColumnSpacing="12"
-									support:Dense.MinHeight="{StaticResource HitRow}"
-									SemanticProperties.Description="{Binding Title}">
-
-									<VerticalStackLayout Spacing="1" VerticalOptions="Center">
-										<Label FontFamily="{DynamicResource FontSemibold}" Text="{Binding Title}" />
-										<Label StyleClass="Caption" Text="{Binding Description}" />
-									</VerticalStackLayout>
-
-									<controls:Icon
-										Grid.Column="1"
-										Glyph="Check"
-										IsVisible="{Binding IsSelected}"
-										Size="20"
-										VerticalOptions="Center"
-										Color="{DynamicResource Accent}" />
-
-									<Grid.GestureRecognizers>
-										<TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type local:AppearanceViewModel}}, x:DataType=local:AppearanceViewModel, Path=SelectMaterialSurfacesCommand}" CommandParameter="{Binding Id}" />
-									</Grid.GestureRecognizers>
-								</Grid>
-
-								<BoxView StyleClass="Divider" />
-							</VerticalStackLayout>
-						</DataTemplate>
-					</BindableLayout.ItemTemplate>
-				</VerticalStackLayout>
+				<VerticalStackLayout BindableLayout.ItemsSource="{Binding MaterialSurfaces}" BindableLayout.ItemTemplate="{StaticResource ChoiceRow}" />
 			</Border>
 
 			<Label

@@ -134,7 +134,6 @@ public sealed partial class VehiclesViewModel : DisposableViewModel, IQueryAttri
 	/// them may still be under way, the vehicle may report yet.</summary>
 	private static readonly TimeSpan TripOverAfter = TimeSpan.FromMinutes(5);
 
-	private readonly VehicleService _vehicles;
 	private readonly VehicleStreamHub _hub;
 	private readonly LocalizationService _localization;
 	private readonly LocationService _locations;
@@ -177,19 +176,16 @@ public sealed partial class VehiclesViewModel : DisposableViewModel, IQueryAttri
 	private (double Latitude, double Longitude)? _myPosition;
 
 	public VehiclesViewModel(
-		VehicleService vehicles,
 		VehicleStreamHub hub,
 		ProviderRegistry providers,
 		LocationService locations,
 		LineCourseService lineCourses)
 	{
-		ArgumentNullException.ThrowIfNull(vehicles);
 		ArgumentNullException.ThrowIfNull(hub);
 		ArgumentNullException.ThrowIfNull(providers);
 		ArgumentNullException.ThrowIfNull(locations);
 		ArgumentNullException.ThrowIfNull(lineCourses);
 
-		_vehicles = vehicles;
 		_hub = hub;
 		_localization = LocalizationService.Current;
 		_locations = locations;
@@ -1043,6 +1039,10 @@ public sealed partial class VehiclesViewModel : DisposableViewModel, IQueryAttri
 	/// </summary>
 	public void PauseStream()
 	{
+		// The position loop is foreground-only too: a hidden page asks the GPS for nothing.
+		_positionLoop?.Cancel();
+		_positionLoop = null;
+
 		if (!IsStreaming)
 		{
 			return;
@@ -1055,6 +1055,14 @@ public sealed partial class VehiclesViewModel : DisposableViewModel, IQueryAttri
 	/// <summary>A page seen again continues its stream where it was: the lines it had, not what is typed but not started.</summary>
 	public void ResumeStream()
 	{
+		if (ShowMyPosition
+			&& _target is not null
+			&& _positionLoop is null
+			&& !IsDisposed)
+		{
+			_ = StartMyPositionAsync();
+		}
+
 		if (!IsStreaming
 			|| _stream is not null
 			|| IsDisposed)

@@ -1,9 +1,10 @@
+using System.Windows.Input;
 using DDjourneys.Support;
 
 namespace DDjourneys.Pages;
 
 /// <summary>One row of the appearance page: a localized title, a description, an optional colour swatch and the selection mark.</summary>
-public sealed partial class AppearanceChoice(string id, bool hasSwatch) : ObservableObject
+public sealed partial class AppearanceChoice(string id, ICommand select) : ObservableObject
 {
 	private string _title = string.Empty;
 	private string _description = string.Empty;
@@ -16,7 +17,11 @@ public sealed partial class AppearanceChoice(string id, bool hasSwatch) : Observ
 
 	public string Id { get; } = id;
 
-	public bool HasSwatch { get; } = hasSwatch;
+	/// <summary>Selects this row (the card's command, called with <see cref="Id"/>).</summary>
+	public ICommand Select { get; } = select;
+
+	/// <summary>False for the last row of its card (the card's edge is the end).</summary>
+	public bool ShowDivider { get; set; } = true;
 
 	public string Title
 	{

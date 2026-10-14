@@ -59,7 +59,7 @@
 					ClearButtonVisibility="WhileEditing"
 					Placeholder="{localization:Tr PlaceSearch.SearchPlaceholder}"
 					ReturnType="Search"
-					SemanticProperties.Description="{localization:Tr PlaceSearch.SearchForPlace}"
+					SemanticProperties.Hint="{localization:Tr PlaceSearch.SearchForPlace}"
 					Text="{Binding Query}" />
 
 				<ActivityIndicator
@@ -111,7 +111,7 @@
 														<support:PillScroll>
 															<Label
 																FontFamily="{DynamicResource FontSemibold}"
-																FontSize="{StaticResource FontCaption}"
+																FontSize="{DynamicResource FontCaption}"
 																StyleClass="ChipLabel"
 																Text="{Binding Name}"
 																TextColor="{Binding Look.Text}" />

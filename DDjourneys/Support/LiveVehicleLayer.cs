@@ -131,7 +131,8 @@ public sealed partial class LiveVehicleLayer : IDisposable
 			return MapScene.Empty;
 		}
 
-		MapScene scene = MapScenes.FromVehicles(inView, fit: false, idPrefix: IdPrefix);
+		// The page holds the layer back below the publishing zoom: positions that stop being sent never freeze on the map.
+		MapScene scene = new() { Markers = MapScenes.FromVehicles(inView, fit: false, idPrefix: IdPrefix).Markers, Fit = false, MinZoom = MinZoom };
 
 		string json = scene.ToJson(dark, MapScenes.Resolve);
 

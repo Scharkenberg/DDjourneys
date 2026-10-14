@@ -95,7 +95,7 @@
 								Color="{DynamicResource Accent}" />
 							<Label
 								FontFamily="{DynamicResource FontSemibold}"
-								FontSize="{StaticResource FontCaption}"
+								FontSize="{DynamicResource FontCaption}"
 								Text="{Binding PriceText}"
 								TextColor="{DynamicResource Accent}"
 								VerticalOptions="Center" />
@@ -162,7 +162,7 @@
 									VerticalOptions="Center">
 									<Label
 										FontFamily="{DynamicResource FontSemibold}"
-										FontSize="{StaticResource FontCaption}"
+										FontSize="{DynamicResource FontCaption}"
 										LineBreakMode="NoWrap"
 										StyleClass="ChipLabel"
 										Text="{Binding Text}"
@@ -198,7 +198,7 @@
 								Color="{DynamicResource InkMuted}" />
 							<Label
 								FontFamily="{DynamicResource FontSemibold}"
-								FontSize="{StaticResource FontCaption}"
+								FontSize="{DynamicResource FontCaption}"
 								Text="{Binding NoticeCount}"
 								TextColor="{DynamicResource InkMuted}"
 								VerticalOptions="Center" />

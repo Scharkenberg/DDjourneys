@@ -152,34 +152,6 @@
 			</VisualStateGroupList>
 		</Setter>
 	</Style>
-	<Style Class="IconButton" TargetType="Button">
-		<Setter Property="support:Themed.Background" Value="Clear" />
-		<Setter Property="support:Themed.Text" Value="Accent" />
-		<Setter Property="support:Themed.DisabledBackground" Value="Clear" />
-		<Setter Property="support:Themed.DisabledText" Value="InkMuted" />
-		<Setter Property="FontSize" Value="22" />
-		<Setter Property="Padding" Value="0" />
-		<Setter Property="support:Dense.MinHeight" Value="{StaticResource HitIcon}" />
-		<Setter Property="support:Dense.MinWidth" Value="{StaticResource HitIcon}" />
-		<Setter Property="VisualStateManager.VisualStateGroups">
-			<VisualStateGroupList>
-				<VisualStateGroup x:Name="CommonStates">
-					<VisualState x:Name="Normal" />
-					<VisualState x:Name="PointerOver">
-						<VisualState.Setters>
-							<Setter Property="Opacity" Value="0.7" />
-						</VisualState.Setters>
-					</VisualState>
-					<VisualState x:Name="Pressed">
-						<VisualState.Setters>
-							<Setter Property="Scale" Value="0.94" />
-						</VisualState.Setters>
-					</VisualState>
-					<VisualState x:Name="Disabled" />
-				</VisualStateGroup>
-			</VisualStateGroupList>
-		</Setter>
-	</Style>
 	<Style Class="Tonal" TargetType="Button">
 		<Setter Property="support:Themed.Background" Value="AccentSoft" />
 		<Setter Property="support:Themed.Text" Value="Accent" />

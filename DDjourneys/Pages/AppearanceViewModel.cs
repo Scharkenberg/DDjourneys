@@ -15,38 +15,16 @@ public sealed partial class AppearanceViewModel : DisposableViewModel
 	{
 		_settings = settings;
 
-		Modes =
-		[
-			new(Theme.ModeSystem, false),
-			new(Theme.ModeLight, false),
-			new(Theme.ModeDark, false),
-			new(Theme.ModeSun, false)
-		];
+		AsyncCommand<string> selectMaterial = new(id => ApplyAsync(() => Theme.SetMaterialAsync(id ?? MaterialProfile.Mica)));
+		AsyncCommand<string> selectMaterialSurfaces = new(id => ApplyAsync(() => Theme.SetMaterialSurfacesAsync(id ?? MaterialProfile.Layered)));
 
-		Colors = [.. ColorCatalog.All.Select(o => new AppearanceChoice(o.Id, true))];
+		AsyncCommand<string> selectMode = new(id => ApplyAsync(() => Theme.SetModeAsync(id ?? Theme.ModeSystem)));
+		AsyncCommand<string> selectColor = new(id => ApplyAsync(() => Theme.SetColorAsync(id ?? ColorCatalog.DefaultId)));
+		AsyncCommand<string> selectFont = new(id => ApplyAsync(() => Theme.SetFontAsync(id ?? FontCatalog.SystemId)));
 
-		Fonts = [.. FontCatalog.Ids.Select(id => new AppearanceChoice(id, false))];
+		AsyncCommand<string> selectTextSize = new(id => ApplyAsync(() => Theme.SetTextSizeAsync(id ?? Core.Theming.TextSizeProfile.NormalId)));
 
-		Densities = [.. DensityProfile.All.Select(d => new AppearanceChoice(d.Id, false))];
-
-		TextSizes = [.. Core.Theming.TextSizeProfile.Ids.Select(id => new AppearanceChoice(id, false))];
-
-		LineColours = [.. Core.Theming.ModeColorSets.Ids.Select(id => new AppearanceChoice(id, false))];
-
-		Materials = [.. MaterialProfile.Materials.Where(Material.IsSupported).Select(id => new AppearanceChoice(id, false))];
-
-		MaterialSurfaces = [.. MaterialProfile.Coverages.Select(id => new AppearanceChoice(id, false))];
-
-		SelectMaterialCommand = new AsyncCommand<string>(id => ApplyAsync(() => Theme.SetMaterialAsync(id ?? MaterialProfile.Mica)));
-		SelectMaterialSurfacesCommand = new AsyncCommand<string>(id => ApplyAsync(() => Theme.SetMaterialSurfacesAsync(id ?? MaterialProfile.Layered)));
-
-		SelectModeCommand = new AsyncCommand<string>(id => ApplyAsync(() => Theme.SetModeAsync(id ?? Theme.ModeSystem)));
-		SelectColorCommand = new AsyncCommand<string>(id => ApplyAsync(() => Theme.SetColorAsync(id ?? ColorCatalog.DefaultId)));
-		SelectFontCommand = new AsyncCommand<string>(id => ApplyAsync(() => Theme.SetFontAsync(id ?? FontCatalog.SystemId)));
-
-		SelectTextSizeCommand = new AsyncCommand<string>(id => ApplyAsync(() => Theme.SetTextSizeAsync(id ?? Core.Theming.TextSizeProfile.NormalId)));
-
-		SelectLineColoursCommand = new AsyncCommand<string>(
+		AsyncCommand<string> selectLineColours = new(
 			id =>
 			{
 				ModeColorSet.Set(Application.Current ?? throw new InvalidOperationException("No application."), _settings, id ?? Core.Theming.ModeColorSets.StandardId);
@@ -54,7 +32,7 @@ public sealed partial class AppearanceViewModel : DisposableViewModel
 				return Task.CompletedTask;
 			});
 
-		SelectDensityCommand = new AsyncCommand<string>(
+		AsyncCommand<string> selectDensity = new(
 			id =>
 			{
 				Density.Set(id ?? DensityProfile.NormalId);
@@ -62,6 +40,15 @@ public sealed partial class AppearanceViewModel : DisposableViewModel
 
 				return Task.CompletedTask;
 			});
+
+		Modes = Choices((string[])[Theme.ModeSystem, Theme.ModeLight, Theme.ModeDark, Theme.ModeSun], selectMode);
+		Colors = Choices(ColorCatalog.All.Select(o => o.Id), selectColor);
+		Fonts = Choices(FontCatalog.Ids, selectFont);
+		Densities = Choices(DensityProfile.All.Select(d => d.Id), selectDensity);
+		TextSizes = Choices(Core.Theming.TextSizeProfile.Ids, selectTextSize);
+		LineColours = Choices(Core.Theming.ModeColorSets.Ids, selectLineColours);
+		Materials = Choices(MaterialProfile.Materials.Where(Material.IsSupported), selectMaterial);
+		MaterialSurfaces = Choices(MaterialProfile.Coverages, selectMaterialSurfaces);
 
 		ListenToLocalization(_localization, OnLocalizationChanged);
 
@@ -78,6 +65,19 @@ public sealed partial class AppearanceViewModel : DisposableViewModel
 			});
 
 		Refresh();
+	}
+
+	/// <summary>One card of choices: each row selects through the card's command; the last row draws no divider.</summary>
+	private static List<AppearanceChoice> Choices(IEnumerable<string> ids, AsyncCommand<string> select)
+	{
+		List<AppearanceChoice> choices = [.. ids.Select(id => new AppearanceChoice(id, select))];
+
+		if (choices.Count > 0)
+		{
+			choices[^1].ShowDivider = false;
+		}
+
+		return choices;
 	}
 
 	public List<AppearanceChoice> Modes { get; }
@@ -98,22 +98,6 @@ public sealed partial class AppearanceViewModel : DisposableViewModel
 	public List<AppearanceChoice> Materials { get; }
 
 	public List<AppearanceChoice> MaterialSurfaces { get; }
-
-	public AsyncCommand<string> SelectMaterialCommand { get; }
-
-	public AsyncCommand<string> SelectMaterialSurfacesCommand { get; }
-
-	public AsyncCommand<string> SelectModeCommand { get; }
-
-	public AsyncCommand<string> SelectColorCommand { get; }
-
-	public AsyncCommand<string> SelectFontCommand { get; }
-
-	public AsyncCommand<string> SelectDensityCommand { get; }
-
-	public AsyncCommand<string> SelectTextSizeCommand { get; }
-
-	public AsyncCommand<string> SelectLineColoursCommand { get; }
 
 	/// <summary>Pure black surfaces in dark mode (two-way bound to a switch).</summary>
 	public bool PureBlack

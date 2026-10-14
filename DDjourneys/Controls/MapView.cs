@@ -332,14 +332,6 @@ public sealed partial class MapView : ContentView
 		await PushModeAsync();
 	}
 
-	/// <summary>Moves the view (animated).</summary>
-	public Task CenterAsync(double latitude, double longitude, int zoom = 16) =>
-		CallAsync(
-			"center",
-			string.Create(
-				System.Globalization.CultureInfo.InvariantCulture,
-				$"{{\"lat\":{latitude},\"lon\":{longitude},\"zoom\":{zoom}}}"));
-
 	/// <summary>Centres the marker with this id and opens its popup.</summary>
 	public async Task FocusAsync(string markerId)
 	{
